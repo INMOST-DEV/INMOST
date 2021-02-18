@@ -36,14 +36,14 @@ int main(int argc, char *argv[])
 	one(1, 0) = 1;
 	one(2, 0) = 1;
 	I = rMatrix::Unit(3);
-	int bad = 0;
-	int ccout = 0;
-	int bcout = 0;
-	int elog = 0;
-	int bad_div1 = 0, bad_divx = 0, bad_g1 = 0, bad_E = 0;
-	double vmax = -1.0e+20, vmin = 1.0e+20;
-	double divx, div1;
-	int histogram_E[10], histogram_divx[10], histogram_div1[10], histogram_g1[10];
+	Storage::integer bad = 0;
+	Storage::integer ccout = 0;
+	Storage::integer bcout = 0;
+	Storage::integer elog = 0;
+	Storage::integer bad_div1 = 0, bad_divx = 0, bad_g1 = 0, bad_E = 0;
+	Storage::real vmax = -1.0e+20, vmin = 1.0e+20;
+	Storage::real divx, div1;
+	Storage::integer histogram_E[10], histogram_divx[10], histogram_div1[10], histogram_g1[10];
 	memset(histogram_E, 0, sizeof(int) * 10);
 	memset(histogram_divx, 0, sizeof(int) * 10);
 	memset(histogram_div1, 0, sizeof(int) * 10);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 		g1.Zero();
 		divx = 0;
 		div1 = 0;
-		double vol = it->Volume();
+		Storage::real vol = it->Volume();
 		it->Barycenter(xc.data());
 		for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 		{
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 		}
 		div1 = fabs(div1 / vol);
 		divx = fabs(divx / vol - 3);
-		bool print = false;
+		//~ bool print = false;
 		g1 /= vol;
 		E = (E / vol - I);
 		if (E.FrobeniusNorm() > 1.0e-4)
@@ -82,25 +82,25 @@ int main(int argc, char *argv[])
 		elog = -ceil(log(E.FrobeniusNorm() + 1.0e-33) / log(10));
 		if (elog > 9) elog = 9;
 		if (elog < 0) elog = 0;
-		if (elog == 0) print = true;
+		//~ if (elog == 0) print = true;
 		histogram_E[elog]++;
 		if (divx > 1.0e-4) bad_divx++;
 		elog = -ceil(log(fabs(divx) + 1.0e-33) / log(10));
 		if (elog > 9) elog = 9;
 		if (elog < 0) elog = 0;
-		if (elog == 0) print = true;
+		//~ if (elog == 0) print = true;
 		histogram_divx[elog]++;
 		if (div1 > 1.0e-4) bad_div1++;
 		elog = -ceil(log(fabs(div1) + 1.0e-33) / log(10));
 		if (elog > 9) elog = 9;
 		if (elog < 0) elog = 0;
-		if (elog == 0) print = true;
+		//~ if (elog == 0) print = true;
 		histogram_div1[elog]++;
 		if (g1.FrobeniusNorm() > 1.0e-4) bad_g1++;
 		elog = -ceil(log(fabs(g1.FrobeniusNorm() + 1.0e-33)) / log(10));
 		if (elog > 9) elog = 9;
 		if (elog < 0) elog = 0;
-		if (elog == 0) print = true;
+		//~ if (elog == 0) print = true;
 		histogram_g1[elog]++;
 		//if( print )
 		//	std::cout << std::setw(14) << E.FrobeniusNorm() << std::setw(14)  << divx << std::setw(14) <<  div1 << std::setw(14) <<  g1.FrobeniusNorm() << std::endl;
@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
 		tbad_E = mesh.DeleteTag(tbad_E);
 	if( !ccout )
 		tbad_C = mesh.DeleteTag(tbad_C);
-	int npln = 0;
-	int ornt = 0;
-	int nfaces = mesh.TotalNumberOf(FACE);
+	Storage::integer npln = 0;
+	Storage::integer ornt = 0;
+	Storage::integer nfaces = mesh.TotalNumberOf(FACE);
 	for (Mesh::iteratorFace it = mesh.BeginFace(); it != mesh.EndFace(); ++it)
 	{
 		if (!it->CheckNormalOrientation()) ornt++;
@@ -161,8 +161,8 @@ int main(int argc, char *argv[])
 	npln = mesh.Integrate(npln);
 	if (mesh.GetProcessorRank() == 0)
 		std::cout << "Bad face orientation " << ornt << "/" << nfaces << " no planarity " << npln << std::endl;
-	double cmax[3] = { -1.0e20,-1.0e20,-1.0e20 };
-	double cmin[3] = { 1.0e20, 1.0e20, 1.0e20 };
+	Storage::real cmax[3] = { -1.0e20,-1.0e20,-1.0e20 };
+	Storage::real cmin[3] = { 1.0e20, 1.0e20, 1.0e20 };
 	for (Mesh::iteratorNode it = mesh.BeginNode(); it != mesh.EndNode(); ++it)
 	{
 		for (int k = 0; k < 3; ++k)
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 	}
 	//mesh.Save("geom_info.vtk");
 	
-	double vol = 0;
+	Storage::real vol = 0;
 	for (Mesh::iteratorCell it = mesh.BeginCell(); it != mesh.EndCell(); ++it) if (it->GetStatus() != Element::Ghost)
 		vol += it->Volume();
 	vol = mesh.Integrate(vol);

@@ -333,8 +333,10 @@ namespace INMOST
 	{
 		std::vector<INMOST_DATA_ENUM_TYPE> ret;
         for(blk_enum::size_type it = 0; it < reg_blocks.size(); ++it)
+        {
             if( isRegisteredEntry(static_cast<INMOST_DATA_ENUM_TYPE>(it)) )
                 ret.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(it));
+		}
 		return ret;
 	}
 	

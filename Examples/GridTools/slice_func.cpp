@@ -56,6 +56,7 @@ double Slice::Search(double r0, double r1, double c0[3], double c1[3], double p[
 
 double Slice::SearchZero(double r0, double r1, double c0[3], double c1[3], double p[3]) const
 {
+	(void)r1;
 	int iters = 0;
 	double rp = 1.0e+20;
 	//std::cout << "r0 " << r0 << " r1 " << r1;
@@ -186,6 +187,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 		//if( (r0*r1 < -1.0e-12) || (fabs(r0*r1) < 1.0e-12 && ((fabs(r0) < 1.0e-6) ^ (fabs(r1) < 1.0e-6))) )
 		{
 			int alg = -1;
+			(void)alg;
 			pc0[0] = c0[0], pc0[1] = c0[1], pc0[2] = c0[2];
 			pc1[0] = c1[0], pc1[1] = c1[1], pc1[2] = c1[2];
 			if((fabs(r0) < epsf) ^ (fabs(r1) < epsf))
@@ -247,7 +249,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				bool was_sliced = it->HaveData(sliced) ? true : false;
 				ElementArray<Edge> ret = Edge::SplitEdge(it->self(),ElementArray<Node>(&m,1,n.GetHandle()),0);
 				ret.SetMarker(mrk);
-				if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
+				if( was_sliced ) for(size_t q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 				nslice++;
 			}
 		}
@@ -313,7 +315,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				bool was_sliced = it->HaveData(sliced) ? true : false;
 				ElementArray<Face> ret = Face::SplitFace(it->self(),ElementArray<Edge>(&m,1,e.GetHandle()),0);
 				ret.SetMarker(mrk);
-				if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
+				if( was_sliced ) for(size_t q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 				nslice++;
 			}
 			else if( it->nbAdjElements(NODE,slice) != it->nbAdjElements(NODE) ) //not entire face is sliced
@@ -491,7 +493,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				{
 					
 					int k = 0;
-					for(int q = 0; q < split_edges.size(); ++q)
+					for(size_t q = 0; q < split_edges.size(); ++q)
 					{
 						if( !split_edges[q].GetMarker(unique) )
 						{
@@ -509,15 +511,15 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					ElementArray<Face> ret = Face::SplitFace(it->self(),split_edges,0);
 					ret.SetMarker(mrk);
 					//std::cout << " new faces: " << ret.size() << ":";
-					for(int q = 0; q < ret.size(); ++q)
+					for(ElementArray<Face>::size_type q = 0; q < ret.size(); ++q)
 					{
 						int mat[3] = {0,0,0};
 						ElementArray<Edge> fe = ret[q].getEdges();
-						for( int l = 0; l < fe.size(); ++l) mat[material[fe[l]]]++;
+						for( ElementArray<Edge>::size_type l = 0; l < fe.size(); ++l) mat[material[fe[l]]]++;
 						//std::cout << " " << ret[q].LocalID() << "[" << mat[0] << "," << mat[1] << "," << mat[2] << "]";
 					}
 					//std::cout << std::endl;
-					if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
+					if( was_sliced ) for(INMOST_DATA_ENUM_TYPE q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 					nslice++;
 				}
 				//else std::cout << "No split edges " << std::endl;
@@ -608,9 +610,9 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				ElementArray<Edge> order_edges(&m);
 				
 				Node last;
-				int nvisited = 0;
+				ElementArray<Edge>::size_type nvisited = 0;
 				bool found = false;
-				for(int k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(original) )
+				for(ElementArray<Edge>::size_type k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(original) )
 				{
 					nvisited++;
 					last = InvalidNode();
@@ -626,7 +628,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				while(nvisited != edges.size() )
 				{
 					found = false;
-					for(int k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) )
+					for(ElementArray<Edge>::size_type k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) )
 					{
 						bool match = false;
 						if( last.isValid() )
@@ -683,7 +685,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 							}
 							order_edges.clear();
 							found = false;
-							for(int k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) && !edges[k]->GetMarker(original))
+							for(ElementArray<Edge>::size_type k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) && !edges[k]->GetMarker(original))
 							{
 								nvisited++;
 								last = InvalidNode();
@@ -714,8 +716,8 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				ElementArray<Edge> cutedges(&m,cedges.size());
 				ElementArray<Node> edge_nodes(&m,2);
 				
-				for(int k = 0; k < (int)cnodes.size(); ++k) indx[cnodes[k]] = k;
-				for(int k = 0; k < (int)cedges.size(); ++k) indx[cedges[k]] = k;
+				for(ElementArray<Node>::size_type k = 0; k < cnodes.size(); ++k) indx[cnodes[k]] = k;
+				for(ElementArray<Edge>::size_type k = 0; k < cedges.size(); ++k) indx[cedges[k]] = k;
 				
 				double c0[3],c1[3],pc0[3],pc1[3],p[3];
 				it->Centroid(c0);
@@ -736,7 +738,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				
 				
 				//calculate nodes that cut along the edges connecting centernode
-				for(int q = 0; q < (int)cnodes.size(); ++q)
+				for(ElementArray<Node>::size_type q = 0; q < cnodes.size(); ++q)
 				{
 					if( !cnodes[q].GetMarker(slice) )
 					{
@@ -798,7 +800,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 								material[cnodes[q]] = 2;
 								cnodes[q].SetMarker(slice);
 								ElementArray<Edge> nedges = cnodes[q]->getEdges();
-								for(int r = 0; r < nedges.size();++r)
+								for(INMOST_DATA_ENUM_TYPE r = 0; r < nedges.size();++r)
 									if( material[nedges[r]->getBeg()] == 2 && material[nedges[r]->getEnd()] == 2)
 										material[nedges[r]] = 2;
 								//std::cout << "use old node " << std::endl;
@@ -894,7 +896,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 						
 						if( simple )
 						{
-							for(int r = 0; r < split_edges.size(); ++r) vstcnt[split_edges[r]]++;
+							for(INMOST_DATA_ENUM_TYPE r = 0; r < split_edges.size(); ++r) vstcnt[split_edges[r]]++;
 							std::pair<Face,bool> f = m.CreateFace(split_edges);
 							//std::cout << "Created face " << f.first.LocalID() << " with " << split_edges.size() << " edges: ";
 							//for(int r = 0; r < split_edges.size(); ++r) std::cout << "EDGE:" << split_edges[r].LocalID()  << " ";
@@ -1023,8 +1025,8 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				}
 				
 				cedges.RemMarker(cmrk);
-				
-				for(int q = 0; q < alledges.size(); ++q)
+				/*
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < alledges.size(); ++q)
 				{
 					Storage::real_array a = alledges[q].getBeg().Coords();
 					Storage::real_array b = alledges[q].getEnd().Coords();
@@ -1036,6 +1038,7 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					//std::cout << "(" << bid << "," << b[0] << "," << b[1] << "," << b[2] << ")";
 					//std::cout << std::endl;
 				}
+				*/
 			}
 			
 			
@@ -1050,32 +1053,32 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 				if( false )
 				{
 					std::cout << (simple?"simple":"complex") << " algorithm, split cell " << lid << " with " << split_faces.size() << " faces ";
-					for(int q = 0; q < (int)split_faces.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < split_faces.size(); ++q)
 					{
 						std::cout << split_faces[q].LocalID();
 						std::cout << " [" << Element::GeometricTypeName(split_faces[q].GetGeometricType()) << "]";
 						std::cout << " nodes (";
 						ElementArray<Node> fnodes = split_faces[q].getNodes();
-						for(int l = 0; l < fnodes.size(); ++l)
+						for(INMOST_DATA_ENUM_TYPE l = 0; l < fnodes.size(); ++l)
 							std::cout << fnodes[l].LocalID() << " ";
 						std::cout << ") ";
 					}
 					std::cout << " result in " << ret.size() << " cells:";
-					for(int q = 0; q < (int)ret.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < ret.size(); ++q)
 					{
 						std::cout << " " << ret[q].LocalID();
 						std::cout << " [" << Element::GeometricTypeName(ret[q].GetGeometricType()) << "]";
 						std::cout << " nodes (";
 						ElementArray<Node> cnodes = ret[q].getNodes();
-						for(int l = 0; l < cnodes.size(); ++l)
+						for(INMOST_DATA_ENUM_TYPE l = 0; l < cnodes.size(); ++l)
 							std::cout << cnodes[l].LocalID() << " ";
 						std::cout << ") faces (";
 						ElementArray<Face> cfaces = ret[q].getFaces();
-						for(int l = 0; l < cfaces.size(); ++l)
+						for(INMOST_DATA_ENUM_TYPE l = 0; l < cfaces.size(); ++l)
 						{
 							std::cout << cfaces[l].LocalID() << " [" << Element::GeometricTypeName(cfaces[l].GetGeometricType()) << "] n{";
 							ElementArray<Node> fcnodes = cfaces[l].getNodes();
-							for(int r = 0; r < fcnodes.size(); ++r)
+							for(INMOST_DATA_ENUM_TYPE r = 0; r < fcnodes.size(); ++r)
 								std::cout << fcnodes[r].LocalID() << " ";
 							std::cout << "} ";
 						}
@@ -1096,20 +1099,20 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					cedges.SetMarker(cmrk);
 					
 					std::cout << "Original cut edges: " << std::endl;
-					for(int k = 0; k < edges.size(); ++k) std::cout << edges[k].LocalID() << " ";
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); ++k) std::cout << edges[k].LocalID() << " ";
 					std::cout << std::endl;
 					
 					std::cout << "Original cell edges: " << std::endl;
-					for(int k = 0; k < cedges.size(); ++k) std::cout << cedges[k].LocalID() << " ";
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < cedges.size(); ++k) std::cout << cedges[k].LocalID() << " ";
 					std::cout << std::endl;
 					
 					std::cout << "Cut faces edges: " << std::endl;
 					std::map<Edge,int> vstcnt;
-					for(int q = 0; q < split_faces.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < split_faces.size(); ++q)
 					{
 						ElementArray<Edge> sedges = split_faces[q].getEdges();
 						std::cout << "Face " << split_faces[q].LocalID() << ":";
-						for(int r = 0; r < sedges.size(); ++r)
+						for(INMOST_DATA_ENUM_TYPE r = 0; r < sedges.size(); ++r)
 						{
 							vstcnt[sedges[r]]++;
 							std::cout << " " << sedges[r].LocalID() << "(" << (sedges[r].GetMarker(cmrk)?"s":"i") << ")";
@@ -1123,11 +1126,11 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					
 					std::cout << "Cell faces edges: " << std::endl;
 					ElementArray<Face> cfaces = ret[0].getFaces();
-					for(int k = 0; k < cfaces.size(); ++k)
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < cfaces.size(); ++k)
 					{
 						ElementArray<Edge> sedges = cfaces[k].getEdges();
 						std::cout << "Face " << cfaces[k].LocalID() << ":";
-						for(int r = 0; r < sedges.size(); ++r)
+						for(INMOST_DATA_ENUM_TYPE r = 0; r < sedges.size(); ++r)
 						{
 							vstcnt[sedges[r]]++;
 							std::cout << " " << sedges[r].LocalID() << "(" << (sedges[r].GetMarker(cmrk)?"s":"i") << ")";
@@ -1142,17 +1145,17 @@ void Slice::SliceMesh(Mesh & m, bool remove_material_zero)
 					
 					
 					std::cout << "Cell:" << std::endl;
-					for(int k = 0; k < cedges.size(); ++k)
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < cedges.size(); ++k)
 					{
 						Storage::real_array c1 = cedges[k].getBeg().Coords();
 						Storage::real_array c2 = cedges[k].getEnd().Coords();
 						std::cout << "(" << c1[0] << "," << c1[1] << "," << c1[2] << ")<->(" << c2[0] << "," << c2[1] << "," << c2[2] << ")" << std::endl;
 					}
 					std::cout << "Faces:" << std::endl;
-					for(int q = 0; q < split_faces.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < split_faces.size(); ++q)
 					{
 						ElementArray<Edge> sedges = split_faces[q].getEdges();
-						for(int r = 0; r < sedges.size(); ++r)
+						for(INMOST_DATA_ENUM_TYPE r = 0; r < sedges.size(); ++r)
 						{
 							Storage::real_array c1 = sedges[r].getBeg().Coords();
 							Storage::real_array c2 = sedges[r].getEnd().Coords();

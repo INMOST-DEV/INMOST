@@ -198,7 +198,7 @@ namespace INMOST
 		if( dim == 3 )
 		{
 			/*
-			tiny_map<HandleType,real,16> hits;
+			std::map<HandleType,real,16> hits;
 			real ray[3];
 			ray[0] = rand()/(real)RAND_MAX;
 			ray[1] = rand()/(real)RAND_MAX;
@@ -407,8 +407,8 @@ namespace INMOST
 	bool Mesh::TestClosure(const HandleType * elements, integer num) const
 	{
 		integer i;
-		tiny_map<HandleType,int,64> e_visit;
-		tiny_map<HandleType,int,64>::iterator it;
+		std::map<HandleType,int> e_visit;
+		std::map<HandleType,int>::iterator it;
 		if( !HideMarker() )
 		{
 			for(i = 0; i < num; i++)
@@ -727,7 +727,6 @@ namespace INMOST
 	
 	void Mesh::PrepareGeometricData(GeomParam table)
 	{
-		std::sort(&*table.begin(),&*table.end());
 		for(GeomParam::iterator it = table.begin(); it != table.end(); ++it)
 		{
 			GeometricData types = it->first;
@@ -1437,7 +1436,7 @@ namespace INMOST
 			if( ::fabs(vec_dot_product(v,n,3)) > m->GetEpsilon() ) return false;
 		}
 		*/
-		double l1[3] = {0,0,0}, l2[3] = {0,0,0}, nt[3] = {0,0,0}, n0[3] = {0,0,0};
+		INMOST_DATA_REAL_TYPE l1[3] = {0,0,0}, l2[3] = {0,0,0}, nt[3] = {0,0,0}, n0[3] = {0,0,0};
 		real_array v0, v1, v2;
 		v0 = nodes[0].Coords();
 		for(int i = 1; i < (int)nodes.size()-1; i++)
@@ -1932,7 +1931,7 @@ namespace INMOST
 	
 
 	
-	void Element::CastRay(const real * pos, const real * dir, tiny_map<HandleType, real, 16> & hits) const
+	void Element::CastRay(const real * pos, const real * dir, std::map<HandleType, real> & hits) const
 	{
 		Mesh * mm = GetMeshLink();
 		unsigned dim = mm->GetDimensions();
@@ -2059,21 +2058,20 @@ namespace INMOST
 	/// 	nodes_stencil	array of pairs (handle of node, interpolation coefficient)
 	///
 	/// Example: 
-	///		tiny_map<HandleType,double,8> nodes_stencil;
+	///		std::map<HandleType,double> nodes_stencil;
 	///		wachspress_2d(x, f, nodes_stencil);
 	///		double xvalue = 0.0;
-	///		for(tiny_map<HandleType,double,8>::const_iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+	///		for(std::map<HandleType,double>::const_iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 	///		{
 	///			xvalue += it->second * tag_value.Real(it->first);
 	///		}
-	void Mesh::WachspressInterpolation2D(const real * x, const Face & f, tiny_map<HandleType,real,8> & nodes_stencil) const
+	void Mesh::WachspressInterpolation2D(const real * x, const Face & f, std::map<HandleType,real> & nodes_stencil) const
 	{
 		ElementArray<Node> nodes = f.getNodes();
 		int n = (int)nodes.size();
-		double xprev[3], xthis[3], xnext[3], dx[3];
-		double weight_sum = 0.0;
-		double areaface = f.Area();
-		double eps = GetEpsilon();
+		INMOST_DATA_REAL_TYPE xprev[3], xthis[3], xnext[3], dx[3];
+		INMOST_DATA_REAL_TYPE weight_sum = 0.0;
+		INMOST_DATA_REAL_TYPE areaface = f.Area();
 		bool edge_interpolation = false;
 		int edgenode1 = -1, edgenode2 = -1;
 		for(int i = 0; i < n && !edge_interpolation; i++)
@@ -2083,16 +2081,16 @@ namespace INMOST
 			vec_diff(x,xthis,dx,3);
 			nodes[prev].Centroid(xprev);
 			nodes[next].Centroid(xnext);
-			double area1 = triarea3d(x,xprev,xthis);
+			INMOST_DATA_REAL_TYPE area1 = triarea3d(x,xprev,xthis);
 			edge_interpolation = area1 < 1e-8 * areaface;
 			if( !edge_interpolation )
 			{
-				double area2 = triarea3d(x,xthis,xnext);
+				INMOST_DATA_REAL_TYPE area2 = triarea3d(x,xthis,xnext);
 				edge_interpolation = area2 < 1e-8 * areaface;
 				if( !edge_interpolation )
 				{
-					double area = triarea3d(xthis,xprev,xnext);
-					double weight = area / (area1 * area2);
+					INMOST_DATA_REAL_TYPE area = triarea3d(xthis,xprev,xnext);
+					INMOST_DATA_REAL_TYPE weight = area / (area1 * area2);
 					weight_sum += weight;
 					nodes_stencil[nodes[i].GetHandle()] = weight;
 				}
@@ -2111,7 +2109,7 @@ namespace INMOST
 		if( edge_interpolation )
 		{
 			if( !nodes_stencil.empty() )	nodes_stencil.clear();
-			double x1[3],x2[3], v12[3], v[3], alpha;
+			INMOST_DATA_REAL_TYPE x1[3],x2[3], v12[3], v[3], alpha;
 			nodes[edgenode1].Centroid(x1);
 			nodes[edgenode2].Centroid(x2);
 			vec_diff(x2,x1,v12,3);
@@ -2122,29 +2120,29 @@ namespace INMOST
 			nodes_stencil[nodes[edgenode2].GetHandle()] = 1.0-alpha;
 		}
 		else if( weight_sum )
-			for(tiny_map<HandleType,real,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				it->second /= weight_sum;
 	}
 	
-	void Mesh::WachspressInterpolation3D(const real * x, const Cell & c, tiny_map<HandleType,real,8> & nodes_stencil) const
+	void Mesh::WachspressInterpolation3D(const real * x, const Cell & c, std::map<HandleType,real> & nodes_stencil) const
 	{
 		ElementArray<Node> nodes = c.getNodes();
 		int n = (int)nodes.size();
 		ElementArray<Face> cfaces = c.getFaces(), faces;
 		Face swp;
 
-		double weight_sum = 0;
+		INMOST_DATA_REAL_TYPE weight_sum = 0;
 		for(int i = 0; i < n; i++)
 		{
-			double xthis[3], v[3];
+			INMOST_DATA_REAL_TYPE xthis[3], v[3];
 			nodes[i].Centroid(xthis);
 
 			faces = cfaces;
 			faces.Intersect(nodes[i].getFaces());
 			int nf = (int)faces.size();
-			double nrm_mean[3] = {0,0,0}, cross[3];
-			double * nrm = new double[nf*3];	// oriented unit normal to face
-			double * h = new double[nf];		// distance to face
+			INMOST_DATA_REAL_TYPE nrm_mean[3] = {0,0,0}, cross[3];
+			INMOST_DATA_REAL_TYPE * nrm = new INMOST_DATA_REAL_TYPE[nf*3];	// oriented unit normal to face
+			INMOST_DATA_REAL_TYPE * h = new INMOST_DATA_REAL_TYPE[nf];		// distance to face
 			for(int j = 0; j < nf; j++)
 			{
 				faces[j].OrientedUnitNormal(c,nrm+3*j);
@@ -2181,7 +2179,7 @@ namespace INMOST
 				}
 				else if(h[j] < 1e-8) // point on the face plane
 				{
-					double xf[3];
+					INMOST_DATA_REAL_TYPE xf[3];
 					for(int k = 0; k < 3; k++)	xf[k] = x[k] + h[j]*nrm[3*j+k];
 					if( !nodes_stencil.empty() )	nodes_stencil.clear();
 					WachspressInterpolation2D(xf,faces[j],nodes_stencil);
@@ -2189,10 +2187,10 @@ namespace INMOST
 				}
 			}
 
-			double weight = 0.0;
+			INMOST_DATA_REAL_TYPE weight = 0.0;
 			for(int j = 0; j < nf-2; j++)
 			{
-				double tet_weight = fabs(det3v(nrm+3*j, nrm+3*(j+1), nrm+3*(nf-1))) / (h[j]*h[j+1]*h[nf-1]);
+				INMOST_DATA_REAL_TYPE tet_weight = fabs(det3v(nrm+3*j, nrm+3*(j+1), nrm+3*(nf-1))) / (h[j]*h[j+1]*h[nf-1]);
 				weight += tet_weight;
 			}
 			nodes_stencil[nodes[i].GetHandle()] = weight;
@@ -2203,7 +2201,7 @@ namespace INMOST
 		}
 
 		if( weight_sum )
-			for(tiny_map<HandleType,real,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				it->second /= weight_sum;
 	}
 

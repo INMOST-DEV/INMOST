@@ -97,7 +97,7 @@ int main(int argc, char ** argv)
 		r0 = pow(r0,1.0/3.0);
 		r = r0/8.0;
 		
-		int ncells, nfaces, nedges, nnodes;
+		//int ncells, nfaces, nedges, nnodes;
 
 		double time = Timer();
 		

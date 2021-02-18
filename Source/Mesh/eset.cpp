@@ -1352,7 +1352,7 @@ namespace INMOST
 					while(it != iend && *it != InvalidHandle() ) *t++ = *it++;
 					while(jt != jend && *jt != InvalidHandle() ) *t++ = *jt++;
 					//number of deleted items and invalid handles should match
-					assert( (temp.size() - (t-temp.begin())) == (hc.size()-ElementSet::high_conn_reserved) );
+					assert( (temp.size() - (t-temp.begin())) == static_cast<ptrdiff_t>(hc.size()-ElementSet::high_conn_reserved) );
 					lc->swap(temp);
 				}
 			}
@@ -1378,7 +1378,7 @@ namespace INMOST
 					while(it != iend && *it != InvalidHandle() ) *t++ = *it++;
 					while(jt != jend && *jt != InvalidHandle() ) *t++ = *jt++;
 					//number of deleted items and invalid handles should match
-					assert( (temp.size() - (t-temp.begin())) == (hc.size()-ElementSet::high_conn_reserved) );
+					assert( (temp.size() - (t-temp.begin())) == static_cast<ptrdiff_t>(hc.size()-ElementSet::high_conn_reserved) );
 					lc->swap(temp);
 				}
 			}
@@ -1404,7 +1404,7 @@ namespace INMOST
 					while(it != iend && *it != InvalidHandle() ) *t++ = *it++;
 					while(jt != jend && *jt != InvalidHandle() ) *t++ = *jt++;
 					//number of deleted items and invalid handles should match
-					assert( (temp.size() - (t-temp.begin())) == (hc.size()-ElementSet::high_conn_reserved) );
+					assert( (temp.size() - (t-temp.begin())) == static_cast<ptrdiff_t>(hc.size()-ElementSet::high_conn_reserved) );
 					lc->swap(temp);
 				}
 			}
@@ -1430,7 +1430,7 @@ namespace INMOST
 					while(it != iend && *it != InvalidHandle() ) *t++ = *it++;
 					while(jt != jend && *jt != InvalidHandle() ) *t++ = *jt++;
 					//number of deleted items and invalid handles should match
-					assert( (temp.size() - (t-temp.begin())) == (hc.size()-ElementSet::high_conn_reserved) );
+					assert( (temp.size() - (t-temp.begin())) == static_cast<ptrdiff_t>(hc.size()-ElementSet::high_conn_reserved) );
 					lc->swap(temp);
 				}
 			}

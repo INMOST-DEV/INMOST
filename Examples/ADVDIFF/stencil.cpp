@@ -101,11 +101,11 @@ bool find_stencils(Cell cK,
 		 rK,
 	     rQ,
 		 mult; //boundary condition multiplier
-
+	(void)lambdaC,(void)rN,(void)rK,(void)rQ;
 	//variables used for approximation
 	rMatrix A(3,3), U(3,3), S(3,3), V(3,3), Sinv(3,3), I(3,3), v(1,3); //gradient matrix and SVD storage
 	rMatrix coef(1,3); //row of coefficients for triplet
-	real velocity = 0.0, //velocity value 
+	real //velocity = 0.0, //velocity value 
 		 cond, //current condition number of gradient matrix
 		 Smin, //minimal singular value
 		 Smax, //maximal singular value

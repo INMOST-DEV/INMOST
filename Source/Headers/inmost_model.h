@@ -44,16 +44,16 @@ namespace INMOST
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// No algorithm by default
 		/// If this submodel depends on provided adpated mesh, it should update it's data
-		virtual void Adaptation(Mesh & m, SearchKDTree & search_old_cells) const {};
+		virtual void Adaptation(Mesh & m) const {(void)m;};
 		
 		
-		virtual void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells) {}
-		virtual void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces) {}
-		virtual void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges) {}
+		virtual void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells) {(void)old_cell;(void)new_cells;}
+		virtual void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces) {(void)old_face;(void)new_faces;}
+		virtual void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges) {(void)old_edge;(void)new_edges;}
 		
-		virtual void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell) {}
-		virtual void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face) {}
-		virtual void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge) {}
+		virtual void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell) {(void)old_cells;(void)new_cell;}
+		virtual void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face) {(void)old_faces;(void)new_face;}
+		virtual void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge) {(void)old_edges;(void)new_edge;}
 	};
 	
 	/// A class to organize a model.

@@ -14994,7 +14994,7 @@ namespace k3d
          CVector < _FltVect >::BlockDaxpy (_nrow, _ncol, _nrhs, _q, pmatr, _qx);
       }
 
-   };
+   }
 
 ///
 /// @brief Multiply by block Housholder transformation
@@ -15049,7 +15049,7 @@ namespace k3d
          CVector < _FltVect >::BlockDaxpy (_nrow, _ncol, _nrhs, _q, pmatr, _qx);
       }
 
-   };
+   }
 
 /// @brief Solve in-place triangular system
 //========================================================================================
@@ -15303,7 +15303,7 @@ namespace k3d
          }
       }
 
-   };
+   }
 
 /// @brief Multiply matrix by vector
 //========================================================================================
@@ -16577,6 +16577,7 @@ namespace k3d
       }
 
       int *pind2node = this->GetInd2Node ();
+      (void)pind2node;
       int *pind2node_new = _tree_flt.GetInd2Node ();
 
       for (i = 0; i < nnodes_new; i++)

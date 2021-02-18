@@ -859,6 +859,7 @@ using namespace INMOST;
 				LU2_Entries.clear();
 #endif
 				mean_diag = 0.0;
+				(void)mean_diag;
 ///////////////////////////////////////////////////////////////////////////////////
 //       setup diagonal values and memorize indices                              //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1061,6 +1062,7 @@ using namespace INMOST;
 				nzLU += L_Address[cbeg].Size() + U_Address[cbeg].Size() + 1;
 				max_diag = min_diag = fabs(LU_Diag[cbeg]);
 				NuD = 1.0;
+				(void)NuD;
 #if defined(REPORT_ILU)
 				std::cout << level_size.size() << " starting factorization " << std::endl;
 #endif
@@ -1267,6 +1269,7 @@ swap_algorithm:
 					udiag = udiag * (1.0 + DIAGONAL_PERTURBATION_REL) + (udiag < 0.0 ? -1.0 : 1.0)*DIAGONAL_PERTURBATION_ABS;
 #endif
 					abs_udiag = fabs(LU_Diag[k]);
+					(void)abs_udiag;
 ///////////////////////////////////////////////////////////////////////////////////
 //            Prepare linked list for U-part                                     //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1664,6 +1667,7 @@ swap_algorithm:
 					if( estimator )
 					{
 						NuU1_old = NuU1;
+						(void)NuU1_old;
 						mup = 1.0 - EstU1[k];
 						mum = -1.0 - EstU1[k];
 						smup = smum = 0;
@@ -1691,13 +1695,14 @@ swap_algorithm:
 							vp = fabs(v + LineValuesU[Ui] * mup);
 							vm = fabs(v + LineValuesU[Ui] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 							Ui = LineIndecesU[Ui];
 						}
 						NuU2_old = NuU2;
+						(void)NuU2_old;
 						if (np > nm) NuU2 = mup; else NuU2 = mum;
 						NuU2_new = std::max(fabs(mup), fabs(mum));
 					} //if( estimator )
@@ -1710,6 +1715,7 @@ swap_algorithm:
 					if( estimator )
 					{
 						NuL1_old = NuL1;
+						(void)NuL1_old;
 						mup = 1.0 - EstL1[k];
 						mum = -1.0 - EstL1[k];
 						smup = smum = 0;
@@ -1727,6 +1733,7 @@ swap_algorithm:
 						NuL1_new = std::max(fabs(mup),fabs(mum));
 
 						NuL2_old = NuL2;
+						(void)NuL2_old;
 						mup = 1.0 - EstL2[k];
 						mum = -1.0 - EstL2[k];
 						np = nm = 0;
@@ -1738,10 +1745,10 @@ swap_algorithm:
 							vp = fabs(v + LineValuesL[Li] * mup);
 							vm = fabs(v + LineValuesL[Li] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 							Li = LineIndecesL[Li];
 						}
 						if (np > nm) NuL2 = mup; else NuL2 = mum;
@@ -2739,6 +2746,7 @@ swap_algorithm:
 						Ui = LineIndecesL[Ui];
 					}
 					Smean = Snorm/Snum;
+					(void)Smean;
 					//insert obtained row
 ///////////////////////////////////////////////////////////////////////////////////
 //         put calculated row to Schur complement                                //
@@ -3024,10 +3032,10 @@ swap_algorithm:
 							vp = fabs(v + entries[ADDR(i,Ui)] * mup);
 							vm = fabs(v + entries[ADDR(i,Ui)] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 						}
 						if (np > nm) NuU2 = mup; else NuU2 = mum;
 						NuU2_new = std::max(fabs(mup), fabs(mum));
@@ -3063,10 +3071,10 @@ swap_algorithm:
 							vp = fabs(v + entries[ADDR(Li,i)] * mup);
 							vm = fabs(v + entries[ADDR(Li,i)] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 						}
 						
 						if (np > nm) NuL2 = mup; else NuL2 = mum;
@@ -3177,8 +3185,8 @@ swap_algorithm:
 					ddpq_tau /= 1.015;
 				else
 					ddpq_tau *= 1.015;
-				ddpq_tau = std::max(0.01,ddpq_tau);
-				ddpq_tau = std::min(0.99,ddpq_tau);
+				ddpq_tau = std::max<INMOST_DATA_REAL_TYPE>(0.01,ddpq_tau);
+				ddpq_tau = std::min<INMOST_DATA_REAL_TYPE>(0.99,ddpq_tau);
 			}
 			/*
 //#if defined(REPORT_ILU)

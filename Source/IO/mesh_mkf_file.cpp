@@ -47,7 +47,7 @@ namespace INMOST
 		}
 		int nbnodes, nbpolygon, nbpolyhedra, nbzones, volcorr, nbfacenodes, nbpolyhedronfaces, num, nbK;
 		int report_pace;
-		Storage::real K[9],readK[9], poro, vfac;
+		double K[9],readK[9], poro, vfac;
 		std::vector<HandleType> newnodes;
 		std::vector<HandleType> newpolygon;
 		std::vector<HandleType> newpolyhedron;
@@ -86,21 +86,23 @@ namespace INMOST
 		report_pace = std::max<int>(nbnodes/250,1);
 		for(int i = 0; i < nbnodes; i++)
 		{
-			Storage::real xyz[3];
+			double xyz[3];
 			if( 3 == fscanf(f," %lf %lf %lf",xyz,xyz+1,xyz+2) )
 			{
+				Storage::real rxyz[3];
+				rxyz[0] = xyz[0], rxyz[1] = xyz[1], rxyz[2] = xyz[2];
 				int find = -1;
 				if( !old_nodes.empty() )
 				{
-					std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
+					std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),rxyz,CentroidComparator(this));
 					if( it != old_nodes.end() ) 
 					{
 						Storage::real_array c = RealArrayDF(*it,CoordsTag());
-						if( CentroidComparator(this).Compare(xyz,c.data()) == 0 )
+						if( CentroidComparator(this).Compare(rxyz,c.data()) == 0 )
 							find = static_cast<int>(it - old_nodes.begin());
 					}
 				}
-				if( find == -1 ) newnodes[i] = CreateNode(xyz)->GetHandle();
+				if( find == -1 ) newnodes[i] = CreateNode(rxyz)->GetHandle();
 				else newnodes[i] = old_nodes[find];
 			}
 			else
@@ -242,6 +244,7 @@ namespace INMOST
 				K[0] = readK[0];
 				K[4] = readK[1];
 				K[8] = 1; //eigenvalue should not be zero
+				break;
 			case 3:
 				K[0] = readK[0];
 				K[4] = readK[1];

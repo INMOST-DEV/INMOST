@@ -78,6 +78,7 @@ int main(int argc,char ** argv)
 	{
 		double ttt; // Variable used to measure timing
 		bool repartition = false; // Is it required to redistribute the mesh?
+		(void) repartition;
 		Mesh * m = new Mesh(); // Create an empty mesh
 		{ // Load the mesh
 			ttt = Timer();
@@ -368,7 +369,7 @@ int main(int argc,char ** argv)
 						variable corrK, corrL;
 						variable corrK_cK, corrL_cL;
 						Face fKL;
-						integer iK,iL;
+						INMOST_DATA_ENUM_TYPE iK,iL;
 						Cell cK, cL;
 						//reset flux
 #if defined(USE_OMP)
@@ -379,7 +380,7 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-						for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) ) //loop over faces
+						for(integer q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) ) //loop over faces
 						{
 							fKL = m->FaceByLocalID(q);
 							
@@ -731,7 +732,7 @@ int main(int argc,char ** argv)
 			}
 		}
 		
-		int check_reference_solution = m->HaveTag("REFERENCE_SOLUTION") ? 1 : 0;
+		Storage::integer check_reference_solution = m->HaveTag("REFERENCE_SOLUTION") ? 1 : 0;
 		check_reference_solution = m->AggregateMax(check_reference_solution);
 		
 		if( check_reference_solution )
@@ -758,7 +759,7 @@ int main(int argc,char ** argv)
 				std::cout << "Error of solution, C-norm " << C << " L2-norm " << L2 << std::endl;
 		}
 		
-		int check_reference_flux = m->HaveTag("REFERENCE_FLUX") ? 1 : 0;
+		Storage::integer check_reference_flux = m->HaveTag("REFERENCE_FLUX") ? 1 : 0;
 		check_reference_flux = m->AggregateMax(check_reference_flux);
 		
 		if( check_reference_flux )

@@ -21,8 +21,8 @@ namespace INMOST
 	public:
 		//NonlinearSolver(Automatizator & aut) : aut(aut) {}
 		NonlinearSolver() {}
-		NonlinearSolver(const NonlinearSolver & b) /*: aut(b.aut)*/ {}
-		NonlinearSolver & operator =(NonlinearSolver const & b) {/*aut = b.aut;*/ return *this;}
+		NonlinearSolver(const NonlinearSolver & b) /*: aut(b.aut)*/ {(void)b;}
+		NonlinearSolver & operator =(NonlinearSolver const & b) {(void)b;/*aut = b.aut;*/ return *this;}
 		~NonlinearSolver() {}
 		
 		RequestedAction GetAction() const;
@@ -31,7 +31,7 @@ namespace INMOST
 		std::string GetReason() const;
 	};
 	
-};
+}
 #endif
 
 #endif //INMOST_NONLINEAR_INCLUDED

@@ -108,8 +108,8 @@ int main(int argc,char ** argv)
         
 		
 		
-		TagRealArray tag_PG; // Pressure gradient
-		TagRealArray tag_WG; // matrix to reconstruct gradient
+		//~ TagRealArray tag_PG; // Pressure gradient
+		//~ TagRealArray tag_WG; // matrix to reconstruct gradient
 
         if( m->GetProcessorsNumber() > 1 ) //skip for one processor job
         { // Exchange ghost cells
@@ -145,8 +145,8 @@ int main(int argc,char ** argv)
             if( m->HaveTag("PRESSURE") ) //Is there a pressure on the mesh?
                 tag_P = m->GetTag("PRESSURE"); //Get the pressure
                 
-            tag_PG = m->CreateTag("PRESSURE_GRADIENT",DATA_REAL,CELL,NONE,3);
-            tag_WG = m->CreateTag("WGRAD",DATA_REAL,CELL,NONE);
+            //~ tag_PG = m->CreateTag("PRESSURE_GRADIENT",DATA_REAL,CELL,NONE,3);
+            //~ tag_WG = m->CreateTag("WGRAD",DATA_REAL,CELL,NONE);
 
             if( !tag_P.isValid() || !tag_P.isDefined(CELL) ) // Pressure was not initialized or was not defined on nodes
             {
@@ -187,9 +187,8 @@ int main(int argc,char ** argv)
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-				for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
+				for( integer q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
 				{
-					Mesh * mesh = m;
 					Cell cell = m->CellByLocalID(q);
 					ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
 					int NF = (int)faces.size(); //number of faces;
@@ -201,28 +200,46 @@ int main(int argc,char ** argv)
 					R.Resize(NF,3); //directions
 					L.Resize(NF,NF); //two-point transmissibility coefficient
 					L.Zero();
+					tag_WS[cell].resize(NF);
 					for(int k = 0; k < NF; ++k) //loop over faces
 					{
 						area = faces[k].Area();
 						faces[k].Barycenter(xf.data());
 						faces[k].OrientedUnitNormal(cell->self(),n.data());
-						dist = n.DotProduct(xf-x);
+						dist = (n.DotProduct(xf-x));
+						if( dist < 0 ) std::cout << "negative dist! " << dist << " cell " << q << " face " << k << std::endl;
 						// assemble matrix of directions
 						R(k,k+1,0,3) = (xf-x);
 						// assemble matrix of co-normals
 						N(k,k+1,0,3) = n*K*area;
 						L(k,k) =  n.DotProduct(n*K)*area/dist;
+						tag_WS[cell][k] = L(k,k);
 					} //end of loop over faces
 					 
-			 		double ca = 0, ba = ca; //parameters
+			 		//~ double ca = 0, ba = ca; //parameters
 			 		tag_WA[cell].resize(NF*NF);
-			 		tag_WS[cell].resize(NF*NF);
-			 		tag_WG[cell].resize(3*NF);
+			 		
+			 		//~ tag_WG[cell].resize(3*NF);
 			 		//tag_WA(cell,NF,NF) = (N+ca*L*R)*((N+ca*L*R).Transpose()*R).Invert()*(N+ca*L*R).Transpose();
 			 		//tag_WS(cell,NF,NF) = L - (1+ba)*(L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
-			 		tag_WA(cell,NF,NF) = N*(N.Transpose()*R).Invert()*N.Transpose();
-			 		tag_WS(cell,NF,NF) = L - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
-					tag_WG(cell,3,NF) = (N.Transpose()*R).Invert()*N.Transpose();
+			 		tag_WA(cell,NF,NF) = N*(N.Transpose()*R).Invert()*N.Transpose() - (L*R)*((L*R).Transpose()*R).Invert()*(L*R).Transpose();
+			 		/*
+			 		#pragma omp critical
+			 		{
+			 		std::cout << "cell " << cell.LocalID() << std::endl;
+			 		std::cout << "WA: " << std::endl;
+			 		tag_WA(cell,NF,NF).Print();
+			 		for(int k = 0; k < NF; ++k)
+			 		{
+						double rowsum = 0;
+						for(int q = 0; q < NF; ++q)
+							rowsum += tag_WA(cell,NF,NF)(k,q);
+						std::cout << k << " T " << L(k,k) << " rowsum " << rowsum+L(k,k) << " no T " << rowsum << std::endl;
+					}
+					}
+					*/
+			 		//~ tag_WS(cell,NF,1) = L;
+					//~ tag_WG(cell,3,NF) = (N.Transpose()*R).Invert()*N.Transpose();
 				 } //end of loop over cells
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
@@ -277,18 +294,17 @@ int main(int argc,char ** argv)
             do
 			{
 				Resid.Clear(); //clean up the residual
-				double tttt = Timer();
-				int total = 0, dmp = 0;
+				//~ double tttt = Timer();
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 				{
 					vMatrix pF; //vector of pressure differences on faces
 					vMatrix FLUX; //computed flux on faces
-					vMatrix N;
-					rMatrix R;
-					rMatrix x(1,3), xf(1,3), n(1,3), coefs, fluxes;
-					double area; //area of the face
+					variable u, v;
+					variable muu, muv;
+					//~ double muu,muv;
+					//~ double area; //area of the face
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -301,7 +317,7 @@ int main(int argc,char ** argv)
 						for(int k = 0; k < NF; ++k)
 							pF(k,0) = (P(faces[k]) - P(cell));
 						FLUX = tag_WA(cell,NF,NF)*pF; //approximation of fluxes on faces
-						tag_PG(cell,3,1) = tag_WG(cell,3,NF)*pF; //gradient of function
+						//~ tag_PG(cell,3,1) = tag_WG(cell,3,NF)*pF; //gradient of function
 						for(int k = 0; k < NF; ++k) //loop over faces of current cell
 						{
 							int ind = (faces[k].BackCell() == cell ? 0 : 1);
@@ -318,6 +334,7 @@ int main(int argc,char ** argv)
 						ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
 						int NF = (int)faces.size();
 						//get permeability for the cell
+						/*
 						cell->Barycenter(x.data());
 						rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),
 														cell->RealArrayDF(tag_K).size());
@@ -336,6 +353,7 @@ int main(int argc,char ** argv)
 							N(k,k+1,0,3) = n*K*area;
 							
 							int ind = (faces[k].BackCell() == cell ? 0 : 1);
+							FLUX(k,0); = tag_WF[faces[k]][ind] //restore fluxes
 							if( !faces[k].Boundary() )
 							{
 								const double eps = 1.0e-6;
@@ -355,26 +373,35 @@ int main(int argc,char ** argv)
 								coefs(k,0) = 1;
 							}
 						} //end of loop over faces
-						pF.Resize(NF,1);
+						*/
 						for(int k = 0; k < NF; ++k)
-							pF(k,0) = (P(faces[k]) - P(cell));
-						if( false ) if( nit != 0 )
 						{
-							std::cout << "fluxes: " << std::endl;
-							fluxes.Transpose().Print();
-							std::cout << "coefs: " << std::endl;
-							coefs.Transpose().Print();
-							std::cout << " inv(N^T*R) " << std::endl;
-							(N.Transpose()*R).Invert().Print();
-							std::cout << "Approximation W" << std::endl;
-							(N*(N.Transpose()*R).Invert()*N.Transpose()).Print();
-							std::cout << "Approximation W (original)" << std::endl;
-							tag_WA(cell,NF,NF).Print();
-							std::cout << "Stabilization W" << std::endl;
-							tag_WS(cell,NF,NF).Print();
-							scanf("%*c");
+							int ind = (faces[k].BackCell() == cell ? 0 : 1);
+							//FLUX(k,0) = tag_WF[faces[k]][ind];
+							u = tag_WF[faces[k]][ind];
+							if( !faces[k].Boundary() )
+							{
+								v = tag_WF[faces[k]][1-ind];
+								//~ muu = fabs(get_value(v)) + 1.0e-5;
+								//~ muv = fabs(get_value(u)) + 1.0e-5;
+								//~ muu = get_value(v)*get_value(v) + 1.0e-5;
+								//~ muv = get_value(u)*get_value(u) + 1.0e-5;
+								//~ muu = 0.5;
+								//~ muv = 0.5;
+								muu = sqrt(v*v + 1.0e-4);
+								muv = sqrt(u*u + 1.0e-4);
+								//~ muu = variation(sqrt(v*v + 1.0e-10),0.25);
+								//~ muv = variation(sqrt(u*u + 1.0e-10),0.25);
+								//~ muu = v*v + 1.0e-2;
+								//~ muv = u*u + 1.0e-2;
+								//~ FLUX(k,0) = u*variation(muu/(muu+muv),0.1) - v*variation(muv/(muu+muv),0.1);
+								FLUX(k,0) = (u*muu - v*muv)/(muu+muv);
+								//~ FLUX(k,0) = 2*u*variation(muu/(muu+muv),0.5);
+							}
+							else FLUX(k,0) = u;
 						}
-						FLUX = (N*(N.Transpose()*R).Invert()*N.Transpose() + tag_WS(cell,NF,NF))*pF; //approximation of fluxes on faces
+						for(int k = 0; k < NF; ++k)
+							FLUX(k,0) += tag_WS[cell][k]*(P(faces[k]) - P(cell));
 						if( cell.GetStatus() != Element::Ghost )
 						{
 							for(int k = 0; k < NF; ++k) //loop over faces of current cell
@@ -391,7 +418,10 @@ int main(int argc,char ** argv)
 								Resid[index] -= BC[0]*P(faces[k]) + BC[1]*FLUX(k,0) - BC[2];
 							}
 							else
+							{
+								
 								Resid[index] -= FLUX(k,0);
+							}
 							Locks.UnLock(index);
 						}
 					} //end of loop over cells
@@ -412,9 +442,9 @@ int main(int argc,char ** argv)
 					 
 					 //R[P.Index(m->BeginCell()->self())] = P[m->BeginCell()->self()];
 				}
-				std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
+				//~ std::cout << "assembled in " << Timer() - tttt << "\t\t\t" << std::endl;
 
-                std::cout << "Nonlinear residual: " << Resid.Norm() << "\t\t" << std::endl;
+                std::cout << "Nonlinear residual: " << Resid.Norm() << "                 " << std::endl;
 
                 if( Resid.Norm() < 1.0e-4 ) break;
 
@@ -425,14 +455,14 @@ int main(int argc,char ** argv)
 				S.SetParameter("verbosity","1");
                 S.SetParameter("relative_tolerance", "1.0e-14");
                 S.SetParameter("absolute_tolerance", "1.0e-12");
-                S.SetParameter("drop_tolerance", "1.0e-4");
-                S.SetParameter("reuse_tolerance", "1.0e-5");
+                S.SetParameter("drop_tolerance",  "1.0e-3");
+                S.SetParameter("reuse_tolerance", "1.0e-4");
 
                 S.SetMatrix(Resid.GetJacobian());
 				
                 if( S.Solve(Resid.GetResidual(),Update) )
                 {
-					double alpha = 0.5;
+					double alpha = 1;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
@@ -524,6 +554,7 @@ int main(int argc,char ** argv)
             m->Save("out.pvtk");
             
         m->Save("solution.pmf");
+        m->Save("solution.vtu");
 
         delete m; //clean up the mesh
     }

@@ -269,8 +269,8 @@ public:
 	bool Initialize();
 	bool Finalize();
 	void ApplyB(double alpha, Sparse::Vector & x, double beta, Sparse::Vector & y);
-	int Descend(int level, Sparse::Vector & inout);
-	int Ascend(int level, Sparse::Vector & inout);
+	int Descend(INMOST_DATA_ENUM_TYPE level, Sparse::Vector & inout);
+	int Ascend(INMOST_DATA_ENUM_TYPE level, Sparse::Vector & inout);
 	bool Solve(Sparse::Vector & input, Sparse::Vector & output);
 	bool ReplaceMAT(Sparse::Matrix & A);
 	bool ReplaceSOL(Sparse::Vector & x);

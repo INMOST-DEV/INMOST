@@ -27,7 +27,7 @@ bool allow_pack_by_gids = false;
 static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
 #endif // USE_MPI
 
-static std::string NameSlash(std::string input)
+__INLINE std::string NameSlash(std::string input)
 {
 	for(size_t l = input.size(); l > 0; --l)
 		if( input[l-1] == '/' || input[l-1] == '\\' )
@@ -133,7 +133,7 @@ namespace INMOST
 	size_t pack_data_size(INMOST_MPI_Comm comm)
 	{
 		int ierr;
-		POS_TYPE pack_size = 0, shift = 0;
+		POS_TYPE pack_size = 0;//, shift = 0;
 		size_t ret = 0;
 		ierr = MPI_Pack_size_call(1,MPIType<T>::Type(),comm,&pack_size); 
 		if( ierr != MPI_SUCCESS ) MPI_Abort(comm,__LINE__);
@@ -354,7 +354,7 @@ namespace INMOST
 	{
 		if( size ) 
 		{
-			int old_size;
+			INMOST_DATA_ENUM_TYPE old_size;
 			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
 			else old_size = 0;
 			e->SetDataSize(tag,old_size+size);
@@ -378,7 +378,7 @@ namespace INMOST
 	{
 		if( size )
 		{
-			int old_size;
+			INMOST_DATA_ENUM_TYPE old_size;
 			if( e->HaveData(tag) ) old_size = e->GetDataSize(tag);
 			else old_size = 0;
 			e->SetDataSize(tag,old_size+size);
@@ -442,7 +442,7 @@ namespace INMOST
 		element->Integer(tag) = std::min(element->Integer(tag),idata);
 	}
 	
-	void Mesh::EquilibrateGhost(bool only_new)
+	void Mesh::EquilibrateGhost()//bool only_new)
 	{
 		static int counter = 0;
 		if( GetProcessorsNumber() == 1 ) return;
@@ -457,7 +457,7 @@ namespace INMOST
 		ENTER_BLOCK();
 		//TODO: compute graph distance only in new elements!!!!
 		// Push nearest to owned cell into queue
-		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
+		for(integer k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if (!c.Hidden() && c.GetStatus() != Element::Owned)
@@ -467,7 +467,7 @@ namespace INMOST
 				tag[c][1] = INT_MAX; 
 				//ElementArray<Cell> cells = c.NeighbouringCells();
 				ElementArray<Cell> cells = c.BridgeAdjacencies2Cell(bridge);
-				for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() == Element::Owned)
+				for(INMOST_DATA_ENUM_TYPE l = 0; l < cells.size(); l++) if (cells[l].GetStatus() == Element::Owned)
 				{
 					cells_queue.push(c.GetHandle());
 					tag[c][0] = cells[l].Integer(tag_owner);
@@ -487,7 +487,7 @@ namespace INMOST
 			if (cur_dist < tag[c][1]) cur_dist++;
 			//ElementArray<Cell> cells = c.NeighbouringCells();
 			ElementArray<Cell> cells = c.BridgeAdjacencies2Cell(bridge);
-			for(unsigned l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
+			for(INMOST_DATA_ENUM_TYPE l = 0; l < cells.size(); l++) if (cells[l].GetStatus() != Element::Owned)
 			{
 				assert( cells[l].GetStatus() == Element::Shared || cells[l].GetStatus() == Element::Ghost );
 				if (tag[cells[l]][1] > tag[c][1] + 1)
@@ -533,7 +533,7 @@ namespace INMOST
 		//}
 		//ExchangeData(tag_new_owner,CELL,0);
 
-		for(int k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
+		for(integer k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
@@ -541,7 +541,7 @@ namespace INMOST
 				assert( c.GetStatus() == Element::Shared || c.GetStatus() == Element::Ghost );
 				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
 				{
-					int new_owner = tag[c][0];
+					integer new_owner = tag[c][0];
 					if( new_owner == -1 ) continue;
 					//int new_owner = tag_new_owner[c];
 
@@ -578,7 +578,7 @@ namespace INMOST
 		{
 			REPORT_VAL("etype ", ElementTypeName(etype));
 			ENTER_BLOCK();
-			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
+			for(integer k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
@@ -600,7 +600,7 @@ namespace INMOST
 			ReduceData(new_owner,etype,0,OperationMinOwner);
 			ExchangeData(new_owner,etype);
 			ENTER_BLOCK();
-			for(int k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
+			for(integer k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
@@ -954,6 +954,20 @@ namespace INMOST
 		return output;
 	}
 	
+	Storage::enumerator Mesh::ExclusiveSum(Storage::enumerator input)
+	{
+		ENTER_FUNC();
+		Storage::enumerator output = 0;
+#if defined(USE_MPI)
+		REPORT_MPI(MPI_Scan(&input,&output,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
+		output -= input;
+#else//USE_MPI
+		(void) input;
+#endif//USE_MPI
+		EXIT_FUNC();
+		return output;
+	}
+	
 	Storage::real Mesh::Integrate(const Tag & t, enumerator entry, ElementType mask)
 	{
 		ENTER_FUNC();
@@ -998,6 +1012,19 @@ namespace INMOST
 		return output;
 	}
 	
+	Storage::enumerator Mesh::AggregateMax(Storage::enumerator input)
+	{
+		ENTER_FUNC();
+		Storage::enumerator output = input;
+#if defined(USE_MPI)
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_MAX,comm));
+#else //USE_MPI
+		(void) input;
+#endif //USE_MPI
+		EXIT_FUNC();
+		return output;
+	}
+	
 	void Mesh::AggregateMax(Storage::real * input, Storage::integer size)
 	{
 		ENTER_FUNC();
@@ -1028,12 +1055,40 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
+	void Mesh::AggregateMax(Storage::enumerator * input, Storage::integer size)
+	{
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		static dynarray<Storage::enumerator,64> temp;
+		temp.resize(size);
+		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MAX,comm));
+#else//USE_MPI
+		(void) input;
+		(void) size;
+#endif//USE_MPI
+		EXIT_FUNC();
+	}
+	
 	Storage::real Mesh::AggregateMin(Storage::real input)
 	{
 		ENTER_FUNC();
 		Storage::real output = input;
 #if defined(USE_MPI)
 		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
+#else //USE_MPI
+		(void) input;
+#endif //USE_MPI
+		EXIT_FUNC();
+		return output;
+	}
+	
+	Storage::enumerator Mesh::AggregateMin(Storage::enumerator input)
+	{
+		ENTER_FUNC();
+		Storage::enumerator output = input;
+#if defined(USE_MPI)
+		REPORT_MPI(MPI_Allreduce(&input,&output,1,INMOST_MPI_DATA_ENUM_TYPE,MPI_MIN,comm));
 #else //USE_MPI
 		(void) input;
 #endif //USE_MPI
@@ -1062,6 +1117,21 @@ namespace INMOST
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
+#else//USE_MPI
+		(void) input;
+		(void) size;
+#endif//USE_MPI
+		EXIT_FUNC();
+	}
+	
+	void Mesh::AggregateMin(Storage::enumerator * input, Storage::integer size)
+	{
+		ENTER_FUNC();
+#if defined(USE_MPI)
+		static dynarray<Storage::enumerator,64> temp;
+		temp.resize(size);
+		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
+		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MIN,comm));
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1185,7 +1255,7 @@ namespace INMOST
 		{
 			int errclass;
 			MPI_Error_class(err,&errclass);
-			std::cout << "Cannot allocate shared space of size " << GetProcessorsNumber()*sizeof(unsigned)*2 << " reason is "; 
+			std::cout << "Cannot allocate shared space of size " << GetProcessorsNumber()*sizeof(INMOST_DATA_BIG_ENUM_TYPE)*2 << " reason is "; 
 			switch(err)
 			{
 				case MPI_SUCCESS: std::cout << "success"; break;
@@ -1256,7 +1326,7 @@ namespace INMOST
 		{
 			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
 			Storage::integer_array q = m->IntegerArrayDV(*i,m->ProcessorsTag());
-			intersection.resize(std::max(static_cast<unsigned>(result.size()),static_cast<unsigned>(q.size())));
+			intersection.resize(std::max(static_cast<INMOST_DATA_ENUM_TYPE>(result.size()),static_cast<INMOST_DATA_ENUM_TYPE>(q.size())));
 			dynarray<Storage::integer,64>::iterator qt = std::set_intersection(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
 			intersection.resize(qt-intersection.begin());
 			result.swap(intersection);
@@ -1388,7 +1458,7 @@ namespace INMOST
 
 	class MappingComparator
 	{
-	public: bool operator () (const std::pair<int,int> & a, const std::pair<int,int> & b) {return a.first < b.first;}
+	public: bool operator () (const std::pair<Storage::integer,Storage::integer> & a, const std::pair<Storage::integer,Storage::integer> & b) {return a.first < b.first;}
 	};
     
 	
@@ -1401,7 +1471,6 @@ namespace INMOST
 		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,CELL | EDGE | FACE | NODE);
 		integer dim = GetDimensions();
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
-        int rank = mpirank;
 #if defined(USE_PARALLEL_STORAGE)
 		shared_elements.clear();
 		ghost_elements.clear();
@@ -1770,7 +1839,7 @@ namespace INMOST
 					for(Mesh::iteratorElement it = BeginElement(NODE); it != EndElement(); it++)
 					{
                         if (only_new && GetMarker(*it,NewMarker()) == false) continue;
-						int owner;
+						integer owner;
 						Storage::integer_array v = it->IntegerArrayDV(tag_processors);
 						std::sort(v.begin(),v.end());
 						if( v.empty() )
@@ -1834,7 +1903,7 @@ namespace INMOST
 						
 						//int owned_elems = 0;
 						//int shared_elems = 0;
-						int owner;
+						integer owner;
 						Element::Status estat;
 						
 						ENTER_BLOCK();
@@ -1900,7 +1969,7 @@ namespace INMOST
 						
 						
 						//Initialize mapping that helps get local id by global id
-						std::vector<std::pair<int,int> > mapping;
+						std::vector<std::pair<integer,integer> > mapping;
 						ENTER_BLOCK();
 						REPORT_VAL("mapping type",ElementTypeName(PrevElementType(current_mask)));
 						for(Mesh::iteratorElement it = BeginElement(PrevElementType(current_mask)); it != EndElement(); it++)
@@ -1918,8 +1987,8 @@ namespace INMOST
 						
 						std::vector<int> procs = ComputeSharedProcs(PrevElementType(current_mask));
 						std::vector<int>::iterator p = procs.begin();
-						std::vector<int> message_send;
-						std::vector< std::vector<int> > message_recv(procs.size());
+						std::vector<integer> message_send;
+						std::vector< std::vector<integer> > message_recv(procs.size());
 						std::vector< element_set > elements(procs.size());
 						
 						exch_reqs_type send_reqs;
@@ -1943,7 +2012,7 @@ namespace INMOST
 									{
 										Element::adj_type & sub = LowConn(*it);
 										if( sub.size() == 0 ) throw Impossible;
-										int message_size_pos = (int)message_send.size();
+										integer message_size_pos = message_send.size();
 										message_send.push_back(0);
 										//REPORT_VAL("number of connections",sub.size());
 										//REPORT_STR("element " << ElementTypeName(current_mask) << ":" << it->LocalID());
@@ -1951,7 +2020,7 @@ namespace INMOST
 										{
 											message_send.push_back(GlobalID(*kt));
 											message_send[message_size_pos]++;
-											double cnt[3];
+											INMOST_DATA_REAL_TYPE cnt[3];
 											ElementByLocalID(PrevElementType(current_mask),GetHandleID(*kt))->Centroid(cnt);
 											//REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
 										}
@@ -2012,20 +2081,20 @@ namespace INMOST
 							element_set remote_elements;
 							int pos = 0;
 							if( message_recv[m].empty() ) continue;
-							int num_remote_elements = message_recv[m][pos++];
+							integer num_remote_elements = message_recv[m][pos++];
 							REPORT_VAL("number of remote elements",num_remote_elements);
-							for(int i = 0; i < num_remote_elements; i++)
+							for(integer i = 0; i < num_remote_elements; i++)
 							{
-								int conn_size = message_recv[m][pos++], flag = 1;
+								integer conn_size = message_recv[m][pos++], flag = 1;
 								//REPORT_VAL("number of connxections",conn_size);
 								dynarray<HandleType,64> sub_elements;
-								for(int j = 0; j < conn_size; j++)
+								for(integer j = 0; j < conn_size; j++)
 								{
-									int global_id = message_recv[m][pos++];
-									int find = -1;
-									std::vector<std::pair<int,int> >::iterator it = std::lower_bound(mapping.begin(),mapping.end(),std::make_pair(global_id,0),MappingComparator());
+									integer global_id = message_recv[m][pos++];
+									integer find = -1;
+									std::vector<std::pair<integer,integer> >::iterator it = std::lower_bound(mapping.begin(),mapping.end(),std::make_pair(global_id,0),MappingComparator());
 									if( it != mapping.end() && it->first == global_id) 
-										find = static_cast<int>(it-mapping.begin());
+										find = static_cast<integer>(it-mapping.begin());
 									if( find == -1 ) 
 									{
 										//REPORT_STR("global id " << global_id << " local id -1");
@@ -2033,7 +2102,7 @@ namespace INMOST
 										pos += conn_size-j-1;
 										break;
 									}
-									int find_local_id = mapping[find].second;
+									integer find_local_id = mapping[find].second;
 									//REPORT_STR("global id " << global_id << " local id " << find_local_id << " " << Element::StatusName(ElementByLocalID(PrevElementType(current_mask), find_local_id)->GetStatus()));
 									if( GetMarker(ComposeHandle(PrevElementType(current_mask), find_local_id),hm) ) std::cout << "Found hidden element" << std::endl;
 									sub_elements.push_back(ComposeHandle(PrevElementType(current_mask), find_local_id));
@@ -2150,7 +2219,7 @@ namespace INMOST
 		EXIT_BLOCK();
 		ReportParallelStorage();
 		CheckGhostSharedCount(__FILE__,__LINE__);
-		EquilibrateGhost(only_new);
+		EquilibrateGhost();
 		CheckGhostSharedCount(__FILE__,__LINE__);
 		CheckProcsSorted(__FILE__,__LINE__);
 		//RemoveGhost();
@@ -2587,7 +2656,7 @@ namespace INMOST
 		//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
 		
 		REPORT_VAL("number of processors",ret.size());
-		for(int k = 0; k < ret.size(); ++k)
+		for(size_t k = 0; k < ret.size(); ++k)
 		{
 			REPORT_VAL("proc ",ret[k])
 		}
@@ -2654,7 +2723,7 @@ namespace INMOST
 		}
 		//REPORT_VAL("processors",procs.size());
 		REPORT_VAL("number of processors",ret.size());
-		for(int k = 0; k < ret.size(); ++k)
+		for(size_t k = 0; k < ret.size(); ++k)
 		{
 			REPORT_VAL("proc ",ret[k])
 		}
@@ -2907,6 +2976,7 @@ namespace INMOST
 	
 	void Mesh::PackTagData(const Tag & tag, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, buffer_type & buffer, TagInteger pack_position)
 	{
+		(void)destination;
 		if( tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
 		ENTER_FUNC();
 		REPORT_VAL("TagName",tag.GetTagName());
@@ -2926,7 +2996,7 @@ namespace INMOST
 		std::vector<INMOST_DATA_ENUM_TYPE> array_size_send;
 		array_data_send.reserve(4096);
 		array_size_send.reserve(4096);
-		unsigned int size = tag.GetSize();
+		INMOST_DATA_ENUM_TYPE size = tag.GetSize();
 		for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 		{
 			pack_types[0] |= ElementTypeFromDim(i);
@@ -2937,7 +3007,7 @@ namespace INMOST
 			if( tag.isSparseByDim(i) )
 			{
 				pack_types[1] |= ElementTypeFromDim(i);
-				unsigned count = static_cast<unsigned>(array_size_send.size());
+				INMOST_DATA_ENUM_TYPE count = array_size_send.size();
 				array_size_send.push_back(0);
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
 				{
@@ -2974,7 +3044,6 @@ namespace INMOST
 			}
 			else
 			{
-				int rank = GetProcessorRank();
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
@@ -3074,11 +3143,11 @@ namespace INMOST
 		REPORT_VAL("Position before unpack",buffer_position);
 		if( !buffer.empty() )
 		{
-			int pos = 0, k = 0;
+			INMOST_DATA_ENUM_TYPE pos = 0, k = 0;
 			ElementType recv_mask[2] = {NONE,NONE};
 			element_set::const_iterator eit;
 			//elements_by_type unpack_elements;
-			unsigned int size = tag.GetSize();
+			INMOST_DATA_ENUM_TYPE size = tag.GetSize();
 			buffer_type array_data_recv;
 			std::vector<INMOST_DATA_ENUM_TYPE> array_size_recv;
 			unpack_data_array(buffer,buffer_position,recv_mask,2,GetCommunicator());
@@ -3103,11 +3172,11 @@ namespace INMOST
 					REPORT_VAL("index", k);
 					REPORT_VAL("count", array_size_recv[k]);
 					REPORT_VAL("pos",pos);
-					unsigned count = static_cast<unsigned>(array_size_recv[k++]);
+					INMOST_DATA_ENUM_TYPE count = array_size_recv[k++];
 					if( size == ENUMUNDEF )
 					{
 						REPORT_STR("variable size");
-						for(unsigned j = 0; j < count; j++)
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < count; j++)
 						{
 							assert( k < array_size_recv.size() );
 							assert( array_size_recv[k] < elements[i].size() );
@@ -3149,7 +3218,7 @@ namespace INMOST
 					else
 					{
 						REPORT_STR("fixed size");
-						for(unsigned j = 0; j < count; j++)
+						for(INMOST_DATA_ENUM_TYPE j = 0; j < count; j++)
 						{
 							//REPORT_VAL("element index",array_size_recv[k]);
 							///p//REPORT_VAL("pos",pos);
@@ -3257,6 +3326,12 @@ namespace INMOST
 									}
 								}
 								INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos],size,tag);
+								if( pos + data_size > array_data_recv.size() )
+								{
+									std::cout << "element " << ElementTypeName(GetHandleElementType(*eit)) << " id " << GetHandleID(*eit);
+									std::cout << " data type " << DataTypeName(tag.GetDataType()) << " size " << size << " bytes " << tag.GetBytesSize() ;
+									std::cout << " pos " << pos << " data_size " << data_size << " recv " << array_data_recv.size() << std::endl;
+								}
 								assert(pos+data_size <= array_data_recv.size());
 								op(tag,Element(this,*eit),&array_data_recv[pos],size);
 								pos += data_size;
@@ -3306,7 +3381,7 @@ namespace INMOST
 		
 		bool unknown_size = false;
 		bool have_reference_tag = false;
-		for(unsigned int k = 0; k < tags.size(); k++)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
 		{
 			if( tags[k].GetSize() == ENUMUNDEF
 #if defined(USE_AUTODIFF)
@@ -3321,7 +3396,6 @@ namespace INMOST
 			if( tags[k].GetDataType() == DATA_REFERENCE )
 				have_reference_tag = true;
 		}
-    	int rank = GetProcessorRank();
 		//precompute sizes
 		for(p = procs.begin(); p != procs.end(); p++ )
 		{
@@ -3392,7 +3466,7 @@ namespace INMOST
 					//PackElementsData(selems,storage.send_buffers[num_send].second,*p,tags,pack_position);
 					PackElementsData(selems,storage.send_buffers[num_send].second,*p,tag_pack_list,pack_position,true);
 				}
-				for(unsigned int k = 0; k < tags.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
 					PackTagData(tags[k],from.find(*p)->second,*p,mask,select,storage.send_buffers[num_send].second,pack_position);
 				if( have_reference_tag )
 					PackElementsUnenumerate(selems,pack_position);
@@ -3404,7 +3478,7 @@ namespace INMOST
 				if( !unknown_size )
 				{
 					size_t buffer_size = 0,n = recv_size[p-procs.begin()];
-					for(unsigned int k = 0; k < tags.size(); k++)
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
 					{
 						buffer_size += pack_data_array_size<ElementType>(2,GetCommunicator());
 						buffer_size += pack_data_vector_size<INMOST_DATA_ENUM_TYPE>(6+2*n,GetCommunicator());
@@ -3559,7 +3633,7 @@ namespace INMOST
 							}
 						}
 				}
-				for(unsigned int k = 0; k < tags.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
 				{
 					REPORT_VAL("processor",storage.recv_buffers[*qt].first);
 					UnpackTagData(tags[k],to.find(storage.recv_buffers[*qt].first)->second,storage.recv_buffers[*qt].first,mask,select,storage.recv_buffers[*qt].second,position,op, selems);
@@ -3833,7 +3907,6 @@ namespace INMOST
 	{
 		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum)
 		{
-			int q = 0;
 			for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); it++)
 				DelData(*it,pack_position);
 		}
@@ -3861,15 +3934,15 @@ namespace INMOST
 
 		//Add all elements from tags
 		if( send_links_to_owner )
-		for(unsigned k = 0; k < tag_list.size(); ++k)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < tag_list.size(); ++k)
 		{
 			const Tag & tag = tag_list[k];
 			if( tag.GetDataType() == DATA_REFERENCE )
 			{
 				for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 				{
-					unsigned last = (unsigned)elements[i].size(); //avoid resize if selems == elements
-					for(unsigned q = 0; q < last; ++q) 
+					INMOST_DATA_ENUM_TYPE last = elements[i].size(); //avoid resize if selems == elements
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < last; ++q) 
 					{
 						HandleType eit = elements[i][q];
 						if( !select || GetMarker(eit,select) )
@@ -3966,7 +4039,7 @@ namespace INMOST
 		// Recursevely looking for all high connections for ESETs
 		if( !selems[4].empty() ) SetMarkerArray(&selems[4][0],(INMOST_DATA_ENUM_TYPE)selems[4].size(),busy);
 		
-		for(int i = 0; i < selems[4].size(); ++i)
+		for(INMOST_DATA_ENUM_TYPE i = 0; i < selems[4].size(); ++i)
 		{
 			ElementSet set(this,selems[4][i]);
 			if( set.HaveParent() )
@@ -4141,7 +4214,7 @@ namespace INMOST
 						//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
 						//assert( GetMarker(*jt,busy) );
 						assert( HaveData(*jt,arr_position) );
-						assert( arr_position[*jt] < selems[0].size() );
+						assert( (size_t)arr_position[*jt] < selems[0].size() );
 						assert( *jt == selems[0][arr_position[*jt]] );
 						low_conn_nums.push_back(arr_position[*jt]);
 						low_conn_size[k]++;
@@ -4240,7 +4313,7 @@ namespace INMOST
 						//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[1].begin()));
 						//assert( GetMarker(*jt,busy) );
 						assert( HaveData(*jt,arr_position) );
-						assert( arr_position[*jt] < selems[1].size() );
+						assert( (size_t)arr_position[*jt] < selems[1].size() );
 						assert( *jt == selems[1][arr_position[*jt]] );
 						//REPORT_VAL("pack edge position",Integer(*jt,arr_position));
 						low_conn_nums.push_back(arr_position[*jt]);
@@ -4329,7 +4402,7 @@ namespace INMOST
 						//low_conn_nums.push_back(static_cast<Storage::integer>(find - selems[2].begin()));
 						//assert( GetMarker(*jt,busy) );
 						assert( HaveData(*jt,arr_position) );
-						assert( arr_position[*jt] < selems[2].size() );
+						assert( (size_t)arr_position[*jt] < selems[2].size() );
 						assert( *jt == selems[2][arr_position[*jt]] );
 						//REPORT_VAL("pack face position",Integer(*jt,arr_position));
 						low_conn_nums.push_back(arr_position[*jt]);
@@ -4348,7 +4421,7 @@ namespace INMOST
 						//high_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
 						//assert( GetMarker(*jt,busy) );
 						assert( HaveData(*jt,arr_position) );
-						assert( arr_position[*jt] < selems[0].size() );
+						assert( (size_t)arr_position[*jt] < selems[0].size() );
 						assert( *jt == selems[0][arr_position[*jt]] );
 						//REPORT_VAL("pack node position",Integer(*jt,arr_position));
 						high_conn_nums.push_back(arr_position[*jt]);
@@ -4407,7 +4480,7 @@ namespace INMOST
 			high_conn_nums.reserve(selems[4].size()*3);
 			std::vector<char> names_buff;
 			size_t k = 0;
-			size_t marked_for_data = 0, marked_shared = 0, packed_only_name = 0;
+			size_t marked_for_data = 0, marked_shared = 0;//, packed_only_name = 0;
 			//int names_buff_size = 0;
             // Pack sequence: 
             // 1) all names of sets
@@ -4500,7 +4573,7 @@ namespace INMOST
 						{
 							INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
 							assert(HaveData(*jt,arr_position));
-							assert( arr_position[*jt] < selems[el_num].size() );
+							assert((size_t)arr_position[*jt] < selems[el_num].size() );
 							assert(*jt == selems[el_num][arr_position[*jt]]);
 							low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt),arr_position[*jt]));
 							low_conn_size[k]++;
@@ -4511,7 +4584,7 @@ namespace INMOST
 					if( set.HaveParent() && set.GetParent().HaveData(arr_position) )
 					{
 						assert(HaveData(set.GetParent().GetHandle(),arr_position));
-						assert( arr_position[set.GetParent()] < selems[4].size() );
+						assert( (size_t)arr_position[set.GetParent()] < selems[4].size() );
 						assert(set.GetParent().GetHandle() == selems[4][arr_position[set.GetParent()]]);
 						high_conn_nums.push_back(arr_position[set.GetParent()]);
 						//if( print ) std::cout << " pack parent " << set.GetParent().GetName();
@@ -4529,7 +4602,7 @@ namespace INMOST
 							if( jt.HaveData(arr_position) )
 							{
 								assert(HaveData(jt.GetHandle(),arr_position));
-								assert( arr_position[jt] < selems[4].size() );
+								assert( (size_t)arr_position[jt] < selems[4].size() );
 								assert(jt.GetHandle() == selems[4][arr_position[jt]]);
 								high_conn_nums.push_back(arr_position[jt]);
 								high_conn_size[k]++;
@@ -4727,7 +4800,7 @@ namespace INMOST
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_node = InvalidHandle();
-				size_t find = -1;
+				size_t find = static_cast<size_t>(-1);
 				//TODO 49
 				if( !old_nodes.empty() )
 				{
@@ -4765,7 +4838,7 @@ namespace INMOST
 						//REPORT_VAL("found",find);
 					}
 				}
-				if( find != -1 ) 
+				if( find != static_cast<size_t>(-1) ) 
 				{
 					new_node = old_nodes[find];
 					if( IntegerDF(new_node,tag_owner) != GetProcessorRank() ) 
@@ -4859,7 +4932,7 @@ namespace INMOST
 					//REPORT_VAL("Unpack size",low_conn_size[i]);
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
 					{
-						assert(low_conn_nums[shift+j] < selems[0].size());
+						assert((size_t)low_conn_nums[shift+j] < selems[0].size());
 						//REPORT_VAL("Unpack node position",low_conn_nums[shift+j]);
 						e_nodes.at(j) = selems[0][low_conn_nums[shift+j]];
 					}
@@ -4953,7 +5026,7 @@ namespace INMOST
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
 					{
 						//REPORT_VAL("Unpack edge position",low_conn_nums[shift+j]);
-						assert(low_conn_nums[shift+j] < selems[1].size());
+						assert((size_t)low_conn_nums[shift+j] < selems[1].size());
 						f_edges.at(j) = selems[1][low_conn_nums[shift+j]];
 					}
 					shift+= low_conn_size[i];
@@ -5069,7 +5142,7 @@ namespace INMOST
 					c_faces.resize(low_conn_size[i]);
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
 					{
-						assert(low_conn_nums[shift+j] < selems[2].size());
+						assert((size_t)low_conn_nums[shift+j] < selems[2].size());
 						//REPORT_VAL("Unpack face position",low_conn_nums[shift+j]);
 						c_faces.at(j) = selems[2][low_conn_nums[shift+j]];
 					}
@@ -5078,7 +5151,7 @@ namespace INMOST
 					c_nodes.resize(high_conn_size[i]);
 					for(INMOST_DATA_ENUM_TYPE j = 0; j < high_conn_size[i]; j++)
 					{
-						assert(high_conn_nums[shift_high+j] < selems[0].size());
+						assert((size_t)high_conn_nums[shift_high+j] < selems[0].size());
 						//REPORT_VAL("Unpack node position",high_conn_nums[shift_high+j]);
 						c_nodes.at(j) = selems[0][high_conn_nums[shift_high+j]];
 					}
@@ -5224,7 +5297,7 @@ namespace INMOST
 					if( high_conn_nums[indh] != -1 )
 					{
 						assert(indh < high_conn_nums.size());
-						assert(high_conn_nums[indh] < selems[4].size());
+						assert((size_t)high_conn_nums[indh] < selems[4].size());
 						ElementSet own_set = ElementSet(this,selems[4][i]);
 						ElementSet par_set = ElementSet(this,selems[4][high_conn_nums[indh]]);
 						if( own_set->HaveParent() && own_set->GetParent() != par_set  )
@@ -5246,7 +5319,7 @@ namespace INMOST
 					for(INMOST_DATA_ENUM_TYPE j = 1; j < high_conn_size[i]; j++)
 					{
 						assert(indh+j < high_conn_nums.size());
-						assert(high_conn_nums[indh+j] < selems[4].size());
+						assert((size_t)high_conn_nums[indh+j] < selems[4].size());
 						ElementSet chld_set = ElementSet(this,selems[4][high_conn_nums[indh+j]]);
 						if( !chld_set.GetMarker(mrk_chld) )
 						{
@@ -5428,7 +5501,7 @@ namespace INMOST
 		ENTER_FUNC();
 		REPORT_VAL("exchange number", ++num_exchanges);
 #if defined(USE_MPI)
-		unsigned i;
+		INMOST_DATA_ENUM_TYPE i;
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
 		int mpi_tag;
 		int max_tag = 32767;
@@ -5518,7 +5591,7 @@ namespace INMOST
 #if defined(USE_MPI)
         int mpirank = GetProcessorRank(), mpisize = GetProcessorsNumber();
 #if defined(USE_MPI_P2P) && defined(PREFFER_MPI_P2P)
-		unsigned i, end = send_bufs.size();
+		INMOST_DATA_ENUM_TYPE i, end = send_bufs.size();
         REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 		memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
 		REPORT_MPI(MPI_Win_fence(0,window)); //wait memset finish
@@ -5551,7 +5624,7 @@ namespace INMOST
 			REPORT_STR("Unknown size");
 			{
 				REPORT_VAL("exchange number", ++num_exchanges);
-				unsigned i;
+				INMOST_DATA_ENUM_TYPE i;
 				int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
 				int mpi_tag;
 				int max_tag = 32767;
@@ -5608,7 +5681,7 @@ namespace INMOST
 		{
 			REPORT_STR("Unknown source");
 #if defined(USE_MPI_P2P)
-			unsigned i, end = static_cast<unsigned>(send_bufs.size());
+			INMOST_DATA_ENUM_TYPE i, end = send_bufs.size();
             REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 			memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
 			REPORT_MPI(MPI_Win_fence( 0,window)); //wait memset finish
@@ -5640,7 +5713,7 @@ namespace INMOST
 					sends_dest_and_size[i*2+0] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].first);
 					sends_dest_and_size[i*2+1] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].second.size());
 				}
-				unsigned recvsize = 0;
+				INMOST_DATA_ENUM_TYPE recvsize = 0;
 				int k,j;
 				std::vector<int> allsize(mpisize);
 				int size = static_cast<int>(send_bufs.size()*2);
@@ -6112,10 +6185,10 @@ namespace INMOST
 		REPORT_MPI(MPI_Allgather(&send_counts[0],size*5*2,MPI_INT,&recv_counts[0],size*5*2,MPI_INT,GetCommunicator()));
 		//check only my against others
 		//if I have N shared elements with processor I, then procesoor I should have N ghost elements
-		int err = 0;
+		Storage::integer err = 0;
 		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); ++it)
 		{
-			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && recv_counts[it->first*size*5*2 + rank*5+k + size*5] != it->second[k].size() )
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && static_cast<size_t>(recv_counts[it->first*size*5*2 + rank*5+k + size*5]) != it->second[k].size() )
 			{
 				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of shared " << ElementTypeName(ElementTypeFromDim(k));
 				std::cout  << " for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k + size*5] << " ghost elements on " << it->first << std::endl;
@@ -6126,7 +6199,7 @@ namespace INMOST
 		}
 		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); ++it)
 		{
-			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && recv_counts[it->first*size*5*2 + rank*5+k] != it->second[k].size() )
+			for(int k = 0; k < 5; ++k) if( ElementTypeFromDim(k) & etype && static_cast<size_t>(recv_counts[it->first*size*5*2 + rank*5+k]) != it->second[k].size() )
 			{
 				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of ghost " << ElementTypeName(ElementTypeFromDim(k));
 				std::cout  << " for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k] << " shared elements on " << it->first << std::endl;
@@ -6186,7 +6259,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if !defined(NDEBUG)
-		int err = 0;
+		Storage::integer err = 0;
 		for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
 		{
 			const Element::adj_type & lc = LowConn(*it);
@@ -6220,7 +6293,7 @@ namespace INMOST
 		int bad[4] = {0,0,0,0}, total[4] = {0,0,0,0};
 		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
 		{
-			double cnt[3];
+			INMOST_DATA_REAL_TYPE cnt[3];
 			it->Centroid(cnt);
 			bool problem = false;
 			for(int k = 0; k < 3; ++k)
@@ -6234,7 +6307,7 @@ namespace INMOST
 			total[it->GetElementNum()]++;
 		}
 		DeleteTag(checker);
-		int crash = 0;
+		Storage::integer crash = 0;
 		for(int k = 0; k < 4; ++k) if( bad[k] )
 		{
 			std::cout << "processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << std::endl;
@@ -6283,7 +6356,7 @@ namespace INMOST
 		if( size == procs.size() )
 		{
 			const INMOST_DATA_INTEGER_TYPE * rdata = (const INMOST_DATA_INTEGER_TYPE *)data;
-			for(unsigned k = 0; k < size; ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
 				if( procs[k] != rdata[k] )
 					compare = false;
 		}
@@ -6295,9 +6368,9 @@ namespace INMOST
 			std::cout << __FILE__ << ":" << __LINE__ <<  " on " << tag.GetMeshLink()->GetProcessorRank();
 			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
 			std::cout << " procs";
-			for(unsigned k = 0; k < procs.size(); ++k) std::cout << " " << procs[k];
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < procs.size(); ++k) std::cout << " " << procs[k];
 			std::cout << " remote";
-			for(unsigned k = 0; k < size; ++k) std::cout << " " << ((const INMOST_DATA_INTEGER_TYPE *)data)[k];
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) std::cout << " " << ((const INMOST_DATA_INTEGER_TYPE *)data)[k];
 			std::cout << std::endl;
 			exit(-1);
 		}
@@ -6663,7 +6736,7 @@ namespace INMOST
 		Storage::integer_array parr = root.IntegerArray(tag_processors);
 		for(int q = 0; q < tab; ++q) fout << "  ";
 		fout << "set " << root.GetName() << " procs ";
-		for(unsigned q = 0; q < parr.size(); ++q) fout << parr[q] << " ";
+		for(INMOST_DATA_ENUM_TYPE q = 0; q < parr.size(); ++q) fout << parr[q] << " ";
 		fout << " owner " << root.Integer(root.GetMeshLink()->OwnerTag());
 		fout << " kids " << root.Size();
 		fout << " status " << Element::StatusName(root.GetStatus()) << std::endl;
@@ -7210,7 +7283,7 @@ namespace INMOST
 			//std::sort(map_names[set_name].begin(),map_names[set_name].end());
 			//map_names[set_name].resize(std::unique(map_names[set_name].begin(),map_names[set_name].end())-map_names[set_name].begin());
 			arr.resize((INMOST_DATA_ENUM_TYPE)procs.size());
-			for (int i = 0; i < procs.size(); i++) arr[i] = procs[i];
+			for (size_t i = 0; i < procs.size(); i++) arr[i] = procs[i];
 			assert(procs.size() > 0);
 			if (procs.size() == 1)
 			{

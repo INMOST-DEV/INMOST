@@ -1,4 +1,5 @@
 #include "inmost_mesh.h"
+
 #if defined(USE_MESH)
 #define _m0(x)	(x & 0x7FF)
 #define _m1(x)	(x >> 11 & 0x7FF)
@@ -491,3 +492,4 @@ namespace INMOST
 	}
 }
 #endif
+

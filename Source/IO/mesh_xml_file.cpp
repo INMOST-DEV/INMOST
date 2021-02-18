@@ -39,7 +39,7 @@ namespace INMOST
     std::vector<ElementSet::ComparatorType> set_comparators;
     XMLReader::XMLTag PassTag;
     bool pass_tag = false;
-    int nmeshes = 1;
+    INMOST_DATA_ENUM_TYPE nmeshes = 1;
     std::map< std::string, TagData > tagdata;
     std::set< std::string > noload, loadonly, noderivs;
 		
@@ -57,7 +57,11 @@ namespace INMOST
     for(int q = 0; q < TagParallelMesh.NumAttrib(); ++q)
     {
       const XMLReader::XMLAttrib & attr = TagParallelMesh.GetAttrib(q);
-      if( ToLower(attr.name) == "number" ) nmeshes = atoi(attr.value.c_str());
+      if( ToLower(attr.name) == "number" ) 
+      {
+		  nmeshes = atoi(attr.value.c_str());
+		  (void)nmeshes;
+	  }
       else reader.Report("Unused attribute for ParallelMesh %s='%s'",attr.name.c_str(),attr.value.c_str());
     }
     
@@ -72,7 +76,8 @@ namespace INMOST
       }
 
       { //Nodes
-        int nnodes = 0, ndims = 3;
+        INMOST_DATA_ENUM_TYPE nnodes = 0;
+        Storage::integer ndims = 3;
         XMLReader::XMLTag TagNodes;
         if( pass_tag )
         {
@@ -110,7 +115,7 @@ namespace INMOST
         {
           if( reader.ReadOpenContents() )
           {
-            std::vector<double> Vector;
+            std::vector<INMOST_DATA_REAL_TYPE> Vector;
             int Repeat;
             dynarray<Storage::real,3> xyz;
             for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord() )
@@ -121,7 +126,7 @@ namespace INMOST
                 for(int q = 0; q < (int)Vector.size(); ++q)
                 {
                   xyz.push_back(Vector[q]);
-                  if( xyz.size() == ndims )
+                  if( static_cast<Storage::integer>(xyz.size()) == ndims )
                   {
                     new_nodes.push_back(CreateNode(xyz.data())->GetHandle());
                     xyz.clear();
@@ -386,7 +391,7 @@ namespace INMOST
 		  if( TagSetsData.name == "Tags" )
 		  {
 			  repeat = true;
-			  int ntags = 0;
+			  INMOST_DATA_ENUM_TYPE ntags = 0;
 			  bool matchntags = false;
 			  for(int q = 0; q < TagSetsData.NumAttrib(); ++q)
 			  {

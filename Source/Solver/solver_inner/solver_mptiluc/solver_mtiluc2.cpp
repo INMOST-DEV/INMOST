@@ -67,7 +67,15 @@ using namespace INMOST;
 
 
 
-
+	template<typename T>
+	std::ostream & fmt(std::ostream & in, const T & value, int width, int precision)
+	{
+		std::ios save(NULL);
+		save.copyfmt(in);
+		in << std::fixed << std::setw(width) << std::setprecision(precision) << value;
+		std::cout.copyfmt(save);
+		return in;
+	}
 
 	void MTILUC_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
 									array<Sparse::Row::entry> & Entries,
@@ -440,7 +448,6 @@ using namespace INMOST;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(mobeg, moend,EOL), Lbeg(mobeg, moend,EOL), Bbeg(mobeg,moend,EOL);
 
 		INMOST_DATA_REAL_TYPE NuU = 1, NuL = 1, NuD, NuU_max = 1.0, NuL_max = 1.0;
-		INMOST_DATA_REAL_TYPE NuUsqrt = 1, NuLsqrt = 1;
 #if defined(ESTIMATOR)
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
 		INMOST_DATA_REAL_TYPE mup = 0, mum = 0, smup = 0, smum = 0, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
@@ -576,7 +583,7 @@ using namespace INMOST;
 
 		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
 
-		INMOST_DATA_ENUM_TYPE Sbeg;
+		//~ INMOST_DATA_ENUM_TYPE Sbeg;
 		std::vector<INMOST_DATA_ENUM_TYPE> indices;
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0;
@@ -831,9 +838,7 @@ using namespace INMOST;
 						Heap.Clear();
 					}
 				}
-				//printf("Maximum product transversal %lf\n",Timer()-T);
-				//fclose(rec);
-
+				
 				//T = Timer();
 				for (k = cbeg; k < cend; ++k)
 				{
@@ -859,8 +864,7 @@ using namespace INMOST;
 					
 					if( flip_sign ) DL[k] *= -1;
 				}
-				//printf("Reorder matrix %lf\n",Timer()-T);
-
+				
 				//DumpMatrix(A_Address,A_Entries,wbeg,wend,"A.mtx");
 				//DumpMatrix(B_Address,B_Entries,wbeg,wend,"MC64.mtx");
 
@@ -983,7 +987,7 @@ using namespace INMOST;
 			std::vector<idx_t> xadj(nvtxs+1), adjncy, perm(nvtxs),iperm(nvtxs);
 			adjncy.reserve(nzA*2);
 			
-			for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) printf("%s:%d No column permutation for row %d. Matrix is structurally singular\n",__FILE__,__LINE__,k);
+			for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
 
 			for (k = cbeg; k < cend; ++k) localP[k] = k;
 			for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
@@ -1067,19 +1071,7 @@ using namespace INMOST;
 			std::fill(Bbeg.begin(),Bbeg.end(),EOL);
 
 			tmetisgraph = Timer() - tmetisgraph;
-			/*
-			{
-				FILE * f = fopen("metis.mtx","w");
-				fprintf(f,"%%MatrixMarket matrix coordinate real general\n");
-				fprintf(f,"%d %d %d\n",nvtxs,nvtxs,adjncy.size());
-				for(i = wbeg; i < wend; ++i)
-				{
-					for(j = xadj[i]; j < xadj[i+1]; ++j)
-						fprintf(f,"%d %d 1\n",i+1,adjncy[j]+1);
-				}
-				fclose(f);
-			}
-			*/
+			
 			//A_Address[0].first = 0;
 			//for(k = wbeg+1; k < wend; ++k)
 			//	A_Address[k].first = A_Address[k-1].last;
@@ -1095,12 +1087,10 @@ using namespace INMOST;
 			//options[METIS_OPTION_NO2HOP] = 0;
 			//options[METIS_OPTION_MINCONN] = 0;
 			//options[METIS_OPTION_NITER] = 4;
-			//printf("before metis\n");
 			//METIS_NodeNDP(nvtxs,&xadj[0],&adjncy[0],NULL,4,options,&perm[0],&iperm[0],&sizes[0]);
 			tmetisnd = Timer();
 			METIS_NodeND(&nvtxs,&xadj[0],&adjncy[0],NULL,options,&perm[0],&iperm[0]);
 			tmetisnd = Timer()-tmetisnd;
-			//printf("after metis\n");
 			for(k = wbeg; k < wend; ++k)
 			{
 				//localP[k] = iperm[k-wbeg]+wbeg;
@@ -1165,7 +1155,7 @@ using namespace INMOST;
 				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;
 				adjncy.reserve(nzA*2);
 
-				for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) printf("%s:%d No column permutation for row %d. Matrix is structurally singular\n",__FILE__,__LINE__,k);
+				for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
 
 				for (k = cbeg; k < cend; ++k) localP[k] = k;
 				for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
@@ -1461,7 +1451,6 @@ using namespace INMOST;
 				if( radii < local_radii ) radii = local_radii;
 			}
 
-			printf("Gershgorin's radius after mc64: %e\n",radii);
 			*/
 
 
@@ -1606,7 +1595,6 @@ using namespace INMOST;
 				if( radii < local_radii ) radii = local_radii;
 			}
 
-			printf("Gershgorin's radius after equilibration: %e\n",radii);
 			*/
 
 #if defined(EQUALIZE_1NORM) || defined(EQUALIZE_2NORM) || defined(EQUALIZE_IDOMINANCE)
@@ -1642,6 +1630,7 @@ using namespace INMOST;
 				LU2_Entries.clear();
 #endif
 				mean_diag = 0.0;
+				(void)mean_diag;
 ///////////////////////////////////////////////////////////////////////////////////
 //       setup diagonal values and memorize indices                              //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2111,6 +2100,7 @@ swap_algorithm:
 #else
 					abs_udiag = 1.0;
 #endif
+					(void)abs_udiag;
 
 ///////////////////////////////////////////////////////////////////////////////////
 //            Prepare linked list for U-part                                     //
@@ -2133,7 +2123,7 @@ swap_algorithm:
 						Ui = LineIndecesU[Ui] = B_Entries[it].first;
 					}
 					LineIndecesU[Ui] = EOL;
-					Sbeg = k;
+					//~ Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                    U-part elimination with L                                  //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2384,7 +2374,7 @@ swap_algorithm:
 						}
 						LineIndecesL[Ui] = EOL;
 					}
-					Sbeg = k;
+					//~ Sbeg = k;
 ///////////////////////////////////////////////////////////////////////////////////
 //                 L-part elimination with U                                     //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -2606,6 +2596,7 @@ swap_algorithm:
 					{
 						tlocal = Timer();
 						NuU1_old = NuU1;
+						(void)NuU1_old;
 						mup = 1.0 - EstU1[k];
 						mum = -1.0 - EstU1[k];
 						smup = smum = 0;
@@ -2623,6 +2614,7 @@ swap_algorithm:
 						NuU1_new = std::max(fabs(mup),fabs(mum));
 #if defined(ESTIMATOR_REFINE)
 						NuU2_old = NuU2;
+						(void)NuU2_old;
 						mup = 1.0 - EstU2[k];
 						mum = -1.0 - EstU2[k];
 						np = nm = 0;
@@ -2634,10 +2626,10 @@ swap_algorithm:
 							vp = fabs(v + LineValuesU[Ui] * mup);
 							vm = fabs(v + LineValuesU[Ui] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 							Ui = LineIndecesU[Ui];
 						}
 						if (np > nm) NuU2 = mup; else NuU2 = mum;
@@ -2655,6 +2647,7 @@ swap_algorithm:
 					{
 						tlocal = Timer();
 						NuL1_old = NuL1;
+						(void)NuL1_old;
 						mup = 1.0 - EstL1[k];
 						mum = -1.0 - EstL1[k];
 						smup = smum = 0;
@@ -2672,6 +2665,7 @@ swap_algorithm:
 						NuL1_new = std::max(fabs(mup),fabs(mum));
 #if defined(ESTIMATOR_REFINE)
 						NuL2_old = NuL2;
+						(void)NuL2_old;
 						mup = 1.0 - EstL2[k];
 						mum = -1.0 - EstL2[k];
 						np = nm = 0;
@@ -2683,10 +2677,10 @@ swap_algorithm:
 							vp = fabs(v + LineValuesL[Li] * mup);
 							vm = fabs(v + LineValuesL[Li] * mum);
 							v = fabs(v);
-							if (vp > std::max(2 * v, 0.5)) np++;
-							if (std::max(2 * vp, 0.5) < v) np--;
-							if (vm > std::max(2 * v, 0.5)) nm++;
-							if (std::max(2 * vm, 0.5) < v) nm--;
+							if (vp > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) np++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vp, 0.5) < v) np--;
+							if (vm > std::max<INMOST_DATA_REAL_TYPE>(2 * v, 0.5)) nm++;
+							if (std::max<INMOST_DATA_REAL_TYPE>(2 * vm, 0.5) < v) nm--;
 							Li = LineIndecesL[Li];
 						}
 						if (np > nm) NuL2 = mup; else NuL2 = mum;
@@ -2751,8 +2745,6 @@ swap_algorithm:
 						NuL_max = std::max(NuL,NuL_max);
 						NuU_max = std::max(NuU,NuU_max);
 			  
-						NuUsqrt = sqrt(NuU);
-						NuLsqrt = sqrt(NuL);
 					}
 #endif //ESTIMATOR
 					
@@ -3156,17 +3148,18 @@ swap_algorithm:
 					{
 						if( k % 100 == 0 )
 						{
+							std::ios save(NULL);
+							save.copyfmt(std::cout);
 							if (verbosity == 1)
-							{
-								printf("%d/%d factor %6.2f%%\t\t\r",cend,moend, 100.0f*(k - cbeg) / (float)(cend - cbeg));
-								//printf("%6.2f%% nnz LU %8d condition L %10f D %10f U %10f\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, NuL, NuD, NuU);
-								fflush(stdout);
-							}
+								std::cout << cend << "/" << moend << " factor " << std::setw(6) << std::fixed << std::setprecision(2) << 100.0f*(k - cbeg) / (float)(cend - cbeg) << "\r" << std::flush;
 							else 
 							{
-								printf("%6.2f%% nnz LU %8d LU2 %8d condition L %10f D %10f U %10f pivot %d\r", 100.0f*(k - cbeg) / (float)(cend - cbeg), nzLU, nzLU2, NuL, NuD, NuU, swaps);
-								fflush(stdout);
+								std::cout << std::setw(6) << std::fixed << std::setprecision(2) << 100.0f*(k - cbeg) / (float)(cend - cbeg);
+								std::cout << " nnz LU " << std::setw(8) << nzLU << " LU2 " << std::setw(8) << nzLU2;
+								std::cout << " cond L " << std::setprecision(6) << std::setw(10) << NuL << " D " << NuD << " U " << NuD << " pivot " << std::setw(10) << swaps;
+								std::cout << "\r" << std::flush;
 							}
+							std::cout.copyfmt(save);
 						}
 					}
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3244,26 +3237,26 @@ swap_algorithm:
 		ttotal = Timer() - ttotal;
 		if( verbosity > 2 )
 		{
-			printf("total      %f\n",ttotal);
-			printf("reorder    %f (%6.2f%%)\n", treorder, 100.0*treorder/ttotal);
-			printf("   mpt     %f (%6.2f%%)\n",ttransversal, 100.0*ttransversal/ttotal);
+			std::cout << "total      " << ttotal       << "\n";
+			std::cout << "reorder    " << treorder     << " ("; fmt(std::cout,100.0*treorder/ttotal    ,6,2) << "%)\n";
+			std::cout << "   mpt     " << ttransversal << " ("; fmt(std::cout,100.0*ttransversal/ttotal,6,2) << "%)\n";
 #if defined(REORDER_METIS_ND)
-			printf("   graph   %f (%6.2f%%)\n",tmetisgraph, 100.0*tmetisgraph/ttotal);
-			printf("   nd      %f (%6.2f%%)\n", tmetisnd, 100.0*tmetisnd/ttotal);
+			std::cout << "   graph   " << tmetisgraph  << " ("; fmt(std::cout,100.0*tmetisgraph/ttotal ,6,2) << "%)\n";
+			std::cout << "   nd      " << tmetisnd     << " ("; fmt(std::cout,100.0*tmetisnd/ttotal    ,6,2) << "%)\n";
 #endif
 #if defined(REORDER_RCM)
-			printf("   graph   %f (%6.2f%%)\n",trcmgraph, 100.0*trcmgraph/ttotal);
-			printf("   rcm     %f (%6.2f%%)\n", trcmorder, 100.0*trcmorder/ttotal);
+			std::cout << "   graph   " << trcmgraph    << " ("; fmt(std::cout,100.0*trcmgraph/ttotal   ,6,2) << "%)\n";
+			std::cout << "   rcm     " << trcmorder    << " ("; fmt(std::cout,100.0*trcmorder/ttotal   ,6,2) << "%)\n";
 #endif
-			printf("reassamble %f (%6.2f%%)\n", treassamble, 100.0*treassamble / ttotal);
-			printf("rescale    %f (%6.2f%%)\n", trescale, 100.0*trescale / ttotal);
-			printf("factor     %f (%6.2f%%)\n", tfactor, 100.0*tfactor / ttotal);
-			printf("   swap    %f (%6.2f%%)\n", tswap, 100.0*tswap / ttotal);
-			printf("   cond    %f (%6.2f%%)\n", testimator, 100.0*testimator / ttotal);
+			std::cout << "reassamble " << treassamble  << " ("; fmt(std::cout,100.0*treassamble/ttotal ,6,2) << "%)\n";
+			std::cout << "rescale    " << trescale     << " ("; fmt(std::cout,100.0*trescale/ttotal    ,6,2) << "%)\n";
+			std::cout << "factor     " << tfactor      << " ("; fmt(std::cout,100.0*tfactor/ttotal     ,6,2) << "%)\n";
+			std::cout << "   swap    " << tswap        << " ("; fmt(std::cout,100.0*tswap/ttotal       ,6,2) << "%)\n";
+			std::cout << "   cond    " << testimator   << " ("; fmt(std::cout,100.0*testimator/ttotal  ,6,2) << "%)\n";
 #if defined(ILUC2)
-			printf("nnz A %d LU %d LU2 %d\n",nzA,nzLU,nzLU2);//, swaps);
+			std::cout << "nnz A " << nzA << " LU " << nzLU << " LU2 " << nzLU2 << " swaps " << swaps << "\n";
 #else
-			printf("nnz A %d LU %d swaps %d\n",nzA,nzLU,swaps);
+			std::cout << "nnz A " << nzA << " LU " << nzLU << " swaps " << swaps << "\n";
 #endif
 		}
 		init = true;

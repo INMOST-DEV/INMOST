@@ -200,15 +200,15 @@ bool check_intersect(const std::vector<segment> & segmentsa, const std::vector<s
 	if( print )
 	{
 		std::cout << "segments [" << segmentsa.size() << "]:" << std::endl;
-		for(int k = 0; k < segmentsa.size(); ++k)
+		for(size_t k = 0; k < segmentsa.size(); ++k)
 			std::cout << "(" << segmentsa[k].beg[0] << "," << segmentsa[k].beg[1] << ",0) <-> (" << segmentsa[k].end[0] << "," << segmentsa[k].end[1] << ",0)" << std::endl;
 		std::cout << "joints [" << segmentsb.size() << "]:" << std::endl;
-		for(int k = 0; k < segmentsb.size(); ++k)
+		for(size_t k = 0; k < segmentsb.size(); ++k)
 			std::cout << "(" << segmentsb[k].beg[0] << "," << segmentsb[k].beg[1] << ",0) <-> (" << segmentsb[k].end[0] << "," << segmentsb[k].end[1] << ",0)" << std::endl;
 	}
-	for(int i = 0; i < (int)segmentsb.size(); ++i)
+	for(size_t i = 0; i < segmentsb.size(); ++i)
 	{
-		for(int j = 0; j < (int)segmentsa.size(); ++j)
+		for(size_t j = 0; j < segmentsa.size(); ++j)
 		{
 			if( print ) std::cout << "check segment " << j << " and joint " << i << std::endl;
 			if( intersect_segments(segmentsa[j],segmentsb[i],print) )
@@ -234,7 +234,7 @@ bool check_dropout(const std::vector<node> & loop, const std::vector<segment> & 
 		
 		int    cn = 0;    // the  crossing number counter
 		// loop through all edges of the polygon
-		for (int j = 0; j < loop.size()-1; j++)  // edge from V[i]  to V[i+1]
+		for (size_t j = 0; j < loop.size()-1; j++)  // edge from V[i]  to V[i+1]
 		{
 			real px = cnt[0];
 			real py = cnt[1];
@@ -276,7 +276,8 @@ int main(int argc, char ** argv)
 	
 	Tag proj_coords = A.CreateTag("PROJECTED_COORDS",DATA_REAL,NODE,NONE,2);
 	MarkerType myedges = A.CreateMarker();
-	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], fcnt[3], ray[3], orthx[3], orthy[3], d, nd, c[2];
+	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], orthx[3], orthy[3], d, nd;
+	(void)nd;
 	std::cout << "Start splitting faces" << std::endl;
 	int nsplit = 0, had_faces = A.NumberOfFaces();
 	for(Mesh::iteratorFace it = A.BeginFace(); it != A.EndFace(); ++it)
@@ -358,7 +359,7 @@ int main(int argc, char ** argv)
 					int had_id = it->LocalID();
 					int had_nodes = it->nbAdjElements(NODE);
 					ElementArray<Face> split_faces = Face::SplitFace(it->self(),new_edges,0);
-					for(int q = 0; q < split_faces.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < split_faces.size(); ++q)
 						if( !split_faces[q].Planarity() )
 						{
 							std::cout << __FILE__ << ":" << __LINE__ << "Face " << split_faces[q].LocalID() << " non-planar after split, nodes " << split_faces[q].nbAdjElements(NODE) << " original face " << had_id << " with " << had_nodes << " nodes, split by " << new_edges.size() << " edges, resulted in " << split_faces.size() << " new faces" << std::endl;
@@ -408,7 +409,7 @@ int main(int argc, char ** argv)
 					ElementArray<Face> split_faces = Face::SplitFace(it->self(),new_edges,0);
 					int had_id = it->LocalID();
 					int had_nodes = it->nbAdjElements(NODE);
-					for(int q = 0; q < split_faces.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < split_faces.size(); ++q)
 						if( !split_faces[q].Planarity() )
 							std::cout << __FILE__ << ":" << __LINE__ << "Face " << split_faces[q].LocalID() << " non-planar after split, nodes " << split_faces[q].nbAdjElements(NODE) << " original face " << had_id << " with " << had_nodes << " nodes, split by " << new_edges.size() << " edges, resulted in " << split_faces.size() << " new faces" << std::endl;
 					nsplit++;

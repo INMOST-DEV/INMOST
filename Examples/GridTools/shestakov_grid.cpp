@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
   if( nc >= 10 )
   {
-    printf("You are about to create a grid of size %dx%dx%d. Are you sure?\n",static_cast<int>(pow(2.0,nc)),static_cast<int>(pow(2.0,nc)),nz);
+    std::cout << "You are about to create a grid of size " << pow(2.0,nc) << "x" << pow(2.0,nc) << "x" << nz << ". Are you sure?" << std::endl;
     char ans = getchar();
     if( towlower(ans) != 'y' ) return 0;
   }
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
         xyz[1] = z[i*nm+j];
         xyz[2] = k * 1.0 / (nz - 1);
         Node c = mesh->CreateNode(xyz);
-        if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+        if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i,j,k) << "\n";
       }
     }
   }
@@ -215,13 +215,13 @@ int main(int argc, char *argv[])
   mesh_name = str.str();
   name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
-  printf("I'm ready!\n");
+  std::cout << "I'm ready!\n";
 
   mesh->Save("grid.vtk");
   mesh->Save("grid.pmf");
   mesh->Save("grid.gmv");
 
-  printf("File written!\n");
+  std::cout << "File written!\n";
 
   delete mesh;
   return 0;

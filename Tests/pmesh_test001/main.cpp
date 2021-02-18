@@ -4,6 +4,7 @@ using namespace INMOST;
 #if defined(USE_MPI)
 void mpi_error_handler(MPI_Comm *communicator, int *error_code, ...) 
 {
+	(void)communicator;
 	char error_string[MPI_MAX_ERROR_STRING];
 	int error_string_length;
 	printf("mpi_error_handler: entry\n");

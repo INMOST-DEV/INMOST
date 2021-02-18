@@ -125,7 +125,7 @@ void SetLayers::DeformLayers(double coef)
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-	for(int k = 0; k < map_layer.size(); ++k)
+	for(int k = 0; k < (int)map_layer.size(); ++k)
 	{
 		map_layer[k].resize(N*N);
 		init2d(&map_layer[k][0],N,1-coef,1);
@@ -186,7 +186,7 @@ void SetLayers::DeformLayers(double coef)
 		{
 			if( !e->Hidden() )
 			{
-				Edge::CollapseEdge(e->self(),0);
+				Edge::CollapseEdge(e->self());
 				collapse_edge++;
 			}
 			bad_edge++;

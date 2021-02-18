@@ -432,7 +432,7 @@ namespace INMOST
 		void                        PrintElementConnectivity() const;
 		static bool                 CheckConnectivity       (Mesh * m);
 		//implemented in geometry.cpp
-		void                        CastRay                 (const real * pos, const real * dir, tiny_map<HandleType, real, 16> & hits) const;
+		void                        CastRay                 (const real * pos, const real * dir, std::map<HandleType, real> & hits) const;
 		
 		void                        ComputeGeometricType    () const;
 		void                        Centroid                (real * cnt) const;
@@ -551,7 +551,7 @@ namespace INMOST
 		static bool                 TestUniteEdges          (const ElementArray<Edge> & edges, MarkerType del_protect);
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
-		static Node                 CollapseEdge            (Edge e, MarkerType del_protect);
+		static Node                 CollapseEdge            (Edge e);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 		///Swap positions of first node and last node
@@ -2289,7 +2289,7 @@ namespace INMOST
 		private: unsigned int n,a,c,m;
 		public:
 			Random(unsigned int seed = 50);
-			Random(const Random & other);
+			//~ Random(const Random & other);
 			unsigned int Number();
 		} randomizer;
 	public:
@@ -2913,15 +2913,21 @@ namespace INMOST
 		/// @param input value on current processor
 		/// @return described sum
 		integer                           ExclusiveSum       (integer input);
+		enumerator                        ExclusiveSum       (enumerator input);
+		
 		real                              AggregateMax       (real input);
 		integer                           AggregateMax       (integer input);
+		enumerator                        AggregateMax       (enumerator input);
 		void                              AggregateMax       (real * input, integer size);
 		void                              AggregateMax       (integer * input, integer size);
+		void                              AggregateMax       (enumerator * input, integer size);
 
 		real                              AggregateMin       (real input);
 		integer                           AggregateMin       (integer input);
+		enumerator                        AggregateMin       (enumerator input);
 		void                              AggregateMin       (real * input, integer size);
 		void                              AggregateMin       (integer * input, integer size);
+		void                              AggregateMin       (enumerator * input, integer size);
 		/// Regather ghosted and shared element sets for data exchange.
 		/// This function will be quite useful if you change statuses of elements
 		/// or modify mesh on your own bypassing internal algorithms.
@@ -2976,7 +2982,7 @@ namespace INMOST
 		void                              EndSequentialCode  ();
 		//iterator.cpp::::::::::::::::::::::::::::::::::::::::::::::::::
 	public:
-		Element                           ElementByLocalIDNum(integer etypenum, integer lid) {assert(etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size())) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandleNum(etypenum,lid));}
+		Element                           ElementByLocalIDNum(integer etypenum, integer lid) {assert((etypenum < 5 && (lid >= 0 && lid < static_cast<integer>(links[etypenum].size()))) || (etypenum == 5 && lid == 0)); return Element(this,ComposeHandleNum(etypenum,lid));}
 		Element                           ElementByLocalID   (ElementType etype, integer lid) {return ElementByLocalIDNum(ElementNum(etype),lid);}
 		Element                           ElementByHandle    (HandleType h) {return Element(this,h);}
 		
@@ -3219,7 +3225,7 @@ namespace INMOST
 		bool                              HideGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = false;  return  remember[type][ElementNum(mask) - 1]; }
 		bool                              ShowGeometricData(GeometricData type, ElementType mask) { remember[type][ElementNum(mask) - 1] = true;  return  remember[type][ElementNum(mask) - 1]; }
 	public:
-		typedef tiny_map<GeometricData, ElementType,5> GeomParam;
+		typedef std::map<GeometricData, ElementType> GeomParam;
 		// types for MEASURE:     EDGE | FACE | CELL   (length, area, volume)
 		// types for CENTROID:    EDGE | FACE | CELL
 		// types for BARYCENTER:  EDGE | FACE | CELL
@@ -3246,13 +3252,13 @@ namespace INMOST
 		/// @param x Interpolation point
 		/// @param f Face (should be 2d) which contains point
 		/// @param nodes_stencil Vector of pairs (node handle, coefficient) to store interpolation data
-		void                              WachspressInterpolation2D           (const real * x, const Face & f, tiny_map<HandleType,real,8> & nodes_stencil) const;
+		void                              WachspressInterpolation2D           (const real * x, const Face & f, std::map<HandleType,real> & nodes_stencil) const;
 		/// Compute node-centered interpolation on 3d cell for point
 		/// Point should be inside cell or on its boundary.
 		/// @param x Interpolation point
 		/// @param c Cell (should be 3d) which contains point
 		/// @param nodes_stencil Vector of pairs (node handle, coefficient) to store interpolation data
-		void                              WachspressInterpolation3D           (const real * x, const Cell & c, tiny_map<HandleType,real,8> & nodes_stencil) const;
+		void                              WachspressInterpolation3D           (const real * x, const Cell & c, std::map<HandleType,real> & nodes_stencil) const;
 		/// Sets marker for all the faces that have only one neighbouring cell, works correctly in parallel environment.
 		/// @param boundary_marker Non-private marker that will indicate boundary faces.
 		void                              MarkBoundaryFaces(MarkerType boundary_marker);
@@ -3300,7 +3306,7 @@ namespace INMOST
 		void                              EndModification    ();    //delete hidden elements
 		enumerator                        getNext            (const HandleType * arr, enumerator size, enumerator k, MarkerType marker) const;
 		enumerator                        Count              (const HandleType * arr, enumerator size, MarkerType marker) const;
-		void                              EquilibrateGhost   (bool only_new = false); //Use in ResolveShared
+		void                              EquilibrateGhost   ();//bool only_new = false); //Use in ResolveShared
 		//void CheckFaces();
 		/// Check that centroids of ghost and shared elements match to each other.
 		/// Exits if does not match.
@@ -3487,7 +3493,7 @@ namespace INMOST
 			{
 				if( a == InvalidHandle() || b == InvalidHandle() )
 					return a > b;
-				double ma, mb;
+				INMOST_DATA_REAL_TYPE ma, mb;
 				m->GetGeometricData(a,MEASURE,&ma);
 				m->GetGeometricData(b,MEASURE,&mb);
 				return ma < mb;
@@ -3496,7 +3502,7 @@ namespace INMOST
 			{
 				if( a == InvalidHandle() )
 					return true;
-				double ma;
+				INMOST_DATA_REAL_TYPE ma;
 				m->GetGeometricData(a,MEASURE,&ma);
 				return ma < b;
 			}
@@ -3544,6 +3550,7 @@ namespace INMOST
 	///This structure is a helper structure to aid with search of cells by position.
 	///Currently the structure is very specific to the step of mesh modification,
 	///as it performs search over old elements of the mesh.
+	
 	class SearchKDTree
 	{
 	public:
@@ -3575,7 +3582,7 @@ namespace INMOST
 		inline static unsigned int flip(const unsigned int * fp);
 		void radix_sort(int dim, struct entry * temp);
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
-		SearchKDTree() : m(NULL), set(NULL), size(0), children(NULL), bbox() {}
+		SearchKDTree() : set(NULL), m(NULL), size(0), bbox(), children(NULL) {}
 		
 		Cell SubSearchCell(const Storage::real p[3], bool print);
 		void clear_children();
@@ -3592,7 +3599,7 @@ namespace INMOST
 		Cell SearchCell(const Storage::real * point, bool print = false);
 		void IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3]);
 	};
-
+	
 
 	//////////////////////////////////////////////////////////////////////
 	/// Inline functions for class Storage                              //
@@ -3740,7 +3747,7 @@ namespace INMOST
 	__INLINE Matrix<Storage::real,Storage::real_array> TagRealArray::operator ()(HandleType h, int n, int m) const
 	{
 		Storage::real_array data = GetMeshLink()->RealArray(h,*static_cast<const Tag*>(this));
-		assert(data.size() == n*m);
+		assert((int)data.size() == n*m);
 		return Matrix<Storage::real,Storage::real_array>(data,n,m);
 	}
 	__INLINE Storage::integer_array TagIntegerArray::operator [](HandleType h) const
@@ -3791,7 +3798,7 @@ namespace INMOST
 	__INLINE Matrix<Storage::var,Storage::var_array> TagVariableArray::operator ()(HandleType h, int n, int m) const
 	{
 		Storage::var_array data = GetMeshLink()->VariableArray(h,*static_cast<const Tag*>(this));
-		assert(data.size() == n*m);
+		assert((int)data.size() == n*m);
 		return Matrix<Storage::var,Storage::var_array>(data,n,m);
 	}
 	

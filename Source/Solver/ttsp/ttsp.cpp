@@ -19,6 +19,7 @@ namespace INMOST {
 #endif
 
         void Initialize(const std::string &path) {
+			(void)path;
 #if defined(USE_OPTIMIZER)
             Deinitialize();
 
@@ -46,6 +47,7 @@ namespace INMOST {
         }
 
         void Enable(const std::string &solver_name, const std::string &solver_prefix) {
+			(void)solver_name,(void)solver_prefix;
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver_name + ":" + solver_prefix;
             if (g_options.find(key) == g_options.end()) {
@@ -59,6 +61,7 @@ namespace INMOST {
         }
 
         void Disable(const std::string &solver_name, const std::string &solver_prefix) {
+			(void)solver_name,(void)solver_prefix;
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver_name + ":" + solver_prefix;
             if (g_options.find(key) != g_options.end()) {
@@ -68,6 +71,7 @@ namespace INMOST {
         }
 
         bool isEnabled(const std::string &solver_name, const std::string &solver_prefix) {
+			(void)solver_name,(void)solver_prefix;
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver_name + ":" + solver_prefix;
             if (g_options.find(key) != g_options.end()) {
@@ -81,6 +85,7 @@ namespace INMOST {
         }
 
         bool isDisabled(const std::string &solver_name, const std::string &solver_prefix) {
+			(void)solver_name,(void)solver_prefix;
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver_name + ":" + solver_prefix;
             if (g_options.find(key) != g_options.end()) {
@@ -128,6 +133,7 @@ namespace INMOST {
 #endif
 
         void SolverOptimize(Solver &solver, bool use_last_suggestion) {
+			(void)solver,(void)use_last_suggestion;
 #if defined(USE_OPTIMIZER)
             if (isEnabled(solver.SolverName(), solver.SolverPrefix())) {
                 OptimizerInterface *optimizer = GetOrCreateOptimizer(solver);
@@ -144,6 +150,7 @@ namespace INMOST {
         }
 
         void SolverOptimizeSaveResult(Solver &solver, double metrics, bool is_good) {
+			(void)solver,(void)metrics,(void)is_good;
 #if defined(USE_OPTIMIZER)
             if (isEnabled(solver.SolverName(), solver.SolverPrefix())) {
                 OptimizerInterface *optimizer = GetOrCreateOptimizer(solver);
@@ -156,6 +163,7 @@ namespace INMOST {
         }
 
         void DestroySavedOptimizer(Solver &solver) {
+			(void)solver;
 #if defined(USE_OPTIMIZER)
             const std::string &key = solver.SolverName() + ":" + solver.SolverPrefix();
             if (g_optimizers.find(key) != g_optimizers.end()) {

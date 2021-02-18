@@ -35,7 +35,7 @@ namespace INMOST
 	{
 	public:
 		basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
-		basic_expression(const basic_expression & other) {(void)other;};//std::cout << this << " Created from " << &other << std::endl;}
+		//basic_expression(const basic_expression & other) {(void)other;};//std::cout << this << " Created from " << &other << std::endl;}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
@@ -56,7 +56,7 @@ namespace INMOST
 	{
 	public:
 		shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
-		shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
+		//shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
@@ -1471,6 +1471,7 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
+			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
 	};
@@ -1502,6 +1503,7 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
+			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
 	};
@@ -1539,6 +1541,7 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
+			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
 	};
@@ -1575,6 +1578,7 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
+			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
 	};
@@ -2262,6 +2266,21 @@ template<class A>          __INLINE                                           vo
 template<class A>          __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
+#if defined(USE_FP64)
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg,                         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::var_expression & Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg,                   float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+#else //USE_FP64
+                           __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg,                         double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::var_expression & Arg,                        double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression & Arg,                   double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+                           __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+#endif //USE_FP64
 template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
 __INLINE                          INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
 template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }

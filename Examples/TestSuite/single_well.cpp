@@ -28,12 +28,16 @@ void matmul(double * a, double * b, double * out)
   int i,j,k;
   double ret[9] = {0,0,0,0,0,0,0,0,0};
   for(i = 0; i < 3; i++)
+  {
     for(j = 0; j < 3; j++)
+    {
       for(k = 0; k < 3; k++)
       {
         ret[i*3+j] += a[i*3+k]*b[k*3+j];
       }
-      for(i = 0; i < 9; i++) out[i] = ret[i];
+    }
+  }
+  for(i = 0; i < 9; i++) out[i] = ret[i];
 }
 
 void multangle(double t[9], double anglex, double angley, double anglez)
@@ -114,7 +118,7 @@ int main(int argc, char *argv[])
 	double inner_boundary_pressure = 1.0;
   int cut_grid = 1;
   int is2d = 0;
-  int n = 20 + 1;
+  Storage::integer n = 20 + 1;
 
   mesh = new Mesh();
 
@@ -212,12 +216,11 @@ int main(int argc, char *argv[])
         for (int k = 0; k < n; k++) 
         {
           Storage::real xyz[3];
-          bool mark = false;
           xyz[0] = i * 1.0 / (n - 1);
           xyz[1] = j * 1.0 / (n - 1);
           xyz[2] = k * 1.0 / (n - 1);
           Node c = mesh->CreateNode(xyz);
-          if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+          if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i, j, k) << std::endl;
         }
       }
     }
@@ -309,7 +312,7 @@ int main(int argc, char *argv[])
 
   mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
 
-  printf("nodes: %d edges: %d faces: %d cells: %d\n", mesh->NumberOfNodes(), mesh->NumberOfEdges(), mesh->NumberOfFaces(), mesh->NumberOfCells());
+  std::cout << "nodes: " << mesh->NumberOfNodes() << " edges: " << mesh->NumberOfEdges() << " faces: " << mesh->NumberOfFaces() << " cells: " << mesh->NumberOfCells() << std::endl;
 
     
     {
@@ -319,8 +322,8 @@ int main(int argc, char *argv[])
 
   Tag bndcond = mesh->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE|NODE,FACE|NODE,3);
 
-  int numinner = 0, numouter = 0;
-  int numinnern = 0, numoutern = 0;
+  Storage::integer numinner = 0, numouter = 0;
+  Storage::integer numinnern = 0, numoutern = 0;
   const double eps = 1.0e-6;
   for(Mesh::iteratorElement it = mesh->BeginElement(FACE|NODE); it != mesh->EndElement(); ++it) if( it->Boundary() )
   {
@@ -363,13 +366,13 @@ int main(int argc, char *argv[])
   for (Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
     memcpy(&it->RealArrayDF(tensor)[0],mat,sizeof(Storage::real)*9);
 
-  printf("I'm ready!\n");
+  std::cout << "I'm ready!" << std::endl;
 
   //mesh->Save("grid.vtk");
   mesh->Save("grid_out.pmf");
   //mesh->Save("grid.gmv");
 
-  printf("File written!\n");
+  std::cout << "File written!" << std::endl;
 
   delete mesh;
   return 0;

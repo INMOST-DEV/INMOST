@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
 			for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 				if( am.GetLevel(it->self()) < max_levels )
 				{
-					double x[3];
+					INMOST_DATA_REAL_TYPE x[3];
 					it->Centroid(x);
 					if( sqrt((x[0]-0.5)*(x[0]-0.5)+(x[1]-0.5)*(x[1]-0.5)+(x[2]-0.5)*(x[2]-0.5)) < 0.25 )
 					{

@@ -64,7 +64,7 @@ void Fracture::FaceCenter(Face f, INMOST_DATA_REAL_TYPE cnt[3]) const
 			vec[1] /= l;
 			vec[2] /= l;
 		}
-		Storage::real half_aperture = f->Real(fracture_aperture)*0.5;
+		//~ Storage::real half_aperture = f->Real(fracture_aperture)*0.5;
 		cnt[0] = cnte[0];// + vec[0]*half_aperture;
 		cnt[1] = cnte[1];// + vec[1]*half_aperture;
 		cnt[2] = cnte[2];// + vec[2]*half_aperture;
@@ -144,38 +144,38 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 	{
 		ElementArray<Face> n_faces = it->getFaces(); //retrive all faces joining at the node
 		INMOST_DATA_ENUM_TYPE num_frac_faces = 0;
-		for(int k = 0; k < n_faces.size(); ++k) if( n_faces[k].GetMarker(isFracture()) ) num_frac_faces++;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < n_faces.size(); ++k) if( n_faces[k].GetMarker(isFracture()) ) num_frac_faces++;
 		if( num_frac_faces )
 		{
 			ElementArray<Cell> n_cells = it->getCells(); //get all cells of the node
-			for(int k = 0; k < n_cells.size(); ++k) //assign local enumeration to the cells
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < n_cells.size(); ++k) //assign local enumeration to the cells
 				n_cells[k].IntegerDF(indexes) = k;
-			for(int k = 0; k < n_faces.size(); ++k) //stich together node's numbers corresponding to cells if no fracture separates them
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < n_faces.size(); ++k) //stich together node's numbers corresponding to cells if no fracture separates them
 			{
 				if( !n_faces[k].GetMarker(isFracture()) && n_faces[k].FrontCell().isValid())
 				{
-					int bi = n_faces[k].BackCell()->IntegerDF(indexes);
-					int fi = n_faces[k].FrontCell()->IntegerDF(indexes);
+					Storage::integer bi = n_faces[k].BackCell()->IntegerDF(indexes);
+					Storage::integer fi = n_faces[k].FrontCell()->IntegerDF(indexes);
 					if( bi != fi )
 					{
-						for(int q = 0; q < n_cells.size(); q++) if( n_cells[q].IntegerDF(indexes) == fi ) 
+						for(INMOST_DATA_ENUM_TYPE q = 0; q < n_cells.size(); q++) if( n_cells[q].IntegerDF(indexes) == fi ) 
 							n_cells[q].IntegerDF(indexes) = bi;
 					}
 				}
 			}
 			dynarray<int,64> nums(n_cells.size()); //store all numbers
-			for(int k = 0; k < n_cells.size(); ++k) nums[k] = n_cells[k].IntegerDF(indexes);
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < n_cells.size(); ++k) nums[k] = n_cells[k].IntegerDF(indexes);
 			std::sort(nums.begin(),nums.end());
 			nums.resize(std::unique(nums.begin(),nums.end()) - nums.begin());
 			if( nums.size() > 1 ) //at least two distinctive nodes
 			{
 				nfrac_nodes++;
-				for(int k = 0; k < nums.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < nums.size(); k++)
 				{
 					Node image;
 					Storage::real xyz[3] = {0,0,0}, cntc[3] = {0,0,0};
-					int n_node_cells = 0;
-					for(int q = 0; q < n_cells.size(); q++)
+					INMOST_DATA_ENUM_TYPE n_node_cells = 0;
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < n_cells.size(); q++)
 					{
 						if( n_cells[q].IntegerDF(indexes) == nums[k] )
 						{
@@ -190,7 +190,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 					xyz[1] /= static_cast<Storage::real>(n_node_cells);
 					xyz[2] /= static_cast<Storage::real>(n_node_cells);
 					Storage::real_array coords = it->Coords();
-					for( Storage::real_array::size_type q = 0; q < coords.size(); ++q)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < coords.size(); ++q)
 						xyz[q] = coords[q]*mult + (1-mult)*xyz[q];
 					image = m->CreateNode(xyz);
 					new_nodes++;
@@ -218,7 +218,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 								target[qq] = source[qq];
 						}
 					
-					for(int q = 0; q < n_cells.size(); q++)
+					for(INMOST_DATA_ENUM_TYPE q = 0; q < n_cells.size(); q++)
 					{
 						if( n_cells[q].IntegerDF(indexes) == nums[k] )
 						{
@@ -399,7 +399,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				Cell c = it->BackCell();
 				images = c->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlighted by marker
-				for(int q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
 				{
 					Node n;
 					for(int k = 0; k < (int)images.size() && !n.isValid(); k+=2)
@@ -409,7 +409,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				}
 				else nodesb[q] = nodes[q];
 				//create edges
-				for(int k = 0; k < edges.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); k++)
 				{
 					if( nodes[k].GetMarker(isFracture()) || nodes[(k+1)%N].GetMarker(isFracture()) )
 					{
@@ -456,7 +456,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				Cell c = it->FrontCell();
 				images = c->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlited by marker
-				for(int q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
 				{
 					Node n;
 					for(int k = 0; k < (int)images.size() && !n.isValid(); k+=2)
@@ -466,7 +466,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				}
 				else nodesf[q] = nodes[q];
 				//create edges
-				for(int k = 0; k < edges.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); k++)
 				{
 					if( nodes[k].GetMarker(isFracture()) || nodes[(k+1)%N].GetMarker(isFracture()) )
 					{
@@ -509,7 +509,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				//now create fracture-fracture faces
 				//HERE NODES MAY BE SIMILAR
 				ElementArray<Edge> f_edges(m);
-				for(int k = 0; k < edges.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); k++)
 				{
 					Storage::real ecnt[3];
 					if( edges[k].nbAdjElements(FACE,isFracture()) > 2 ) // more then 2 faces merge at this edge
@@ -649,7 +649,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 				fracfaces.push_back(facesf);
 				//now create fracture-fracture faces
 				ElementArray<Edge> f_edges(m);
-				for(int k = 0; k < edges.size(); k++)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); k++)
 				{
 					if( edges[k].nbAdjElements(FACE,isFracture()) > 2 || nodes[k].GetMarker(isFracture()) || nodes[(k+1)%N].GetMarker(isFracture()) ) // more then 2 faces merge at this edge
 					{
@@ -883,14 +883,14 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			ElementArray<Face> fracfaces(m);
 			ElementArray<Node> nodes = it->getNodes(), enodes(m,1);
 			ElementArray<Edge> edges(m,2), edgesb(m,2), edgesf(m,2);
-			INMOST_DATA_ENUM_TYPE N = (INMOST_DATA_ENUM_TYPE)nodes.size();
+			//~ INMOST_DATA_ENUM_TYPE N = (INMOST_DATA_ENUM_TYPE)nodes.size();
 			Storage::reference_array images;
 			edges[0] = nodes[0]->getEdges()[0];
 			edges[1] = nodes[1]->getEdges()[0];
 			{
 				images = it->BackCell()->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlighted by marker
-				for(int q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
 				{
 					Node n;
 					for(int k = 0; k < (int)images.size() && !n.isValid(); k+=2)
@@ -933,7 +933,7 @@ void Fracture::Open(Tag aperture, bool fill_fracture, double gap_multiplier)
 			{
 				images = it->FrontCell()->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlited by marker
-				for(int q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
+				for(INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); ++q) if( nodes[q].GetMarker(isFracture()) )
 				{
 					Node n;
 					for(int k = 0; k < (int)images.size() && !n.isValid(); k+=2)

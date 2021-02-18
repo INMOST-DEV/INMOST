@@ -93,11 +93,11 @@ namespace INMOST
 		}
 	}
 	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
-	: jacobian(name,start,end,_comm),residual(name,start,end,_comm), hessian(name,0,0,_comm)
+	: hessian(name,0,0,_comm),jacobian(name,start,end,_comm),residual(name,start,end,_comm)
 	{
 	}
 	Residual::Residual(const Residual & other)
-	: jacobian(other.jacobian), residual(other.residual), hessian(other.hessian)
+	: hessian(other.hessian),jacobian(other.jacobian), residual(other.residual)
 	{
 	}
 	

@@ -109,7 +109,7 @@ int main(int argc, char ** argv)
 				double c0[3];
 				it->Centroid(c0);
 
-				for(int k = 0; k < nodes.size(); ++k)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < nodes.size(); ++k)
 				{
 					
 					//inverse normal

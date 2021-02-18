@@ -194,15 +194,15 @@ bool check_intersect(const std::vector<segment> & segmentsa, const std::vector<s
 	if( print )
 	{
 		std::cout << "segments [" << segmentsa.size() << "]:" << std::endl;
-		for(int k = 0; k < segmentsa.size(); ++k)
+		for(size_t k = 0; k < segmentsa.size(); ++k)
 			std::cout << "(" << segmentsa[k].beg[0] << "," << segmentsa[k].beg[1] << ",0) <-> (" << segmentsa[k].end[0] << "," << segmentsa[k].end[1] << ",0)" << std::endl;
 		std::cout << "joints [" << segmentsb.size() << "]:" << std::endl;
-		for(int k = 0; k < segmentsb.size(); ++k)
+		for(size_t k = 0; k < segmentsb.size(); ++k)
 			std::cout << "(" << segmentsb[k].beg[0] << "," << segmentsb[k].beg[1] << ",0) <-> (" << segmentsb[k].end[0] << "," << segmentsb[k].end[1] << ",0)" << std::endl;
 	}
-	for(int i = 0; i < (int)segmentsb.size(); ++i)
+	for(size_t i = 0; i < segmentsb.size(); ++i)
 	{
-		for(int j = 0; j < (int)segmentsa.size(); ++j)
+		for(size_t j = 0; j < segmentsa.size(); ++j)
 		{
 			if( print ) std::cout << "check segment " << j << " and joint " << i << std::endl;
 			if( intersect_segments(segmentsa[j],segmentsb[i],print) )
@@ -227,7 +227,7 @@ bool check_dropout(const std::vector<node> & loop, const std::vector<segment> & 
 
 		int    cn = 0;    // the  crossing number counter
 		// loop through all edges of the polygon
-		for (int j = 0; j < loop.size()-1; j++)  // edge from V[i]  to V[i+1]
+		for (size_t j = 0; j < loop.size()-1; j++)  // edge from V[i]  to V[i+1]
 		{
 			real px = cnt[0];
 			real py = cnt[1];
@@ -344,7 +344,7 @@ int main(int argc, char ** argv)
 	MarkerType centernode = m.CreateMarker();
 	std::vector<segment> segments, joints;
 	std::vector<node> loop;
-	tiny_map<HandleType,real,16> hits;
+	std::map<HandleType,real> hits;
 	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], fcnt[3], ray[3], orthx[3], orthy[3], d, nd;
 	//for(Mesh::iteratorNode it = m.BeginNode(); it != m.EndNode(); ++it)
 	for(ElementArray<Node>::iterator it = nodes_rcm.begin(); it != nodes_rcm.end(); ++it)
@@ -381,7 +381,6 @@ int main(int argc, char ** argv)
 				//check that all the edges are visible from the node
 				for(ElementArray<Face>::iterator kt = faces.begin(); kt != faces.end() && !fail; ++kt) if( kt->GetMarker(sharenode) && kt->GetGeometricType() != Element::Tri ) //skip tris
 				{
-					int id = kt->LocalID();
 					if( kt->Reference(divnode) == *it ) continue; //already chosen
 					kt->UnitNormal(nrm);
 					kt->Centroid(cnt);
@@ -448,7 +447,7 @@ int main(int argc, char ** argv)
 						ray[2] = fcnt[2]-cnt[2];
 						it->CastRay(cnt,ray,hits);
 						int counter = 0;
-						for(tiny_map<HandleType,real,16>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
+						for(std::map<HandleType,real>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
 							if( qt->second > 1.0e-5 ) counter++;
 						if( counter > 1 ) //expect only one hit
 							fail = true;
@@ -517,7 +516,6 @@ int main(int argc, char ** argv)
 			//check that some face node is suitable
 			for(ElementArray<Node>::iterator mt = face_nodes.begin(); mt != face_nodes.end() && !success; ++mt)
 			{
-				int id = it->LocalID();
 				//check that the node sees centers of all segments
 				for(ElementArray<Edge>::iterator qt = face_edges.begin(); qt != face_edges.end(); ++qt)
 				{
@@ -581,7 +579,7 @@ int main(int argc, char ** argv)
 			ray[2] = fcnt[2]-cnt[2];
 			it->CastRay(cnt,ray,hits);
 			int counter = 0;
-			for(tiny_map<HandleType,real,16>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
+			for(std::map<HandleType,real>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
 				if( qt->second > 1.0e-5 ) counter++;
 			if( counter > 1 ) //expect only one hit
 				fail = true;
@@ -689,12 +687,12 @@ int main(int argc, char ** argv)
 					ray[2] = fcnt[2]-cnt[2];
 					it->CastRay(cnt,ray,hits);
 					int counter = 0;
-					for(tiny_map<HandleType,real,16>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
+					for(std::map<HandleType,real>::iterator qt = hits.begin(); qt != hits.end(); ++qt)
 						if( qt->second > 1.0e-5 ) counter++;
 					if( counter > 1 ) //expect only one hit
 					{
 						std::cout << "FACE:" << jt->LocalID() << " of CELL:" << it->LocalID() << " hits: " << counter << std::endl;
-						for(tiny_map<HandleType,real,16>::iterator qt = hits.begin(); qt != hits.end(); ++qt) //if( qt->second > 1.0e-5 )
+						for(std::map<HandleType,real>::iterator qt = hits.begin(); qt != hits.end(); ++qt) //if( qt->second > 1.0e-5 )
 							std::cout << "intersect " << ElementTypeName(GetHandleElementType(qt->first)) << ":" << GetHandleID(qt->first) << " at " << qt->second << std::endl;
 
 						//use_tetgen = true;
@@ -705,7 +703,7 @@ int main(int argc, char ** argv)
 				node_faces.RemMarker(sharenode);
 				if( !use_tetgen )
 				{
-				backup:
+				//~ backup:
 					//mark all edges that emerge from the divisor node
 					ElementArray<Edge> node_edges = div.getEdges();
 					node_edges.SetMarker(sharenode);

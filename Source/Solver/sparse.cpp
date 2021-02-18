@@ -1340,7 +1340,7 @@ namespace INMOST
 
 ////////class HessianMatrix
 
-		void     HessianMatrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend, std::string file_ord)
+		void     HessianMatrix::Load(std::string file, INMOST_DATA_ENUM_TYPE mbeg, INMOST_DATA_ENUM_TYPE mend)
 		{
 			char str[16384];
 			std::ifstream input(file.c_str());

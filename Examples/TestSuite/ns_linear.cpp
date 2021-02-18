@@ -22,6 +22,7 @@ typedef Storage::real real;
 
 vMatrix refUVW(real vx, real vy, real vz, real t, real nu)
 {
+	(void) t,(void)nu;
 	unknown x(vx,0);
 	unknown y(vy,1);
 	unknown z(vz,2);
@@ -34,17 +35,18 @@ vMatrix refUVW(real vx, real vy, real vz, real t, real nu)
 
 variable refP(real x, real y, real z, real t, real nu)
 {
+	(void)x,(void)y,(void)z,(void)t,(void)nu;
 	return 0;
 }
 
 
-static real refq(real vx, real vy, real vz, real t, real nu, const rMatrix & n)
+real refq(real vx, real vy, real vz, real t, real nu, const rMatrix & n)
 {
 	rMatrix UVW = refUVW(vx,vy,vz,t,nu);
 	return n.DotProduct(UVW);
 }
 
-static rMatrix reft(real vx, real vy, real vz, real t, real nu, real rho, const rMatrix & n)
+rMatrix reft(real vx, real vy, real vz, real t, real nu, real rho, const rMatrix & n)
 {
 	static const rMatrix I = rMatrix::Unit(3);
 	rMatrix N;

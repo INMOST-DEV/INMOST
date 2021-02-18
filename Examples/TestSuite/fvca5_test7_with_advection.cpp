@@ -19,7 +19,7 @@ int main(int argc, char ** argv)
 	m->SetFileOption("VERBOSITY","2");
 	try{m->Load(argv[1]);} catch(...) { std::cout << "Cannot load the mesh " << argv[1] << std::endl; return -1;}
 	
-	Storage::real sigma = 0.2, y_low = 0.25, y_high = 0.5, alpha = 0.15;
+	Storage::real sigma = 0.2, y_low = 0.25, y_high = 0.5;
 	
 	if( argc > 3 ) sigma = atof(argv[3]);
 	
@@ -180,7 +180,7 @@ int main(int argc, char ** argv)
 		Storage::real x = c[0];//(c[0]-min[0])/(max[0]-min[0]);
 		Storage::real y = c[1];//(c[1]-min[1])/(max[1]-min[1]);
 		Storage::real z = c[2];//(c[2]-min[2])/(max[2]-min[2]);
-		Storage::real r = 1;//sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5));
+			//~ Storage::real r = 1;//sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5));
 		//Storage::real vel[3] = {-(y-0.5)/(r*r)*velmult,(x-0.5)/(r*r)*velmult,0.0};
 		Storage::real vel[3] = {-0.5*velmult,velmult,0.0};
 

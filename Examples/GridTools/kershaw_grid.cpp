@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   Mesh * mesh;
-    double alpha = 0.1, L = 1;//, rm = L, zm = L;
+    double alpha = 0.1;//, L = 1;//, rm = L, zm = L;
   int nz = 2;
   int n = 20;
   if (argc > 1) 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
   if( alpha < eps || alpha > 1-eps )
   {
-    printf("Bad alpha %g, should be %g < alpha < 1-%g\n",alpha,eps,eps);
+    std::cout << "Bad alpha " << alpha << ", should be " << eps << " < alpha < 1-" << eps << "\n";
     return -1;
   }
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
   }
   else
   {
-    printf("n should be a multiply of 20 but n is %d\n",n);
+    std::cout << "n should be a multiply of 20 but n is " << n << "\n";
     return -1;
   }
 
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
       ymid = slope1 * (x - 0.65) + alpha;
     else if( i <= nsub[4] )
       ymid = 1-alpha;
-    else printf("%s:%d oops!\n",__FILE__,__LINE__);
+    else std::cout << __FILE__ << ":" << __LINE__ << " oops!\n";
 
     for(int j = 0; j < n/2; ++j)
     {
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
         xyz[1] = z[i*n+j];
         xyz[2] = k * 1.0 / (nz - 1);
         Node c = mesh->CreateNode(xyz);
-        if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+        if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i,j,k) << "\n";
       }
     }
   }
@@ -148,13 +148,13 @@ int main(int argc, char *argv[])
   mesh_name = str.str();
   name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
-  printf("I'm ready!\n");
+  std::cout << "I'm ready!\n";
 
   mesh->Save("grid.vtk");
   mesh->Save("grid.pmf");
   mesh->Save("grid.gmv");
 
-  printf("File written!\n");
+  std::cout << "File written!\n";
 
   delete mesh;
   return 0;

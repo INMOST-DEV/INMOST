@@ -219,7 +219,7 @@ void Band(int n, int r, Sparse::Matrix & A)
 
     int ndiag = 2*r + 1;
     if (ndiag > n) ndiag = n;
-    unsigned idmax, idmin, block = n / nproc;
+    int idmax, idmin, block = n / nproc;
     idmin = myid * block;
     idmax = idmin + block;
     if (myid == nproc-1) idmax = n;

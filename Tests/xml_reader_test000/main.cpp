@@ -39,6 +39,7 @@ const std::string xml_string = "<SolverParameters>\n"
         "</SolverParameters>\n";
 
 int main(int argc, char **argv) {
+	(void)argc,(void)argv;
     std::stringstream input(xml_string);
 
     assert(!input.fail());

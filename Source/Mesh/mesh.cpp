@@ -149,8 +149,9 @@ namespace INMOST
 		return "UNKNOWN";
 	}
 
-	void Mesh::Init(std::string name)
+	void Mesh::Init(std::string _name)
 	{
+		name = _name;
 #if defined(CHECKS_MARKERS)
 		check_shared_mrk = true;
 		check_private_mrk = true;
@@ -1893,7 +1894,6 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE data_pos = t->GetPositionByDim(etypenum);
 				if( data_pos == ENUMUNDEF ) continue;
 				TagManager::dense_sub_type & arr = GetDenseData(data_pos);
-				INMOST_DATA_ENUM_TYPE record_size = t->GetRecordSize();
 				TagManager::CopyData(*t,static_cast<void *>(&arr[new_addr]),static_cast<void *>(&arr[old_addr]));
 				DelDenseData(static_cast<void *>(&arr[old_addr]),*t);
 			}
@@ -2570,6 +2570,7 @@ namespace INMOST
 		c = 12345;
 		m = 1u << (sizeof(unsigned int)*8-1);
 	}
+	/*
 	Mesh::Random::Random(const Random & other)
 	{
 		n = other.n;
@@ -2577,6 +2578,7 @@ namespace INMOST
 		c = other.c;
 		m = other.m;
 	}
+	*/
 	unsigned int Mesh::Random::Number()
 	{
 		n = (a*n + c)%m;

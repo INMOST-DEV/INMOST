@@ -79,7 +79,7 @@ namespace INMOST
 				keynum = 0; fwrite(&keynum,sizeof(Storage::integer),1,file);
 				for(std::set<Storage::integer>::iterator it = mat.begin(); it != mat.end(); it++)
 				{
-					sprintf(keyword,"mat%d",*it); fwrite(keyword,1,8,file);
+					sprintf(keyword,"mat%d",static_cast<int>(*it)); fwrite(keyword,1,8,file);
 				}
 				for(Mesh::iteratorCell c = BeginCell(); c != EndCell(); c++)
 				{

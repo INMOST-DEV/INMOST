@@ -131,11 +131,11 @@ namespace INMOST
 			std::cout << __FILE__ << ":" << __LINE__ << " Expected 3 entries in velocity field for streamlines" << std::endl;
 			return;
 		}
-		printf("preparing octree around mesh, was sets %d\n", mesh->NumberOfSets());
+		printf("preparing octree around mesh, was sets %d\n", (int)mesh->NumberOfSets());
 		//~ SearchKDTree octsearch(mesh);
 		Octree octsearch = Octree(mesh->CreateSet("octsearch").first);
 		octsearch.Construct(vel_def, false); //auto-detect octree or quadtree
-		printf("done, sets %d\n", mesh->NumberOfSets());
+		printf("done, sets %d\n", (int)mesh->NumberOfSets());
 		printf("building streamlines\n");
 		Tag cell_size = mesh->CreateTag("STREAMLINES_TEMPORARY_CELL_SIZES", DATA_REAL, CELL, NONE, 1);
 		Storage::real velmax = 0, velmin = 1.0e20, l;
@@ -258,15 +258,16 @@ namespace INMOST
 		}
 		mesh->DeleteTag(cell_size);
 		printf("done, total streamlines = %lu\n", output.size());
-		printf("killing octree, was sets %d\n", mesh->NumberOfSets());
+		printf("killing octree, was sets %d\n", (int)mesh->NumberOfSets());
 		octsearch.Destroy();
-		printf("done, sets %d\n", mesh->NumberOfSets());
+		printf("done, sets %d\n", (int)mesh->NumberOfSets());
 
 	}
 
 
 	Streamline::Streamline(const Octree & octsearch, coord pos, Tag velocity_tag, ElementType velocity_defined, Tag cell_size, Storage::real velocity_min, Storage::real velocity_max, Storage::real sign, MarkerType visited)
 	{
+		(void)cell_size;
 		Storage::real coef, len, size;
 		coord next = pos, vel;
 		Element c;

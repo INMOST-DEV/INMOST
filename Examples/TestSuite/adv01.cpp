@@ -22,6 +22,7 @@ real slot_r = disc_cx + slot_w*0.5;
 
 real zalesak_shape(real * coord, real time)
 {
+	(void)time;
 	real x = (coord[0]-min[0])/(max[0]-min[0]); //normalize x into [0,1]
 	real y = (coord[1]-min[1])/(max[1]-min[1]); //normalize y into [0,1]
 

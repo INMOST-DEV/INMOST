@@ -118,7 +118,7 @@ namespace INMOST
 		uconv.write_iValue(out,header[6]);
 		REPORT_STR("TagsHeader");
 		REPORT_VAL("tag_size",header[6]);
-		int tags_written = 0;
+		INMOST_DATA_ENUM_TYPE tags_written = 0;
 		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
 		{
 			//SKIPHERE
@@ -389,7 +389,6 @@ namespace INMOST
 										//~ std::cout << "Saving " << jt->GetTagName() << " without derivatives" << std::endl;
 										for(k = 0; k < recsize; k++)
 										{
-											const Sparse::Row & r = arr[k].GetRow();
 											uconv.write_fValue(out,arr[k].GetValue());
 											uconv.write_iValue(out,0);
 										}
@@ -592,7 +591,7 @@ namespace INMOST
 				verbosity = atoi(file_options[k].second.c_str());
 				if( verbosity < 0 || verbosity > 2 )
 				{
-					printf("%s:%d Unknown verbosity option: %s\n",__FILE__,__LINE__,file_options[k].second.c_str());
+					std::cout << __FILE__ << ":" << __LINE__ << " Unknown verbosity option: " << file_options[k].second << "\n";
 					verbosity = 1;
 				}
 			}
@@ -1110,7 +1109,7 @@ namespace INMOST
 					char name[4096];
 					char datatype;
 					char sparsemask,definedmask;
-					INMOST_DATA_ENUM_TYPE datalength;
+					uint64_t datalength;
 					uconv.read_iValue(in,namesize);
 					in.read(name, namesize);
 					assert(namesize < 4096);
@@ -1125,24 +1124,37 @@ namespace INMOST
 					//  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
 					//  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
 					//}
-					uconv.read_iValue(in,datalength);
+					uconv.read_iValue_uint64_t(in,datalength);
 					REPORT_VAL("length",datalength);
 					
 					
+					{
+						uint64_t undef;
+						if( sizeof(uint8_t) == uconv.get_source_iByteSize() )
+							undef = uint8_t(~uint8_t(0));
+						else if( sizeof(uint16_t) == uconv.get_source_iByteSize() )
+							undef = uint16_t(~uint16_t(0));
+						else if( sizeof(uint32_t) == uconv.get_source_iByteSize() )
+							undef = uint32_t(~uint32_t(0));
+						if( sizeof(uint64_t) == uconv.get_source_iByteSize() )
+							undef = uint64_t(~uint64_t(0));
+						if( datalength == undef )
+							datalength = ENUMUNDEF;
+					}
 					
 					tags_skip[i] = false;
 					tags_dtype[i] = static_cast<DataType>(datatype);
 					tags_defined[i] = static_cast<ElementType>(definedmask);
 					tags_sparse[i] = static_cast<ElementType>(sparsemask);
 					tags_name[i] = std::string(name);
-					tags_sizes[i] = datalength;
+					tags_sizes[i] = (INMOST_DATA_ENUM_TYPE)datalength;
 					
 					tags_skip[i] = CheckLoadSkip(tags_name[i],noload,loadonly);
 					
 					if( !tags_skip[i] ) 
 						tags[i] = CreateTag(std::string(name),static_cast<DataType>(datatype),
 											static_cast<ElementType>(definedmask),
-											static_cast<ElementType>(sparsemask),datalength);
+											static_cast<ElementType>(sparsemask),static_cast<INMOST_DATA_ENUM_TYPE>(datalength));
 					
 					REPORT_VAL("output position, tag " << i,in.tellg());
 				}

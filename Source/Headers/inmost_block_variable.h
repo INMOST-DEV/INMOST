@@ -258,10 +258,10 @@ namespace INMOST
 	public:
 		/// Constructor. Used by etype_branch function.
 		etype_branch_block_variable(ElementType _types_true, const abstract_dynamic_block_variable & _ArgA, const abstract_dynamic_block_variable & _ArgB)
-		: types_true(_types_true), ArgA(_ArgA), ArgB(_ArgB) {}
+		: ArgA(_ArgA), ArgB(_ArgB), types_true(_types_true) {}
 		/// Copy constructor.
 		etype_branch_block_variable(const etype_branch_block_variable & other)
-		: types_true(other.types_true), ArgA(other.ArgA), ArgB(other.ArgB) {}
+		: ArgA(other.ArgA), ArgB(other.ArgB), types_true(other.types_true) {}
 		/// Assignment operator.
 		etype_branch_block_variable & operator =(etype_branch_block_variable const & other)
 		{
@@ -292,9 +292,9 @@ namespace INMOST
 		MarkerType marker; //< Marker.
 	public:
 		/// Constructor. Used by marker_branch function.
-		marker_branch_block_variable(MarkerType _marker, const abstract_dynamic_block_variable & _ArgA, const abstract_dynamic_block_variable & _ArgB) : marker(_marker), ArgA(_ArgA), ArgB(_ArgB) {}
+		marker_branch_block_variable(MarkerType _marker, const abstract_dynamic_block_variable & _ArgA, const abstract_dynamic_block_variable & _ArgB) : ArgA(_ArgA), ArgB(_ArgB), marker(_marker) {}
 		/// Copy constructor.
-		marker_branch_block_variable(const marker_branch_block_variable & other) : marker(other.marker), ArgA(other.ArgA), ArgB(other.ArgB) {}
+		marker_branch_block_variable(const marker_branch_block_variable & other) : ArgA(other.ArgA), ArgB(other.ArgB), marker(other.marker) {}
 		/// Assignment operator.
 		marker_branch_block_variable & operator =(marker_branch_block_variable const & other)
 		{

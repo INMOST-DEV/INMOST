@@ -69,7 +69,7 @@ namespace INMOST
 		}
 	}
 
-	face2gl::face2gl() :verts(), colors(), texcoords() 
+	face2gl::face2gl() 
 	{ 
 		etype = NONE; 
 		id = 0; 
@@ -164,7 +164,7 @@ namespace INMOST
 	void face2gl::svg_draw_colour(std::ostream & file, bool drawedges, double modelview[16], double projection[16], int viewport[4]) const
 	{
 		int height = glutGet(GLUT_WINDOW_HEIGHT);
-		static int shape_id = 0;
+		//~ static int shape_id = 0;
 		if (colors.empty() && texcoords.empty())
 		{
 			double pcntx, pcnty, z;
@@ -320,7 +320,7 @@ namespace INMOST
 		{
 			if (colors.empty())
 			{
-				double cc[4] = {c[0],c[1],c[2],alpha};
+				//~ double cc[4] = {c[0],c[1],c[2],alpha};
 				//glColor4dv(c);
 				for (unsigned k = 0; k < verts.size(); k += 3)
 				{

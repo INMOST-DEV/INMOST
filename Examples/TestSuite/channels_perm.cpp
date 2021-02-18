@@ -60,12 +60,12 @@ int main(int argc, char ** argv)
         name.replace(name.begin(),name.end(),problem_name.begin(),problem_name.end());
     }
     
-    Storage::real Kx0 = 1000.0, Ky0 = 100.0, Kz0 = 100.0, Reduction = 0.001;
+    Storage::real Kx0 = 1000.0, Ky0 = 100.0, Kz0 = 100.0;//, Reduction = 0.001;
     
     if( argc > 3 ) Kx0 = atof(argv[3]);
     if( argc > 4 ) Ky0 = atof(argv[4]);
     if( argc > 5 ) Kz0 = atof(argv[5]);
-    if( argc > 6 ) Reduction = atof(argv[6]);
+    //~ if( argc > 6 ) Reduction = atof(argv[6]);
     
     double params[5][6] =  //shift, channel width, amplitude1, phase1, amplitude2, phase2, f(x) = x + shift + amplitude1*sin(phase1*x) + amplitude2*sin(phase2*x)
     {

@@ -285,7 +285,7 @@ namespace INMOST
 		double px2, py2;
 		int height = glutGet(GLUT_WINDOW_HEIGHT);
 		
-		for (int i = 0; i < ticks.size() - 1; ++i)
+		for (size_t i = 0; i < ticks.size() - 1; ++i)
 		{
 			file << "<g>" << std::endl;
 			colors[i].set_color();

@@ -60,7 +60,7 @@ namespace INMOST
 		bool empty = true;
 		do
 		{
-			for(int k = 0; k < strlen(readline); ++k)
+			for(size_t k = 0; k < strlen(readline); ++k)
 				if( !isspace(readline[k]) ) empty = false;
 			if( empty )
 			{
@@ -102,7 +102,6 @@ namespace INMOST
 							throw BadFile;
 					}
 				}
-				//else printf("Unknown metadata field %s\n",readline);
 			}
 		}
 	}
@@ -163,16 +162,18 @@ namespace INMOST
 		integer dim = GetDimensions();
 		if( dim > 3 )
 		{
-			printf("VTK file supports 3 dimensions max\n");
+			std::cout << "VTK file supports 3 dimensions max" << std::endl;
 			return;
 		}
-		FILE * f = fopen(File.c_str(),"w");
-		if( !f ) throw BadFileName;
-		fprintf(f,"# vtk DataFile Version 3.0\n");
-		if (this->GetFileOption("VTK_OUTPUT_FACES") == "1") fprintf(f, "VTK_OUTPUT_FACES file is written by INMOST\n");
-		else fprintf(f,"file is written by INMOST\n");
-		fprintf(f,"ASCII\n");
-		fprintf(f,"DATASET UNSTRUCTURED_GRID\n");
+		std::ofstream f(File.c_str());
+		//~ FILE * f = fopen(File.c_str(),"w");
+		//~ if( !f ) throw BadFileName;
+		if( f.fail() ) throw BadFileName;
+		f << "# vtk DataFile Version 3.0\n";
+		if (this->GetFileOption("VTK_OUTPUT_FACES") == "1") f << "VTK_OUTPUT_FACES file is written by INMOST\n";
+		else f << "file is written by INMOST\n";
+		f << "ASCII\n";
+		f << "DATASET UNSTRUCTURED_GRID\n";
 
 		bool output_faces = false;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
@@ -198,18 +199,18 @@ namespace INMOST
 
 		if (output_faces) for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
 
-		fprintf(f, "POINTS %u double\n", NumberOfNodes());
+		f << "POINTS " << NumberOfNodes() << " double\n";
 		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 		{
 			Storage::real_array coords = it->RealArray(CoordsTag());
 			for(integer i = 0; i < dim; i++) 
 			{
 				double temp = coords[i];
-				fprintf(f,"%.10f ",temp);
+				f << temp << " ";
 			}
 			for(integer i = dim; i < 3; i++)
-				fprintf(f,"0 ");
-			fprintf(f,"\n");
+				f << "0 ";
+			f << "\n";
 		}
 		{
 			dynarray<int,64> values;
@@ -290,7 +291,7 @@ namespace INMOST
 					case Element::MultiPolygon:
 					{
 safe_output:
-						//printf("polyhedron!!!\n");
+						
 						ElementArray<Face> faces = it->getFaces();
 						integer totalNum = 1 + static_cast<integer>(faces.size());
                         for(ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); jt++)
@@ -310,7 +311,7 @@ safe_output:
 						}
 						break;
 					}
-					default: printf("This should not happen %s\n",Element::GeometricTypeName(it->GetGeometricType()));
+					default: std::cout << __FILE__ << ":" << __LINE__ << " This should not happen " << Element::GeometricTypeName(it->GetGeometricType()) << std::endl;
 				}
 			}
 			if (output_faces)
@@ -338,42 +339,42 @@ safe_output:
 							values.push_back(jt->IntegerDF(set_id));
 						break;
 					}
-					default: printf("This should not happen %s\n", Element::GeometricTypeName(it->GetGeometricType()));
+					default: std::cout << __FILE__ << ":" << __LINE__ << " This should not happen " << Element::GeometricTypeName(it->GetGeometricType()) << std::endl;
 					}
 				}
-				fprintf(f, "CELLS %u %d\n", NumberOfCells() + NumberOfFaces(), (int)values.size());
+				f << "CELLS " << NumberOfCells() + NumberOfFaces() << " " << values.size() << "\n";
 			}
 			else
-				fprintf(f, "CELLS %u %d\n", NumberOfCells(), (int)values.size());
+				f << "CELLS " << NumberOfCells() << " " << values.size() << "\n";
 
 			for(dynarray<Storage::integer,64>::size_type i = 0; i < values.size(); i++)
 			{
-				fprintf(f,"%d ",values[i]);
-				if( (i+1) % 20 == 0) fprintf(f,"\n");
+				f << values[i] << " ";
+				if( (i+1) % 20 == 0) f << "\n";
 			}
-			fprintf(f,"\n");
+			f << "\n";
 		}
 		if (output_faces)
-			fprintf(f, "CELL_TYPES %u\n", NumberOfCells() + NumberOfFaces());
+			f << "CELL_TYPES " << NumberOfCells() + NumberOfFaces() << "\n";
 		else 			
-			fprintf(f, "CELL_TYPES %u\n", NumberOfCells());
+			f << "CELL_TYPES " << NumberOfCells() << "\n";
 
 		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 		{
 			INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
 			if( nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE) ) //nodes match - output correct type
-				fprintf(f,"%d\n",VtkElementType(it->GetGeometricType()));
+				f << VtkElementType(it->GetGeometricType()) << "\n";
 			else //number of nodes mismatch with expected - some topology checks must be off
-				fprintf(f,"%d\n",VtkElementType(Element::MultiPolygon));
+				f << VtkElementType(Element::MultiPolygon) << "\n";
 		}
 		if (output_faces){
 			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
 			{
 				INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
 				if (nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE)) //nodes match - output correct type
-					fprintf(f, "%d\n", VtkElementType(it->GetGeometricType()));
+					f << VtkElementType(it->GetGeometricType()) << "\n";
 				else //number of nodes mismatch with expected - some topology checks must be off
-					fprintf(f, "%d\n", VtkElementType(Element::MultiPolygon));
+					f << VtkElementType(Element::MultiPolygon) << "\n";
 			}
 		}
 		DeleteTag(set_id);
@@ -384,7 +385,6 @@ safe_output:
 			for(unsigned int i = 0; i < tag_names.size(); i++)
 			{
 				Tag t = GetTag(tag_names[i]);
-				//printf("%s %d %d %d\n",tag_names[i].c_str(),t.isDefined(CELL),!t.isSparse(CELL),t.GetDataType() != DATA_BULK);
 				if (((t.isDefined(CELL) /*&& !t.isSparse(CELL)*/)
 					|| (t.isDefined(FACE) && output_faces)) &&
 						t.GetPrint() && //Temporary solution: @see Mesh::file_option
@@ -397,7 +397,6 @@ safe_output:
 						t != ProcessorsTag())
 				{
 					bool skip = CheckSaveSkip(tag_names[i],nosave,saveonly);
-					//printf("added!\n");
 					if( !skip )
 						tags.push_back(t);
 				}
@@ -405,18 +404,15 @@ safe_output:
 				
 			if (!tags.empty() && output_faces) 
 			{ 
-				fprintf(f, "CELL_DATA %u\n", NumberOfCells() + NumberOfFaces()); 
+				f << "CELL_DATA " << NumberOfCells() + NumberOfFaces() << "\n"; 
 			}
-			else if (!tags.empty())fprintf(f, "CELL_DATA %u\n", NumberOfCells());
+			else if (!tags.empty()) f << "CELL_DATA " << NumberOfCells() << "\n";
 
-			for(unsigned int i = 0; i < tags.size(); i++)
+			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
 			{
-				unsigned int comps = tags[i].GetSize();
+				INMOST_DATA_ENUM_TYPE comps = tags[i].GetSize();
 				if( comps == ENUMUNDEF )
-				{
-					//printf("Warning: vtk don't support arrays of variable size (tag name: %s)\n",tags[i].GetTagName().c_str());
 					continue;
-				}
 				else
 				{
 					{
@@ -426,8 +422,8 @@ safe_output:
 						   || tags[i].GetDataType() == DATA_VARIABLE
 #endif
 						   ) type_str = "double";
-						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
-						fprintf(f,"LOOKUP_TABLE default\n");
+						f << "SCALARS " << Space2Underscore(tags[i].GetTagName()) << " " << type_str << " " << comps << "\n";
+						f << "LOOKUP_TABLE default\n";
 						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 						{
 							switch (tags[i].GetDataType())
@@ -440,11 +436,11 @@ safe_output:
 									for (unsigned int m = 0; m < comps; m++)
 									{
 										double val = static_cast<double>(arr[m]);
-										fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+										f << (__isbad(val) ? -0.9999E30 : val) << " ";
 									}
 								}
-								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-								fprintf(f, "\n");
+								else for (unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
+								f << "\n";
 							}
 							break;
 							case DATA_INTEGER:
@@ -452,10 +448,10 @@ safe_output:
 								if (tags[i].isDefined(CELL) && it->HaveData(tags[i]))
 								{
 									Storage::integer_array arr = it->IntegerArray(tags[i]);
-									for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+									for (unsigned int m = 0; m < comps; m++) f << arr[m] << " ";
 								}
-								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
-								fprintf(f, "\n");
+								else for (unsigned int m = 0; m < comps; m++) f << INT_MIN << " ";
+								f << "\n";
 							}
 							break;
 #if defined(USE_AUTODIFF)
@@ -467,11 +463,11 @@ safe_output:
 									for (unsigned int m = 0; m < comps; m++)
 									{
 										double val = static_cast<double>(arr[m].GetValue());
-										fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+										f << (__isbad(val) ? -0.9999E30 : val) << " ";
 									}
 								}
-								else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-								fprintf(f, "\n");
+								else for (unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
+								f << "\n";
 							}
 							break;
 #endif
@@ -492,10 +488,10 @@ safe_output:
 									if (tags[i].isDefined(FACE) && it->HaveData(tags[i]))
 									{
 										Storage::real_array arr = it->RealArray(tags[i]);
-										for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", arr[m]);
+										for (unsigned int m = 0; m < comps; m++) f << arr[m] << " ";
 									}
-									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-									fprintf(f, "\n");
+									else for (unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
+									f << "\n";
 								}
 								break;
 								case DATA_INTEGER:
@@ -503,10 +499,10 @@ safe_output:
 									if (tags[i].isDefined(FACE) && it->HaveData(tags[i]))
 									{
 										Storage::integer_array arr = it->IntegerArray(tags[i]);
-										for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ", arr[m]);
+										for (unsigned int m = 0; m < comps; m++) f << arr[m] << " ";
 									}
-									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
-									fprintf(f, "\n");
+									else for (unsigned int m = 0; m < comps; m++) f << INT_MIN << " ";
+									f << "\n";
 								}
 								break;
 #if defined(USE_AUTODIFF)
@@ -518,11 +514,11 @@ safe_output:
 										for (unsigned int m = 0; m < comps; m++)
 										{
 											double val = static_cast<double>(arr[m].GetValue());
-											fprintf(f, "%14e ", __isbad(val) ? -0.9999E30 : val);
+											f << (__isbad(val) ? -0.9999E30 : val) << " ";
 										}
 									}
-									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%14e ", -0.9999E30);
-									fprintf(f, "\n");
+									else for (unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
+									f << "\n";
 								}
 								break;
 #endif
@@ -552,15 +548,12 @@ safe_output:
 					tags.push_back(t);
 			}
 				
-			if( !tags.empty() ) fprintf(f,"POINT_DATA %u\n",NumberOfNodes());
-			for(unsigned int i = 0; i < tags.size(); i++)
+			if( !tags.empty() ) f << "POINT_DATA " << NumberOfNodes() << "\n";
+			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
 			{
-				unsigned int comps = tags[i].GetSize();
+				INMOST_DATA_ENUM_TYPE comps = tags[i].GetSize();
 				if( comps == ENUMUNDEF )
-				{
-					//printf("Warning: vtk don't support arrays of variable size (tag name: %s)\n",tags[i].\().c_str());
 					continue;
-				}
 				else
 				{
 					{
@@ -570,8 +563,8 @@ safe_output:
 						   || tags[i].GetDataType() == DATA_VARIABLE
 #endif
 						   ) type_str = "double";
-						fprintf(f,"SCALARS %s %s %d\n",Space2Underscore(tags[i].GetTagName()).c_str(),type_str.c_str(),comps);
-						fprintf(f,"LOOKUP_TABLE default\n");
+						f << "SCALARS " << Space2Underscore(tags[i].GetTagName()) << " " << type_str << " " << comps << "\n";
+						f << "LOOKUP_TABLE default\n";
 						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
 						{
 							switch( tags[i].GetDataType() )
@@ -584,11 +577,11 @@ safe_output:
 										for(unsigned int m = 0; m < comps; m++)
 										{
 											double val = static_cast<double>(arr[m]);
-											fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+											f << (__isbad(val) ? -0.9999E30 : val) << " ";
 										}
-										fprintf(f,"\n");
+										f << "\n";
 									}
-									else for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",-0.9999E30);
+									else for(unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
 								}
 								break;
 								case DATA_INTEGER:
@@ -596,10 +589,10 @@ safe_output:
 									if (it->HaveData(tags[i]))
 									{
 										Storage::integer_array arr = it->IntegerArray(tags[i]);
-										for(unsigned int m = 0; m < comps; m++) fprintf(f,"%d ",arr[m]);
-										fprintf(f,"\n");
+										for(unsigned int m = 0; m < comps; m++) f << arr[m] << " ";
+										f << "\n";
 									}
-									else for (unsigned int m = 0; m < comps; m++) fprintf(f, "%d ",INT_MIN);
+									else for (unsigned int m = 0; m < comps; m++) f << INT_MIN << " ";
 								}
 								break;
 #if defined(USE_AUTODIFF)
@@ -611,11 +604,11 @@ safe_output:
 										for(unsigned int m = 0; m < comps; m++)
 										{
 											double val = static_cast<double>(arr[m].GetValue());
-											fprintf(f,"%14e ",(__isbad(val) ? -0.9999E30 : val));
+											f << (__isbad(val) ? -0.9999E30 : val) << " ";
 										}
-										fprintf(f,"\n");
+										f << "\n";
 									}
-									else for(unsigned int m = 0; m < comps; m++) fprintf(f,"%14e ",-0.9999E30);
+									else for(unsigned int m = 0; m < comps; m++) f << -0.9999E30 << " ";
 								}
 								break;
 #endif
@@ -626,7 +619,6 @@ safe_output:
 				}
 			}
 		}
-		fclose(f);	
 	}
 
 	void Mesh::LoadVTK(std::string File)
@@ -639,7 +631,7 @@ safe_output:
 				verbosity = atoi(file_options[k].second.c_str());
 				if( verbosity < 0 || verbosity > 2 )
 				{
-					printf("%s:%d Unknown verbosity option: %s\n",__FILE__,__LINE__,file_options[k].second.c_str());
+					std::cout << __FILE__ << ":" << __LINE__ << " Unknown verbosity option: " << file_options[k].second << std::endl;
 					verbosity = 1;
 				}
 			}
@@ -742,7 +734,6 @@ safe_output:
 				}
 				case R_USERDATA:
 				{
-					//printf("Attached info: %s\n",readline);
 					if (!strncmp(readline, "VTK_OUTPUT_FACES", 16)) this->SetFileOption("VTK_OUTPUT_FACES", "1");
 					state = R_DATATYPE;
 					break;
@@ -780,10 +771,10 @@ safe_output:
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," SCALARS %s %s %d",attrname,attrtype,&nentries);
 						bool skip = CheckLoadSkip(attrname,noload,loadonly);
-						if( verbosity > 0 ) printf("%s scalar attribute %s.\n",skip?"Skipping":"Reading",attrname);
+						if( verbosity > 0 ) std::cout << (skip?"Skipping":"Reading") << " scalar attribute " << attrname << std::endl;
 						if( filled < 2 ) 
 						{
-							printf("%s:%d found %d arguments to SCALARS field, must be >= 2\nline:\n%s\n",__FILE__,__LINE__,filled,readline); 
+							std::cout << __FILE__ << ":" << __LINE__ << " found " << filled << " arguments to SCALARS field, must be >= 2\nline:\n" << readline << "\n";
 							throw BadFile;
 						}
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
@@ -819,8 +810,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -850,8 +843,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 								datatags.push_back(attr);
@@ -870,8 +865,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -892,8 +889,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -912,7 +911,7 @@ safe_output:
 						char attrname[1024];
 						filled = sscanf(readline," COLOR_SCALARS %s %d",attrname,&nentries);
 						bool skip = CheckLoadSkip(attrname,noload,loadonly);
-						if( verbosity > 0 ) printf("%s color attribute %s.\n",skip?"Skipping":"Reading",attrname);
+						if( verbosity > 0 ) std::cout << (skip?"Skipping":"Reading") << " color attribute " << attrname << "\n";
 						if( read_into == 2 )
 						{
 							bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
@@ -922,10 +921,12 @@ safe_output:
 								for(unsigned int it = 0; it < newcells.size(); it++)
 								{
 									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-									if( verbosity > 1 && it%100 == 0)
+									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -940,10 +941,12 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									}
 									else for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
-									if( verbosity > 1 && it%100 == 0)
+									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*report_pace)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 								datatags.push_back(attr);
@@ -959,8 +962,10 @@ safe_output:
 									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -973,8 +978,10 @@ safe_output:
 									for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; attrdata[jt] = temp;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1009,7 +1016,7 @@ safe_output:
 						DataType t = DATA_BULK;
 						filled = sscanf(readline,"%*s %s %s",attrname,attrtype);
 						bool skip = CheckLoadSkip(attrname,noload,loadonly);
-						if( verbosity > 0 ) printf("%s %s attribute %s.\n",skip? "Skipping":"Reading",dataname,attrname);
+						if( verbosity > 0 ) std::cout << (skip? "Skipping":"Reading") << " " << dataname << " attribute " << attrname << "n";
 						if( filled != 2 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1035,8 +1042,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1065,8 +1074,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 								datatags.push_back(attr);
@@ -1085,8 +1096,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1107,8 +1120,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1131,7 +1146,7 @@ safe_output:
 						DataType t = DATA_BULK;
 						filled = sscanf(readline," TEXTURE_COORDINATES %s %d %s",attrname,&nentries,attrtype);
 						bool skip = CheckLoadSkip(attrname,noload,loadonly);
-						if( verbosity > 0 ) printf("%s texture coordinates attribute %s.\n",skip?"Skipping":"Reading",attrname);
+						if( verbosity > 0 ) std::cout << (skip?"Skipping":"Reading") << " texture coordinates attribute " << attrname << "\n";
 						if( filled != 3 ) throw BadFile;
 						for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 						if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1157,8 +1172,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1185,8 +1202,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newcells.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newcells.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 								datatags.push_back(attr);
@@ -1205,8 +1224,10 @@ safe_output:
 										for(int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile; }
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1227,8 +1248,10 @@ safe_output:
 									}
 									if( verbosity > 1 && it%report_pace == 0)
 									{
-										printf("data %3.1f%%\r",(it*100.0)/(1.0*newnodes.size()));
-										fflush(stdout);
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*newnodes.size()) << "%\r" << std::flush;
+										std::cout.copyfmt(save);
 									}
 								}
 							}
@@ -1257,7 +1280,7 @@ safe_output:
 							if( read_next_line && fgets(readline,2048,f) == NULL ) throw BadFile;
 							filled = sscanf(readline," %s %u %u %s\n",attrname,&nentries,&ntuples,attrtype);
 							bool skip = CheckLoadSkip(attrname,noload,loadonly);
-							if( verbosity > 0 ) printf("%s field %d / %d attribute %s.\n",skip?"Skipping":"Reading",i,nfields,attrname);
+							if( verbosity > 0 ) std::cout << (skip?"Skipping":"Reading") << " field " << i << " / " << nfields << " attribute " << attrname << "\n";
 							if( filled != 4 ) throw BadFile;
 							for(unsigned int i = 0; i < strlen(attrtype); i++) attrtype[i] = tolower(attrtype[i]);
 							if( !strcmp(attrtype,"bit") || !strcmp(attrtype,"unsigned_char") || !strcmp(attrtype,"char") ||
@@ -1271,7 +1294,7 @@ safe_output:
 							if( read_into == 2 )
 							{
 								bool sparse = (std::string(attrname).substr(0,9) != "PROTECTED");
-								if( ntuples != newcells.size() ) printf("number of tuples in field is not equal to number of cells\n");
+								if( ntuples != newcells.size() ) std::cout << __FILE__ << ":" << __LINE__ << " number of tuples in field is not equal to number of cells" << std::endl;
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 								if( skip )
 								{
@@ -1283,8 +1306,10 @@ safe_output:
 											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 										if( verbosity > 1 && it%report_pace == 0)
 										{
-											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-											fflush(stdout);
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*ntuples) << "%\r" << std::flush;
+											std::cout.copyfmt(save);
 										}
 									}
 								}
@@ -1311,8 +1336,10 @@ safe_output:
 										}
 										if( verbosity > 1 && it%report_pace == 0)
 										{
-											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-											fflush(stdout);
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*ntuples) << "%\r" << std::flush;
+											std::cout.copyfmt(save);
 										}
 									}
 									datatags.push_back(attr);
@@ -1320,7 +1347,7 @@ safe_output:
 							}
 							if( read_into == 1 )
 							{
-								if( ntuples != newnodes.size() ) printf("number of tuples in field is not equal to number of nodes\n");
+								if( ntuples != newnodes.size() ) std::cout << __FILE__ << ":" << __LINE__ << " number of tuples in field is not equal to number of nodes" << std::endl;
 								unsigned report_pace = std::max<unsigned>(ntuples/250,1);
 								if( skip )
 								{
@@ -1332,8 +1359,10 @@ safe_output:
 											for(unsigned int jt = 0; jt < nentries; jt++) {double temp; filled = fscanf(f," %lf",&temp); if(filled != 1 ) throw BadFile;}
 										if( verbosity > 1 && it%report_pace == 0)
 										{
-											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-											fflush(stdout);
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*ntuples) << "%\r" << std::flush;
+											std::cout.copyfmt(save);
 										}
 									}
 								}
@@ -1354,8 +1383,10 @@ safe_output:
 										}
 										if( verbosity > 1 && it%report_pace == 0)
 										{
-											printf("data %3.1f%%\r",(it*100.0)/(1.0*ntuples));
-											fflush(stdout);
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (it*100.0)/(1.0*ntuples) << "%\r" << std::flush;
+											std::cout.copyfmt(save);
 										}
 									}
 								}
@@ -1375,6 +1406,7 @@ safe_output:
 						state = R_ATTRIBUTES;
 					}
 				}
+				//FALLTHROUGH
 				case R_ATTRIBUTES:
 				{
 					char datatype[1024];
@@ -1383,28 +1415,29 @@ safe_output:
 					if( filled != 2 ) throw BadFile;
 					if( !strcmp(datatype,"CELL_DATA") )
 					{
-						if( npoints != newcells.size() ) printf("number of attributes is not equal to number of cells\n");
+						if( npoints != newcells.size() ) std::cout << __FILE__ << ":" << __LINE__ << " number of entries in the attribute is not equal to number of cells" << std::endl;
 						state = R_ATTRDATA;
 						read_into = 2;
-						if( verbosity > 0 ) printf("Reading data for cells.\n");
+						if( verbosity > 0 ) std::cout << "Reading data for cells." << std::endl;
 						break;
 					}
 					else if( !strcmp(datatype,"POINT_DATA") )
 					{
-						if( npoints != newnodes.size() ) printf("number of attributes is not equal to number of nodes\n");
+						if( npoints != newnodes.size() ) std::cout << __FILE__ << ":" << __LINE__ << " number of entries in the attribute is not equal to number of nodes" << std::endl;
 						state = R_ATTRDATA;
 						read_into = 1;
-						if( verbosity > 0 ) printf("Reading data for nodes.\n");
+						if( verbosity > 0 ) std::cout << "Reading data for nodes." << std::endl;
 						break;
 					}
 					else
 					{
-						printf("%s\n",readline);
-						printf("Unknown type of attributes\n");
+						std::cout << readline << std::endl;
+						std::cout << "Unknown type of attributes" << std::endl;
 						state = R_WAITDATA;
 						read_into = 0;
 					}
 				}
+				//FALLTHROUGH
 				case R_WAITDATA:
 				{
 					char check[1024];
@@ -1463,12 +1496,20 @@ safe_output:
 							if( t == DATA_REAL )
 							{
 								for(int q = 0; q < ncomps*ntuples; ++q)
-									filled = fscanf(f,"%lf ", &RealArray(GetHandle(),field_data)[q]);
+								{
+									double tmp;
+									filled = fscanf(f,"%lf ", &tmp);
+									if( filled ) RealArray(GetHandle(),field_data)[q] = static_cast<Storage::real>(tmp);
+								}
 							}
 							else
 							{
 								for(int q = 0; q < ncomps*ntuples; ++q)
-									filled = fscanf(f,"%d ", &IntegerArray(GetHandle(),field_data)[q]);
+								{
+									int tmp;
+									filled = fscanf(f,"%d ", &tmp);
+									if( filled ) IntegerArray(GetHandle(),field_data)[q] = static_cast<Storage::integer>(tmp);
+								}
 							}
 
 							
@@ -1490,8 +1531,7 @@ safe_output:
 					
 					filled = sscanf(readline,"%*s %d %s",&npoints,datatype);
 					newnodes.resize(npoints);
-					//printf("number of nodes: %d\n",npoints);
-					if( verbosity > 0 ) printf("Reading %d nodes.\n",npoints);
+					if( verbosity > 0 ) std::cout << "Reading " << npoints << " nodes." << std::endl;
 					if( filled != 2 ) throw BadFile;
 					unsigned report_pace = std::max<unsigned>(npoints/250,1);
 					if( binary )
@@ -1531,8 +1571,10 @@ safe_output:
 								
 							if( verbosity > 1 && i%report_pace == 0)
 							{
-								printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
-								fflush(stdout);
+								std::ios save(NULL);
+								save.copyfmt(std::cout);
+								std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (i*100.0)/(1.0*npoints) << "%\r" << std::flush;
+								std::cout.copyfmt(save);
 							}
 							i++;
 						}
@@ -1573,8 +1615,10 @@ safe_output:
 								
 							if( verbosity > 1 && i%report_pace == 0)
 							{
-								printf("nodes %3.1f%%\r",(i*100.0)/(1.0*npoints));
-								fflush(stdout);
+								std::ios save(NULL);
+								save.copyfmt(std::cout);
+								std::cout << "data " << std::setw(5) << std::fixed << std::setprecision(1) << (i*100.0)/(1.0*npoints) << "%\r" << std::flush;
+								std::cout.copyfmt(save);
 							}
 							i++;
 						}
@@ -1587,7 +1631,6 @@ safe_output:
 					skip_empty(readline,f);
 					
 					filled = sscanf(readline,"%*s %d %d\n",&ncells,&nints);
-					//printf("number of cells: %d\nnumber of ints: %d\n",ncells,nints);
 					if( filled != 2 ) throw BadFile;
 					cp.resize(nints);
 					ct.resize(ncells);
@@ -1645,7 +1688,7 @@ safe_output:
 					if( grid_is_2d && old_nodes.empty() ) SetDimensions(2);
 
 					{
-						if( verbosity > 0 ) printf("Reading %d cells.\n",ncells);
+						if( verbosity > 0 ) std::cout << "Reading " << ncells << " cells." << std::endl;
 						int j = 0;
 						ElementArray<Node> c_nodes(this);
 						ElementArray<Node> e_nodes(this);
@@ -1656,8 +1699,6 @@ safe_output:
 						newcells.resize(ncells);
 						for(i = 0; i < ncells; i++)
 						{
-							//printf("load progress: %20.2f%%\r",(float)(i+1)/(float)ncells*100.0f);
-							//fflush(stdin);
 							e_nodes.clear();
 							c_nodes.clear();
 							f_edges.clear();
@@ -2024,7 +2065,6 @@ safe_output:
 									const integer sizes[7] = { 4, 4, 4, 4, 4, 5, 5 };
 									Cell c = CreateCell(c_nodes, nodesnum, sizes, 7).first;
 									newcells[i] = c->GetHandle();
-									//printf("no order description for VTK_PENTAGONAL_PRISM\n");
 									break;
 								}
 								case 16: //VTK_HEXAGONAL_PRISM
@@ -2052,87 +2092,86 @@ safe_output:
 									const integer sizes[8] = { 4, 4, 4, 4, 4, 4, 6, 6 };
 									Cell c = CreateCell(c_nodes, nodesnum, sizes, 8).first;
 									newcells[i] = c->GetHandle();
-									//printf("no order description for VTK_HEXAGONAL_PRISM\n");
 									break;
 								}
 								case 21: //VTK_QUADRATIC_EDGE
 								{
-									printf("no order description for VTK_QUADRATIC_EDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_EDGE\n";
 									break;
 								}
 								case 22: //VTK_QUADRATIC_TRIANGLE
 								{
-									printf("no order description for VTK_QUADRATIC_TRIANGLE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_TRIANGLE\n";
 									break;
 								}
 								case 23: //VTK_QUADRATIC_QUAD
 								{
-									printf("no order description for VTK_QUADRATIC_QUAD\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_QUAD\n";
 									break;
 								}
 								case 24: //VTK_QUADRATIC_TETRA
 								{
-									printf("no order description for VTK_QUADRATIC_TETRA\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_TETRA\n";
 									break;
 								}
 								case 25: //VTK_QUADRATIC_HEXAHEDRON
 								{
-									printf("no order description for VTK_QUADRATIC_HEXAHEDRON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_HEXAHEDRON\n";
 									break;
 								}
 								case 26: //VTK_QUADRATIC_WEDGE
 								{
-									printf("no order description for VTK_QUADRATIC_WEDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_WEDGE\n";
 									break;
 								}
 								case 27: //VTK_QUADRATIC_PYRAMID
 								{
-									printf("no order description for VTK_QUADRATIC_PYRAMID\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_PYRAMID\n";
 									break;
 								}
 								case 28: //VTK_BIQUADRATIC_QUAD
 								{
-									printf("no order description for VTK_BIQUADRATIC_QUAD\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_BIQUADRATIC_QUAD\n";
 									break;
 								}
 								case 29: //VTK_TRIQUADRATIC_HEXAHEDRON
 								{
-									printf("no order description for VTK_TRIQUADRATIC_HEXAHEDRON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_TRIQUADRATIC_HEXAHEDRON\n";
 									break;
 								}
 								case 30: //VTK_QUADRATIC_LINEAR_QUAD
 								{
-									printf("no order description for VTK_QUADRATIC_LINEAR_QUAD\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_LINEAR_QUAD\n";
 									break;
 								}
 								case 31: //VTK_QUADRATIC_LINEAR_WEDGE
 								{
-									printf("no order description for VTK_QUADRATIC_LINEAR_WEDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_QUADRATIC_LINEAR_WEDGE\n";
 									break;
 								}
 								case 32: //VTK_BIQUADRATIC_QUADRATIC_WEDGE
 								{
-									printf("no order description for VTK_BIQUADRATIC_QUADRATIC_WEDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_BIQUADRATIC_QUADRATIC_WEDGE\n";
 									break;
 								}
 								case 33: //VTK_BIQUADRATIC_QUADRATIC_HEXAHEDRON
 								{
-									printf("no order description for VTK_BIQUADRATIC_QUADRATIC_HEXAHEDRON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_BIQUADRATIC_QUADRATIC_HEXAHEDRON\n";
 									break;
 								}
 								case 34: //VTK_BIQUADRATIC_TRIANGLE
 								{
-									printf("no order description for VTK_BIQUADRATIC_TRIANGLE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_BIQUADRATIC_TRIANGLE\n";
 									break;
 								}
 								case 35: //VTK_CUBIC_LINE
 								{
-									printf("no order description for VTK_CUBIC_LINE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_CUBIC_LINE\n";
 									break;
 								}
 								case 41: //VTK_CONVEX_POINT_SET
 								{
-									printf("no algorithm for VTK_CONVEX_POINT_SET yet\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no algorithm for VTK_CONVEX_POINT_SET yet\n";
 									break;
 								}
 								case 42: //VTK_POLYHEDRON
@@ -2156,83 +2195,86 @@ safe_output:
 								}
 								case 51: //VTK_PARAMETRIC_CURVE
 								{
-									printf("no order description for VTK_PARAMETRIC_CURVE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_CURVE\n";
 									break;
 								}
 								case 52: //VTK_PARAMETRIC_SURFACE
 								{
-									printf("no order description for VTK_PARAMETRIC_SURFACE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_SURFACE\n";
 									break;
 								}
 								case 53: //VTK_PARAMETRIC_TRI_SURFACE
 								{
-									printf("no order description for VTK_PARAMETRIC_TRI_SURFACE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_TRI_SURFACE\n";
 									break;
 								}
 								case 54: //VTK_PARAMETRIC_QUAD_SURFACE
 								{
-									printf("no order description for VTK_PARAMETRIC_QUAD_SURFACE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_QUAD_SURFACE\n";
 									break;
 								}
 								case 55: //VTK_PARAMETRIC_TETRA_REGION
 								{
-									printf("no order description for VTK_PARAMETRIC_TETRA_REGION\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_TETRA_REGION\n";
 									break;
 								}
 								case 56: //VTK_PARAMETRIC_HEX_REGION
 								{
-									printf("no order description for VTK_PARAMETRIC_HEX_REGION\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_PARAMETRIC_HEX_REGION\n";
 									break;
 								}
 								case 60: //VTK_HIGHER_ORDER_EDGE
 								{
-									printf("no order description for VTK_HIGHER_ORDER_EDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_EDGE\n";
 									break;
 								}
 								case 61: //VTK_HIGHER_ORDER_TRIANGLE
 								{
-									printf("no order description for VTK_HIGHER_ORDER_TRIANGLE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_TRIANGLE\n";
 									break;
 								}
 								case 62: //VTK_HIGHER_ORDER_QUAD
 								{
-									printf("no order description for VTK_HIGHER_ORDER_QUAD\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_QUAD\n";
 									break;
 								}
 								case 63: //VTK_HIGHER_ORDER_POLYGON
 								{
-									printf("no order description for VTK_HIGHER_ORDER_POLYGON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_POLYGON\n";
 									break;
 								}
 								case 64: //VTK_HIGHER_ORDER_TETRAHEDRON
 								{
-									printf("no order description for VTK_HIGHER_ORDER_TETRAHEDRON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_TETRAHEDRON\n";
 									break;
 								}
 								case 65: //VTK_HIGHER_ORDER_WEDGE
 								{
-									printf("no order description for VTK_HIGHER_ORDER_WEDGE\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_WEDGE\n";
 									break;
 								}
 								case 66: //VTK_HIGHER_ORDER_PYRAMID
 								{
-									printf("no order description for VTK_HIGHER_ORDER_PYRAMID\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_PYRAMID\n";
 									break;
 								}
 								case 67: //VTK_HIGHER_ORDER_HEXAHEDRON
 								{
-									printf("no order description for VTK_HIGHER_ORDER_HEXAHEDRON\n");
+									std::cout << __FILE__ << ":" << __LINE__ << " no order description for VTK_HIGHER_ORDER_HEXAHEDRON\n";
 									break;
 								}
 								default: //VTK_NUMBER_OF_CELL_TYPES
 								{
-									printf("Cell type %d is not known\n",ct[i]);
+									std::cout << __FILE__ << ":" << __LINE__ << " Cell type " << ct[i] << " is not known\n";
 								}
 							}
 							if( verbosity > 1 && i%report_pace == 0)
 							{
-								printf("cells %3.1f%% cells %8d faces %8d edges %8d\r",(i*100.0)/(1.0*ncells),NumberOfCells(),NumberOfFaces(),NumberOfEdges());
-								fflush(stdout);
+								std::ios save(NULL);
+								save.copyfmt(std::cout);
+								std::cout << "cells " << std::setw(5) << std::fixed << std::setprecision(1) << (i*100.0)/(1.0*ncells) << "% ";
+								std::cout << "cells " << std::setw(8) << NumberOfCells() << " faces " << std::setw(8) << NumberOfFaces() << " edges " << std::setw(8) << NumberOfEdges() << "\r" << std::flush;
+								std::cout.copyfmt(save);
 							}
 						}
 						//ReorderEmpty(FACE | EDGE);
@@ -2250,36 +2292,36 @@ safe_output:
 					}
 					if( verbosity > 1 )
 					{
-						printf("\nCell types: ");
+						std::cout << "\nCell types: ";
 						for(ElementType etype = EDGE; etype <= MESH; etype = NextElementType(etype) ) if( etype & read_into_cell )
-							printf("%s ", ElementTypeName(etype) );
-						printf("\n");
+							std::cout << ElementTypeName(etype) << " ";
+						std::cout << std::endl;
 					}
 					break;
 				}
 				case R_SPOINTS:
 				{
-					printf("STRUCTURED POINTS is not yet implemented\n");
+					std::cout << "STRUCTURED POINTS is not yet implemented\n";
 					break;
 				}
 				case R_POLYDATA:
 				{
-					printf("POLYDATA is not yet implemented\n");
+					std::cout << "POLYDATA is not yet implemented\n";
 					break;
 				}
 				case R_SGRID:
 				{
-					printf("STRUCTURED GRID is not yet implemented\n");
+					std::cout << "STRUCTURED GRID is not yet implemented\n";
 					break;
 				}
 				case R_RGRID:
 				{
-					printf("RECTLINEAR GRID is not yet implemented\n");
+					std::cout << "RECTLINEAR GRID is not yet implemented\n";
 					break;
 				}
 				case R_FIELD:
 				{
-					printf("FIELD is not yet implemented\n");
+					std::cout << "FIELD is not yet implemented\n";
 					break;
 				}
 			}

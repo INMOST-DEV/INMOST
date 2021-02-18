@@ -137,7 +137,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			Q[0] = Q[1] = Q[2] = 0;
 			real a,s,v;
 			ElementArray<Face> cfaces = c.getFaces();
-			for(integer kt = 0; kt < cfaces.size(); ++kt)
+			for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 			{
 				//cfaces[kt].FixNormalOrientation();
 				//if( !cfaces[kt].FixNormalOrientation() ) std::cout << "Orientation is bad" << std::endl;
@@ -255,7 +255,7 @@ void CheckResidual(Mesh & m, const TagReal & tag_P, const TagReal & tag_nU, real
 			if( c.GetStatus() == Element::Ghost ) continue;
 			ElementArray<Face> cfaces = c.getFaces(); //obtain faces of the cell
 			real div = 0, a, s;
-			for(integer kt = 0; kt < cfaces.size(); ++kt)
+			for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 			{
 				a = cfaces[kt].Area();
 				s = cfaces[kt].FaceOrientedOutside(c)?1.0:-1.0;
@@ -412,7 +412,7 @@ int main(int argc,char ** argv)
 				real aF; //area of the face
 				c.Centroid(xP);
 				rMatrix N(faces.size(),3), R(faces.size(),3); //big gradient matrix, co-normals, directions
-				for(int k = 0; k < faces.size(); ++k) //loop over faces
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < faces.size(); ++k) //loop over faces
 				{
 					aF = faces[k].Area();
 					faces[k].Centroid(yF);
@@ -593,7 +593,7 @@ int main(int argc,char ** argv)
 							Cell c = f.BackCell();
 							ElementArray<Face> cfaces = c.getFaces();
 							Matrix<real,real_array> W(tag_W[c],cfaces.size(),cfaces.size());
-							for(integer kt = 0; kt < cfaces.size(); ++kt)
+							for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 								ngradP += W(tag_i[f],kt)*(tag_P[cfaces[kt]] - tag_P[c])*cfaces[kt].Area();
 						}
 						variable u = refU(x,visc,t+dT);
@@ -637,7 +637,7 @@ int main(int argc,char ** argv)
 					vMatrix FLUX(cfaces.size(),1); //computed flux on faces
 					if( two_point )
 					{
-						for(integer kt = 0; kt < cfaces.size(); ++kt)
+						for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 						{
 							Face f = cfaces[kt];
 							if( f.FrontCell().isValid() )
@@ -656,7 +656,7 @@ int main(int argc,char ** argv)
 					{
 						Matrix<real,real_array> W(tag_W[c],cfaces.size(),cfaces.size()); //Matrix for gradient
 						vMatrix dQ(cfaces.size(),1); //vector of pressure differences on faces
-						for(integer kt = 0; kt < cfaces.size(); ++kt)
+						for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 							dQ(kt,0) = (Q[cfaces[kt]] - Q[c])*cfaces[kt].Area();
 						FLUX = W*dQ; //fluxes on faces
 					}
@@ -664,7 +664,7 @@ int main(int argc,char ** argv)
 					if( c.GetStatus() != Element::Ghost )
 					{
 						real div = 0, a, s;
-						for(integer kt = 0; kt < cfaces.size(); ++kt)
+						for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 						{
 							a = cfaces[kt].Area();
 							s = cfaces[kt].FaceOrientedOutside(c)?1.0:-1.0;
@@ -673,10 +673,10 @@ int main(int argc,char ** argv)
 						}
 						tag_F[c] = div/dT;
 						R[Q.Index(c)] = alpha*div/dT;
-						for(integer kt = 0; kt < cfaces.size(); ++kt) //loop over faces of
+						for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt) //loop over faces of
 							R[Q.Index(c)] += FLUX(kt,0)*cfaces[kt].Area();
 					}
-					if( !two_point ) for(integer kt = 0; kt < cfaces.size(); ++kt) //loop over faces of current cell
+					if( !two_point ) for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt) //loop over faces of current cell
 					{
 						if( cfaces[kt].GetStatus() == Element::Ghost ) continue;
 						int index = Q.Index(cfaces[kt]);
@@ -785,7 +785,7 @@ int main(int argc,char ** argv)
 							Cell c = f.BackCell();
 							ElementArray<Face> cfaces = c.getFaces();
 							Matrix<real,real_array> W(tag_W[c],cfaces.size(),cfaces.size());
-							for(integer kt = 0; kt < cfaces.size(); ++kt)
+							for(INMOST_DATA_ENUM_TYPE kt = 0; kt < cfaces.size(); ++kt)
 								ngradP += W(tag_i[f],kt)*(tag_Q[cfaces[kt]] - tag_Q[c])*cfaces[kt].Area();
 						}
 						tag_nU[f] += ngradP*dT/alpha;

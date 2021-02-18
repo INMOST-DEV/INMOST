@@ -8,6 +8,7 @@
 // 3. Detect numerical accuracy breakdown - when preconditioned residual is too far from true residual (probably 2 will fix).
 
 #include "inmost_solver.h"
+#include <iomanip>
 
 #define PERTURBATE_RTILDE
 //#define CONVEX_COMBINATION
@@ -246,7 +247,7 @@ namespace INMOST
                 }
                 if (its >= 30)
                 {
-                    fprintf(stderr, "No convergence after 30,000! iterations \n");
+                    std::cerr << "No convergence after 30,000! iterations" << std::endl;
                     return 1;
                 }
 
@@ -475,7 +476,7 @@ namespace INMOST
             throw - 1;
         }
         BCGSL_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),prec(prec),info(&info), verbosity(0)
+                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),verbosity(0), prec(prec), info(&info)
         {
             Alink = NULL;
             init = false;
@@ -623,9 +624,7 @@ namespace INMOST
 				{
 					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
-					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
-					fflush(stdout);
+					std::cout << "iter " << std::setw(3) << last_it << " resid " << std::setw(14) << resid << " | " << std::max(atol,resid0*rtol) << "\r" << std::flush;
 				}
 			}
 
@@ -984,75 +983,12 @@ namespace INMOST
 						int n = static_cast<int>(size);
 						dgesvd_(&c,&c,&n,&n,tau,&n,w,U,&n,V,&n,work,&lwork,&dgesvd_info);
 #else
-                        /*
-                        char c = 'A';
-                        INMOST_DATA_REAL_TYPE U2[128*128], V2[128*128], w2[128], tau2[128*128];
-                        INMOST_DATA_REAL_TYPE work[5*128];
-                        int lwork = 5*128;
-                        int n = l;
-                        memcpy(tau2,tau,sizeof(INMOST_DATA_REAL_TYPE)*l*l);
-                        dgesvd_(&c,&c,&n,&n,tau2,&n,w2,U2,&n,V2,&n,work,&lwork,&dgesvd_info);
-                        printf("dgesvd\n");
-                        printf("w\n");
-                        for(int q = 0; q < l; ++q) printf("%g ",w2[q]);
-                        printf("\nU\n");
-                        for(int q = 0; q < l*l; ++q)
-                        {
-                            printf("%g ",U2[q]);
-                            if( (q+1)%l == 0 ) printf("\n");
-                        }
-                        printf("V\n");
-                        for(int q = 0; q < l*l; ++q)
-                        {
-                            printf("%g ",V2[q]);
-                            if( (q+1)%l == 0 ) printf("\n");
-                        }
-                        */
                         INMOST_DATA_REAL_TYPE U[128*128], V[128*128], w[128];
                         dgesvd_info = svdnxn(tau,U,w,V,size);
-                        //for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) w[j] = S[j*l+j];
-                        /*
-                        printf("svdnxn\n");
-                        printf("w\n");
-                        for(int q = 0; q < l; ++q) printf("%g ",w[q]);
-                        printf("\nU\n");
-                        for(int q = 0; q < l*l; ++q)
-                        {
-                            printf("%g ",U[q]);
-                            if( (q+1)%l == 0 ) printf("\n");
-                        }
-                        printf("V\n");
-                        for(int q = 0; q < l*l; ++q)
-                        {
-                            printf("%g ",V[q]);
-                            if( (q+1)%l == 0 ) printf("\n");
-                        }
-                        */
 #endif
-                        /*
-                        printf("w ");
-                        for(INMOST_DATA_ENUM_TYPE j = 0; j < l; j++) printf("%20g ",w[j]);
-                        printf("\n");
-
-                        printf("U\n");
-                        for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++)
-                        {
-                            printf("%20g ",U[j]);
-                            if( (j+1) % l == 0 ) printf("\n");
-                        }
-                        printf("\n");
-
-                        printf("VT\n");
-                        for(INMOST_DATA_ENUM_TYPE j = 0; j < l*l; j++)
-                        {
-                            printf("%20g ",V[j]);
-                            if( (j+1) % l == 0 ) printf("\n");
-                        }
-                        printf("\n");
-                        */
                         if( dgesvd_info != 0 )
                         {
-                            printf("(%s:%d) dgesvd %d\n",__FILE__,__LINE__,dgesvd_info);
+                            std::cout << __FILE__ << ":" << __LINE__ << " dgesvd " << dgesvd_info << std::endl;
                             exit(-1);
                         }
 
@@ -1217,15 +1153,11 @@ namespace INMOST
 					{
 						if( info->GetRank() == 0 )
 						{
-							//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5/l << " precond " << tp*0.5/l << std::endl;
-							//std::cout << "iter " << last_it << " resid " << resid << "\r";
-							//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
 							{
-								printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
-								fflush(stdout);
+								std::cout << "iter " << std::setw(3) << last_it << " resid " << std::setw(14) << resid << " | " << std::max(atol,resid0*rtol) << "\r" << std::flush;
 							}
 						}
 					}
@@ -1339,7 +1271,7 @@ namespace INMOST
             throw - 1;
         }
         BCGS_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),prec(prec),info(&info),verbosity(0)
+                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),verbosity(0),prec(prec),info(&info)
         {
             init = false;
         }
@@ -1455,9 +1387,7 @@ namespace INMOST
 				{
 					//std::cout << "iter " << last_it << " residual " << resid << std::endl;
 					//std::cout << "iter " << last_it << " resid " << resid << "\r";
-					//printf("iter %3d resid %12g | %12g relative %12g | %12g\r",last_it,resid,atol,resid/resid0,rtol);
-					printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
-					fflush(stdout);
+					std::cout << "iter " << std::setw(3) << last_it << " resid " << std::setw(14) << resid << " | " << std::max(atol,resid0*rtol) << "\r" << std::flush;
 				}
 			}
 
@@ -1787,14 +1717,11 @@ namespace INMOST
 						{
 							//std::cout << "iter " << last_it << " residual " << resid << " time " << tt << " matvec " << ts*0.5 << " precond " << tp*0.5 << std::endl;
 							//std::cout << "iter " << last_it << " resid " << resid << "\r";
-							//printf("iter %3d resid %12g | %12g relative %12g | %12g\r", last_it, resid, atol, resid / resid0, rtol);
 #if defined(USE_OMP)
 #pragma omp single
 #endif
 							{
-								printf("iter %3d resid %12g | %g\r", last_it, resid, std::max(atol,resid0*rtol));
-				  //printf("iter %3d resid %12g | %g rho %e beta %e alpha %e omega %e\n", last_it, resid, atol,rho,beta,alpha,omega);
-								fflush(stdout);
+								std::cout << "iter " << std::setw(3) << last_it << " resid " << std::setw(14) << resid << " | " << std::max(atol,resid0*rtol) << "\r" << std::flush;
 							}
 						}
 					}

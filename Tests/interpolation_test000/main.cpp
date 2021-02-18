@@ -40,13 +40,13 @@ int main(int argc, char ** argv)
 		double midface[3] = {0.5,0.5,0.5};
 
 
-		tiny_map<HandleType,double,8> nodes_stencil;
+		std::map<HandleType,double> nodes_stencil;
 		for(int j = 0; j < 4; j++)
 		{
 			if(!nodes_stencil.empty())	nodes_stencil.clear();
 			m.WachspressInterpolation2D(coords[j]+0, f, nodes_stencil);
 			if( nodes_stencil.size() != 2 ) err++;
-			for(tiny_map<HandleType,double,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				if( fabs(it->second-1.0) > 1e-8 && fabs(it->second) > 1e-8 )
 				{
 					std::cout << "Coef " << it->second << " expected 1.0 or 0.0 num " << j << std::endl;
@@ -59,7 +59,7 @@ int main(int argc, char ** argv)
 			if(!nodes_stencil.empty())	nodes_stencil.clear();
 			m.WachspressInterpolation2D(midedges[j], f, nodes_stencil);
 			if( nodes_stencil.size() != 2 ) err++;
-			for(tiny_map<HandleType,double,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+			for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 				if( fabs(it->second-0.5) > 1e-8 )
 				{
 					std::cout << "Coef " << it->second << " expected 0.5 " << std::endl;
@@ -70,7 +70,7 @@ int main(int argc, char ** argv)
 		if(!nodes_stencil.empty())	nodes_stencil.clear();
 		m.WachspressInterpolation2D(midface, f, nodes_stencil);
 		if( nodes_stencil.size() != 4 ) err++;
-		for(tiny_map<HandleType,double,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
+		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
 			if( fabs(it->second-0.25) > 1e-8 )
 			{
 				std::cout << "Coef " << it->second << " expected 0.25 " << std::endl;
@@ -83,7 +83,7 @@ int main(int argc, char ** argv)
 		m.WachspressInterpolation2D(point, f, nodes_stencil);
 		if( nodes_stencil.size() != 4 ) err++;
 		int j = 0;
-		for(tiny_map<HandleType,double,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it,++j)
+		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it,++j)
 			if( fabs(it->second-coefs[j]) > 1e-8 )
 			{
 				std::cout << "Coef " << it->second << " expected " << coefs[j] << std::endl;
@@ -113,7 +113,7 @@ int main(int argc, char ** argv)
 		}
 		Face f = m.CreateFace(edges).first;
 
-		tiny_map<HandleType,double,8> nodes_stencil;
+		std::map<HandleType,double> nodes_stencil;
 		
 		double point[3] = {0.4,0.6,0.0};
 		double coefs[5] = {25.0/6, 25.0/4, 2.5, 5./3, 25./18}, sum = 0;
@@ -123,7 +123,7 @@ int main(int argc, char ** argv)
 		m.WachspressInterpolation2D(point, f, nodes_stencil);
 		if( nodes_stencil.size() != 5 ) err++;
 		int k = 0;
-		for(tiny_map<HandleType,double,8>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it, ++k)
+		for(std::map<HandleType,double>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it, ++k)
 			if( fabs(it->second-coefs[k]) > 1e-8 )
 			{
 				std::cout << "Coef " << it->second << " expected " << coefs[k] << std::endl;

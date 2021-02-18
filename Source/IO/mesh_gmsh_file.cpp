@@ -51,7 +51,7 @@ namespace INMOST
 		char readline[2048], * p, * pend;
 		std::vector<HandleType> newnodes;
 		std::vector<HandleType> newelems;
-		Storage::real xyz[3];
+		double xyz[3];
 		int text_start, text_end, state = GMSH_NONE, ver = GMSH_VERNONE;
 		int nnodes, ncells, nchars, nodenum, elemnum, elemtype, numtags, elemnodes, temp;
 		int ascii, float_size, verlow, verhigh;
@@ -171,6 +171,7 @@ namespace INMOST
 					throw BadFile;
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_NODES_NUM:
 read_node_num_link:
 				if( 1 == sscanf(p,"%d%n",&nodenum,&nchars) )
@@ -202,6 +203,7 @@ read_node_num_link:
 					}
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_NODES_X:
 				if( 1 == sscanf(p,"%lf%n",xyz,&nchars) )
 				{
@@ -215,6 +217,7 @@ read_node_num_link:
 					throw BadFile;
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_NODES_Y:
 				if( 1 == sscanf(p,"%lf%n",xyz+1,&nchars) )
 				{
@@ -228,23 +231,26 @@ read_node_num_link:
 					throw BadFile;
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_NODES_Z:
 				if( 1 == sscanf(p,"%lf%n",xyz+2,&nchars) )
 				{
 					p += nchars;
 					while(isspace(*p) && p < pend) ++p;
 					int find = -1;
+					INMOST_DATA_REAL_TYPE rxyz[3];
+					rxyz[0] = xyz[0], rxyz[1] = xyz[1], rxyz[2] = xyz[2];		
 					if( !old_nodes.empty() )
 					{
-						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),xyz,CentroidComparator(this));
+						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(),old_nodes.end(),rxyz,CentroidComparator(this));
 						if( it != old_nodes.end() ) 
 						{
 							Storage::real_array c = RealArrayDF(*it,CoordsTag());
-							if( CentroidComparator(this).Compare(xyz,c.data()) == 0 )
+							if( CentroidComparator(this).Compare(rxyz,c.data()) == 0 )
 								find = static_cast<int>(it - old_nodes.begin());
 						}
 					}
-					if( find == -1 ) newnodes[nodenum] = CreateNode(xyz)->GetHandle();
+					if( find == -1 ) newnodes[nodenum] = CreateNode(rxyz)->GetHandle();
 					else newnodes[nodenum] = old_nodes[find];
 					nnodes--;
 					if( verbosity > 1 && (newnodes.size()-nnodes)%report_pace == 0 )
@@ -276,6 +282,7 @@ read_node_num_link:
 					throw BadFile;
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_NUM:
 read_elem_num_link:
 				if( 1 == sscanf(p,"%d%n",&elemnum,&nchars) )
@@ -308,6 +315,7 @@ read_elem_num_link:
 					}
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_TYPE:
 				if( 1 == sscanf(p,"%d%n",&elemtype,&nchars) )
 				{
@@ -339,6 +347,7 @@ read_elem_num_link:
 					throw BadFile;
 				}
 				if( p >= pend ) break;
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_REGPHYS:
 				if( state == GMSH_ELEMENTS_REGPHYS )
 				{
@@ -356,6 +365,7 @@ read_elem_num_link:
 					}
 					if( p >= pend ) break;
 				}
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_REGELEM:
 				if( state == GMSH_ELEMENTS_REGELEM )
 				{
@@ -373,6 +383,7 @@ read_elem_num_link:
 					}
 					if( p >= pend ) break;
 				}
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_NUMNODES:
 				if( state == GMSH_ELEMENTS_NUMNODES )
 				{
@@ -395,6 +406,7 @@ read_elem_num_link:
 					}
 					if( p >= pend ) break;
 				}
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_NUMTAGS:
 				if( state == GMSH_ELEMENTS_NUMTAGS )
 				{
@@ -413,6 +425,7 @@ read_elem_num_link:
 					}
 					if( p >= pend ) break;
 				}
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_TAGS:
 				if( state == GMSH_ELEMENTS_TAGS )
 				{
@@ -433,6 +446,7 @@ read_elem_num_link:
 					}
 					if( p >= pend ) break;
 				}
+				//FALLTHROUGH
 			case GMSH_ELEMENTS_NODELIST:
 				while( elemnodes > 0 && p < pend )
 				{

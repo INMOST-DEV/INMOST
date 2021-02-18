@@ -443,7 +443,7 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 			cK = m->CellByLocalID(q);
 			compute.clear();
 			faces = cK.getFaces();
-			for(integer k = 0; k < faces.size(); ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < faces.size(); ++k)
 			{
 				fKL = faces[k];
 

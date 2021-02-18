@@ -48,7 +48,7 @@ int main(int argc, char ** argv)
 	
 	Tag otag = m.GetTag(odata);
 	
-	if( comp >= 0 && otag.GetSize() < comp )
+	if( comp >= 0 && (int)otag.GetSize() < comp )
 	{
 		std::cout << "data " << odata << " size is " << otag.GetSize() << " which is less then " << comp << std::endl;
 		return -1;
@@ -80,7 +80,7 @@ int main(int argc, char ** argv)
 		{
 			Storage::real_array oarr = it->RealArray(otag);
 			if( comp == -1 ) for(Storage::real_array::iterator jt = oarr.begin(); jt != oarr.end(); ++jt) std::cout << *jt << "; ";
-			else if( comp < oarr.size() ) std::cout << oarr[comp] << "; ";
+			else if( comp < (int)oarr.size() ) std::cout << oarr[comp] << "; ";
 			else std::cout << "NAN; ";
 		}
 #if defined(USE_AUTODIFF)
@@ -88,7 +88,7 @@ int main(int argc, char ** argv)
 		{
 			Storage::var_array oarr = it->VariableArray(otag);
 			if( comp == -1 ) for(Storage::var_array::iterator jt = oarr.begin(); jt != oarr.end(); ++jt) std::cout << get_value(*jt) << "; ";
-			else if( comp < oarr.size() ) std::cout << get_value(oarr[comp]) << "; ";
+			else if( comp < (int)oarr.size() ) std::cout << get_value(oarr[comp]) << "; ";
 			else std::cout << "NAN; ";
 		}
 #endif
@@ -96,14 +96,14 @@ int main(int argc, char ** argv)
 		{
 			Storage::integer_array oarr = it->IntegerArray(otag);
 			if( comp == -1 ) for(Storage::integer_array::iterator jt = oarr.begin(); jt != oarr.end(); ++jt) std::cout << *jt << "; ";
-			else if( comp < oarr.size() ) std::cout << oarr[comp] << "; ";
+			else if( comp < (int)oarr.size() ) std::cout << oarr[comp] << "; ";
 			else std::cout << "NAN; ";
 		}
 		else if( otag.GetDataType() == DATA_BULK )
 		{
 			Storage::bulk_array oarr = it->BulkArray(otag);
 			if( comp == -1 ) for(Storage::bulk_array::iterator jt = oarr.begin(); jt != oarr.end(); ++jt) std::cout << *jt << "; ";
-			else if( comp < oarr.size() ) std::cout << oarr[comp] << "; ";
+			else if( comp < (int)oarr.size() ) std::cout << oarr[comp] << "; ";
 			else std::cout << "NAN; ";
 		}
 		std::cout << std::endl;

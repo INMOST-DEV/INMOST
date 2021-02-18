@@ -9,7 +9,7 @@ namespace INMOST
 	
 
 	static GLUquadric * cylqs = NULL;
-	static void drawcylinder(coord a, coord b, double width)
+	__INLINE void drawcylinder(coord a, coord b, double width)
 	{
 		double matrix[16];
 		if (cylqs == NULL)
@@ -66,7 +66,7 @@ namespace INMOST
 				vec_t add;
 				e->Centroid(add.cnt.data());
 				add.eid = k;
-				for(int l = 0; l < std::min(t[e].size(),3u); ++l)
+				for(size_t l = 0; l < std::min(t[e].size(),3u); ++l)
 					add.dir[l] = t[e][l];
 				double l = add.dir.length();
 				if( l > max_length ) max_length = l;

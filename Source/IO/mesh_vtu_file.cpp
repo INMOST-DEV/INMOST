@@ -170,7 +170,6 @@ namespace INMOST
 				const XMLReader::XMLTree * pd = &da->GetChild(k);
 				if (pd->GetName() == "Piece")
 				{
-					int ncomps = 1;
 					int nca = pd->FindAttrib("Source");
 					if (nca != pd->NumAttrib()) 
 					{
@@ -546,14 +545,14 @@ namespace INMOST
 			{
 				std::stringstream faces(v->GetChild("Cells")->GetChildWithAttrib("Name", "faces")->GetContents());
 				std::stringstream faceoffsets(v->GetChild("Cells")->GetChildWithAttrib("Name", "faceoffsets")->GetContents());
-				int cconn, coffset = 0, totread = 0, nread, nfaces, nfacenodes;
+				int cconn, coffset = 0, totread = 0, nfaces, nfacenodes;
 				ElementArray<Node> hnodes(this);
 				ElementArray<Face> hfaces(this);
 				while (!faceoffsets.eof())
 				{
 					faceoffsets >> coffset;
 					if( coffset == -1 ) continue;
-					nread = coffset - totread;
+					//nread = coffset - totread;
 					faces >> nfaces;
 					hfaces.resize(nfaces);
 					totread++;

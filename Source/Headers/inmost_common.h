@@ -5,6 +5,7 @@
 
 #include "inmost_options.h"
 #if !defined(INMOST_OPTIONS_CMAKE_INCLUDED)
+#pragma message("CMake options are not used")
 //no options from cmake -- define minimum
 //#define USE_OMP
 //#define USE_OPENCL
@@ -86,6 +87,7 @@
 #endif
 #if defined(USE_MPI)
 #define NOMINMAX
+#define OMPI_SKIP_MPICXX 1
 #include <mpi.h>
 #if !defined(MSMPI_VER) && !defined(MPIO_INCLUDE) && defined(USE_MPI_FILE) && !defined(OMPI_PROVIDE_MPI_FILE_INTERFACE)
 //#include <mpio.h> //some versions of MPI doesn't include that
@@ -201,6 +203,7 @@
 
 #define ENUMUNDEF                 UINT64_MAX
 #define BIGENUMUNDEF              UINT64_MAX
+
 
 #define INMOST_MPI_DATA_INTEGER_TYPE   INMOST_MPI_INT64_T
 #define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UINT64_T
@@ -336,9 +339,9 @@ namespace INMOST
 
 #include <cfloat>
 
-static int __isnan__(double x) { return x != x; }
-static int __isinf__(double x) { return fabs(x) > DBL_MAX; }
-static int __isbad(double x) { return __isnan__(x) || __isinf__(x); }
+__INLINE bool __isnan__(double x) { return x != x; }
+__INLINE bool __isinf__(double x) { return fabs(x) > DBL_MAX; }
+__INLINE bool __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
 
 #endif //INMOST_COMMON_INCLUDED

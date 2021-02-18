@@ -347,8 +347,8 @@ int main(int argc, char ** argv)
   {
     f->Centroid(c);
     Storage::real alpha = c[0];//(c[0]-min[0])/(max[0]-min[0]);
-		Storage::real beta  = c[1];//(c[1]-min[1])/(max[1]-min[1]);
-    Storage::real gamma = c[2];//(c[2]-min[2])/(max[2]-min[2]);
+	Storage::real beta  = c[1];//(c[1]-min[1])/(max[1]-min[1]);
+    //~ Storage::real gamma = c[2];//(c[2]-min[2])/(max[2]-min[2]);
     Storage::real G = 0;
     if( flip )
     {

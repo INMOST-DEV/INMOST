@@ -594,7 +594,8 @@ namespace INMOST
 				case DATA_BULK:      for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_bulk_array();      break;
 				case DATA_REFERENCE: for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_reference_array(); break;
 				case DATA_REMOTE_REFERENCE: 
-									 for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_remote_reference_array(); break;
+									 for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_remote_reference_array(); 
+									 break;
 #if defined(USE_AUTODIFF)
 				case DATA_VARIABLE:  for(INMOST_DATA_ENUM_TYPE it = old_size; it < new_size; ++it) new ( &arr[it] ) inner_variable_array();  break;
 #endif

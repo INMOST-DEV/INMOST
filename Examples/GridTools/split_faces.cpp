@@ -12,12 +12,12 @@ int main(int argc, char ** argv)
 {
 	if( argc < 2 ) 
 	{
-		printf("Usage: %s input_mesh [output_mesh] [special_triangle_split=1]\n",argv[0]);
+		std::cout << "Usage: " << argv[0] << " input_mesh [output_mesh]\n";
 		return -1;
 	}
 	
-	int special_triangle_split = 1;
-	if( argc > 3 ) special_triangle_split = atoi(argv[3]);
+	//~ int special_triangle_split = 1;
+	//~ if( argc > 3 ) special_triangle_split = atoi(argv[3]);
 
 	Mesh m;
 	m.SetFileOption("ECL_CURVILINEAR","FALSE");
@@ -51,7 +51,7 @@ int main(int argc, char ** argv)
 		else
 		{
 			cnt[0] = cnt[1] = cnt[2] = 0;
-			for(int k = 0; k < new_nodes.size(); ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < new_nodes.size(); ++k)
 			{
 				cnt[0] += new_nodes[k].Coords()[0];
 				cnt[1] += new_nodes[k].Coords()[1];
@@ -62,7 +62,7 @@ int main(int argc, char ** argv)
 			cnt[2] /= new_nodes.size();
 			Node n = m.CreateNode(cnt);
 			edge_nodes[0] = n;
-			for(int k = 0; k < new_nodes.size(); ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < new_nodes.size(); ++k)
 			{
 				edge_nodes[1] = new_nodes[k];
 				new_edges[k] = m.CreateEdge(edge_nodes).first;

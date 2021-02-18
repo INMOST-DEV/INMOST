@@ -598,7 +598,7 @@ namespace INMOST
 			/// Load the matrix from a single data file in MTX format using the specified interval.
 			/// If interval is not specified, then it will be automatically constructed,
 			/// with the about equal block size (the last block may has larger dimension).
-			void				 Load(std::string file, INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, INMOST_DATA_ENUM_TYPE end = ENUMUNDEF, std::string file_ord = "");
+			void				 Load(std::string file, INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, INMOST_DATA_ENUM_TYPE end = ENUMUNDEF);
 			/// Save the distributed matrix to a single data file in MTX format using parallel MPI I/O.
 			/// @see http://math.nist.gov/MatrixMarket/formats.html
 			void                 Save(std::string file, const AnnotationService * annotation = NULL);

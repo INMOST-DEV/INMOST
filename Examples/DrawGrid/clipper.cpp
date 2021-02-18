@@ -186,7 +186,7 @@ namespace INMOST
 		}
 	}
 
-	kdtree::kdtree() : marked(0), set(NULL), size(0), children(NULL) {}
+	kdtree::kdtree() : set(NULL), marked(0), size(0), children(NULL) {}
 
 	inline int kdtree::plane_bbox(double p[3], double n[3]) const
 	{
@@ -419,7 +419,7 @@ namespace INMOST
 
 	bool clipper::edge_point::operator !=(const edge_point& b) const { return !(operator ==(b)); }
 
-	void clipper::edge_point::print() { printf("%g %g %g e %d\n", xyz[0], xyz[1], xyz[2], edge); }
+	void clipper::edge_point::print() { printf("%g %g %g e %d\n", xyz[0], xyz[1], xyz[2], (int)edge); }
 
 	clipper::~clipper()
 	{
@@ -592,7 +592,7 @@ namespace INMOST
 				}
 				if (print)
 				{
-					printf("nodes on face %d\n", faces[q].LocalID());
+					printf("nodes on face %d\n", (int)faces[q].LocalID());
 					for (int m = nstartedge * 2; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
 				}
 				ntotpoints += npoints;
@@ -620,7 +620,7 @@ namespace INMOST
 			{
 				if (print)
 				{
-					printf("coords on cell %d\n", cells[k]->LocalID());
+					printf("coords on cell %d\n", (int)cells[k]->LocalID());
 					for (int m = 0; m < static_cast<int>(clipcoords.size()); m++) clipcoords[m].print();
 				}
 				//Can make this faster using hash
@@ -699,7 +699,7 @@ namespace INMOST
 			Storage::real_array cl = cells[k]->RealArray(clips);
 			Storage::real_array clv = cells[k]->RealArray(clipsv);
 			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-			int offset = 0;
+			INMOST_DATA_ENUM_TYPE offset = 0;
 			for (int r = 0; r < (int)cln.size(); ++r)
 			{
 				face2gl f;
@@ -751,7 +751,7 @@ namespace INMOST
 			Storage::real_array cl = cells[k]->RealArray(clips);
 			Storage::real_array clv = cells[k]->RealArray(clipsv);
 			Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-			int offset = 0;
+			INMOST_DATA_ENUM_TYPE offset = 0;
 			for (int r = 0; r < (int)cln.size(); ++r)
 			{
 				Storage::real cnt[3] = { 0, 0, 0 };
@@ -844,8 +844,8 @@ namespace INMOST
 				Storage::real_array cl = cells[k]->RealArray(clips);
 				Storage::real_array clv = cells[k]->RealArray(clipsv);
 				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-				int offset = 0;
-				for (int r = 0; r < cln.size(); ++r)
+				INMOST_DATA_ENUM_TYPE offset = 0;
+				for (size_t r = 0; r < cln.size(); ++r)
 				{
 					Storage::real pos[3], t;
 					for (INMOST_DATA_ENUM_TYPE q = offset; q < offset + cln[r]; q++)
@@ -871,8 +871,8 @@ namespace INMOST
 			{
 				Storage::real_array cl = cells[k]->RealArray(clips);
 				Storage::integer_array cln = cells[k]->IntegerArray(clipsn);
-				int offset = 0;
-				for (int r = 0; r < cln.size(); ++r)
+				INMOST_DATA_ENUM_TYPE offset = 0;
+				for (size_t r = 0; r < cln.size(); ++r)
 				{
 					for (INMOST_DATA_ENUM_TYPE q = offset; q < offset + cln[r]; q++)
 					{

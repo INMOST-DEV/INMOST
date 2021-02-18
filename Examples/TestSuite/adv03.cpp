@@ -93,12 +93,11 @@ int main(int argc, char *argv[])
 				for (int k = 0; k < n; k++) 
 				{
 					Storage::real xyz[3];
-					bool mark = false;
 					xyz[0] = i * 1.0 / (n - 1);
 					xyz[1] = j * 1.0 / (n - 1);
 					xyz[2] = k * 1.0 / (n - 1);
 					Node c = mesh->CreateNode(xyz);
-					if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+					if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i,j,k) << std::endl;
 				}
 			}
 		}
@@ -155,7 +154,7 @@ int main(int argc, char *argv[])
 
 			ElementArray<Cell> it_cells = it->getCells();
 
-			for(int k = 0; k < it_cells.size(); ++k)
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < it_cells.size(); ++k)
 			{
 				Storage::real maxmin[6];
 				maxmin[0] = -1e20;
@@ -205,7 +204,7 @@ int main(int argc, char *argv[])
 		mesh->PrepareGeometricData(table); //Ask to precompute the data
 	}
 
-	printf("nodes: %d edges: %d faces: %d cells: %d\n", mesh->NumberOfNodes(), mesh->NumberOfEdges(), mesh->NumberOfFaces(), mesh->NumberOfCells());
+	std::cout << "nodes: " << mesh->NumberOfNodes() << " edges: " << mesh->NumberOfEdges() << " faces: " << mesh->NumberOfFaces() << " cells: " << mesh->NumberOfCells() << std::endl;
 
 
 	{
@@ -319,13 +318,13 @@ int main(int argc, char *argv[])
 		svel[2] = vel[2];
 	}
 
-	printf("I'm ready!\n");
+	std::cout << "I'm ready!" << std::endl;
 
 	//mesh->Save("grid.vtk");
 	mesh->Save("grid_out.pmf");
 	//mesh->Save("grid.gmv");
 
-	printf("File written!\n");
+	std::cout << "File written!" << std::endl;
 
 	delete mesh;
 	return 0;

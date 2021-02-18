@@ -72,7 +72,7 @@ namespace INMOST
 			points.reserve(ceil(density*m->NumberOfCells()));
 		else
 			points.reserve(m->NumberOfCells());
-		int q = 0;
+		//int q = 0;
 		double div = pow(density,1.0/4.0);
 		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -143,7 +143,7 @@ namespace INMOST
 
 		}
 		*/
-		printf("number of points %d\n", (int)points.size());
+		std::cout << "number of points " << points.size() << "\n";
 	}
 
 	void volumetric::camera(double pos[3], int interactive)
@@ -153,7 +153,7 @@ namespace INMOST
 		posf[0] = pos[0];
 		posf[1] = pos[1];
 		posf[2] = pos[2];
-		for (int k = 0; k < points.size(); ++k)
+		for (size_t k = 0; k < points.size(); ++k)
 		{
 			points[k].dist = sqrtf(
 				(posf[0] - points[k].coords[0])*(posf[0] - points[k].coords[0]) +
@@ -163,7 +163,7 @@ namespace INMOST
 		double t = Timer();
 		radix_sort_dist(points);
 		//std::sort(points.rbegin(),points.rend());
-		printf("Time to sort %lf\n", Timer() - t);
+		std::cout << "Time to sort " << Timer() - t << "\n";
 	}
 
 	void volumetric::draw(int interactive) const
@@ -224,7 +224,7 @@ namespace INMOST
 		//glBegin(GL_QUADS);
 		if (interactive)
 		{
-			for (int k = 0; k < points.size(); ++k) if (k % 100 == 0)
+			for (size_t k = 0; k < points.size(); ++k) if (k % 100 == 0)
 			{
 				if (isColorBarEnabled())
 				{
@@ -262,7 +262,7 @@ namespace INMOST
 			}
 		}
 		else
-		for (int k = 0; k < points.size(); ++k)
+		for (size_t k = 0; k < points.size(); ++k)
 		{
 			if (isColorBarEnabled())
 			{
@@ -318,13 +318,13 @@ namespace INMOST
 			if (q%pace == 0) faces.back().set_flag(true);
 			q++;
 		}
-		printf("number of faces %lu\n", faces.size());
+		std::cout << "number of faces " << faces.size() << "\n";
 	}
 
 	void volumetric2::camera(double pos[3], int interactive)
 	{
 		if (interactive) return;
-		for (int k = 0; k < faces.size(); ++k)
+		for (size_t k = 0; k < faces.size(); ++k)
 			faces[k].compute_dist(pos);
 		//face2gl::radix_sort_dist(faces);
 		//std::sort(faces.rbegin(), faces.rend());

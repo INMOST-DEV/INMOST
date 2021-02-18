@@ -2453,6 +2453,7 @@ namespace k3d
       int nz_add_dia = 0;
 
       _Flt fzero = (_Flt) 0.0e0;
+      (void)fzero;
 
       for (i = 0; i < nlistblk; i++) {
          jblk = (int) plistblk[i];
@@ -27514,8 +27515,8 @@ namespace k3d
       static float default_bg[3] = { (float) 0.9, (float) 0.9, (float) 1.0 };
       static float default_fg[3] = { (float) 0.7, (float) 0.7, (float) 1.0 };
 
-      static float default_bg2[3] = { (float) 0.97, (float) 0.97, (float) 1.0 };
-      static float default_fg2[3] = { (float) 0.77, (float) 0.77, (float) 1.0 };
+      //~ static float default_bg2[3] = { (float) 0.97, (float) 0.97, (float) 1.0 };
+      //~ static float default_fg2[3] = { (float) 0.77, (float) 0.77, (float) 1.0 };
 
 // Write the header information
 
@@ -27698,7 +27699,7 @@ namespace k3d
 // Close output file
 
       fout.close ();
-   };
+   }
 
 // Print sparsity with boxes that show nonzero blocks
 //========================================================================================
@@ -27871,7 +27872,7 @@ namespace k3d
       CBMatrix < _Int, _Flt >::StrRect2PsBox (temp, _fname, nblksRnew, pblksRnw,
                                               nblksCnew, pblksCnw);
 
-   };
+   }
 
 // Print sparsity with boxes that show nonzero blocks and hblocks
 //========================================================================================

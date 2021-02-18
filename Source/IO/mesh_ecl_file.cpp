@@ -199,7 +199,7 @@ namespace INMOST
 {
 
 
-	static void GetDXYZ(Element e, double & dx, double & dy, double & dz)
+	void GetDXYZ(Element e, INMOST_DATA_REAL_TYPE & dx, INMOST_DATA_REAL_TYPE & dy, INMOST_DATA_REAL_TYPE & dz)
 	{
 		Storage::real maxmin[6];
 		maxmin[0] = -1e20;
@@ -299,13 +299,13 @@ namespace INMOST
 		{
 			ElementArray<Face> n_faces = it->getFaces(); //retrive all faces joining at the node
 			INMOST_DATA_ENUM_TYPE num_frac_faces = 0;
-			for (int k = 0; k < n_faces.size(); ++k) if (n_faces[k].GetMarker(frac_markers)) num_frac_faces++;
+			for (size_t k = 0; k < n_faces.size(); ++k) if (n_faces[k].GetMarker(frac_markers)) num_frac_faces++;
 			if (num_frac_faces)
 			{
 				ElementArray<Cell> n_cells = it->getCells(); //get all cells of the node
-				for (int k = 0; k < n_cells.size(); ++k) //assign local enumeration to the cells
+				for (size_t k = 0; k < n_cells.size(); ++k) //assign local enumeration to the cells
 					n_cells[k].IntegerDF(indexes) = k;
-				for (int k = 0; k < n_faces.size(); ++k) //stich together node's numbers corresponding to cells if no fracture separates them
+				for (size_t k = 0; k < n_faces.size(); ++k) //stich together node's numbers corresponding to cells if no fracture separates them
 				{
 					if (!n_faces[k].GetMarker(frac_markers) && n_faces[k].FrontCell().isValid())
 					{
@@ -313,23 +313,23 @@ namespace INMOST
 						int fi = n_faces[k].FrontCell()->IntegerDF(indexes);
 						if (bi != fi)
 						{
-							for (int q = 0; q < n_cells.size(); q++) if (n_cells[q].IntegerDF(indexes) == fi)
+							for (size_t q = 0; q < n_cells.size(); q++) if (n_cells[q].IntegerDF(indexes) == fi)
 								n_cells[q].IntegerDF(indexes) = bi;
 						}
 					}
 				}
 				dynarray<int, 64> nums(n_cells.size()); //store all numbers
-				for (int k = 0; k < n_cells.size(); ++k) nums[k] = n_cells[k].IntegerDF(indexes);
+				for (size_t k = 0; k < n_cells.size(); ++k) nums[k] = n_cells[k].IntegerDF(indexes);
 				std::sort(nums.begin(), nums.end());
 				nums.resize(std::unique(nums.begin(), nums.end()) - nums.begin());
 				if (nums.size() > 1) //at least two distinctive nodes
 				{
-					for (int k = 0; k < nums.size(); k++)
+					for (size_t k = 0; k < nums.size(); k++)
 					{
 						Node image;
 						Storage::real xyz[3] = { 0, 0, 0 }, cntc[3] = { 0, 0, 0 };
 						int n_node_cells = 0;
-						for (int q = 0; q < n_cells.size(); q++)
+						for (size_t q = 0; q < n_cells.size(); q++)
 						{
 							if (n_cells[q].IntegerDF(indexes) == nums[k])
 							{
@@ -348,7 +348,7 @@ namespace INMOST
 							xyz[q] = coords[q] * mult + (1 - mult)*xyz[q];
 						image = m->CreateNode(xyz);
 
-						for (int q = 0; q < n_cells.size(); q++)
+						for (size_t q = 0; q < n_cells.size(); q++)
 						{
 							if (n_cells[q].IntegerDF(indexes) == nums[k])
 							{
@@ -429,7 +429,7 @@ namespace INMOST
 				Cell c = it->BackCell();
 				images = c->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlighted by marker
-				for (int q = 0; q < nodes.size(); ++q) if (nodes[q].GetMarker(frac_markers))
+				for (size_t q = 0; q < nodes.size(); ++q) if (nodes[q].GetMarker(frac_markers))
 				{
 					Node n;
 					for (int k = 0; k < (int)images.size() && !n.isValid(); k += 2)
@@ -439,7 +439,7 @@ namespace INMOST
 				}
 				else nodesb[q] = nodes[q];
 				//create edges
-				for (int k = 0; k < edges.size(); k++)
+				for (size_t k = 0; k < edges.size(); k++)
 				{
 					if (nodes[k].GetMarker(frac_markers) || nodes[(k + 1) % N].GetMarker(frac_markers))
 					{
@@ -461,7 +461,7 @@ namespace INMOST
 				Cell c = it->FrontCell();
 				images = c->ReferenceArray(cell2node);
 				//among images of fracture nodes select those highlited by marker
-				for (int q = 0; q < nodes.size(); ++q) if (nodes[q].GetMarker(frac_markers))
+				for (size_t q = 0; q < nodes.size(); ++q) if (nodes[q].GetMarker(frac_markers))
 				{
 					Node n;
 					for (int k = 0; k < (int)images.size() && !n.isValid(); k += 2)
@@ -471,7 +471,7 @@ namespace INMOST
 				}
 				else nodesf[q] = nodes[q];
 				//create edges
-				for (int k = 0; k < edges.size(); k++)
+				for (size_t k = 0; k < edges.size(); k++)
 				{
 					if (nodes[k].GetMarker(frac_markers) || nodes[(k + 1) % N].GetMarker(frac_markers))
 					{
@@ -529,7 +529,7 @@ namespace INMOST
 	}
 
 	//replace n* witn n stars
-	static void UnStar(const char * input, char * output)
+	void UnStar(const char * input, char * output)
 	{
 		size_t q = 1, j;
 		output[0] = input[0]; //we skip first char
@@ -568,7 +568,7 @@ namespace INMOST
 		}
 	}
 
-	static std::string STR8(const char * input)
+	std::string STR8(const char * input)
 	{
 		std::string ret(8, ' ');
 		int kend = (int)strlen(input);
@@ -577,7 +577,7 @@ namespace INMOST
 		return ret;
 	}
 
-	static std::string UnQoute(std::string input)
+	std::string UnQoute(std::string input)
 	{
 		if (input[0] == '\'' && input[input.size() - 1] == '\'')
 			return input.substr(1, input.size() - 2);
@@ -585,14 +585,14 @@ namespace INMOST
 			return input.substr(1, input.size() - 2);
 		return input;
 	}
-	static std::string ToUpper(std::string input)
+	std::string ToUpper(std::string input)
 	{
 		for (size_t k = 0; k < input.size(); ++k)
 			input[k] = toupper(input[k]);
 		return input;
 	}
 
-	static int GetDir(std::string dir)
+	int GetDir(std::string dir)
 	{
 		if (dir == "X-" || dir == "I-")
 			return 0;
@@ -608,7 +608,7 @@ namespace INMOST
 			return 5;
 		return -1;
 	}
-	static std::string GetFolder(std::string file)
+	std::string GetFolder(std::string file)
 	{
 		size_t found = file.find_last_of("/\\");
 		if (found == std::string::npos)
@@ -616,7 +616,7 @@ namespace INMOST
 		else return file.substr(0, found);
 	}
 
-	static ElementArray<Edge> OrderEdges(const ElementArray<Edge> & input, MarkerType mrk)
+	ElementArray<Edge> OrderEdges(const ElementArray<Edge> & input, MarkerType mrk)
 	{
 		Mesh * m = const_cast<Mesh *>(input.GetMeshLink());
 		ElementArray<Edge> ret(m);
@@ -737,7 +737,7 @@ namespace INMOST
 		Mesh * m = array.GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
 		int dups = 0;
-		for (int k = 0; k < array.size(); ++k)
+		for (typename ElementArray<T>::size_type k = 0; k < array.size(); ++k)
 		{
 			if (array[k].GetPrivateMarker(mrk))
 				dups++;
@@ -753,7 +753,7 @@ namespace INMOST
 	{
 		Mesh * m = array.GetMeshLink();
 		MarkerType mrk = m->CreatePrivateMarker();
-		int i = 0, j = 0;
+		typename ElementArray<T>::size_type i = 0, j = 0;
 		while (j < array.size())
 		{
 			if (array[j].GetPrivateMarker(mrk))
@@ -812,16 +812,16 @@ namespace INMOST
 
 
 	//returns distance between line if shortest line is within segments, writes position of distance into last argument
-	static double SegmentDistance(const double v1[3], const double v2[3], const double v3[3], const double v4[3], double vout[3])
+	static INMOST_DATA_REAL_TYPE SegmentDistance(const INMOST_DATA_REAL_TYPE v1[3], const INMOST_DATA_REAL_TYPE v2[3], const INMOST_DATA_REAL_TYPE v3[3], const INMOST_DATA_REAL_TYPE v4[3], INMOST_DATA_REAL_TYPE vout[3])
 	{
-		double v13[3], v21[3], v43[3];
+		INMOST_DATA_REAL_TYPE v13[3], v21[3], v43[3];
 		for (int k = 0; k < 3; ++k)
 		{
 			v13[k] = v1[k] - v3[k];
 			v21[k] = v2[k] - v1[k];
 			v43[k] = v4[k] - v3[k];
 		}
-		double d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
+		INMOST_DATA_REAL_TYPE d1321 = 0, d2121 = 0, d4321 = 0, d1343 = 0, d4343 = 0;
 		for (int k = 0; k < 3; ++k)
 		{
 			d1321 += v13[k] * v21[k];
@@ -830,7 +830,7 @@ namespace INMOST
 			d1343 += v13[k] * v43[k];
 			d4343 += v43[k] * v43[k];
 		}
-		double mu1 = 0, mu2 = 0;
+		INMOST_DATA_REAL_TYPE mu1 = 0, mu2 = 0;
 		/*
 		double parallel = 0;
 		for (int k = 0; k < 3; ++k)
@@ -851,8 +851,8 @@ namespace INMOST
 		else //parallel lines
 		{
 			//1d problem
-			double la = 0, ra = 0;
-			double lb = 0, rb = 0;
+			INMOST_DATA_REAL_TYPE la = 0, ra = 0;
+			INMOST_DATA_REAL_TYPE lb = 0, rb = 0;
 			for (int k = 0; k < 3; ++k)
 			{
 				la += v1[k] * v21[k];
@@ -894,7 +894,7 @@ namespace INMOST
 			}
 			if (invb) mu2 = 1 - mu2;
 		}
-		double vs1[3], vs2[3], h = 0;
+		INMOST_DATA_REAL_TYPE vs1[3], vs2[3], h = 0;
 		for (int k = 0; k < 3; ++k)
 		{
 			vs1[k] = v1[k] + mu1*(v2[k] - v1[k]);
@@ -985,9 +985,9 @@ namespace INMOST
 	{
 		std::vector< std::vector<char> > copy(transfer.size());
 		//memorize data
-		for (int k = 0; k < transfer.size(); ++k) //tags
+		for (size_t k = 0; k < transfer.size(); ++k) //tags
 		{
-			int size = a->GetDataSize(transfer[k]);
+			INMOST_DATA_ENUM_TYPE size = a->GetDataSize(transfer[k]);
 			copy[k].resize(transfer[k].GetBytesSize()*size);
 			if (!copy.empty()) a->GetData(transfer[k], 0, size, &copy[k][0]);
 		}
@@ -996,9 +996,9 @@ namespace INMOST
 		splitted_a = Edge::SplitEdge(a, ElementArray<Node>(m, 1, I->GetHandle()), 0);
 		if (print) std::cout << splitted_a[0]->GetHandle() << " " << splitted_a[0]->getBeg()->GetHandle() << " <-> " << splitted_a[0]->getEnd()->GetHandle() << " and " << splitted_a[1]->GetHandle() << " " << splitted_a[1]->getBeg()->GetHandle() << " <-> " << splitted_a[1]->getEnd()->GetHandle() << std::endl;
 		//duplicate data
-		for (int k = 0; k < transfer.size(); ++k)
+		for (size_t k = 0; k < transfer.size(); ++k)
 		{
-			int size = (int)copy[k].size() / transfer[k].GetBytesSize();
+			INMOST_DATA_ENUM_TYPE size = copy[k].size() / transfer[k].GetBytesSize();
 			if (size) for (int l = 0; l < 2; ++l) //two parts
 			{
 				splitted_a[l].SetDataSize(transfer[k], size);
@@ -1308,7 +1308,7 @@ namespace INMOST
 		Storage::real * read_arrayf = NULL;
 		Storage::integer * read_arrayi = NULL;
 		Storage::integer dims[3], mapaxis[6] = { 0, 1, 0, 0, 1, 0 };
-		Storage::real inrad = 0;
+		double inrad = 0;
 		std::vector<Storage::real> xyz, perm, poro, tops, zcorn, ntg, pressure, pbub, swat, soil, sgas, thconr;
 		std::vector<Storage::integer> actnum, satnum, eqlnum, pvtnum, rocknum;
 		std::vector<mult_rec> multiply;
@@ -1913,6 +1913,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_DATES_MON:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -1926,6 +1927,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_DATES_YEAR:
 					if (1 == sscanf(p, "%d%n", &date_cur.tm_year, &nchars))
 					{
@@ -1960,6 +1962,7 @@ namespace INMOST
 						state = state_from;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_DATES_HRS:
 					if (1 == sscanf(p, "%s%d", rec,&nchars))
 					{
@@ -1994,6 +1997,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (*(pend - 1) == '/' || *p == '/') state = state_from; else state = ECL_SKIP_SECTION;
+					//FALLTHROUGH
 				case ECL_MULTIPLY:
 					//read name
 					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
@@ -2035,6 +2039,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_MULTIPLY_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2051,6 +2056,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_MULTIPLY_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -2104,6 +2110,7 @@ namespace INMOST
 						}
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_EDITNNC_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -2123,6 +2130,7 @@ namespace INMOST
 						if (p == pend) break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_EDITNNC_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2172,6 +2180,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WCONPRODINJE_TYPE:
 					if (state == ECL_WCONPRODINJE_TYPE)
 					{
@@ -2190,6 +2199,7 @@ namespace INMOST
 						}
 						if (p == pend) break;
 					}
+					//FALLTHROUGH
 				case ECL_WCONPRODINJE_OPEN:
 					if (ReadName(p, pend, rec, &nchars))
 					{
@@ -2210,6 +2220,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WCONPRODINJE_CTRL:
 					if (ReadName(p, pend, rec, &nchars))
 					{
@@ -2231,6 +2242,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WCONPRODINJE_RATES:
 					while (downread < totread && p < pend)
 					{
@@ -2258,6 +2270,7 @@ namespace INMOST
 						if (p == pend) break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WCONPRODINJE_BHP:
 					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
 					{
@@ -2299,6 +2312,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WELSPECS_GROUP:
 					if (ReadName(p, pend, rec, &nchars))
 					{
@@ -2314,6 +2328,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WELSPECS_I:
 					if (1 == sscanf(p,"%d%n",welspecs_cur.second.bij,&nchars))
 					{
@@ -2327,6 +2342,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WELSPECS_J:
 					if (1 == sscanf(p, "%d%n", welspecs_cur.second.bij+1, &nchars))
 					{
@@ -2340,6 +2356,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WELSPECS_Z:
 					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
 					{
@@ -2373,6 +2390,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_WELSPECS_PHASE:
 					if (ReadName(p, pend, rec, &nchars) && rec[0] != '/')
 					{
@@ -2423,6 +2441,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_COMPDAT_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -2442,6 +2461,7 @@ namespace INMOST
 						if (p == pend) break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_COMPDAT_OPEN:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2459,6 +2479,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_COMPDAT_SATNUM:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2474,6 +2495,7 @@ namespace INMOST
 						throw BadFile;
 					}
 					if( p == pend ) break;
+					//FALLTHROUGH
 				case ECL_COMPDAT_TRANS:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2497,6 +2519,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_BORE:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2520,6 +2543,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_PERM:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2543,6 +2567,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_SKIN:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2566,6 +2591,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_DFAC:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2589,6 +2615,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_DIR:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2622,6 +2649,7 @@ namespace INMOST
 						state_from = state = ECL_COMPDAT;
 						break;
 					}
+					//FALLTHROUGH
 				case ECL_COMPDAT_RAD:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -2663,6 +2691,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_FAULTS_BLK:
 					while (downread < totread && p < pend)
 					{
@@ -2682,6 +2711,7 @@ namespace INMOST
 						if (p == pend) break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_FAULTS_DIR:
 					if (ReadName(p, pend, rec, &nchars))
 					{
@@ -2720,6 +2750,7 @@ namespace INMOST
 						break;
 					}
 					if (p == pend) break;
+					//FALLTHROUGH
 				case ECL_MULTFLT_MUL:
 					if (1 == sscanf(p, "%s%n", rec, &nchars))
 					{
@@ -3529,7 +3560,7 @@ namespace INMOST
 
 								std::cout << "output edges: " << edges.size() << std::endl;
 
-								if (true) for (int k = 0; k < edges.size(); ++k)
+								if (true) for (size_t k = 0; k < edges.size(); ++k)
 								{
 									Storage::integer_array bn = edges[k]->IntegerArray(block_number);
 									Storage::integer_array en = edges[k]->IntegerArray(edge_number);
@@ -3540,7 +3571,7 @@ namespace INMOST
 								}
 
 
-								for (int k = 0; k < edges.size(); ++k)
+								for (size_t k = 0; k < edges.size(); ++k)
 								{
 									//std::cout << "edge " << k << " " << edges[k]->getBeg()->GetHandle() << "<->" << edges[k]->getEnd()->GetHandle() << std::endl;
 									std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
@@ -3548,7 +3579,7 @@ namespace INMOST
 								}
 								std::cout << "Projected: " << std::endl;
 
-								for (int k = 0; k < edges.size(); ++k)
+								for (size_t k = 0; k < edges.size(); ++k)
 								{
 									std::cout << "(" << edges[k]->getBeg()->RealArray(pnt)[0] << "," << edges[k]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << edges[k]->getEnd()->RealArray(pnt)[0] << "," << edges[k]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
 								}
@@ -3556,14 +3587,14 @@ namespace INMOST
 
 
 							//sort block numbers on edges
-							for (int k = 0; k < (int)edges.size(); ++k)
+							for (size_t k = 0; k < edges.size(); ++k)
 							{
 								Storage::integer_array b = edges[k].IntegerArray(block_number);
 								Storage::integer_array e = edges[k].IntegerArray(edge_number);
 								assert(e.size() == b.size());
 								//sort indices according to b
 								indices_sort.resize(b.size());
-								for (int l = 0; l < indices_sort.size(); ++l) indices_sort[l] = l;
+								for (size_t l = 0; l < indices_sort.size(); ++l) indices_sort[l] = l;
 								std::sort(indices_sort.begin(), indices_sort.end(), index_comparator(b));
 								//arrange data in b and e arrays according to indices_sort
 								temporary.resize(b.size());
@@ -3747,7 +3778,7 @@ namespace INMOST
 									make_unique(bedges);
 									int num_outer = 0;
 									std::set<int> outer_edge_number;
-									for (int l = 0; l < bedges.size(); ++l) //loop through edges of the block
+									for (size_t l = 0; l < bedges.size(); ++l) //loop through edges of the block
 									{
 										//retrive block numbers of edges
 										Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
@@ -3781,10 +3812,10 @@ namespace INMOST
 												{
 													std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << bedges_ordered.size() << std::endl;
 													std::cout << "bedges[" << bedges.size() << "]:";
-													for (int l = 0; l < bedges.size(); ++l) std::cout << " " << bedges[l].LocalID();
+													for (size_t l = 0; l < bedges.size(); ++l) std::cout << " " << bedges[l].LocalID();
 													std::cout << std::endl;
 													std::cout << "bedges[" << bedges_ordered.size() << "]:";
-													for (int l = 0; l < bedges_ordered.size(); ++l) std::cout << " " << bedges_ordered[l].LocalID();
+													for (size_t l = 0; l < bedges_ordered.size(); ++l) std::cout << " " << bedges_ordered[l].LocalID();
 													std::cout << std::endl;
 												}
 												f->IntegerArray(block_pair)[0] = i;
@@ -3806,7 +3837,7 @@ namespace INMOST
 												if (print_bedges)
 												{
 													std::cout << (m ? "front " : "back ") << "depth " << k << " block " << ECL_IJK_DATA(blocki[m], blockj[m], k) << " edges [" << bedges.size() << "]:" << std::endl;
-													for (int l = 0; l < bedges.size(); ++l)
+													for (size_t l = 0; l < bedges.size(); ++l)
 													{
 														Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
 														Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
@@ -3830,7 +3861,7 @@ namespace INMOST
 														if (print_bedges)
 														{
 															std::cout << "Found loop of " << loop.size() << " edges:" << std::endl;
-															for (int g = 0; g < loop.size(); ++g)
+															for (size_t g = 0; g < loop.size(); ++g)
 															{
 																std::cout << "edge " << g << " " << loop[g]->GetHandle() << " ";
 																Storage::integer_array bn = loop[g]->IntegerArray(block_number);
@@ -3938,7 +3969,7 @@ namespace INMOST
 													matrix.print_matrix();
 													std::cout << "Current block " << ECL_IJK_DATA(blocki[m], blockj[m], k) << std::endl;
 													std::cout << "pillars: " << i << "," << j << "," << q << std::endl;
-													for (int l = 0; l < bedges.size(); ++l)
+													for (size_t l = 0; l < bedges.size(); ++l)
 													{
 														Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
 														Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
@@ -3949,7 +3980,7 @@ namespace INMOST
 														std::cout << std::endl;
 													}
 													std::cout << "edges projected: " << std::endl;
-													for (int l = 0; l < bedges.size(); ++l)
+													for (size_t l = 0; l < bedges.size(); ++l)
 													{
 														std::cout << "(" << bedges[l]->getBeg()->RealArray(pnt)[0] << "," << bedges[l]->getBeg()->RealArray(pnt)[1] << ",0) <-> (" << bedges[l]->getEnd()->RealArray(pnt)[0] << "," << bedges[l]->getEnd()->RealArray(pnt)[1] << ",0)" << std::endl;
 													}
@@ -3969,7 +4000,7 @@ namespace INMOST
 
 													std::cout << "block i " << i << " j " << j << " q " << q << std::endl;
 													std::cout << "All edges: " << std::endl;
-													for (int k = 0; k < (int)edges.size(); ++k)
+													for (size_t k = 0; k < edges.size(); ++k)
 													{
 														std::cout << "(" << edges[k]->getBeg()->Coords()[0] << "," << edges[k]->getBeg()->Coords()[1] << "," << edges[k]->getBeg()->Coords()[2] << ") <-> (" << edges[k]->getEnd()->Coords()[0] << "," << edges[k]->getEnd()->Coords()[1] << "," << edges[k]->getEnd()->Coords()[2] << ")" << std::endl;
 													}
@@ -4076,7 +4107,7 @@ namespace INMOST
 								std::vector<HandleType> edges[2][4];
 								//retrive set of edges of the block
 								ElementArray<Edge> & cbe = block_edges[cur];
-								for (int q = 0; q < cbe.size(); ++q)
+								for (ElementArray<Edge>::size_type q = 0; q < cbe.size(); ++q)
 								{
 									Storage::integer_array bn = cbe[q].IntegerArray(block_number);
 									Storage::integer_array en = cbe[q].IntegerArray(edge_number);
@@ -4201,7 +4232,7 @@ namespace INMOST
 										{
 											std::cout << __FILE__ << ":" << __LINE__ << " bad edge order, edges " << face_edges.size() << std::endl;
 											std::cout << "block: " << cur << " (" << i << "," << j << "," << k << ") " << (q ? "top" : "bottom") << std::endl;
-											for (int l = 0; l < face_edges.size(); ++l)
+											for (size_t l = 0; l < face_edges.size(); ++l)
 											{
 												Storage::integer_array bn = face_edges[l]->IntegerArray(block_number);
 												Storage::integer_array en = face_edges[l]->IntegerArray(edge_number);
@@ -4390,7 +4421,6 @@ namespace INMOST
 						
 						if( c1.isValid() && c2.isValid() )
 						{
-							bool swap = false;
 							//compute axis direction
 							if( (i1 != i2 ? 1 : 0) + (j1 != j2 ? 1 : 0) + (k1 != k2 ? 1 : 0) != 1 )
 								std::cout << "face connects faces (" << i1 << "," << j1 << "," << k1 << ") and (" << i2 << "," << j2 << "," << k2 << ") which has difference in more then one index" << std::endl;
@@ -5256,12 +5286,12 @@ namespace INMOST
 								{
 									if (WI <= 0) //calculate WI with peacman
 									{
-										double Kh = kt->perm;
-										double rw = kt->rw;
-										double r0 = kt->r0;
-										double skin = kt->skin;
-										double kx = 1, ky = 1, kz = 1;
-										double dx, dy, dz;
+										INMOST_DATA_REAL_TYPE Kh = kt->perm;
+										INMOST_DATA_REAL_TYPE rw = kt->rw;
+										INMOST_DATA_REAL_TYPE r0 = kt->r0;
+										INMOST_DATA_REAL_TYPE skin = kt->skin;
+										INMOST_DATA_REAL_TYPE kx = 1, ky = 1, kz = 1;
+										INMOST_DATA_REAL_TYPE dx, dy, dz;
 										GetDXYZ(Element(this,h),dx,dy,dz);
 										
 										if( Kh <= 0 || r0 <= 0 )

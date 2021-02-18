@@ -31,7 +31,7 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 
-	Edge::CollapseEdge(Edge(&A,ComposeHandle(EDGE,edge_num)),0);
+	Edge::CollapseEdge(Edge(&A,ComposeHandle(EDGE,edge_num)));
 	
 	if( A.HaveTag("GRIDNAME") )
 	{

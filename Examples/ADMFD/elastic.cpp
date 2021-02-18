@@ -41,15 +41,15 @@ bool print_matrix = false;
 template<typename T>
 static void SVD2Eigen(const Matrix<T> & U, Matrix<T> & S, Matrix<T> & V)
 {
-	for (int i = 0; i < V.Cols(); ++i)
+	for (unsigned i = 0; i < V.Cols(); ++i)
 	{
 		double dot = 0.0;
-		for (int j = 0; j < V.Rows(); ++j)
+		for (unsigned j = 0; j < V.Rows(); ++j)
 			dot += get_value(U(j, i))*get_value(V(j, i));
 		if (dot < 0.0)
 		{
 			S(i, i) *= -1;
-			for (int j = 0; j < V.Rows(); ++j)
+			for (unsigned j = 0; j < V.Rows(); ++j)
 				V(j, i) *= -1;
 		}
 	}
@@ -290,7 +290,7 @@ void PrintSV(const rMatrix & A)
 	A.SVD(U,S,V);
 	std::cout << "singular values:";
 	int cnt = 0;
-	for(int k = 0; k < A.Cols(); ++k) if( fabs(S(k,k)) > 1.0e-10 )
+	for(unsigned k = 0; k < A.Cols(); ++k) if( fabs(S(k,k)) > 1.0e-10 )
 	{
 		std::cout << " " << S(k,k);
 		cnt++;
@@ -304,10 +304,10 @@ void PrintRS(const rMatrix & A)
 {
 	double sum;
 	std::cout << "row sum:";
-	for(int i = 0; i < A.Rows(); ++i)
+	for(unsigned i = 0; i < A.Rows(); ++i)
 	{
 		sum = 0;
-		for(int j = 0; j < A.Cols(); ++j)
+		for(unsigned j = 0; j < A.Cols(); ++j)
 			sum+= A(i,j);
 		std::cout << " " << sum;
 	}
@@ -513,18 +513,17 @@ int main(int argc,char ** argv)
 				rMatrix N, R, L, M(9,9), T, K(9,9), iK(9,9), C(6,6), Q, W1, W2, W3, W3s, U,S,V, w, u, v;
 				rMatrix x(3,1), xf(3,1), n(3,1);
 				double area; //area of the face
-				double volume; //volume of the cell
+				//double volume; //volume of the cell
 				double dist; //distance from cell center to face
 #if defined(USE_OMP)
 #pragma omp for
 #endif
 				for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
 				{
-					Mesh * mesh = m;
 					Cell cell = m->CellByLocalID(q);
 					ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
 					int NF = (int)faces.size(); //number of faces;
-					volume = cell->Volume(); //volume of the cell
+					//~ volume = cell->Volume(); //volume of the cell
 					cell->Barycenter(x.data());;
 					//get permeability for the cell
 					KTensor(tag_C[cell],K);
@@ -628,7 +627,6 @@ int main(int argc,char ** argv)
 #endif
 				for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
 				{
-					Mesh * mesh = m;
 					Face f = m->FaceByLocalID(q);
 					
 					Storage::integer_array rows = f->IntegerArray(tag_Row);
@@ -649,7 +647,7 @@ int main(int argc,char ** argv)
 					tag_i_rhs(f,3,1).Zero();
 					real aF = 1;
 					//f_rhs = i_rhs = 0;
-					real multi = 1, multf = -aF, multfbnd = -aF;
+					real multi = 1, multf = -aF;//, multfbnd = -aF;
 					if( cells.size() == 2 ) //internal face
 					{
 						C1 = W[0](rows[0]*3,rows[0]*3+3,rows[0]*3,rows[0]*3+3)*aF;
@@ -748,7 +746,7 @@ int main(int argc,char ** argv)
 			}
             std::cout << "Construct W matrix: " << Timer() - ttt << std::endl;
 			
-			
+			/*
 			ttt = Timer();
 #if defined(USE_OMP)
 #pragma omp parallel
@@ -760,12 +758,11 @@ int main(int argc,char ** argv)
 #endif
 				for( int q = 0; q < m->FaceLastLocalID(); ++q ) if( m->isValidFace(q) )
 				{
-					Mesh * mesh = m;
 					Face face = m->FaceByLocalID(q);
 				}
 			}
 			std::cout << "Construct fluxes and interpolations: " << Timer() - ttt << std::endl;
-			
+			*/
 			if( m->HaveTag("UVW") ) //Is there a displacement on the mesh?
 				tag_UVW = m->GetTag("UVW"); //Get the pressure
 			
@@ -864,7 +861,7 @@ int main(int argc,char ** argv)
 			{
                 R.Clear(); //clean up the residual
                 double tttt = Timer();
-                int total = 0, dmp = 0;
+                //~ int total = 0, dmp = 0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
@@ -922,7 +919,7 @@ int main(int argc,char ** argv)
 							{
 								R[UVW.Index(faces[k])] -= T(3*k,3*(k+1),0,1);
 								
-								tag_FLUX(faces[k],3,1) += 0.5*rMatrix(T(3*k,3*(k+1),0,1))/faces[k].Area()*(faces[k].FaceOrientedOutside(cell)?1:-1);
+								tag_FLUX(faces[k],3,1) += 0.5*rMatrix(T(3*k,3*(k+1),0,1))/faces[k].Area()*(faces[k].FaceOrientedOutside(cell)?1.:-1.);
 							}
 							Locks.UnLock(index);
 						}
@@ -949,7 +946,7 @@ int main(int argc,char ** argv)
 								VR[q] = R[UVW.Index(it->self(),q)].GetValue();
 								Sparse::Row & r = R[UVW.Index(it->self(),q)].GetRow();
 								//r.Print();
-								for(int l = 0; l < r.Size(); ++l) if( r.GetValue(l) )
+								for(INMOST_DATA_ENUM_TYPE l = 0; l < r.Size(); ++l) if( r.GetValue(l) )
 									BR(q,r.GetIndex(l)) = r.GetValue(l);
 							}
 							

@@ -71,7 +71,8 @@ quat quatconj(const quat & a)
 
 void rotate_tensor(double nrm[3], const rMatrix & Kin, rMatrix & Kout, double phi[3])
 {
-	double qmat[16], qrmat[16], sclmat[16], qnrm;
+	//~ double qmat[16], qrmat[16], sclmat[16];
+	double qnrm;
 	struct quat q, qr;
 	rMatrix N = rMatrix::FromVector(nrm,3);
 	rMatrix NX = rMatrix::CrossProductMatrix(nrm);
@@ -128,10 +129,10 @@ void rotate_tensor(double nrm[3], const rMatrix & Kin, rMatrix & Kout, double ph
 int main(int argc, char *argv[]) 
 {
   Mesh * mesh = new Mesh();
-  int prep = 0;
+  //~ int prep = 0;
   if( argc < 2 )
   {
-    printf("Usage: %s mesh_file [input_perm]\n",argv[0]);
+    std::cout << "Usage: " << argv[0] << " mesh_file [input_perm]" << std::endl;
     return -1;
   }
 
@@ -225,8 +226,8 @@ int main(int argc, char *argv[])
   Storage::bulk_array name = mesh->self()->BulkArray(mesh->CreateTag("GRIDNAME",DATA_BULK,MESH,NONE));
   name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
-  printf("nodes: %d edges: %d faces: %d cells: %d\n", mesh->NumberOfNodes(), mesh->NumberOfEdges(), mesh->NumberOfFaces(), mesh->NumberOfCells());
-  printf("I'm ready!\n");
+  std::cout << "nodes: " << mesh->NumberOfNodes() << " edges: " << mesh->NumberOfEdges() << " faces: " << mesh->NumberOfFaces() << " cells: " << mesh->NumberOfCells() << std::endl;
+  std::cout << "I'm ready!" << std::endl;
   mesh->Save("grid_out.xml");
   
   delete mesh;

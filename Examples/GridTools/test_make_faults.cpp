@@ -51,7 +51,7 @@ public:
 		//project p to p[2] = 0;
 		double px = p[0] - v[0]/v[2]*p[2], py = p[1] - v[0]/v[2]*p[2];
 		double d[2], r[2], l, lmin = 1.0e+20, smin = 0;
-		for(int k = 0; k < curvxy.size()-1; ++k)
+		for(size_t k = 0; k < curvxy.size()-1; ++k)
 		{
 			d[0] = curvxy[k+1].first  - curvxy[k].first;
 			d[1] = curvxy[k+1].second - curvxy[k].second;

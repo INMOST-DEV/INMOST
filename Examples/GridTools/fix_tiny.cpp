@@ -111,7 +111,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	for (int i = 0; i < iters; ++i)
 	{
 
-		for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
+		for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
 		M = A1.Transpose()*(A1*D*A1.Transpose()).Invert()*A1; // m by m
 		//std::cout << "matrix M:" << std::endl;
 		//M.Print();
@@ -119,7 +119,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		kn = 1.0e20;
 		jp = -1;
 		jn = -1;
-		for (int k = 0; k < M.Rows(); ++k)
+		for (unsigned k = 0; k < M.Rows(); ++k)
 		{
 			if (M(k, k) > kp)
 			{
@@ -161,7 +161,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		//std::cout << "step " << i << " ceps " << ceps << " max " << m << " norm " << M.FrobeniusNorm() <<  " step size " << l << std::endl;
 		
 	}
-	for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
+	for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
 	Q = (A*(D - p*p.Transpose())*A.Transpose()).Invert() / static_cast<double>(d);
 	c = A*p;
 	//check
@@ -342,7 +342,6 @@ int main(int argc, char ** argv)
 		{
 			if (cosm[it->self()] == 1)
 			{
-				int eid = it->LocalID();
 				double v[3];
 				for (int k = 0; k < 3; ++k)
 					v[k] = (it->getBeg().Coords()[k] + it->getEnd().Coords()[k])*0.5;
@@ -364,7 +363,7 @@ int main(int argc, char ** argv)
 					ElementArray<Edge> node_edges = jt->getEdges();
 					for (ElementArray<Edge>::iterator kt = node_edges.begin(); kt != node_edges.end(); ++kt) if (kt->self() != it->self())
 					{
-						eid = kt->LocalID();
+						//~ eid = kt->LocalID();
 						disconnect[kt->self()].push_back(jt->self());
 						connect[kt->self()].push_back(n);
 					}
@@ -392,7 +391,7 @@ int main(int argc, char ** argv)
 					double d[3], axis[3][3];
 					int ek = -1;
 					int nk = 0;
-					for (int k = 0; k < S.Rows(); ++k)
+					for (unsigned k = 0; k < S.Rows(); ++k)
 					{
 						if (S(k, k) > 1.0e-8)
 						{
@@ -435,7 +434,6 @@ int main(int argc, char ** argv)
 						for (ElementArray<Edge>::iterator jt = adj_edges.begin(); jt != adj_edges.end(); ++jt)
 						{
 							assert(!jt->GetMarker(mrk));
-							int eid = jt->LocalID();
 							if (jt->getBeg().GetMarker(mrk))
 								disconnect[jt->self()].push_back(jt->getBeg());
 							else
@@ -488,7 +486,7 @@ int main(int argc, char ** argv)
 						//std::cout << "cnt:   " << cnt[0] << " " << cnt[1] << " " << cnt[2] << std::endl;
 						for (int j = 0; j < (int)edges.size(); ++j)
 						{
-							double vx[3], vy[3], *v, a, b, q;
+							double vx[3], vy[3], *v, b, q;
 							v = edges[j].getBeg().Coords().data();
 							for (int k = 0; k < 3; ++k)
 								pcnt[k] = v[k] - cnt[k];
@@ -538,7 +536,6 @@ int main(int argc, char ** argv)
 									}
 									else
 									{
-										int eid = edges[j].LocalID();
 										Node n;
 										if (edges[j].HaveData(replace))
 										{
@@ -594,7 +591,6 @@ int main(int argc, char ** argv)
 							ElementArray<Edge> adj_edges = node_edges[k].BridgeAdjacencies2Edge(NODE);
 							for (ElementArray<Edge>::iterator jt = adj_edges.begin(); jt != adj_edges.end(); ++jt) if (!jt->GetMarker(mrk))
 							{
-								int eid = jt->LocalID();
 								if (jt->getBeg().GetMarker(mrk))
 									disconnect[jt->self()].push_back(jt->getBeg());
 								else
@@ -622,7 +618,6 @@ int main(int argc, char ** argv)
 			std::cout << "Reconnect " << ElementTypeName(etype) << std::endl;
 			for (Mesh::iteratorElement it = m.BeginElement(etype); it != m.EndElement(); ++it) if (!it->GetMarker(collapse))
 			{
-				int itid = it->LocalID();
 				Storage::reference_array disc, conn;
 				disc = disconnect[it->self()];
 				conn = connect[it->self()];
@@ -632,12 +627,12 @@ int main(int argc, char ** argv)
 					if (!disc.empty())
 					{
 						std::cout << "disc[" << disc.size() << "]: ";
-						for (int k = 0; k < disc.size(); ++k) std::cout << ElementTypeName(disc[k].GetElementType()) << ":" << disc[k].LocalID() << " ";
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < disc.size(); ++k) std::cout << ElementTypeName(disc[k].GetElementType()) << ":" << disc[k].LocalID() << " ";
 					}
 					if (!conn.empty())
 					{
 						std::cout << "conn[" << conn.size() << "]: ";
-						for (int k = 0; k < conn.size(); ++k) std::cout << ElementTypeName(conn[k].GetElementType()) << ":" << conn[k].LocalID() << " ";
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < conn.size(); ++k) std::cout << ElementTypeName(conn[k].GetElementType()) << ":" << conn[k].LocalID() << " ";
 					}
 					std::cout << std::endl;
 				}
@@ -660,7 +655,7 @@ int main(int argc, char ** argv)
 				{
 					ElementArray<Cell> cells = it->getCells();
 					std::cout << __FILE__ << ":" << __LINE__ << " Element " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " is still connected to " << cells.size() << " cells:";
-					for (int k = 0; k < cells.size(); ++k) std::cout << " " << cells[k].LocalID();
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k) std::cout << " " << cells[k].LocalID();
 					std::cout << std::endl;
 				}
 				if (it->nbAdjElements(CELL) == 0) it->Delete();

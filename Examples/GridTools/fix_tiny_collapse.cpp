@@ -26,7 +26,7 @@ static void normalize(double v[3])
 }
 
 
-static bool MatchPoints(const double v1[3], const double v2[3])
+bool MatchPoints(const double v1[3], const double v2[3])
 {
 	double l = 0;
 	for (int k = 0; k < 3; ++k)
@@ -110,7 +110,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 	for (int i = 0; i < iters; ++i)
 	{
 		
-		for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
+		for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
 		M = A1.Transpose()*(A1*D*A1.Transpose()).Solve(A1); // m by m
 		//std::cout << "matrix M:" << std::endl;
 		//M.Print();
@@ -118,7 +118,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		kn = 1.0e20;
 		jp = -1;
 		jn = -1;
-		for (int k = 0; k < M.Rows(); ++k)
+		for (unsigned k = 0; k < M.Rows(); ++k)
 		{
 			if (M(k, k) > kp)
 			{
@@ -160,7 +160,7 @@ static bool BoundingEllipse(Element e, double eps, int iters, rMatrix & Q, rMatr
 		//std::cout << "step " << i << " ceps " << ceps << " max " << m << " norm " << M.FrobeniusNorm() <<  " step size " << l << std::endl;
 		
 	}
-	for (int k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
+	for (unsigned k = 0; k < p.Rows(); ++k) D(k, k) = p(k, 0);
 	Q = (A*(D - p*p.Transpose())*A.Transpose()).PseudoInvert() / static_cast<double>(d);
 	c = A*p;
 	//check
@@ -285,7 +285,7 @@ int main(int argc, char ** argv)
 				S.Print();
 				double d[3] = {0,0,0};
 				int nk = 0;
-				for (int k = 0; k < S.Rows(); ++k)
+				for (unsigned k = 0; k < S.Rows(); ++k)
 				{
 					if (S(k, k) > 1.0e-8)
 					{
@@ -446,7 +446,7 @@ int main(int argc, char ** argv)
 		if( e.isValid() )
 		{
 			std::cout << "collapse edge " << e.LocalID() << std::endl;
-			Node n = Edge::CollapseEdge(e,0);
+			Node n = Edge::CollapseEdge(e);
 			cosm[n] = 1;
 			std::cout << "new node " << n.LocalID() << std::endl;
 			ncollapsed++;

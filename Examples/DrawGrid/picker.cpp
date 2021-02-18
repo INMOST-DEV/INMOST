@@ -237,5 +237,5 @@ namespace INMOST
 	int picker::select(double p[3], double ray[3]) const
 	{
 		return tree->ray_faces(*faces, p, ray);
-	};
+	}
 }

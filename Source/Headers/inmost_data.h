@@ -422,7 +422,7 @@ namespace INMOST
 		public:
 			remote_reference_array() :shell<remote_reference>() {}
 			remote_reference_array(const shell<remote_reference> & other) :shell<remote_reference>(other) {}
-			remote_reference_array(const remote_reference_array & other) :shell<remote_reference>(other) {}
+			//~ remote_reference_array(const remote_reference_array & other) :shell<remote_reference>(other) {}
 			remote_reference_array(remote_reference * pntr, shell<remote_reference>::size_type psize) : shell<remote_reference>(pntr,psize) {}
 			void push_back(const Storage & elem);
 			void push_back(Mesh * m, HandleType h) {shell<remote_reference>::push_back(RemoteHandleType(m,h));} //is it needed?
@@ -695,7 +695,7 @@ namespace INMOST
 		__INLINE Matrix<Storage::real,Storage::real_array> operator()(const Storage & arg, int n, int m) const
 		{
 			Storage::real_array data = arg.RealArray(*static_cast<const Tag*>(this));
-			assert(data.size() == n*m);
+			assert((int)data.size() == n*m);
 			return Matrix<Storage::real,Storage::real_array>(data,n,m);
 		}
 		__INLINE Matrix<Storage::real,Storage::real_array> operator()(HandleType h, int n, int m) const;
@@ -763,7 +763,7 @@ namespace INMOST
 		__INLINE Matrix<Storage::var,Storage::var_array> operator()(const Storage & arg, int n, int m) const
 		{
 			Storage::var_array data = arg.VariableArray(*static_cast<const Tag*>(this));
-			assert(data.size() == n*m);
+			assert((int)data.size() == n*m);
 			return Matrix<Storage::var,Storage::var_array>(data,n,m);
 		}
 		__INLINE Matrix<Storage::var,Storage::var_array> operator()(HandleType h, int n, int m) const;

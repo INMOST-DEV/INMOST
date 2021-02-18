@@ -158,7 +158,7 @@ int main(int argc, char ** argv)
 	std::cout << "Faces: " << m.NumberOfFaces() << std::endl;
 	std::cout << "Edges: " << m.NumberOfEdges() << std::endl;
 
-	double tt = Timer();
+	//~ double tt = Timer();
 	//There seems to be a problem with the mesh
 	/*
 	int fixed = 0;

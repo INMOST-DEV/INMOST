@@ -491,6 +491,20 @@ namespace INMOST
 			return source;
 		}
 		
+		std::istream & read_iValue_uint64_t(std::istream & source, uint64_t & value)
+		{
+			unsigned char * bytes = reinterpret_cast<unsigned char *>(&value);
+			memset(bytes,0,sizeof(uint64_t));
+			source.read(reinterpret_cast<char *>(&temp[0]),source_ibytes); // read all bytes to temporary place
+			convert_endianess(source_ibytes,source_iorder,local_iorder);
+			unsigned char min_ibytes = std::min<unsigned char>(sizeof(uint64_t),source_ibytes);
+			if( local_iorder & LittleEndian )
+				for(unsigned char i = 0; i < min_ibytes; i++) bytes[i] = temp[i]; //copy bytes to output
+			else //that should be fine for middle-endian
+				for(unsigned char i = source_ibytes-1; i >= source_ibytes-min_ibytes; i--) bytes[i+sizeof(uint64_t)-source_ibytes] = temp[i]; //copy bytes to output
+			return source;
+		}
+		
 		std::ostream & write_fValue(std::ostream& dest, fType value)
 		{
 			switch(local_forder)

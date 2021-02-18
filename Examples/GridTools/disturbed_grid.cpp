@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         }
         Node c = mesh->CreateNode(xyz);
         if( mark ) c->SetMarker(marker);
-        if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+        if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i,j,k) << "\n";
       }
     }
   }
@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	mesh->ApplyModification();
   mesh->EndModification();
 #endif
-  printf("nodes: %d edges: %d faces: %d cells: %d\n", mesh->NumberOfNodes(), mesh->NumberOfEdges(), mesh->NumberOfFaces(), mesh->NumberOfCells());
+  std::cout << "nodes: " << mesh->NumberOfNodes() << " edges: " << mesh->NumberOfEdges() << " faces: " << mesh->NumberOfFaces() << " cells: " << mesh->NumberOfCells() << "\n";
 
   if (prep)
   {
@@ -274,13 +274,13 @@ int main(int argc, char *argv[])
   Storage::bulk_array name = mesh->self()->BulkArray(mesh->CreateTag("GRIDNAME",DATA_BULK,MESH,NONE));
   name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
-  printf("I'm ready!\n");
+  std::cout << "I'm ready!\n";
 
   mesh->Save("grid.vtk");
   mesh->Save("grid.pmf");
   mesh->Save("grid.gmv");
 
-  printf("File written!\n");
+  std::cout << "File written!\n";
 
   delete mesh;
   return 0;

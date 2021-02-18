@@ -297,17 +297,17 @@ namespace INMOST
 	
 	void Model::Adaptation(Mesh & m) const
 	{
-		array<HandleType> old_cells;
-		for(int k = 0; k < m.CellLastLocalID(); ++k) if( m.isValidCell(k) )
-		{
-			Cell c = m.CellByLocalID(k);
-			if( c.Hidden() ) old_cells.push_back(c.GetHandle());
-		}
+		//~ array<HandleType> old_cells;
+		//~ for(int k = 0; k < m.CellLastLocalID(); ++k) if( m.isValidCell(k) )
+		//~ {
+			//~ Cell c = m.CellByLocalID(k);
+			//~ if( c.Hidden() ) old_cells.push_back(c.GetHandle());
+		//~ }
 		//std::cout << "old cells: " << old_cells.size() << std::endl;
-		SearchKDTree tree(&m,old_cells.data(),old_cells.size());
+		//~ SearchKDTree tree(&m,old_cells.data(),old_cells.size());
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
-			it->second->Adaptation(m,tree);
+			it->second->Adaptation(m);
 	}
 	
 	void Model::ReportErrors(const Residual & R) const
@@ -322,10 +322,10 @@ namespace INMOST
 			{
 				if( !m->HaveGlobalID(etype) ) m->AssignGlobalID(etype); //to report element number
 				//account for variable size!
-				std::vector<double> err_comp(it->second->Size(),0.0);
+				std::vector<INMOST_DATA_REAL_TYPE> err_comp(it->second->Size(),0.0);
 				//std::vector<Element> err_elem(it->second->Size());
-				std::vector<double> err_int(it->second->Size(),0.0);
-				double max_err = 0, int_err = 0;
+				std::vector<INMOST_DATA_REAL_TYPE> err_int(it->second->Size(),0.0);
+				INMOST_DATA_REAL_TYPE max_err = 0, int_err = 0;
 				Element e;
 				for(Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt) if( jt->GetStatus() != Element::Ghost )
 				{

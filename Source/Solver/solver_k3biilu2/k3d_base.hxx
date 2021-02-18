@@ -39,6 +39,7 @@
 #endif
 
 #if defined(USE_MPI)
+#define OMPI_SKIP_MPICXX 1
 #include <mpi.h>
 #endif
 
@@ -54,9 +55,9 @@
 #if defined(USE_OMP)
 #define USE_THREADS
 #include <omp.h>
-#pragma message("Using openmp threads in k3d")
+//~ #pragma message("Using openmp threads in k3d")
 #else
-#pragma message("Not using openmp threads in k3d")
+//~ #pragma message("Not using openmp threads in k3d")
 #endif
 
 #ifndef USE_MPI
@@ -1710,6 +1711,7 @@ namespace k3d
         {
             int nlist_loc = this->GetNlist ();
             int nzja_loc = this->GetNzja ();
+            (void)nzja_loc;
             const vector < _Int > *pia_alu = this->GetIa ();
             const vector < _Int > *pja_alu = this->GetJa ();
             vector < _Int > *pia_l_sp = _AL_sp.GetIa ();
@@ -1739,6 +1741,7 @@ namespace k3d
         {
             int nlist_loc = this->GetNlist ();
             int nzja_loc = this->GetNzja ();
+            (void)nzja_loc;
             const vector < _Int > *pia_alu = this->GetIa ();
             const vector < _Int > *pja_alu = this->GetJa ();
             vector < _Int > *pia_alu_symm = _asymm.GetIa ();

@@ -49,11 +49,8 @@ int main(int argc, char ** argv)
 	}
 	
 	std::string fout = "grid_out.pmf";
-	double Umax = 2.25;
-	int fix_cylinder = 0;
 	if( argc > 2 ) fout = std::string(argv[2]);
-	if( argc > 3 ) Umax = atof(argv[3]);
-	if( argc > 4 ) fix_cylinder = atoi(argv[4]);
+	
 	
 	
 	
@@ -79,7 +76,7 @@ int main(int argc, char ** argv)
 	TagInteger    bb      = m->CreateTag("BOUNDARY_BLOOD",DATA_INTEGER,FACE,FACE,1);
 	TagRealArray  uvw     = m->CreateTag("UVW",DATA_REAL,CELL,NONE,3);
 	TagReal       p       = m->CreateTag("P",DATA_REAL,CELL,NONE,1);
-	m->self().Real(m->CreateTag("Umax",DATA_REAL,MESH,NONE,1)) = Umax;
+	
 	
 	
 	//this should not be needed?
@@ -94,7 +91,7 @@ int main(int argc, char ** argv)
 		table[BARYCENTER]  = CELL | FACE; //Compute volumetric center of mass
 		m->RemoveGeometricData(table); //Ask to precompute the data
 	}
-	bool onep = false;
+	//~ bool onep = false;
 	for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) if( it->Boundary() )
 	{
 		double  n[3], c[3];

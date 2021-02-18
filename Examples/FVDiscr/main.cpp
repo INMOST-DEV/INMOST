@@ -60,6 +60,7 @@ int main(int argc,char ** argv)
 		Mesh * m = new Mesh(); // Create an empty mesh
 		double ttt = Timer();
 		bool repartition = false;
+		(void)repartition;
 		m->SetCommunicator(INMOST_MPI_COMM_WORLD); // Set the MPI communicator for the mesh
 		if( m->GetProcessorRank() == 0 ) // If the current process is the master one
 			std::cout << argv[0] << std::endl;

@@ -281,7 +281,7 @@ class kdtree
 				if (fabs(fnrm[0] * ffnrm[0] + fnrm[1] * ffnrm[1] + fnrm[2] * ffnrm[2]) >= 0.85)
 				{
 					//todo: check that faces intersect
-					int fid = f.LocalID(), ffid = ff.LocalID();
+					//~ int fid = f.LocalID(), ffid = ff.LocalID();
 					ElementArray<Edge> fedges = f.getEdges();
 					ElementArray<Edge> ffedges = ff.getEdges();
 					bool intersect = false;
@@ -324,7 +324,7 @@ public:
 			size = m->NumberOfFaces();
 			assert(size > 1);
 			set = new entry[size];
-			INMOST_DATA_ENUM_TYPE k = 0;
+			//~ INMOST_DATA_ENUM_TYPE k = 0;
 			tt = Timer();
 			printf("Prepearing face set.\n");
 			m->ReorderEmpty(FACE);
@@ -517,7 +517,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 	{
 		Face f = m.FaceByLocalID(it);
 		if( !f.GetMarker(mrk) ) continue;
-		int fid = f.LocalID();
+		//~ int fid = f.LocalID();
 		ElementArray<Face> ifaces(&m);
 		t.intersect_nonadj_face(f, ifaces);
 		//std::cout << "face " << f.LocalID() << " finds: ";
@@ -533,7 +533,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 			//record how do we want to split current face based on all intersections
 			for (ElementArray<Face>::iterator ff = ifaces.begin(); ff != ifaces.end(); ++ff)
 			{
-				int ffid = ff->LocalID();
+				//~ int ffid = ff->LocalID();
 				//face2face[f].push_back(ff->self());
 				//std::cout << iface->LocalID() << " ";
 				ElementArray<Edge> ffedges = ff->getEdges();
@@ -541,7 +541,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 				//we are not interested of intersections on edges of other faces
 				for (ElementArray<Edge>::iterator jt = ffedges.begin(); jt != ffedges.end(); ++jt)
 				{
-					int jtid = jt->LocalID();
+					//~ int jtid = jt->LocalID();
 					double * v3 = jt->getBeg().Coords().data();
 					double * v4 = jt->getEnd().Coords().data();
 					double l2 = 0;
@@ -551,10 +551,11 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 					bool _intersect = false; //edge goes through some edge of current face introducing new node
 					bool _parallel = false; //edge goes parallel to some edge of current face
 					bool _endpoint = false; //intersection is on endpoint of jt segment
+					(void)_intersect;
 					ElementArray<Node> internodes(&m);
 					for (ElementArray<Edge>::iterator it = fedges.begin(); it != fedges.end(); ++it)
 					{
-						int itid = it->LocalID();
+						//~ int itid = it->LocalID();
 						//can put this algorithm to SegmentDistance function in future
 						double * v1 = it->getBeg().Coords().data();
 						double * v2 = it->getEnd().Coords().data();
@@ -810,6 +811,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 
 								double nrm[3], cnt[3], pcnt[3], d, nd;
 								double orthx[3], orthy[3];
+								(void)nd;
 								f.UnitNormal(nrm);
 								f.Centroid(cnt);
 								//compute axises for projection
@@ -834,7 +836,7 @@ void FixFaults::FixMeshFaults(MarkerType mrk)
 									double px = dot(pcnt, orthx), py = dot(pcnt, orthy);
 									double v0x, v0y, v1x, v1y;
 									// loop through all edges of the polygon
-									for (int j = 0; j < fnodes.size(); j++)
+									for (INMOST_DATA_ENUM_TYPE j = 0; j < fnodes.size(); j++)
 									{
 										v = fnodes[j].Coords().data();
 										nd = dot(v, nrm) - d;

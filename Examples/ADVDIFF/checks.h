@@ -8,7 +8,7 @@
 /// @param flux Computed flux expression with derivatives.
 /// @param name Name of the flux to be printed out.
 /// @param print Print out errors.
-bool check_flux_properties(int i, const INMOST::variable & flux, const std::string & name, bool print = true);
+bool check_flux_properties(INMOST_DATA_ENUM_TYPE i, const INMOST::variable & flux, const std::string & name, bool print = true);
 
 
 ///Check monotonicity of the matrix.

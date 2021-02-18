@@ -176,7 +176,7 @@ namespace INMOST
 		Storage::real compute_measure(ElementArray<T> & data)
 		{
 			Storage::real measure = 0, tmp;
-			for(int k = 1; k < data.size(); ++k)
+			for(typename ElementArray<T>::size_type k = 1; k < data.size(); ++k)
 			{
 				mesh->GetGeometricData(data[k].GetHandle(),MEASURE,&tmp);
 				measure += tmp;
@@ -574,7 +574,7 @@ namespace INMOST
 						}
 					}
 				}
-				tiny_map<HandleType,int,256> mat_num;
+				std::map<HandleType,int> mat_num;
 				for(dynarray<HandleType,256>::size_type it = 0; it < head_row.size(); ++it)
 				{
 					mesh->RemPrivateMarker(head_row[it],hide_marker);
@@ -1151,7 +1151,7 @@ namespace INMOST
 						}
 					}
 				}
-				tiny_map<HandleType,int,256> mat_num;
+				std::map<HandleType,int> mat_num;
 				for(dynarray<HandleType,256>::size_type it = 0; it < head_row.size(); ++it)
 				{
 					mesh->RemPrivateMarker(head_row[it],hide_marker);

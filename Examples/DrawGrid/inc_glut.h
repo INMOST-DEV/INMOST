@@ -23,14 +23,29 @@
 #endif
 
 void printtext(const char * fmt, ...); //in printtext.cpp
-
-static void glVertexNdv(double * v, int N)
+#include "inmost_common.h"
+inline void glVertexNdv(INMOST_DATA_REAL_TYPE * v, int N = 3)
 {
+#if defined(USE_FP64)
 	if( N == 2 ) glVertex2dv(v);
 	else glVertex3dv(v);
+#else
+	if( N == 2 ) glVertex2fv(v);
+	else glVertex3fv(v);
+#endif
+}
+inline void glRasterPosNdv(INMOST_DATA_REAL_TYPE * v, int N = 3)
+{
+	#if defined(USE_FP64)
+	if( N == 2 ) glRasterPos2dv(v);
+	else glRasterPos3dv(v);
+#else
+	if( N == 2 ) glRasterPos2fv(v);
+	else glRasterPos3fv(v);
+#endif
 }
 #include <iostream>
-static void glPrintError()
+inline void glPrintError()
 {
 	unsigned err = GL_NO_ERROR;
 	do

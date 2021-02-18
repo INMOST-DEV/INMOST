@@ -25,7 +25,6 @@ int main(int argc, char ** argv)
 	rMatrix n(3,1), x(3,1), E(3,3), I(3,3), cx(3,1);
 	I = rMatrix::Unit(3);
 	
-	double vol;
 	int collapsed = 0;
 	//MarkerType rev = A.CreatePrivateMarker();
 	MarkerType set = A.CreateMarker();

@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   Mesh * mesh;
-  double eta = 1.0/(2.0*pi), L = 1;
+  double eta = 1.0/(2.0*pi);//, L = 1;
   int nz = 2;
   int n = 16;
   if (argc > 1) 
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 
   if( eta > 1.0/(2*pi) )
   {
-    printf("Eta %g is too large, should be 0 <= eta <= %g\n",eta,1.0/(2.0*pi));
+    std::cout << "Eta " << eta << " is too large, should be 0 <= eta <= " << 1.0/(2.0*pi) << "\n";
   }
 
   double * pr = new double[n*n*2];
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
         xyz[1] = z[i*n+j];
         xyz[2] = k * 1.0 / (nz - 1);
         Node c = mesh->CreateNode(xyz);
-        if (c->LocalID() != V_ID(i, j, k)) printf("v_id = %d, [i,j,k] = %d\n", c->LocalID(), V_ID(i, j, k));
+        if (c->LocalID() != V_ID(i, j, k)) std::cout << "v_id = " << c->LocalID() << ", [i,j,k] = " << V_ID(i, j, k) << "\n";
       }
     }
   }
@@ -105,13 +105,13 @@ int main(int argc, char *argv[])
   mesh_name = str.str();
   name.replace(name.begin(),name.end(),mesh_name.begin(),mesh_name.end());
 
-  printf("I'm ready!\n");
+  std::cout << "I'm ready!\n";
 
   mesh->Save("grid.vtk");
   mesh->Save("grid.pmf");
   mesh->Save("grid.gmv");
 
-  printf("File written!\n");
+  std::cout << "File written!\n";
 
   delete mesh;
   return 0;

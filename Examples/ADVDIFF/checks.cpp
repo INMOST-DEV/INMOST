@@ -8,7 +8,7 @@ typedef Storage::bulk       bulk;
 typedef Storage::enumerator enumerator;
 typedef Storage::real       real;
 
-bool check_flux_properties(int i, const variable & flux, const std::string & name, bool print)
+bool check_flux_properties(INMOST_DATA_ENUM_TYPE i, const variable & flux, const std::string & name, bool print)
 {
 	bool test = true;
 	const Sparse::Row & r = flux.GetRow();

@@ -46,7 +46,7 @@ static void tensor_prod3(Storage::real * K, Storage::real v[3], Storage::real ou
 
 void FindHarmonicPoint(Face & fKL, Cell & cK, Cell & cL, Tag tensor, Storage::real xK[3], Storage::real xL[3], Storage::real y[3], Storage::real & coef)
 {
-	Storage::real yK[3], yL[3], xKL[3], nKL[3], dK, dL, lK, lL, lKs[3], lLs[3], D, t;
+	Storage::real yK[3], yL[3], xKL[3], nKL[3], dK, dL, lK, lL, lKs[3], lLs[3], D;
 	Storage::real coefK, coefL, coefQ, coefDiv;
 	Storage::real_array KK = cK->RealArray(tensor), KL = cL->RealArray(tensor);
 	fKL->OrientedUnitNormal(cK,nKL);
@@ -166,8 +166,8 @@ private:
 public:
 	Input(int * val) {input_link = val; type = Integer; done = false; str = "";}
 	Input(double * val) {input_link = val; type = Double; done = false; str = "";}
-	Input(void * link, InputType type) : input_link(link), type(type) {done = false; str = "";}
-	Input(const Input & other):input_link(other.input_link), str(other.str), type(other.type), done(other.done) {}
+	Input(void * link, InputType type) : str(""), input_link(link), type(type), done(false) {}
+	Input(const Input & other): str(other.str), input_link(other.input_link), type(other.type), done(other.done) {}
 	Input & operator =(Input const & other) {input_link = other.input_link; str = other.str; type = other.type; done = other.done; return *this;}
 	~Input() {}
 	void KeyPress(char c)
@@ -230,6 +230,7 @@ public:
 
 void keyboard2(unsigned char key, int x, int y)
 {
+	(void)x,(void)y;
 	if( key == '=' || key == '+' ||  key == '_' || key == '-' || key == 'w' || key == 's' || key == 'a' || key == 'd' || key == 'r' || key == 'p' || key == 'z')
 	{
 		interactive = false;
@@ -245,6 +246,7 @@ std::vector<int> show_cells, show_faces;
 
 void keyboard(unsigned char key, int x, int y)
 {
+	(void)x,(void)y;
 	if( CommonInput != NULL )
 	{
 		CommonInput->KeyPress(key);
@@ -391,7 +393,7 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		if( !colort.isValid() )
 		{
-			unsigned visited = 0;
+			Storage::integer visited = 0;
 			colort = mesh->CreateTag("COLOR",DATA_INTEGER,CELL,NONE,1);
 			std::vector<Cell> queue;
 			ElementArray<Element> around;
@@ -522,19 +524,21 @@ face2gl DrawFace(Element & f, int mmat, double campos[3])
 
 Tag problem_tag, mats_tag,parent_tag,cell_material_tag;
 
-void fill_mat_str(Storage::integer id, Storage::integer_array mats, char str[2048])
+void fill_mat_str(Storage::integer id, Storage::integer_array mats, std::stringstream & str)
 {
-	str[0] = '\0';
-	sprintf(str,"%d",id);
+	str.str(std::string());
+	str.clear();
+	str << id;
 	for(unsigned q = 0; q < mats.size(); q++)
-		sprintf(str,"%s,%d",str,mats[q]+1);
+		str << "," << mats[q]+1;
 }
 
 
-void fill_str(Storage::integer id, char str[2048])
+void fill_str(Storage::integer id, std::stringstream & str)
 {
-	str[0] = '\0';
-	sprintf(str,"%d",id);
+	str.str(std::string());
+	str.clear();
+	str << id;
 }
 
 void whereami(double & cx, double & cy, double & cz)
@@ -605,7 +609,7 @@ void draw()
 
 
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
-	int pacef = std::max(1,mesh->FaceLastLocalID()/10000);
+	Storage::integer pacef = std::max<Storage::integer>(1,mesh->FaceLastLocalID()/10000);
 
 	std::vector<face2gl> polygons;
 
@@ -619,8 +623,8 @@ void draw()
 		}
 	}
 
-
-	char str[2048];
+	std::stringstream sstr;
+	//~ char str[2048];
 
 #if defined(DISCR_DEBUG)
 	if(avg_coord.isValid())
@@ -737,7 +741,7 @@ void draw()
 
 	if( !show_cells.empty() )
 	{
-		for(int qq = 0; qq < show_cells.size(); qq++)
+		for(size_t qq = 0; qq < show_cells.size(); qq++)
 		{
 			if( show_cells[qq] < 0 || show_cells[qq] >= mesh->CellLastLocalID() ) continue;
 			Element it = mesh->ElementByLocalID(CELL,show_cells[qq]);
@@ -755,11 +759,11 @@ void draw()
 
 					if( matfilter == 0 || (mats_tag.isValid() && std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
-						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,str);
-						else fill_str(edges[k].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,sstr);
+						else fill_str(edges[k].LocalID(),sstr);
 						glColor3f(0,0,1);
 						glRasterPos3dv(cnt);
-						if( text == 2 || text == 5 ) if(text) printtext(str);
+						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
 						glVertex3dv(&nodes[0].Coords()[0]);
@@ -773,20 +777,20 @@ void draw()
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
 
-						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,str);
-						else fill_str(nodes[0].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,sstr);
+						else fill_str(nodes[0].LocalID(),sstr);
 						glRasterPos3dv(&nodes[0].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
 					if(mats_tag.isValid()) mats = nodes[1].IntegerArray(mats_tag);
 
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
-						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,str);
-						else fill_str(nodes[1].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,sstr);
+						else fill_str(nodes[1].LocalID(),sstr);
 						glRasterPos3dv(&nodes[1].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 				}
 
@@ -801,10 +805,10 @@ void draw()
 							glColor3f(0.15,0.45,0);
 						else glColor3f(0,1,0);
 						faces[k].Centroid(cnt);
-						if( mats_tag.isValid() ) fill_mat_str(faces[k].LocalID(),mats,str);
-						else fill_str(faces[k].LocalID(), str);
+						if( mats_tag.isValid() ) fill_mat_str(faces[k].LocalID(),mats,sstr);
+						else fill_str(faces[k].LocalID(), sstr);
 						glRasterPos3dv(cnt);
-						if( text == 3 || text == 5 ) if(text) printtext(str);
+						if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 						//~ glColor3f(0,0,0);
 						//~ Storage::real nrm[3];
@@ -824,12 +828,12 @@ void draw()
 				{
 					glColor3f(0,0,0);
 					it->Centroid(cnt);
-					sprintf(str,"%d",it->LocalID());
-					if(parent_tag.isValid()) sprintf(str,"%s, %d",str,it->Integer(parent_tag));
-					if(cell_material_tag.isValid()) sprintf(str,"%s, %d",str,it->Integer(cell_material_tag));
-					if( problem_tag.isValid() ) sprintf(str,"%s, %d", str, it->Integer(problem_tag));
+					fill_str(it->LocalID(),sstr);
+					if(parent_tag.isValid()) sstr << ", " << it->Integer(parent_tag);
+					if(cell_material_tag.isValid()) sstr << ", " << it->Integer(cell_material_tag);
+					if( problem_tag.isValid() ) sstr << ", " << it->Integer(problem_tag);
 					glRasterPos3dv(cnt);
-					if( text == 4 || text == 5 ) if(text) printtext(str);
+					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 					glPointSize(3);
 					glColor3f(1,0,0);
@@ -844,7 +848,7 @@ void draw()
 	std::vector<face2gl> inside_face;
 	if( !show_faces.empty() )
 	{
-		for(int qq = 0; qq < show_faces.size(); qq++)
+		for(size_t qq = 0; qq < show_faces.size(); qq++)
 		{
 			Element it = InvalidElement();
 			if( show_faces[qq] < 0 || show_faces[qq] >= mesh->LastLocalID(FACE) ) continue;
@@ -866,11 +870,11 @@ void draw()
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
 						edges[k].Centroid(cnt);
-						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,str);
-						else fill_str(edges[k].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(edges[k].LocalID(), mats,sstr);
+						else fill_str(edges[k].LocalID(),sstr);
 						glColor3f(0,0,1);
 						glRasterPos3dv(cnt);
-						if( text == 2 || text == 5 ) if(text) printtext(str);
+						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
@@ -891,19 +895,19 @@ void draw()
 					 if( mats_tag.isValid() ) mats = nodes[0].IntegerArray(mats_tag);
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
-						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,str);
-						else fill_str(nodes[0].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(nodes[0].LocalID(), mats,sstr);
+						else fill_str(nodes[0].LocalID(),sstr);
 						glRasterPos3dv(&nodes[0].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 					if( mats_tag.isValid() ) mats = nodes[1].IntegerArray(mats_tag);
 					if( matfilter == 0 || (mats_tag.isValid() &&std::binary_search(mats.begin(),mats.end(),matfilter-1)) )
 					{
 
-						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,str);
-						else fill_str(nodes[1].LocalID(),str);
+						if( mats_tag.isValid() ) fill_mat_str(nodes[1].LocalID(),mats,sstr);
+						else fill_str(nodes[1].LocalID(),sstr);
 						glRasterPos3dv(&nodes[1].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
 				}
@@ -911,10 +915,10 @@ void draw()
 				if( matfilter == 0 || (mat.isValid() &&it->Integer(mat) == matfilter-1) )
 				{
 					glColor3f(0,1,0);
-					if( mats_tag.isValid() ) fill_mat_str(it->LocalID(),it->IntegerArray(mats_tag),str);
-					else fill_str(it->LocalID(),str);
+					if( mats_tag.isValid() ) fill_mat_str(it->LocalID(),it->IntegerArray(mats_tag),sstr);
+					else fill_str(it->LocalID(),sstr);
 					glRasterPos3dv(cntf);
-					if( text == 3 || text == 5 ) if(text) printtext(str);
+					if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 				}
 #if 0
 				ElementArray<Cell> cells = it->getCells();
@@ -923,9 +927,9 @@ void draw()
 				{
 					glColor3f(0,0,0);
 					jt->Centroid(cnt);
-					fill_str(jt->LocalID(),str);
+					fill_str(jt->LocalID(),sstr.str().c_str());
 					glRasterPos3dv(cnt);
-					if( text == 4 || text == 5 ) if(text) printtext(str);
+					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 				}
 
 	#if defined(DISCR_DEBUG)
@@ -971,9 +975,9 @@ void draw()
 						glVertex3dv(cnt0);
 						glVertex3dv(cnt);
 						glEnd();
-						sprintf(str,"%d",qt->LocalID());
+						fill_str(qt->LocalID(),sstr);
 						glRasterPos3dv(cnt);
-						printtext(str);
+						printtext(sstr.str().c_str());
 
 						if( !qt->Boundary() )
 						{
@@ -991,9 +995,9 @@ void draw()
 							glVertex3dv(cnt2);
 							glEnd();
 
-							sprintf(str,"%d",xQ->LocalID());
+							fill_str(xQ->LocalID());
 							glRasterPos3dv(cnt2);
-							printtext(str);
+							printtext(sstr.str().c_str());
 						}
 						else
 						{
@@ -1007,9 +1011,9 @@ void draw()
 							glVertex3dv(cnt);
 							glEnd();
 
-							sprintf(str,"%d",qt->LocalID());
+							fill_str(qt->LocalID(),sstr);
 							glRasterPos3dv(cnt);
-							printtext(str);
+							printtext(sstr.str().c_str());
 						}
 					}
 				}
@@ -1027,7 +1031,7 @@ void draw()
 
 	glEnable(GL_BLEND);
 
-	for (int q = 0; q < inside_face.size(); q++) inside_face[q].draw();
+	for (size_t q = 0; q < inside_face.size(); q++) inside_face[q].draw();
 
 	glDisable(GL_BLEND);
 
@@ -1056,10 +1060,10 @@ void draw()
 
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
-						fill_mat_str(edges[k].LocalID(), mats,str);
+						fill_mat_str(edges[k].LocalID(), mats,sstr);
 						glColor3f(0,0,1);
 						glRasterPos3dv(cnt);
-						if( text == 2 || text == 5 ) if(text) printtext(str);
+						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						glColor3f(0,0,0);
 						glBegin(GL_LINES);
 						glVertex3dv(&nodes[0].Coords()[0]);
@@ -1073,18 +1077,18 @@ void draw()
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
 
-						fill_mat_str(nodes[0].LocalID(), mats,str);
+						fill_mat_str(nodes[0].LocalID(), mats,sstr);
 						glRasterPos3dv(&nodes[0].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 
 					mats = nodes[1].IntegerArray(mats_tag);
 
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
-						fill_mat_str(nodes[1].LocalID(),mats,str);
+						fill_mat_str(nodes[1].LocalID(),mats,sstr);
 						glRasterPos3dv(&nodes[1].Coords()[0]);
-						if( text == 1 || text == 5 ) if(text) printtext(str);
+						if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 					}
 				}
 
@@ -1099,9 +1103,9 @@ void draw()
 							glColor3f(0.15,0.45,0);
 						else glColor3f(0,1,0);
 						faces[k].Centroid(cnt);
-						fill_mat_str(faces[k].LocalID(),mats,str);
+						fill_mat_str(faces[k].LocalID(),mats,sstr);
 						glRasterPos3dv(cnt);
-						if( text == 3 || text == 5 ) if(text) printtext(str);
+						if( text == 3 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 
 						//~ glColor3f(0,0,0);
@@ -1122,10 +1126,13 @@ void draw()
 				{
 					glColor3f(0,0,0);
 					it->Centroid(cnt);
-					sprintf(str,"%d, %d, %d",it->LocalID(),it->Integer(parent_tag),it->Integer(cell_material_tag)+1);
-					if( problem_tag.isValid() ) sprintf(str,"%s, %d", str, it->Integer(problem_tag));
+					//sprintf(str,"%d, %d, %d",it->LocalID(),it->Integer(parent_tag),it->Integer(cell_material_tag)+1);
+					fill_str(it->LocalID(),sstr);
+					sstr << ", " << it->Integer(parent_tag), << ", " << it->Integer(cell_material_tag)+1;
+					if( problem_tag.isValid() ) //sprintf(str,"%s, %d", str, it->Integer(problem_tag));
+						sstr << ", " << it->Integer(problem_tag);
 					glRasterPos3dv(cnt);
-					if( text == 4 || text == 5 ) if(text) printtext(str);
+					if( text == 4 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 					glPointSize(3);
 					glColor3f(1,0,0);
@@ -1161,10 +1168,10 @@ void draw()
 					if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 					{
 						it->Centroid(cnt);
-						fill_mat_str(it->LocalID(), mats,str);
+						fill_mat_str(it->LocalID(), mats,sstr);
 						glColor3f(1,0,1);
 						glRasterPos3dv(cnt);
-						if( text == 2 || text == 5 ) if(text) printtext(str);
+						if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 
 						glBegin(GL_LINES);
@@ -1217,10 +1224,10 @@ void draw()
 						if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 						{
 							edges[k].Centroid(cnt);
-							fill_mat_str(edges[k].LocalID(), mats,str);
+							fill_mat_str(edges[k].LocalID(), mats,sstr);
 							glColor3f(0,0,1);
 							glRasterPos3dv(cnt);
-							if( text == 2 || text == 5 ) if(text) printtext(str);
+							if( text == 2 || text == 5 ) if(text) printtext(sstr.str().c_str());
 
 							glColor3f(0,0,0);
 							glBegin(GL_LINES);
@@ -1233,17 +1240,17 @@ void draw()
 						mats = nodes[0].IntegerArray(mats_tag);
 						if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 						{
-							fill_mat_str(nodes[0].LocalID(), mats,str);
+							fill_mat_str(nodes[0].LocalID(), mats,sstr);
 							glRasterPos3dv(&nodes[0].Coords()[0]);
-							if( text == 1 || text == 5 ) if(text) printtext(str);
+							if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						}
 
 						if( matfilter == 0 || std::binary_search(mats.begin(),mats.end(),matfilter-1) )
 						{
 							mats = nodes[1].IntegerArray(mats_tag);
-							fill_mat_str(nodes[1].LocalID(),mats,str);
+							fill_mat_str(nodes[1].LocalID(),mats,sstr);
 							glRasterPos3dv(&nodes[1].Coords()[0]);
-							if( text == 1 || text == 5 ) if(text) printtext(str);
+							if( text == 1 || text == 5 ) if(text) printtext(sstr.str().c_str());
 						}
 					}
 
@@ -1256,8 +1263,8 @@ void draw()
 						it->Centroid(cnt);
 						glColor3f(0,0.5,0.5);
 						glRasterPos3dv(cnt);
-						fill_mat_str(it->LocalID(), mats,str);
-						if(text) printtext(str);
+						fill_mat_str(it->LocalID(), mats,sstr);
+						if(text) printtext(sstr.str().c_str());
 					}
 
 			//~ EDGE 647252
@@ -1309,7 +1316,7 @@ void draw()
 			//if( it == NULL ) continue;
 			//if( it->nbAdjElements(CELL) == 0 )
 			{
-				Storage::real cnt[3];
+				//~ Storage::real cnt[3];
 				
 				ElementArray<Node> nodes = it->getNodes();
 
@@ -1328,7 +1335,7 @@ void draw()
 			{
 
 				Storage::integer_array mats;
-				Storage::real cnt[3];
+				//~ Storage::real cnt[3];
 				ElementArray<Edge> edges = it->getEdges();
 
 				for(unsigned k = 0; k < edges.size(); k++)
@@ -1744,8 +1751,8 @@ int main(int argc, char ** argv)
 	//mesh = new Mesh(*read);
 
 	int badorient = 0;
-	tiny_map<Element::GeometricType,int,16> neighbours;
-	tiny_map<Element::GeometricType,int,16> elemtypes;
+	std::map<Element::GeometricType,int> neighbours;
+	std::map<Element::GeometricType,int> elemtypes;
 	for(Mesh::iteratorFace it = mesh->BeginFace(); it != mesh->EndFace(); ++it)
 		if( !it->CheckNormalOrientation() )
 		{
@@ -1759,10 +1766,10 @@ int main(int argc, char ** argv)
 	{
 		std::cout << "Found " << badorient << " badly oriented faces" << std::endl;
 		std::cout << "types of bad faces: " << std::endl;
-		for(tiny_map<Element::GeometricType,int,16>::iterator it = elemtypes.begin(); it != elemtypes.end(); ++it)
+		for(std::map<Element::GeometricType,int>::iterator it = elemtypes.begin(); it != elemtypes.end(); ++it)
 			std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
 		std::cout << "neighbours of bad faces: " << std::endl;
-		for(tiny_map<Element::GeometricType,int,16>::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
+		for(std::map<Element::GeometricType,int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it)
 			std::cout << Element::GeometricTypeName(it->first) << ": " << it->second << std::endl;
 	}
 

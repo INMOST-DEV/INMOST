@@ -205,18 +205,15 @@ int main(int argc,char ** argv)
 				rMatrix NK, L, R, Areas;
 				rMatrix x(1,3), xf(1,3), n(1,3);
 				double area, dist; //area of the face
-				double volume; //volume of the cell
 #if defined(USE_OMP)
 #pragma omp for
 #endif
 				 for( int q = 0; q < m->CellLastLocalID(); ++q ) if( m->isValidCell(q) )
 				 {
-					 Mesh * mesh = m;
 					 Cell cell = m->CellByLocalID(q);
 					 ElementArray<Face> faces = cell->getFaces(); //obtain faces of the cell
 					 int NF = (int)faces.size(); //number of faces;
 					 rMatrix W(NF,NF);
-					 volume = cell->Volume(); //volume of the cell
 					 cell->Barycenter(x.data());
 					 //get permeability for the cell
 					 rMatrix K = rMatrix::FromTensor(cell->RealArrayDF(tag_K).data(),
@@ -349,7 +346,7 @@ int main(int argc,char ** argv)
 			{
                 R.Clear(); //clean up the residual
                 double tttt = Timer();
-                int total = 0, dmp = 0;
+                //~ int total = 0, dmp = 0;
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif

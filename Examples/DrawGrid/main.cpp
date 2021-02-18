@@ -492,7 +492,7 @@ void keyboard(unsigned char key, int x, int y)
 {
 	(void) x;
 	(void) y;
-	printf("%d %d\n",(int)key,(int)glutGetModifiers());
+	//~ printf("%d %d\n",(int)key,(int)glutGetModifiers());
 	if( glutGetModifiers() & (GLUT_ACTIVE_CTRL) )
 		std::cout << "pressed " << ((char)(key)) << " int " << ((int)key) << " ctrl " << (glutGetModifiers() & GLUT_ACTIVE_CTRL ? "yes" : "no") << " shift " << (glutGetModifiers() & GLUT_ACTIVE_SHIFT ? "yes" : "no") << " alt " << (glutGetModifiers() & GLUT_ACTIVE_ALT ? "yes" : "no") << std::endl;
 	if( CommonInput != NULL )
@@ -658,10 +658,14 @@ void keyboard(unsigned char key, int x, int y)
 	else if( key == 'z' )
 	{
 		int ret;
+		(void)ret;
 		printf("Enter point of plane (x,y,z):\n");
-		ret = scanf("%lf %lf %lf",p,p+1,p+2);
+		double vp[3],vn[3];
+		ret = scanf("%lf %lf %lf",vp,vp+1,vp+2);
+		p[0] = vp[0], p[1] = vp[1], p[2] = vp[2];
 		printf("Enter normal of plane (x,y,z):\n");
-		ret = scanf("%lf %lf %lf",n,n+1,n+2);
+		ret = scanf("%lf %lf %lf",vn,vn+1,vn+2);
+		n[0] = vn[0], n[1] = vn[1], n[2] = vn[2];
 		Storage::real l = sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
 		if( l )
 		{
@@ -901,9 +905,9 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 
 		if (print_adj)
 		{
-			glRasterPos3dv(e->getAsEdge().getBeg().Coords().data());
+			glRasterPosNdv(e->getAsEdge().getBeg().Coords().data());
 			printtext("%d", e->getAsEdge().getBeg().LocalID());
-			glRasterPos3dv(e->getAsEdge().getEnd().Coords().data());
+			glRasterPosNdv(e->getAsEdge().getEnd().Coords().data());
 			printtext("%d", e->getAsEdge().getEnd().LocalID());
 		}
 	}
@@ -924,9 +928,9 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 
 		if (print_adj)
 		{
-			glRasterPos3dv(e->getAsFace().getBeg().Coords().data());
+			glRasterPosNdv(e->getAsFace().getBeg().Coords().data());
 			printtext("%d", e->getAsFace().getBeg().LocalID());
-			glRasterPos3dv(e->getAsFace().getEnd().Coords().data());
+			glRasterPosNdv(e->getAsFace().getEnd().Coords().data());
 			printtext("%d", e->getAsFace().getEnd().LocalID());
 		}
 	}
@@ -954,10 +958,10 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 		{
 			for (ElementArray<Edge>::iterator it = edges.begin(); it != edges.end(); ++it)
 			{
-				double cnt[3];
+				INMOST_DATA_REAL_TYPE cnt[3];
 				it->Centroid(cnt);
 				//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
-				glRasterPos3dv(cnt);
+				glRasterPosNdv(cnt);
 				printtext("%d", it->LocalID());
 			}
 		}
@@ -994,10 +998,10 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 		{
 			for (ElementArray<Face>::iterator it = dfaces.begin(); it != dfaces.end(); ++it)
 			{
-				double cnt[3];
+				INMOST_DATA_REAL_TYPE cnt[3];
 				it->Centroid(cnt);
 				//for (int k = 0; k < 3; ++k) cnt[k] = cnt[k] * 0.99 + campos[k] * 0.01;
-				glRasterPos3dv(cnt);
+				glRasterPosNdv(cnt);
 				printtext("%d", it->LocalID());
 			}
 		}
@@ -1014,9 +1018,9 @@ void DrawElement(Element e, color_t face, color_t edge, color_t node, bool print
 			glDisable(GL_DEPTH_TEST);
 			for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
 			{
-				double cnt[3];
+				INMOST_DATA_REAL_TYPE cnt[3];
 				it->Centroid(cnt);
-				glRasterPos3dv(cnt);
+				glRasterPosNdv(cnt);
 				printtext("%d", it->LocalID());
 			}
 			glEnable(GL_DEPTH_TEST);
@@ -1114,16 +1118,14 @@ double display_elem_info(Element e, double top, double left, double interval)
 	glColor3f(0.2,0.2,0.2);
 	top -= interval;
 	glRasterPos2f(left,top);
-	printtext("%s %d",ElementTypeName(e->GetElementType()),e->LocalID());
-	if( e->GetElementType() == ESET ) printtext(" size %d",e->getAsSet().Size());
+	printtext("%s %d",ElementTypeName(e->GetElementType()),(int)e->LocalID());
+	if( e->GetElementType() == ESET ) printtext(" size %d",(int)e->getAsSet().Size());
 	glColor3f(0.2,0.2,0.2);
 	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
 	{
 		if( e->HaveData(*t) )
 		{
-			char str[131072];
-			char temp[131072];
-			str[0] = '\0';
+			std::stringstream sstr;
 			int dsize;
 			switch(t->GetDataType())
 			{
@@ -1132,10 +1134,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 					Storage::integer_array arr = e->IntegerArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %d",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << arr[k];
 					break;
 				}
 				case DATA_REAL:
@@ -1143,10 +1142,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 					Storage::real_array arr = e->RealArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %lf",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << arr[k];
 					break;
 				}
 				case DATA_BULK:
@@ -1154,10 +1150,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 					Storage::bulk_array arr = e->BulkArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %d",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << (int)arr[k];
 					break;
 				}
 				case DATA_REFERENCE:
@@ -1166,9 +1159,8 @@ double display_elem_info(Element e, double top, double left, double interval)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
-						else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-						strcpy(str,temp);
+						if(arr.at(k) == InvalidHandle()) sstr << " NULL";
+						else sstr << " " << ElementTypeName(arr[k]->GetElementType()) << ":" << arr[k]->LocalID();
 					}
 					break;
 				}
@@ -1178,9 +1170,8 @@ double display_elem_info(Element e, double top, double left, double interval)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
-						else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-						strcpy(str,temp);
+						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sstr << " NULL";
+						else sstr << " " << ((void*)arr[k]->GetMeshLink()) << ":" << ElementTypeName(arr[k]->GetElementType()) << ":" << arr[k]->LocalID();
 					}
 					break;
 				}
@@ -1191,25 +1182,25 @@ double display_elem_info(Element e, double top, double left, double interval)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						std::stringstream stream;
-						stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
+						sstr << " ";
+						sstr << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
 						for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
-						{
-							stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
-						}
-						stream << "}";
-						sprintf(temp,"%s %s",str,stream.str().c_str());
-						strcpy(str,temp);
+							sstr << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
+						sstr << "}";
 					}
 					break;
 				}
 #endif
 			}
-			sprintf(temp,"%s[%d] %s %s",t->GetTagName().c_str(),dsize,DataTypeName(t->GetDataType()),str);
-			strcpy(str,temp);
+			{
+				const std::string &temp = sstr.str();
+				sstr.seekp(0);
+				sstr << t->GetTagName() << "[" << dsize << "] " << DataTypeName(t->GetDataType());
+				sstr << temp;
+			}
 			top -= interval;
 			glRasterPos2f(left,top);
-			printtext(str);
+			printtext(sstr.str().c_str());
 			
 		}
 	}
@@ -1219,15 +1210,13 @@ double display_elem_info(Element e, double top, double left, double interval)
 
 double display_elem_info_cout(Element e)
 {
-	printf("%s %d\n",ElementTypeName(e->GetElementType()),e->LocalID());
-	if( e->GetElementType() == ESET ) printf(" size %d\n",e->getAsSet().Size());
+	std::cout << ElementTypeName(e->GetElementType()) << ":" << e->LocalID() << std::endl;
+	if( e->GetElementType() == ESET ) std::cout << " size " << e->getAsSet().Size() << std::endl;
 	for(Mesh::iteratorTag t = mesh->BeginTag(); t != mesh->EndTag(); ++t) if( t->isDefined(e->GetElementType()) )
 	{
 		if( e->HaveData(*t) )
 		{
-			char str[131072];
-			char temp[131072];
-			str[0] = '\0';
+			std::stringstream sstr;
 			int dsize;
 			switch(t->GetDataType())
 			{
@@ -1236,10 +1225,7 @@ double display_elem_info_cout(Element e)
 					Storage::integer_array arr = e->IntegerArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %d",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << arr[k];
 					break;
 				}
 				case DATA_REAL:
@@ -1247,10 +1233,7 @@ double display_elem_info_cout(Element e)
 					Storage::real_array arr = e->RealArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %lf",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << arr[k];
 					break;
 				}
 				case DATA_BULK:
@@ -1258,10 +1241,7 @@ double display_elem_info_cout(Element e)
 					Storage::bulk_array arr = e->BulkArray(*t);
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
-					{
-						sprintf(temp,"%s %d",str,arr[k]);
-						strcpy(str,temp);
-					}
+						sstr << " " << (int)arr[k];
 					break;
 				}
 				case DATA_REFERENCE:
@@ -1270,9 +1250,8 @@ double display_elem_info_cout(Element e)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						if(arr.at(k) == InvalidHandle()) sprintf(temp,"%s NULL",str);
-						else sprintf(temp,"%s %s:%d",str,ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-						strcpy(str,temp);
+						if(arr.at(k) == InvalidHandle()) sstr << " NULL";
+						else sstr << " " << ElementTypeName(arr[k]->GetElementType()) << ":" << arr[k]->LocalID();
 					}
 					break;
 				}
@@ -1282,9 +1261,8 @@ double display_elem_info_cout(Element e)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sprintf(temp,"%s NULL",str);
-						else sprintf(temp,"%s %p:%s:%d",str,arr[k]->GetMeshLink(),ElementTypeName(arr[k]->GetElementType()),arr[k]->LocalID());
-						strcpy(str,temp);
+						if(arr.at(k).first == NULL || arr.at(k).second == InvalidHandle()) sstr << " NULL";
+						else sstr << (void*)arr[k]->GetMeshLink() << ":" << ElementTypeName(arr[k]->GetElementType()) << ":" << arr[k]->LocalID();
 					}
 					break;
 				}
@@ -1295,23 +1273,19 @@ double display_elem_info_cout(Element e)
 					dsize = arr.size();
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < arr.size(); k++)
 					{
-						std::stringstream stream;
-						stream << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
+						sstr << arr[k].GetValue() << " {[" << arr[k].GetRow().Size() << "] ";
 						for(INMOST_DATA_ENUM_TYPE q = 0; q < arr[k].GetRow().Size(); ++q)
 						{
-							stream << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
+							sstr << "(" << arr[k].GetRow().GetValue(q) << "," << arr[k].GetRow().GetIndex(q) << ") ";
 						}
-						stream << "}" << std::endl;
-						sprintf(temp,"%s %s",str,stream.str().c_str());
-						strcpy(str,temp);
+						sstr << "}" << std::endl;
 					}
 					break;
 				}
 #endif
 			}
-			sprintf(temp,"%s[%d] %s\n %s",t->GetTagName().c_str(),dsize,DataTypeName(t->GetDataType()),str);
-			strcpy(str,temp);
-			printf("%s\n",str);
+			std::cout << t->GetTagName() << "[" << dsize << "] " << DataTypeName(t->GetDataType());
+			std::cout << sstr.str() << std::endl;
 			
 		}
 	}
@@ -1344,7 +1318,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 			clipupdate = true;
 			success = true;
 		}
-		else printf("malformed string %s for color map bounds\n",inpstr);
+		else std::cout << "malformed string " << inpstr << " for color map bounds\n";
 	}
 	else if( inptype == 3 )
 	{
@@ -1377,7 +1351,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 			clipupdate = true;
 			success = true;
 		}
-		else printf("malformed string %s for mesh rescale\n",inpstr);
+		else std::cout << "malformed string " << inpstr << " for mesh rescale\n";
 	}
 	else if( inptype == 4 )
 	{
@@ -1406,7 +1380,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 	else if( inptype == 1 )
 	{
 		char typen[1024],name[1024];
-		unsigned comp;
+		INMOST_DATA_ENUM_TYPE comp;
 		bool correct_input = false;
 		int k = 0,l, slen = (int)strlen(inpstr);
 		for(k = 0; k < slen; ++k) 
@@ -1479,7 +1453,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 				else if (stype == "cell") visualization_type = CELL;
 				else if (stype == "eset") visualization_type = ESET;
 				if (visualization_type == NONE)
-					printf("unknown element type %s\n", typen);
+					std::cout << "unknown element type " << typen << "\n";
 				else
 				{
 					disp_e = InvalidElement();
@@ -1497,12 +1471,12 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 
 						if (mesh->isValidElement(visualization_type, comp))
 						{
-							printf("Display data for %s:%d\n", typen, comp);
+							std::cout << "Display data for " << typen << ":" << comp << "\n";
 							disp_e = mesh->ElementByLocalID(visualization_type, comp);
 							success = true;
 						}
 						else
-							printf("No valid element at %s:%d\n", typen, comp);
+							std::cout << "No valid element at " << typen << ":" << comp << "\n";
 					}
 					else if (visualization_type == ESET)
 					{
@@ -1512,11 +1486,11 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 						disp_e = mesh->GetSet(name);
 						if (disp_e.isValid())
 						{
-							printf("Display data for %s:%d\n", typen, disp_e.LocalID());
+							std::cout << "Display data for " << typen << ":" << disp_e.LocalID() << "\n";
 							success = true;
 						}
 						else
-							printf("Cannot find set with name %s\n", name.c_str());
+							std::cout << "Cannot find set with name " << name << "\n";
 					}
 
 					if (disp_e.isValid())
@@ -1524,7 +1498,9 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 						display_elem_info_cout(disp_e);
 						if (disp_e.GetElementType() != ESET)
 						{
-							disp_e->Centroid(shift);
+							INMOST_DATA_REAL_TYPE x[3];
+							disp_e->Centroid(x);
+							shift[0] = x[0], shift[1] = x[1], shift[2] = x[2];
 							for (int r = 0; r < 3; ++r)
 								shift[r] = -shift[r];
 						}
@@ -1535,7 +1511,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 							int nelem = 0;
 							for (ElementSet::iterator it = s.Begin(); it != s.End(); ++it)
 							{
-								double cnt[3];
+								INMOST_DATA_REAL_TYPE cnt[3];
 								it->Centroid(cnt);
 								shift[0] += cnt[0];
 								shift[1] += cnt[1];
@@ -1579,7 +1555,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 			}
 			inpstr[k] = ':';
 			inpstr[l] = ':';
-			printf("type %s name %s comp %d\n",typen,name,comp);
+			std::cout << "type " << typen << " name " << name << " comp " << comp << "\n";
 			std::string stype(typen), sname(name);
 			if (mesh->HaveTag(sname) && (comp == ENUMUNDEF - 2 || comp == ENUMUNDEF - 3))
 			{
@@ -1609,7 +1585,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 			else if( mesh->HaveTag(sname) && comp != ENUMUNDEF-1)
 			{
 				Tag source_tag = mesh->GetTag(sname);
-				if ((comp >= 0 && comp < source_tag.GetSize()) || comp == ENUMUNDEF)
+				if ( comp < source_tag.GetSize() || comp == ENUMUNDEF)
 				{
 					visualization_type = NONE;
 					for (size_t q = 0; q < stype.size(); ++q)
@@ -1646,10 +1622,10 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 							{
 #if defined(USE_AUTODIFF)
 								if (source_tag.GetDataType() == DATA_VARIABLE)
-									printf("I can show only value for data of type variable\n");
+									std::cout << "I can show only value for data of type variable\n";
 #endif
 								float min = 1.0e20, max = -1.0e20;
-								printf("prepearing data for visualization\n");
+								std::cout << "prepearing data for visualization\n";
 								if (visualization_tag.isValid())
 								{
 									visualization_tag = mesh->DeleteTag(visualization_tag);
@@ -1806,13 +1782,13 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 									if (res > max) max = res;
 									it->RealDF(visualization_tag) = res;
 								}
-								printf("done\n");
+								std::cout << "done\n";
 
 								GetColorBar()->set_min(min);
 								GetColorBar()->set_max(max);
-								char comment[1024];
-								sprintf(comment, "%s[%d] on %s, [%g:%g]", name, comp, typen, min, max);
-								GetColorBar()->set_comment(comment);
+								std::stringstream comment;
+								comment << name << "[" << comp << "] on " << typen << ", [" << min << ":" << max << "]";
+								GetColorBar()->set_comment(comment.str());
 								clipupdate = true;
 								/*
 								all_boundary.clear();
@@ -1827,17 +1803,20 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 							}
 							else if (source_tag.GetDataType() == DATA_REFERENCE)
 							{
+								INMOST_DATA_REAL_TYPE x[3];
 								segments.clear();
 								if (comp == ENUMUNDEF)
 								{
 									for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
 									{
 										coord cnt1, cnt2;
-										it->Centroid(cnt1.data());
+										it->Centroid(x);
+										cnt1[0] = x[0], cnt1[1] = x[1], cnt1[2] = x[2];
 										Storage::reference_array arr = it->ReferenceArray(source_tag);
 										for (Storage::reference_array::iterator jt = arr.begin(); jt != arr.end(); ++jt) if (jt->isValid())
 										{
-											jt->Centroid(cnt2.data());
+											jt->Centroid(x);
+											cnt2[0] = x[0], cnt2[1] = x[1], cnt2[2] = x[2];
 											segments.push_back(segment(cnt1, cnt2));
 										}
 									}
@@ -1845,28 +1824,30 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 								else for (Mesh::iteratorElement it = mesh->BeginElement(visualization_type); it != mesh->EndElement(); ++it) if (it->HaveData(source_tag))
 								{
 									coord cnt1, cnt2;
-									it->Centroid(cnt1.data());
+									it->Centroid(x);
+									cnt1[0] = x[0], cnt1[1] = x[1], cnt1[2] = x[2];
 									Storage::reference_array arr = it->ReferenceArray(source_tag);
 									if( arr.size() > comp )
 									{
-										arr[comp]->Centroid(cnt2.data());
+										arr[comp]->Centroid(x);
+										cnt2[0] = x[0], cnt2[1] = x[1], cnt2[2] = x[2];
 										segments.push_back(segment(cnt1, cnt2));
 									}
 								}
 								success = true;
 							}
-							else printf("tag %s is not real or integer or bulk or variable or reference\n", name);
+							else std::cout << "tag " << name << " is not real or integer or bulk or variable or reference\n";
 						}
-						else printf("tag %s is not defined on element type %s\n", name, typen);
+						else std::cout << "tag " << name << " is not defined on element type " << typen << "\n";
 					}
-					else printf("do not understand element type %s, should be: node, edge, face, cell, smooth_cell\n", typen);
+					else std::cout << "do not understand element type " << typen << ", should be: node, edge, face, cell, smooth_cell\n";
 				}
-				else printf("component is out of range for tag %s of size %u\n", name, source_tag.GetSize());
+				else std::cout << "component is out of range for tag " << name << " of size " << source_tag.GetSize() << "\n";
 			}
-			else printf("mesh do not have tag with name %s\n",name);
-			printf("finished with %s\n",inpstr);
+			else std::cout << "mesh do not have tag with name " << name << "\n";
+			std::cout << "finished with " << inpstr << "\n";
 		}
-		else if(!correct_input) printf("malformed string %s for visualization\n",inpstr);
+		else if(!correct_input) std::cout << "malformed string " << inpstr << " for visualization\n";
 		//inpstr[0] = '\0';
 
 	}
@@ -1914,14 +1895,14 @@ void draw_screen()
 		glColor3f(0.6,0.4,0.2);
 		glPointSize(5);
 		glBegin(GL_POINTS);
-		glVertex3dv(p);
+		glVertexNdv(p);
 		glEnd();
 		glPointSize(1);
 		
 		glColor3f(0.2,0.4,0.6);
 		glLineWidth(3.0);
 		glBegin(GL_LINES);
-		glVertex3dv(p);
+		glVertexNdv(p);
 		glVertex3d(p[0]+n[0]*mult*2,p[1]+n[1]*mult*2,p[2]+n[2]*mult*2);
 		glEnd();
 		glLineWidth(1.0);
@@ -1998,7 +1979,7 @@ void draw_screen()
 					else if( orphans[k]->GetElementType() == CELL )
 					{
 						ElementArray<Face> faces = orphans[k].getFaces();
-						for(int q = 0; q < faces.size(); ++q)
+						for(ElementArray<Face>::size_type q = 0; q < faces.size(); ++q)
 							clip_boundary.push_back(DrawFace(faces[q]));
 					}
 				}
@@ -2019,7 +2000,7 @@ void draw_screen()
 	
 			if( interactive && clipboxupdate )
 			{
-				//printf("draw1 %d %d\n",interactive, clipboxupdate);
+				
 				INMOST_DATA_ENUM_TYPE opace = !planecontrol ? std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,oclipper->size()/100)) : 1;
 				INMOST_DATA_ENUM_TYPE bpace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,bclipper->size()/100));
 				glColor4f(0.6,0.6,0.6,1);
@@ -2037,7 +2018,7 @@ void draw_screen()
 			}
 			else
 			{
-				//printf("draw2 %d %d\n",interactive, clipboxupdate);
+				
 				if( interactive )
 				{
 					glPrintError();
@@ -2081,13 +2062,13 @@ void draw_screen()
 			CommonVectors->Draw(interactive);
 
 
-		for(int k = 0; k < streamlines.size(); ++k)
+		for(size_t k = 0; k < streamlines.size(); ++k)
 			streamlines[k].Draw(true);//interactive);
 
 		
 		glBegin(GL_LINES);
 		glColor4f(0, 0, 0, 1);
-		for (int k = 0; k < segments.size(); ++k)
+		for (size_t k = 0; k < segments.size(); ++k)
 			segments[k].Draw();
 		glEnd();
 
@@ -2165,7 +2146,7 @@ void draw_screen()
 	glLineWidth(2.0);
 
 	glBegin(GL_LINES);
-	for(int k = 0; k < conormals.size(); k+=3)
+	for(size_t k = 0; k < conormals.size(); k+=3)
 	{
 		glVertex3dv(&conormals[k]);
 	}
@@ -2177,13 +2158,13 @@ void draw_screen()
 
 	glColor3f(0,0,1);
 	glBegin(GL_POINTS);
-	for(int k = 0; k < harmonic_points.size(); k+=3)
+	for(size_t k = 0; k < harmonic_points.size(); k+=3)
 		glVertex3dv(&harmonic_points[k]);
 	glEnd();
 
 	glColor3f(1,0,0);
 	glBegin(GL_POINTS);
-	for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+	for(size_t k = 0; k < dual_harmonic_points.size(); k+=9)
 		glVertex3dv(&dual_harmonic_points[k+3]);
 	glEnd();
 
@@ -2191,7 +2172,7 @@ void draw_screen()
 
 	glColor3f(0.5,0.5,0.5);
 	glBegin(GL_LINES);
-	for(int k = 0; k < dual_harmonic_points.size(); k+=9)
+	for(size_t k = 0; k < dual_harmonic_points.size(); k+=9)
 	{
 		glVertex3dv(&dual_harmonic_points[k+0]);
 		glVertex3dv(&dual_harmonic_points[k+3]);
@@ -2269,7 +2250,7 @@ void svg_draw(std::ostream & file)
 	set_matrix3d();
 
 
-	Storage::real mult = zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1;
+	//~ Storage::real mult = zoom*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5*0.1;
 	if( perspective )
 		glTranslated(0,0,-zoom*2*std::max(std::max( sright-sleft, stop-sbottom ), sfar-snear)*0.5);
 	if( planecontrol )
@@ -2310,9 +2291,9 @@ void svg_draw(std::ostream & file)
 	glGetDoublev (GL_MODELVIEW_MATRIX, modelview);
 	
 
-	double campos[3] = {0.5,0.5,0}, pickp[3], pickd[3];
+	double campos[3] = {0.5,0.5,0};//, pickp[3], pickd[3];
 	whereami(campos[0],campos[1],campos[2]);
-	int picked = -1;
+	//~ int picked = -1;
 
 	
 	//glTranslated((l+r)*0.5,(b+t)*0.5,(near+far)*0.5);
@@ -2374,11 +2355,11 @@ void svg_draw(std::ostream & file)
 			CommonVectors->SVGDraw(file,modelview,projection,viewport);
 
 
-		for(int k = 0; k < streamlines.size(); ++k)
+		for(size_t k = 0; k < streamlines.size(); ++k)
 			streamlines[k].SVGDraw(file,modelview,projection,viewport);//interactive);
 
 		file << "<g stroke=\"black\">" << std::endl;
-		for (int k = 0; k < segments.size(); ++k)
+		for (size_t k = 0; k < segments.size(); ++k)
 			segments[k].SVGDraw(file, modelview, projection, viewport);
 		file << "</g>" << std::endl;
 		
@@ -2444,7 +2425,7 @@ int main(int argc, char ** argv)
 	table[ORIENTATION] = FACE;
 	table[MEASURE]     = CELL|FACE;
 	mesh = new Mesh();
-	printf("Started loading mesh.\n");
+	std::cout << "Started loading mesh.\n";
 	tt = Timer();
 	//mesh->SetCommunicator(INMOST_MPI_COMM_WORLD);
 	mesh->SetParallelFileStrategy(0);
@@ -2452,7 +2433,7 @@ int main(int argc, char ** argv)
 	mesh->SetFileOption("VERBOSITY","2");
 	if( argc < 2 )
 	{
-		printf("Usage: %s mesh_file [state] [dims]\n",argv[0]);
+		std::cout << "Usage: " << argv[0] << " mesh_file [state] [dims]\n";
 		return 0;
 	}
 	//try
@@ -2467,7 +2448,7 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 	*/
-	printf("Done. Time %lg\n",Timer()-tt);
+	std::cout << "Done. Time " << Timer()-tt << std::endl;
 	//int fixed = 0;
 	//tt = Timer();
 	//delete mesh;
@@ -2495,13 +2476,13 @@ int main(int argc, char ** argv)
 	//return 0;
 	//for(Mesh::iteratorFace f = mesh->BeginFace(); f != mesh->EndFace(); f++)
 	//	if( Geometry::FixNormaleOrientation(&*f) ) fixed++;
-	//printf("fixed: %d\n",fixed);
-	printf("Computing geometric quantities\n");
+	
+	std::cout << "Computing geometric quantities\n";
 	tt = Timer();
 	mesh->PrepareGeometricData(table);
-	printf("Done. %lg\n",Timer()-tt);
+	std::cout << "Done. " << Timer()-tt << std::endl;
 	
-	printf("Calculating bounds.\n");
+	std::cout << "Calculating bounds.\n";
 	tt = Timer();
 	if( mesh->GetDimensions() == 2 )
 	{
@@ -2528,10 +2509,11 @@ int main(int argc, char ** argv)
 			if( c[2] < snear ) snear = c[2];
 		}
 	}
-	printf("Done. Time %lg\n",Timer()-tt);
-	printf("%g:%g %g:%g %g:%g\n",sleft,sright,sbottom,stop,snear,sfar);
+	std::cout << "Done. Time " << Timer()-tt << "\n";
+	
+	std::cout << sleft << ":" << sright << " " << sbottom << ":" << stop << " " << snear << ":" << sfar << std::endl;
 
-	printf("Gathering boundary faces.\n");
+	std::cout << "Gathering boundary faces.\n";
 	tt = Timer();
 	boundary_faces.SetMeshLink(mesh);
 	for(Mesh::iteratorCell f = mesh->BeginCell(); f != mesh->EndCell(); f++) 
@@ -2544,15 +2526,15 @@ int main(int argc, char ** argv)
 		if( f->Boundary() )
 			boundary_faces.push_back(*f);
 	}
-	printf("Done. Time %lg\n",Timer()-tt);
+	std::cout << "Done. Time " << Timer()-tt << "\n";
 
 	if( boundary_faces.empty() )
 	{
-		printf("Haven't found any boundary elements of the mesh. Nothing to display.\n");
+		std::cout << "Haven't found any boundary elements of the mesh. Nothing to display.\n";
 		return -1;
 	}
 
-	printf("Prepearing set of boundary faces for drawing.\n");
+	std::cout << "Prepearing set of boundary faces for drawing.\n";
 	tt = Timer();
 	INMOST_DATA_ENUM_TYPE pace = std::max<INMOST_DATA_ENUM_TYPE>(1,std::min<INMOST_DATA_ENUM_TYPE>(15,(unsigned)boundary_faces.size()/100));
 	for(INMOST_DATA_ENUM_TYPE k = 0; k < boundary_faces.size(); k++) 
@@ -2560,7 +2542,7 @@ int main(int argc, char ** argv)
 		all_boundary.push_back(DrawFace(boundary_faces[k]));
 		if( k%pace == 0 ) all_boundary.back().set_flag(true);
 	}
-	printf("Done. Time %g\n",Timer() - tt);
+	std::cout << "Done. Time " << Timer() - tt << "\n";
 
   if(mesh->HaveTag("ADDED_ELEMENTS") )
   {
@@ -2626,13 +2608,13 @@ int main(int argc, char ** argv)
 
   std::cout << "Boundary harmonic points array size: " << dual_harmonic_points.size()/9 << std::endl;
 
-	printf("Prepearing interactive mesh clipper.\n");
+	std::cout << "Prepearing interactive mesh clipper.\n";
 	//tt = Timer();
 	if( mesh->GetDimensions() != 2 )
 		oclipper = new clipper(mesh);
 	bclipper = new bnd_clipper(mesh,boundary_faces.data(),(unsigned)boundary_faces.size());
 	clipupdate = true;
-	//printf("Done. Time %g\n",Timer() - tt);
+	
 
 	CommonVolumetricView = new volumetric(mesh);
 	//CommonVolumetricView = new volumetric2(mesh);
@@ -2660,15 +2642,17 @@ int main(int argc, char ** argv)
 	  std::map<ElementType,int> num_orphans, num_topo;
 	  
 	  for(Mesh::iteratorElement it = mesh->BeginElement(FACE|EDGE|NODE); it != mesh->EndElement(); ++it)
+	  {
 		  if( it->nbAdjElements(CELL) == 0 ) 
 		  {
 			  orphans.push_back(it->self());
 			  num_orphans[it->GetElementType()]++;
 		  }
+	  }
 	   
-		  printf("number of orphan elements: %lu\n",orphans.size());
-		  for(std::map<ElementType,int>::iterator it = num_orphans.begin(); it != num_orphans.end(); ++it)
-			  printf("%s %d\n",ElementTypeName(it->first),it->second);
+		std::cout << "number of orphan elements: " << orphans.size() << "\n";
+		for(std::map<ElementType,int>::iterator it = num_orphans.begin(); it != num_orphans.end(); ++it)
+			std::cout << ElementTypeName(it->first) << ":" << it->second << std::endl;
 	  int was = orphans.size();
 	  if(mesh->TopologyErrorTag().isValid())
 	  {
@@ -2678,10 +2662,10 @@ int main(int argc, char ** argv)
 				  orphans.push_back(it->self());
 				  num_topo[it->GetElementType()]++;
 			  }
-		  printf("number of elements with topology error: %lu\n",orphans.size()-was);
+		  std::cout << "number of elements with topology error: " << orphans.size()-was << "\n";
 		  for(std::map<ElementType,int>::iterator it = num_topo.begin(); it != num_topo.end(); ++it)
-			  printf("%s %d\n",ElementTypeName(it->first),it->second);
-		  for(int k = was; k < orphans.size(); ++k)
+			  std::cout << ElementTypeName(it->first) << ":" << it->second << std::endl;
+		  for(size_t k = was; k < orphans.size(); ++k)
 			  std::cout << ElementTypeName(orphans[k]->GetElementType()) << ":" << orphans[k]->LocalID() << std::endl;
 	  }
   }
@@ -2705,7 +2689,7 @@ int main(int argc, char ** argv)
 	  double gx = 0, gy = 0, gz = 0, gv = 0;
 	  for(Mesh::iteratorCell it = mesh->BeginCell(); it != mesh->EndCell(); ++it)
 	  {
-		  double cnt[3], v = it->Volume();
+		  INMOST_DATA_REAL_TYPE cnt[3], v = it->Volume();
 		  it->Centroid(cnt);
 		  int m = it->Integer(mat);
 		  material_x[m] += cnt[0]*v;

@@ -49,15 +49,15 @@ int biilu2_bcg(
 /*****************************************************************************/
 
 /* Initialize bcg solver */
-static int initbcg(bcg_fcbiilu2 *s, matrix_fcbiilu2 *A, double eps);
+int initbcg(bcg_fcbiilu2 *s, matrix_fcbiilu2 *A, double eps);
 
 /* Reinitialize solver preconditioner with new matrix A */
-static int renewbcg(bcg_fcbiilu2 *s, double *A);
+int renewbcg(bcg_fcbiilu2 *s, double *A);
 /* Solve linear system */
 /*static*/ int solvebcg(bcg_fcbiilu2 *s, vector_fcbiilu2 *b, vector_fcbiilu2 *x);
 
 /* Free memory used by solver */
-static void freebcg(bcg_fcbiilu2 *s);
+void freebcg(bcg_fcbiilu2 *s);
 
 /*****************************************************************************/
 

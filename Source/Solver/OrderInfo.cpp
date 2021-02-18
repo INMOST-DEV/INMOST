@@ -672,7 +672,7 @@ namespace INMOST
 			}
 			if (vector_exchange_recv[0] > 0)
 			{
-				GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()), &recv_requests[0], MPI_STATUSES_IGNORE));
+				GUARD_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(recv_requests.size()), &recv_requests[0], MPI_STATUSES_IGNORE));
 				j = 1, l = 0;
 				for (i = 0; i < vector_exchange_recv[0]; i++)
 				{
@@ -684,7 +684,7 @@ namespace INMOST
 			}
 			if (vector_exchange_send[0] > 0)
 			{
-				GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()), &send_requests[0], MPI_STATUSES_IGNORE));
+				GUARD_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_requests.size()), &send_requests[0], MPI_STATUSES_IGNORE));
 			}
 		}
 #else
@@ -730,7 +730,7 @@ namespace INMOST
 			if (vector_exchange_send[0] > 0)
 			{
 				//std::cout << GetRank() << " Waitall send " << send_requests.size() << std::endl;
-				GUARD_MPI(MPI_Waitall(static_cast<int>(send_requests.size()), &send_requests[0], MPI_STATUSES_IGNORE));
+				GUARD_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_requests.size()), &send_requests[0], MPI_STATUSES_IGNORE));
 				j = 1, l = 0;
 				for (i = 0; i < vector_exchange_send[0]; i++)
 				{
@@ -743,7 +743,7 @@ namespace INMOST
 			if (vector_exchange_recv[0] > 0)
 			{
 				//std::cout << GetRank() << " Waitall recv " << recv_requests.size() << std::endl;
-				GUARD_MPI(MPI_Waitall(static_cast<int>(recv_requests.size()), &recv_requests[0], MPI_STATUSES_IGNORE));
+				GUARD_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(recv_requests.size()), &recv_requests[0], MPI_STATUSES_IGNORE));
 			}
 		}
 #else

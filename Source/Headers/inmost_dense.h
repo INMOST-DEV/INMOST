@@ -96,6 +96,7 @@ namespace INMOST
 		typedef unsigned enumerator;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
+		/*
 		/// Construct from matrix of the same type.
 		/// @param other Another matrix of the same type.
 		AbstractMatrix(const AbstractMatrix & b)
@@ -115,6 +116,7 @@ namespace INMOST
 				for(enumerator j = 0; j < b.Cols(); ++j)
 					assign((*this)(i,j),b(i,j));
 		}
+		*/
 		/// Assign matrix of the same type.
 		/// @param other Another matrix of the same type.
 		/// @return Reference to matrix.
@@ -3848,10 +3850,10 @@ namespace INMOST
 	/// shortcut for matrix of real values in existing array.
 	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raSymmetricMatrix;
 	/// return a matrix
-	static iaMatrix iaMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaMatrix::enumerator n, iaMatrix::enumerator m) {return iaMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*m),n,m);}
-	static raMatrix raMatrixMake(INMOST_DATA_REAL_TYPE * p, raMatrix::enumerator n, raMatrix::enumerator m) {return raMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*m),n,m);}
-	static iaSymmetricMatrix iaSymmetricMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaSymmetricMatrix::enumerator n) {return iaSymmetricMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*(n+1)/2),n);}
-	static raSymmetricMatrix raSymmetricMatrixMake(INMOST_DATA_REAL_TYPE * p, raSymmetricMatrix::enumerator n) {return raSymmetricMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*(n+1)/2),n);}
+	__INLINE iaMatrix iaMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaMatrix::enumerator n, iaMatrix::enumerator m) {return iaMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*m),n,m);}
+	__INLINE raMatrix raMatrixMake(INMOST_DATA_REAL_TYPE * p, raMatrix::enumerator n, raMatrix::enumerator m) {return raMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*m),n,m);}
+	__INLINE iaSymmetricMatrix iaSymmetricMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaSymmetricMatrix::enumerator n) {return iaSymmetricMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*(n+1)/2),n);}
+	__INLINE raSymmetricMatrix raSymmetricMatrixMake(INMOST_DATA_REAL_TYPE * p, raSymmetricMatrix::enumerator n) {return raSymmetricMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*(n+1)/2),n);}
 #if defined(USE_AUTODIFF)
 	/// shortcut for matrix of variables with single unit entry of first order derivative.
 	typedef Matrix<unknown> uMatrix;
@@ -3898,12 +3900,12 @@ namespace INMOST
 	
 	
 	
-	static uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
-	static vaMatrix vaMatrixMake(variable * p, vaMatrix::enumerator n, vaMatrix::enumerator m) {return vaMatrix(shell<variable>(p,n*m),n,m);}
-	static haMatrix vaMatrixMake(hessian_variable * p, haMatrix::enumerator n, haMatrix::enumerator m) {return haMatrix(shell<hessian_variable>(p,n*m),n,m);}
-	static uaSymmetricMatrix uaSymmetricMatrixMake(unknown * p, uaSymmetricMatrix::enumerator n) {return uaSymmetricMatrix(shell<unknown>(p,n*(n+1)/2),n);}
-	static vaSymmetricMatrix vaSymmetricMatrixMake(variable * p, vaSymmetricMatrix::enumerator n) {return vaSymmetricMatrix(shell<variable>(p,n*(n+1)/2),n);}
-	static haSymmetricMatrix vaSymmetricMatrixMake(hessian_variable * p, haSymmetricMatrix::enumerator n) {return haSymmetricMatrix(shell<hessian_variable>(p,n*(n+1)/2),n);}
+	__INLINE uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
+	__INLINE vaMatrix vaMatrixMake(variable * p, vaMatrix::enumerator n, vaMatrix::enumerator m) {return vaMatrix(shell<variable>(p,n*m),n,m);}
+	__INLINE haMatrix vaMatrixMake(hessian_variable * p, haMatrix::enumerator n, haMatrix::enumerator m) {return haMatrix(shell<hessian_variable>(p,n*m),n,m);}
+	__INLINE uaSymmetricMatrix uaSymmetricMatrixMake(unknown * p, uaSymmetricMatrix::enumerator n) {return uaSymmetricMatrix(shell<unknown>(p,n*(n+1)/2),n);}
+	__INLINE vaSymmetricMatrix vaSymmetricMatrixMake(variable * p, vaSymmetricMatrix::enumerator n) {return vaSymmetricMatrix(shell<variable>(p,n*(n+1)/2),n);}
+	__INLINE haSymmetricMatrix vaSymmetricMatrixMake(hessian_variable * p, haSymmetricMatrix::enumerator n) {return haSymmetricMatrix(shell<hessian_variable>(p,n*(n+1)/2),n);}
 #endif
 }
 /// Multiplication of matrix by constant from left.

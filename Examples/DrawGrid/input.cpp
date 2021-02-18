@@ -90,7 +90,7 @@ void Input::KeyPress(char c)
 		if( !paste.empty() )
 		{
 			noctrl = true;
-			for(int k = 0; k < paste.length(); ++k) KeyPress(paste[k]);
+			for(size_t k = 0; k < paste.length(); ++k) KeyPress(paste[k]);
 			noctrl = false;
 		}
 	}

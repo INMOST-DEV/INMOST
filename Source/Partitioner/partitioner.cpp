@@ -284,6 +284,7 @@ namespace INMOST
 				break;
 			case MetisRecContig:
 				package = 5;
+				break;
 			case MetisKway:
 				package = 6;
 				break;
@@ -1042,7 +1043,7 @@ namespace INMOST
 						if( pa == Partition )
 							xyz.erase(xyz.begin()+pos*dim,xyz.begin()+(pos+1)*dim);
 						
-						for(it = pos+1; it < xadj.size(); ++it) xadj[it] -= trans_adjncy_size;
+						for(it = pos+1; it < (idx_t)xadj.size(); ++it) xadj[it] -= trans_adjncy_size;
 						xadj.erase(xadj.begin()+pos);
 					}
 				}
@@ -1333,7 +1334,7 @@ namespace INMOST
 		if( package == 3 ) //KMEANS
 		{
 			
-			int total_points = 0;
+			INMOST_DATA_INTEGER_TYPE total_points = 0;
 			int K = (int)m->GetProcessorsNumber(), rank = (int)m->GetProcessorRank(); //number of clusters
 			//std::cout << "Start K-means on " << m->GetProcessorRank() << " clusters " << K << std::endl;
 			int max_iterations = 100;
@@ -1345,19 +1346,19 @@ namespace INMOST
 				Cell n = m->CellByLocalID(q);
 				if( n->GetStatus() != Element::Ghost ) total_points++;
 			}
-			std::vector< int > points_node(total_points);
-			std::vector< double > points_center(total_points*3);
-			std::vector< int > points_cluster(total_points,-1);
-			std::vector< double > cluster_center(K*3,0.0);
-			std::vector< int > cluster_npoints(K,0);
-			std::vector< double > cluster_weight(K,1/(double)K);
-			std::vector< double > cluster_shift(K*3,0);
+			std::vector< INMOST_DATA_INTEGER_TYPE > points_node(total_points);
+			std::vector< INMOST_DATA_REAL_TYPE > points_center(total_points*3);
+			std::vector< INMOST_DATA_INTEGER_TYPE > points_cluster(total_points,-1);
+			std::vector< INMOST_DATA_REAL_TYPE > cluster_center(K*3,0.0);
+			std::vector< INMOST_DATA_INTEGER_TYPE > cluster_npoints(K,0);
+			std::vector< INMOST_DATA_REAL_TYPE > cluster_weight(K,1/(double)K);
+			std::vector< INMOST_DATA_REAL_TYPE > cluster_shift(K*3,0);
 #if defined(USE_MPI)
-			std::vector< double > cluster_center_tmp(K*3);
-			std::vector< int > cluster_npoints_tmp(K);
+			std::vector< INMOST_DATA_REAL_TYPE > cluster_center_tmp(K*3);
+			std::vector< INMOST_DATA_INTEGER_TYPE > cluster_npoints_tmp(K);
 #endif
 			
-			int k = 0;
+			INMOST_DATA_ENUM_TYPE k = 0;
 			for(int q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
 			{
 				Cell n = m->CellByLocalID(q);
@@ -1366,10 +1367,10 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for			
 #endif
-			for(int q = 0; q < total_points; ++q)
+			for(INMOST_DATA_INTEGER_TYPE q = 0; q < total_points; ++q) if( m->isValidCell(q) )
 			{
 				Cell n = m->CellByLocalID(points_node[q]);
-				double cnt[3];
+				INMOST_DATA_REAL_TYPE cnt[3];
 				n->Centroid(cnt);
 				points_center[q*3+0] = cnt[0];
 				points_center[q*3+1] = cnt[1];
@@ -1379,16 +1380,17 @@ namespace INMOST
 				cluster_center[rank*3+2] += cnt[2];
 			}
 			
-			
-			double pmax[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
-			double pmin[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
+			INMOST_DATA_REAL_TYPE minv = std::numeric_limits<INMOST_DATA_REAL_TYPE>::lowest();
+			INMOST_DATA_REAL_TYPE maxv = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+			INMOST_DATA_REAL_TYPE pmax[3] = {minv,minv,minv};
+			INMOST_DATA_REAL_TYPE pmin[3] = {maxv,maxv,maxv};
 			
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 			{
-				double pmaxl[3] = {-1.0e+100,-1.0e+100,-1.0e+100};
-				double pminl[3] = {+1.0e+100,+1.0e+100,+1.0e+100};
+				INMOST_DATA_REAL_TYPE pmaxl[3] = {minv,minv,minv};
+				INMOST_DATA_REAL_TYPE pminl[3] = {maxv,maxv,maxv};
 #if defined(USE_OMP)
 #pragma omp	for
 #endif
@@ -1417,8 +1419,8 @@ namespace INMOST
 			m->AggregateMax(pmax,3);
 			m->AggregateMin(pmin,3);
 			
-			double mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
-			mesh_dist /= (double)K*3.0;
+			INMOST_DATA_REAL_TYPE mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
+			mesh_dist /= (INMOST_DATA_REAL_TYPE)K*3.0;
 			
 			//mesh_dist *= 10;
 			/*
@@ -1433,28 +1435,28 @@ namespace INMOST
 			*/
 #if defined(USE_MPI)
 			cluster_npoints[rank] = total_points;
-			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
 			cluster_center.swap(cluster_center_tmp);
 			cluster_npoints.swap(cluster_npoints_tmp);
 #endif
 			
 			for(int i = 0; i < K; ++i)
 			{
-				cluster_center[i*3+0] /= (double) cluster_npoints[i];
-				cluster_center[i*3+1] /= (double) cluster_npoints[i];
-				cluster_center[i*3+2] /= (double) cluster_npoints[i];
+				cluster_center[i*3+0] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+				cluster_center[i*3+1] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+				cluster_center[i*3+2] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
 			}
 			
-			int total_global_points = total_points;
+			INMOST_DATA_INTEGER_TYPE total_global_points = total_points;
 #if defined(USE_MPI)
 			std::vector<int> displs(m->GetProcessorsNumber());
 			std::vector<int> counts(m->GetProcessorsNumber());
-			std::vector<int> npoints(m->GetProcessorsNumber());
+			std::vector<INMOST_DATA_INTEGER_TYPE> npoints(m->GetProcessorsNumber());
 			total_global_points = 0;
-			int total_local_points = 0;
+			INMOST_DATA_INTEGER_TYPE total_local_points = 0;
 			bool balance = false;
-			MPI_Allgather(&total_points,1,MPI_INT,&npoints[0],1,MPI_INT,MPI_COMM_WORLD);
+			MPI_Allgather(&total_points,1,INMOST_MPI_DATA_INTEGER_TYPE,&npoints[0],1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_COMM_WORLD);
 			double imbalance = 1;
 			for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
 			{
@@ -1471,10 +1473,10 @@ namespace INMOST
 				balance = true;
 			if( balance )//redistribute points
 			{
-				total_local_points = (int)floor((double)total_global_points/(double)m->GetProcessorsNumber());
+				total_local_points = (INMOST_DATA_INTEGER_TYPE)floor((double)total_global_points/(double)m->GetProcessorsNumber());
 				//std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
 				
-				std::vector<double> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
+				std::vector<INMOST_DATA_REAL_TYPE> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
 				displs[0] = 0;
 				counts[0] = npoints[0]*3;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1482,7 +1484,7 @@ namespace INMOST
 					displs[k] = displs[k-1] + counts[k-1];
 					counts[k] = npoints[k]*3;
 				}
-				MPI_Gatherv(&points_center[0],total_points*3,MPI_DOUBLE,&points_center_global[0],&counts[0],&displs[0],MPI_DOUBLE,0,MPI_COMM_WORLD);
+				MPI_Gatherv(&points_center[0],total_points*3,INMOST_MPI_DATA_REAL_TYPE,&points_center_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_REAL_TYPE,0,MPI_COMM_WORLD);
 				displs[0] = 0;
 				counts[0] = total_local_points*3;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1493,7 +1495,7 @@ namespace INMOST
 				counts.back() = total_global_points*3 - displs.back();
 				total_points = counts[m->GetProcessorRank()]/3;
 				points_center.resize(total_points*3);
-				MPI_Scatterv(&points_center_global[0],&counts[0],&displs[0],MPI_DOUBLE,&points_center[0],total_points*3,MPI_DOUBLE,0,MPI_COMM_WORLD);
+				MPI_Scatterv(&points_center_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_REAL_TYPE,&points_center[0],total_points*3,INMOST_MPI_DATA_REAL_TYPE,0,MPI_COMM_WORLD);
 				points_cluster.resize(total_points,-1);
 			}
 #endif
@@ -1521,7 +1523,7 @@ namespace INMOST
 					{
 						while(true)
 						{
-							int index_point = rand() % total_points;
+							INMOST_DATA_INTEGER_TYPE index_point = (rand()*rand()) % total_points;
 							if(points_cluster[index_point]==-1)
 							{
 								cluster_center[i*3+0] = points_center[index_point*3+0];
@@ -1575,32 +1577,32 @@ namespace INMOST
 			//	std::cout << "Start clustering" << std::endl;
 			
 			int iter = 1;
-			double t = Timer();
+			//~ double t = Timer();
 			while(true)
 			{
 				
 				
-				int changed = 0;
+				INMOST_DATA_INTEGER_TYPE changed = 0;
 				// associates each point to the nearest center
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:changed)
 #endif
-				for(int i = 0; i < total_points; i++)
+				for(INMOST_DATA_INTEGER_TYPE i = 0; i < total_points; i++)
 				{
 					int id_old_cluster = points_cluster[i];
 					int id_nearest_center = -1;
 					
-					double lmin = 1.0e+100;
+					INMOST_DATA_REAL_TYPE lmin = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					
 					for(int j = 0; j < K; ++j)
 					{
-						double v[3];
+						INMOST_DATA_REAL_TYPE v[3];
 						v[0] = (points_center[i*3+0] - cluster_center[j*3+0]);
 						v[1] = (points_center[i*3+1] - cluster_center[j*3+1]);
 						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
 						
 						//the bigger is the cluster weight the further is the distance
-						double l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
+						INMOST_DATA_REAL_TYPE l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
 						if( l < lmin )
 						{
 							lmin = l;
@@ -1618,8 +1620,8 @@ namespace INMOST
 				}
 				
 #if defined(USE_MPI)
-				int tmp = changed;
-				MPI_Allreduce(&tmp,&changed,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+				INMOST_DATA_INTEGER_TYPE tmp = changed;
+				MPI_Allreduce(&tmp,&changed,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
 #endif
 				
 				if(changed == 0 || iter >= max_iterations)
@@ -1641,8 +1643,8 @@ namespace INMOST
 #pragma omp parallel
 #endif
 				{
-					std::vector< double > local_sum(K*3,0.0);
-					std::vector< int > local_npoints(K,0);
+					std::vector< INMOST_DATA_REAL_TYPE > local_sum(K*3,0.0);
+					std::vector< INMOST_DATA_INTEGER_TYPE > local_npoints(K,0);
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -1667,8 +1669,8 @@ namespace INMOST
 					}
 				}
 #if defined(USE_MPI)
-				MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-				MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+				MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,MPI_COMM_WORLD);
+				MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
 				cluster_center.swap(cluster_center_tmp);
 				cluster_npoints.swap(cluster_npoints_tmp);
 #endif
@@ -1676,11 +1678,11 @@ namespace INMOST
 				//~ if( m->GetProcessorRank() == 0 ) std::cout << "iteration " <<  iter << std::endl;
 				for(int i = 0; i < K; i++)
 				{
-					cluster_center[i*3+0] /= (double) cluster_npoints[i];
-					cluster_center[i*3+1] /= (double) cluster_npoints[i];
-					cluster_center[i*3+2] /= (double) cluster_npoints[i];
+					cluster_center[i*3+0] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+					cluster_center[i*3+1] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+					cluster_center[i*3+2] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
 					//recompute cluster weights based on the number of points each cluster possess
-					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(double)total_global_points*0.75);
+					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(INMOST_DATA_REAL_TYPE)total_global_points*0.75);
 					//~ if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << "," << cluster_npoints[i] << " , " << cluster_weight[i] << ") " << std::endl;
 				}
 				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
@@ -1733,7 +1735,7 @@ namespace INMOST
 #if defined(USE_MPI)
 			if( balance )
 			{
-				std::vector<int> points_cluster_global(total_global_points);
+				std::vector<INMOST_DATA_INTEGER_TYPE> points_cluster_global(total_global_points);
 				displs[0] = 0;
 				counts[0] = total_local_points;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1742,7 +1744,7 @@ namespace INMOST
 					counts[k] = total_local_points;
 				}
 				counts.back() = total_global_points - displs.back();
-				MPI_Gatherv(&points_cluster[0],total_points,MPI_INT,&points_cluster_global[0],&counts[0],&displs[0],MPI_INT,0,MPI_COMM_WORLD);
+				MPI_Gatherv(&points_cluster[0],total_points,INMOST_MPI_DATA_INTEGER_TYPE,&points_cluster_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_INTEGER_TYPE,0,MPI_COMM_WORLD);
 				displs[0] = 0;
 				counts[0] = npoints[0];
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1752,7 +1754,7 @@ namespace INMOST
 				}
 				total_points = counts[m->GetProcessorRank()];
 				points_cluster.resize(total_points);
-				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],MPI_INT,&points_cluster[0],total_points,MPI_INT,0,MPI_COMM_WORLD);
+				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_INTEGER_TYPE,&points_cluster[0],total_points,INMOST_MPI_DATA_INTEGER_TYPE,0,MPI_COMM_WORLD);
 			}
 #endif
 			// shows elements of clusters
@@ -1760,7 +1762,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for(int j = 0; j < total_points; ++j)
+			for(INMOST_DATA_INTEGER_TYPE j = 0; j < total_points; ++j)
 				mat[m->CellByLocalID(points_node[j])] = points_cluster[j];
 			//m->ExchangeData(mat,CELL,0);
 		}
@@ -1785,6 +1787,10 @@ namespace INMOST
 			case Zoltan_Scotch:
 				package = 1;
 				break;
+			case MetisRec:
+			case MetisRecContig:
+			case MetisKway:
+			case MetisKwayContig:
 			case Parmetis:
 				package = 2;
 				break;
@@ -1896,6 +1902,10 @@ namespace INMOST
 			case Zoltan_Scotch:
 				package = 1;
 				break;
+			case MetisRec:
+			case MetisRecContig:
+			case MetisKway:
+			case MetisKwayContig:
 			case Parmetis:
 				package = 2;
 				break;
@@ -1955,6 +1965,10 @@ namespace INMOST
 			case Zoltan_Scotch:
 				package = 1;
 				break;
+			case MetisRec:
+			case MetisRecContig:
+			case MetisKway:
+			case MetisKwayContig:
 			case Parmetis:
 				package = 2;
 				break;

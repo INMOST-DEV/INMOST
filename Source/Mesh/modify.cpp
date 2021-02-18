@@ -118,7 +118,7 @@ namespace INMOST
 	{
 		Mesh * m = unite.GetMeshLink();
 		if( unite.empty() ) return Cell(m,InvalidHandle());
-		tiny_map<HandleType, int, 64> face_visit; // we check all edges of faces, inner edges are visited several times, outer - once
+		std::map<HandleType, int> face_visit; // we check all edges of faces, inner edges are visited several times, outer - once
 		ElementArray<Face> faces(m); 
 		dynarray<HandleType,64> inner_faces;
 		bool doexit = false;
@@ -140,7 +140,7 @@ namespace INMOST
 		//gather boundary faces into set that will be used to create new cell
 		//mark internal faces to be deleted. For internal faces find out
 		//all internal edges that should be deleted as well.
-		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
 		{
 			if( it->second == 1 ) //boundary faces, use for new cell
 				faces.push_back(it->first);
@@ -302,7 +302,7 @@ namespace INMOST
 	{
 		if( unite.empty() ) return false;
 		Mesh * m = unite.GetMeshLink();
-		tiny_map<HandleType,int,64> face_visit; // we check all edges of faces, inner edges are visited several times, outer - once
+		std::map<HandleType,int> face_visit; // we check all edges of faces, inner edges are visited several times, outer - once
 		bool doexit = false;
 		MarkerType hm = m->HideMarker();			
 		for(ElementArray<Cell>::size_type j = 0; j < unite.size(); j++)
@@ -316,7 +316,7 @@ namespace INMOST
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> edges;
 		dynarray<HandleType,64> nodes;		
-		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
 		{
 			if( it->second != 1 )
 			{
@@ -365,7 +365,7 @@ namespace INMOST
 			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
 				doexit = true;
 		}
-		for(tiny_map<HandleType,int,64>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemMarker(it->first,rem);
+		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemMarker(it->first,rem);
 		m->RemMarkerArray(edges.data(), (enumerator)edges.size(),rem);
 		m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
 		m->ReleaseMarker(rem);
@@ -413,7 +413,7 @@ namespace INMOST
 		}
 		
 		dynarray<HandleType,64> nodes;
-		tiny_map<HandleType, int,64> edge_visit;
+		std::map<HandleType, int> edge_visit;
 		ElementArray<Edge> edges(m);
 		//compute how many times each edge is visited
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -428,7 +428,7 @@ namespace INMOST
 		//Mark all the edges on boundary to recreate the face,
 		//assemble set of nodes
 		int expect_q = 0; //used to test for consistency of the loop of edges
-		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 		{
 			if( it->second == 1 )
 			{
@@ -478,7 +478,7 @@ namespace INMOST
 			
 		if( doexit )
 		{
-			for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
+			for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			{
 				m->RemMarker(it->first,rem);
 				m->RemMarker(it->first,edge_set);
@@ -573,7 +573,7 @@ namespace INMOST
 			}
 		}
 
-		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			if( it->second != 1 )
 			{
 				m->RemMarker(it->first,rem);
@@ -684,14 +684,14 @@ namespace INMOST
 		}
 		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
 		dynarray<HandleType,64> nodes;
-		tiny_map<HandleType, int,64> edge_visit;
+		std::map<HandleType, int> edge_visit;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
 			adj_type const & lc = m->LowConn(unite.at(j));
 			for(adj_type::size_type it = 0; it < lc.size(); it++) if( !m->GetMarker(lc[it],hm) )
 				edge_visit[lc[it]]++;
 		}
-		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 		{
 			if( it->second == 2 )
 			{
@@ -723,7 +723,7 @@ namespace INMOST
 			//all edges are deleted but the node is protected
 			if( nonzero == 0 && m->GetMarker(nodes[j],del_protect)) doexit = true;
 		}
-		for(tiny_map<HandleType,int,64>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
+		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			if( it->second != 1 ) m->RemMarker(it->first,rem);
 		m->ReleaseMarker(rem);
 		if( doexit )
@@ -745,7 +745,7 @@ namespace INMOST
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> cells;
 		dynarray<HandleType,64> faces;
-		tiny_map<HandleType,int,64> nodes;
+		std::map<HandleType,int> nodes;
 		ElementArray<Node> build_nodes(m);
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
 		{
@@ -789,7 +789,7 @@ namespace INMOST
 			return Edge(m,InvalidHandle());
 		}
 		
-		for(tiny_map<HandleType,int,64>::iterator it = nodes.begin(); it != nodes.end(); it++)
+		for(std::map<HandleType,int>::iterator it = nodes.begin(); it != nodes.end(); it++)
 		{
 			
 			if( it->second == 1 )
@@ -893,7 +893,7 @@ namespace INMOST
 
 		m->ReleaseMarker(rem);
 
-		for(tiny_map<HandleType,int,64>::iterator it = nodes.begin(); it != nodes.end(); it++)
+		for(std::map<HandleType,int>::iterator it = nodes.begin(); it != nodes.end(); it++)
 		{
 			if( it->second != 1 )
 			{
@@ -959,7 +959,7 @@ namespace INMOST
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> faces;
-		tiny_map<HandleType,int,64> nodes;
+		std::map<HandleType,int> nodes;
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
 		{
@@ -988,7 +988,7 @@ namespace INMOST
 			return false;
 		}
 		
-		for(tiny_map<HandleType,int,64>::iterator it = nodes.begin(); it != nodes.end(); it++)
+		for(std::map<HandleType,int>::iterator it = nodes.begin(); it != nodes.end(); it++)
 		{
 			if( it->second == 1 )
 			{
@@ -1063,14 +1063,13 @@ namespace INMOST
 	}
 	
 	
-	Node Edge::CollapseEdge(Edge e, MarkerType del_protect)
+	Node Edge::CollapseEdge(Edge e)
 	{
 		Node n = InvalidNode();
 		Mesh & m = *e.GetMeshLink();
-		bool reconnect = true;
 		//e.PrintElementConnectivity();
 		{
-			double a = 0.5, cnt[3] = {0,0,0};
+			INMOST_DATA_REAL_TYPE a = 0.5, cnt[3] = {0,0,0};
 			if( e.getBeg().Boundary() ) a -= 0.5;
 			if( e.getEnd().Boundary() ) a += 0.5;
 			for(INMOST_DATA_INTEGER_TYPE k = 0; k < m.GetDimensions(); ++k)

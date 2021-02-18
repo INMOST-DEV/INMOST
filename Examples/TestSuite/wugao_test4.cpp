@@ -64,10 +64,10 @@ int main(int argc, char ** argv)
 	Tag material;
 	if( m->HaveTag("PERM") ) m->DeleteTag(m->GetTag("PERM"));
 
-	Storage::real a = 1, b = 2;
+	Storage::real a = 1;//, b = 2;
   
   if( argc > 3 ) a = atof(argv[3]);
-  if( argc > 4 ) b = atof(argv[4]);
+  //~ if( argc > 4 ) b = atof(argv[4]);
 
   Tag force = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1);
   Tag tensor = m->CreateTag("PERM",DATA_REAL,CELL,NONE,6);

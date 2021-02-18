@@ -19,9 +19,10 @@ real disc_rad = 0.2;//0.15;
 
 real enright_shape(real * coord, real time)
 {
+	(void)time;
 	real x = (coord[0]-min[0])/(max[0]-min[0]); //normalize x into [0,1]
 	real y = (coord[1]-min[1])/(max[1]-min[1]); //normalize y into [0,1]
-	real z = (coord[2]-min[2])/(max[2]-min[2]); //normalize z into [0,1]
+	//~ real z = (coord[2]-min[2])/(max[2]-min[2]); //normalize z into [0,1]
 
 	if( sqrt((x-disc_cx)*(x-disc_cx) + (y-disc_cy)*(y-disc_cy)) < disc_rad )
 		return 1.0;
@@ -149,7 +150,7 @@ int main(int argc, char ** argv)
 
 		real x = (c[0]-min[0])/(max[0]-min[0])*2-1; //normalize x into [0,1]
 		real y = (c[1]-min[1])/(max[1]-min[1])*2-1; //normalize y into [0,1]
-		real z = (c[2]-min[2])/(max[2]-min[2])*2-1; //normalize z into [0,1]
+		//~ real z = (c[2]-min[2])/(max[2]-min[2])*2-1; //normalize z into [0,1]
 
 		real u = -cos(0.5*pi*x)*sin(0.5*pi*y);//2*sin(pi*x)*sin(pi*x)*sin(2*pi*y)*sin(2*pi*z);
 		real v = sin(0.5*pi*x)*cos(0.5*pi*y);//-sin(2*pi*x)*sin(pi*y)*sin(pi*y)*sin(2*pi*z);

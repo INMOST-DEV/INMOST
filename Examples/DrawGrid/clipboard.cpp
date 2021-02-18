@@ -123,6 +123,6 @@ CantGetPasteboardItemCount:
     
 }
 #else
-bool setTextToPasteboard(std::string str) {}
+bool setTextToPasteboard(std::string str) {(void)str; return false;}
 std::string getTextFromPasteboard() {return "";}
 #endif

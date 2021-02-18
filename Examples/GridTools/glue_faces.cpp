@@ -91,7 +91,7 @@ int main(int argc, char ** argv)
 		{
 			tetra[*it] = 1;
 			ElementArray<Cell> cells = it->BridgeAdjacencies2Cell(FACE);
-			for(int k = 0; k < cells.size(); ++k)
+			for(ElementArray<Cell>::size_type k = 0; k < cells.size(); ++k)
 				if( cells[k]->GetGeometricType() == Element::Tet )
 					tetra[*it] = 2;
 			//std::cout << "Cell:" << it->LocalID() << " " << it->nbAdjElements(FACE) << std::endl;

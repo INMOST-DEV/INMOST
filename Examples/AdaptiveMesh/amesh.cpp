@@ -23,7 +23,7 @@
 #define EXIT_FUNC_DIE()  {}
 #endif
 
-static std::string NameSlash(std::string input)
+__INLINE std::string NameSlash(std::string input)
 {
 	for(unsigned l = static_cast<unsigned>(input.size()); l > 0; --l)
 		if( input[l-1] == '/' || input[l-1] == '\\' )
@@ -385,7 +385,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if !defined(NDEBUG)
-		Storage::Integer err = 0;
+		Storage::integer err = 0;
 		Storage::integer_array procs;
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
@@ -1399,7 +1399,7 @@ namespace INMOST
 				Cell c = m->CellByLocalID(it);
 				if( !c.Hidden() && indicator[c] == schedule_counter )
 				{
-					double x[3];
+					INMOST_DATA_REAL_TYPE x[3];
 					c.Centroid(x);
 					//this set contains all the cells to be united
 					ElementSet parent(m,parent_set[c]);
@@ -1424,7 +1424,7 @@ namespace INMOST
 					//}
 					//find a node common to all the cells
 					ElementArray<Node> center_node = unite_cells[0].getNodes();
-					for(kt = 1; kt < unite_cells.size(); ++kt)
+					for(kt = 1; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
 						center_node.Intersect(unite_cells[kt].getNodes());
 					
 					//fout << "nodes(" << center_node.size() << "):" << std::endl;
@@ -1437,12 +1437,12 @@ namespace INMOST
 					//only one should be found
 					if( center_node.size() != 1 )
 					{
-						double x[3];
+						INMOST_DATA_REAL_TYPE x[3];
 						std::cout << "call_counter " << call_counter << " schedule_counter " << schedule_counter << std::endl;
 						c.Centroid(x);
 						std::cout << "parent set " << parent.GetName() << " size " << parent.Size() << " cell " << c.GlobalID() << " " << x[0] << " " << x[1] << " " << x[2] << std::endl;
 						std::cout << "cells(" << unite_cells.size() << "):" << std::endl;
-						for(kt = 0; kt < unite_cells.size(); ++kt)
+						for(kt = 0; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
 						{
 							unite_cells[kt].Centroid(x);
 							std::cout << unite_cells[kt].GlobalID() << " lid " << unite_cells[kt].LocalID();
@@ -1451,7 +1451,7 @@ namespace INMOST
 							std::cout << std::endl;
 						}
 						std::cout << "nodes(" << center_node.size() << "):" << std::endl;
-						for(kt = 0; kt < center_node.size(); ++kt)
+						for(kt = 0; kt < static_cast<Storage::integer>(center_node.size()); ++kt)
 							std::cout << center_node[kt].Coords()[0] << " " << center_node[kt].Coords()[1] << " " << center_node[kt].Coords()[2] << std::endl;
 						std::cout << "child sets: ";
 						for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())

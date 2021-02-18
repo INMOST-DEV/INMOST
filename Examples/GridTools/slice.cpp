@@ -55,7 +55,7 @@ int main(int argc, char ** argv)
 			n.SetMarker(slice);
 			bool was_sliced = it->HaveData(sliced) ? true : false;
 			ElementArray<Edge> ret = Edge::SplitEdge(it->self(),ElementArray<Node>(&m,1,n.GetHandle()),0);
-			if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
+			if( was_sliced ) for(INMOST_DATA_ENUM_TYPE q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 			nslice++;
 		}
 		else
@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
 				e.SetMarker(slice);
 				bool was_sliced = it->HaveData(sliced) ? true : false;
 				ElementArray<Face> ret = Face::SplitFace(it->self(),ElementArray<Edge>(&m,1,e.GetHandle()),0);
-				if( was_sliced ) for(int q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
+				if( was_sliced ) for(INMOST_DATA_ENUM_TYPE q = 0; q < ret.size(); ++q) ret[q]->Bulk(sliced) = 1;
 				nslice++;
 			}
 		}
@@ -127,7 +127,7 @@ int main(int argc, char ** argv)
 			order_edges.SetMarker(visited);
 			while(order_edges.size() != edges.size() )
 			{
-				for(int k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) )
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < edges.size(); ++k) if( !edges[k]->GetMarker(visited) )
 				{
 					if( edges[k]->getBeg() == order_edges.back()->getBeg() || edges[k]->getBeg() == order_edges.back()->getEnd() ||
 						edges[k]->getEnd() == order_edges.back()->getBeg() || edges[k]->getEnd() == order_edges.back()->getEnd() )

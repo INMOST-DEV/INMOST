@@ -87,15 +87,12 @@ int main(int argc, char ** argv)
 		TagInteger united = m.CreateTag("united", DATA_INTEGER, FACE, NONE, 1);
 		for (Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 		{
-			int itid = it->LocalID();
 			ElementArray<Face> faces = it->getFaces();
 			//find out faces that share the same adjacent cells
 			std::map<Cell, std::vector<HandleType> > cfaces;
 			for (ElementArray<Face>::iterator jt = faces.begin(); jt != faces.end(); ++jt)
 			{
-				int jtid = jt->LocalID();
 				Cell cK = jt->BackCell() == it->self() ? jt->FrontCell() : jt->BackCell();
-				int cKid = cK.isValid() ? cK.LocalID() : -1;
 				cfaces[cK].push_back(jt->GetHandle());
 			}
 			for (std::map<Cell, std::vector<HandleType> >::iterator jt = cfaces.begin(); jt != cfaces.end(); ++jt)
@@ -107,7 +104,6 @@ int main(int argc, char ** argv)
 					for (std::vector<HandleType>::iterator kt = jt->second.begin(); kt != jt->second.end(); ++kt)
 					{
 						Face f(&m, *kt);
-						int ktid = f.LocalID();
 						double nrm[3];
 						f->OrientedUnitNormal(it->self(), nrm);
 						bool added = false;

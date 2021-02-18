@@ -82,8 +82,8 @@ public:
 	Input(int * val) { input_link = val; type = Integer; done = false; str = ""; }
 	Input(double * val) { input_link = val; type = Double; done = false; str = ""; }
 	Input(void * link, InputType type) : input_link(link), type(type) { done = false; str = ""; }
-	Input(const Input & other) :input_link(other.input_link), str(other.str), type(other.type), done(other.done) {}
-	Input & operator =(Input const & other) { input_link = other.input_link; str = other.str; type = other.type; done = other.done; return *this; }
+	Input(const Input & other) : str(other.str), input_link(other.input_link), type(other.type), done(other.done) {}
+	Input & operator =(Input const & other) { str = other.str; input_link = other.input_link; type = other.type; done = other.done; return *this; }
 	~Input() {}
 	void KeyPress(char c)
 	{
@@ -155,7 +155,7 @@ class Reorder_ARMS
 	std::vector< INMOST_DATA_ENUM_TYPE > block_entries;
 	std::vector< INMOST_DATA_ENUM_TYPE > block_ends;
 	std::deque<INMOST_DATA_ENUM_TYPE> stack;
-	int nblocks, maxblock, sblock;
+	INMOST_DATA_ENUM_TYPE nblocks, maxblock, sblock;
 	INMOST_DATA_ENUM_TYPE mbeg, mend, visited, select;
 	Sparse::Matrix & A;
 	void add_block_entry(INMOST_DATA_ENUM_TYPE ind)
@@ -386,6 +386,7 @@ void reshape(int w, int h)
 
 void keyboard(unsigned char key, int x, int y)
 {
+	(void)x,(void)y;
 	if (CommonInput != NULL)
 	{
 		CommonInput->KeyPress(key);
@@ -478,7 +479,7 @@ void draw()
 		glBegin(GL_QUADS);
 		for(Sparse::Matrix::iterator it = m->Begin(); it != m->End(); ++it)
 			for(Sparse::Row::iterator jt = it->Begin(); jt != it->End(); ++jt)
-				if( jt->first != it - m->Begin() && jt->second)
+				if( jt->first != static_cast<INMOST_DATA_ENUM_TYPE>(it - m->Begin()) && jt->second)
 				{
 					//double r = jt->second
 					//DrawEntry(ord->position((it - m->Begin())), m->Size() - ord->position(jt->first));//, sqrt((jt->second-min)/(max-min)));
@@ -584,7 +585,7 @@ void draw()
 	{
 		glColor3f(0.5,0,1);
 		//rows
-		for(int k = 0; k < blocks.size(); ++k)
+		for(size_t k = 0; k < blocks.size(); ++k)
 			blocks[k].drawgl(m->Size());
 	}
 	if (CommonInput != NULL)
