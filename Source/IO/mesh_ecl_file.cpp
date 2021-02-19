@@ -621,7 +621,7 @@ namespace INMOST
 		Mesh * m = const_cast<Mesh *>(input.GetMeshLink());
 		ElementArray<Edge> ret(m);
 		ret.reserve(input.size());
-		HandleType last;
+		HandleType last = InvalidHandle();
 		ret.push_back(input[0]);
 		HandleType add = InvalidHandle();
 		const Element::adj_type & lc0 = m->LowConn(input.at(0));
@@ -778,7 +778,7 @@ namespace INMOST
 	{
 		const Storage::real eps = ECL_INTERSECT_EPS;
 		Point pfind(InvalidHandle(), 0, 0);
-		Storage::real t1, t2;
+		Storage::real t1 = -1, t2 = -1;
 		Storage::real div = (pabeg.x - paend.x)*(pbbeg.y - pbend.y) - (pabeg.y - paend.y)*(pbbeg.x - pbend.x);
 		if (std::abs(div) < 1.0e-50)
 			return std::make_pair(-1, -1);
@@ -1291,7 +1291,7 @@ namespace INMOST
 			std::cout << __FILE__ << ":" << __LINE__ << " cannot open file " << File << std::endl;
 			throw BadFileName;
 		}
-		double tt;
+		double tt = 0;
 		if (verbosity)
 		{
 			tt = Timer();
@@ -1301,7 +1301,8 @@ namespace INMOST
 		char readline[2048], readlines[2048], *p, *pend, rec[2048], pupper[2048];
 		int text_end, text_start, state = ECL_NONE, state_from = ECL_NONE, state_incl = ECL_NONE, nchars;
 		int waitlines = 0;
-		int have_dimens = 0, totread, downread, numrecs, offset;
+		int have_dimens = 0, totread = 0, downread = 0, numrecs = 0, offset = 0;
+		(void)have_dimens;
 		int gtype = ECL_GTYPE_NONE;
 		int argtype = ECL_VAR_NONE;
 		int radial = ECL_GTYPE_NONE;
@@ -1319,10 +1320,10 @@ namespace INMOST
 		fault_rec fault_cur;
 		std::vector<multflt_rec> multflt;
 		multflt_rec multflt_cur;
-		time_t start, last;
+		time_t start = 0, last = 0;
 		bool have_start = false;
 		struct tm date_cur;
-		bool read_start;
+		bool read_start = false;
 		std::vector<double> tsteps(1,0.0); //skip first tstep
 		std::pair<std::string,compdat_rec> compdat_cur;
 		std::pair<std::string,welspecs_rec> welspecs_cur;
@@ -3028,7 +3029,7 @@ namespace INMOST
 		}
 		else if (gtype == ECL_GTYPE_ZCORN)
 		{
-			double ttt;
+			double ttt = 0;
 			if (verbosity)
 			{
 				tt = Timer();
@@ -4057,7 +4058,7 @@ namespace INMOST
 			TagReal transmul;
 			if (perform_splitting)
 				split_face = CreateTag("SPLIT_FACE", DATA_REFERENCE, FACE, NONE, 1); //points to edge that should be used to split face
-			MarkerType split;
+			MarkerType split = 0;
 			if (split_degenerate == 2)
 				transmul = CreateTag("TRANM", DATA_REAL, FACE, FACE, 1);
 			else if (split_degenerate == 1)
@@ -4268,7 +4269,7 @@ namespace INMOST
 											{ { 0, 1, 4, 5 }, { 2, 3, 6, 7 } }, //v-direction face nodes n,p
 											{ { 0, 1, 2, 3 }, { 4, 5, 6, 7 } }  //w-direction face nodes n,p
 										};
-										double u[3], L;
+										double u[3] = {0.,0.,0.}, L;
 										for (int r = 0; r < 3; ++r)
 										{
 											for (int l = 0; l < 4; ++l)
@@ -4391,7 +4392,7 @@ namespace INMOST
 #pragma omp parallel
 #endif
 				{
-					int i1, j1, k1, i2, j2, k2, cur1, cur2;
+					int i1 = -1, j1 = -1, k1 = 0, i2 = -1, j2 = -1, k2 = 0, cur1, cur2;
 					real T1, T2, R1, R2, ntg1, ntg2;
 					rMatrix A(3,1), D1(3,1), D2(3,1), X1(3,1), XF1(3,1), X2(3,1), XF2(3,1);
 #if defined(USE_OMP)
@@ -4435,7 +4436,7 @@ namespace INMOST
 							
 							const int nodes[3][4] = {{0,2,4,6},{0,1,4,5},{0,1,2,3}};
 							
-							int d, s;
+							int d = -1, s;
 							if( i1 != i2 ) // this is X-axis
 								d = 0;
 							else if( j1 != j2 ) //this is Y-axis

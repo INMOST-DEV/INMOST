@@ -1309,7 +1309,7 @@ namespace INMOST
 	{
 		assert(GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
-		Element::adj_type * lc;
+		Element::adj_type * lc = NULL;
 		Element::adj_type & hc = m->HighConn(GetHandle());
 		if( comp != UNSORTED_COMPARATOR )
 			lc = &m->LowConn(GetHandle());

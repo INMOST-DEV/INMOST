@@ -70,8 +70,8 @@ namespace INMOST
 		assert( !(_etype & ESET) );
 		Mesh * mesh = GetMeshLink();
 		dynarray<HandleType,128> result;
-		integer conn[4] = {0,0,0,0};
-		integer myconn, i;
+		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
+		INMOST_DATA_INTEGER_TYPE myconn = -1, i;
 		enumerator ret = 0;
 		
 		for(ElementType e = NODE, i = 0; e <= CELL; i++, e = e << 1)
@@ -213,8 +213,8 @@ namespace INMOST
 		assert( !(_etype & ESET) );
 		Mesh * mesh = GetMeshLink();
 		dynarray<HandleType,128> result;
-		integer conn[4] = {0,0,0,0};
-		integer myconn, i;
+		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
+		INMOST_DATA_INTEGER_TYPE myconn = -1, i;
 		enumerator ret = 0;
 		
 		for(ElementType e = NODE, i = 0; e <= CELL; i++, e = e << 1)
@@ -480,8 +480,8 @@ namespace INMOST
 		assert( !(_etype & ESET) );
 		INMOST::Mesh * mesh = GetMeshLink();
 		ElementArray<Element> result(mesh);
-		unsigned int conn[4] = {0,0,0,0};
-		unsigned int myconn, i = 0;
+		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
+		INMOST_DATA_INTEGER_TYPE myconn = -1, i = 0;
 		
 		for(ElementType e = NODE; e <= CELL; e = e << 1)
 		{
@@ -614,8 +614,8 @@ namespace INMOST
 		assert( !(_etype & ESET) );
 		INMOST::Mesh * mesh = GetMeshLink();
 		ElementArray<Element> result(mesh);
-		unsigned int conn[4] = {0,0,0,0};
-		unsigned int myconn, i = 0;
+		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
+		INMOST_DATA_INTEGER_TYPE myconn = -1, i = 0;
 		
 		for(ElementType e = NODE; e <= CELL; e = e << 1)
 		{

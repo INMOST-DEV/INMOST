@@ -381,6 +381,7 @@ namespace INMOST
 		if( unite.empty() ) return Face(m,InvalidHandle());
 		MarkerType hm = m->HideMarker();
 		bool doexit = false, dothrow = false;
+		(void)dothrow;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		if( doexit ) return Face(m,InvalidHandle());
@@ -511,6 +512,7 @@ namespace INMOST
 				prev = lc[k2];
 			//find out the next edge connected to the privious node
 			bool found = false; //detect that edge was found, otherwise there is no loop
+			(void)found;
 			adj_type const & hc = m->HighConn(prev);
 			for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
 			{
@@ -666,6 +668,7 @@ namespace INMOST
 		Mesh * m = const_cast<Mesh *>(unite.GetMeshLink());
 		if( unite.size() == 0 ) return false;
 		bool doexit = false, dothrow = false;
+		(void)dothrow;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		MarkerType hm = m->HideMarker();
@@ -741,6 +744,7 @@ namespace INMOST
 		if( edges.size() == 0 ) return Edge(m,InvalidHandle());
 		
 		bool doexit = false, dothrow = false;
+		(void)dothrow;
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> cells;
@@ -956,6 +960,7 @@ namespace INMOST
 		if( edges.empty() ) return false;
 		Mesh * m = edges.GetMeshLink();
 		bool doexit = false, dothrow = false;
+		(void)dothrow;
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
 		dynarray<HandleType,64> faces;

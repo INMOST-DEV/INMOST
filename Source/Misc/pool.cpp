@@ -5,7 +5,7 @@
 
 namespace INMOST
 {
-	thread_private<memory_pool> _pool;
+	static thread_private<memory_pool> _pool;
 
 
 	memory_pool & get_pool()

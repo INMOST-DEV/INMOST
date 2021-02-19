@@ -49,7 +49,7 @@ namespace INMOST
 
   void Mesh::LoadPVTK(std::string File)
   {
-		int state = 0, np, nf = 0;
+		int state = 0, np = 0, nf = 0;
 		std::string::size_type attrl, ql, qr, l;
 		//~ if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
 		std::string str, tag, attrval, path = "";

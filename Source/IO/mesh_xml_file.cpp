@@ -159,7 +159,7 @@ namespace INMOST
           int nelems = 0, ntotconns = 0;
           bool matchelems = false;
           std::vector<HandleType> * elems;
-          ElementType curtype;
+          ElementType curtype = NONE;
 
 
           XMLReader::XMLTag TagElems;

@@ -3681,6 +3681,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
 		int mpisize = GetProcessorsNumber();
+		(void)mpisize;
 		//int err = 0;
 		REPORT_STR("gather ghost and shared elements")
 		double time = Timer();
@@ -4571,10 +4572,9 @@ namespace INMOST
 					{
 						if( *jt != InvalidHandle() && !Hidden(*jt) && HaveData(*jt,arr_position) )
 						{
-							INMOST_DATA_INTEGER_TYPE el_num = GetHandleElementNum(*jt);
 							assert(HaveData(*jt,arr_position));
-							assert((size_t)arr_position[*jt] < selems[el_num].size() );
-							assert(*jt == selems[el_num][arr_position[*jt]]);
+							assert((size_t)arr_position[*jt] < selems[GetHandleElementNum(*jt)].size() );
+							assert(*jt == selems[GetHandleElementNum(*jt)][arr_position[*jt]]);
 							low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt),arr_position[*jt]));
 							low_conn_size[k]++;
 						}
@@ -6161,6 +6161,7 @@ namespace INMOST
 
 	void Mesh::CheckGhostSharedCount(std::string file, int line, ElementType etype)
 	{
+		(void)file,(void)line,(void)etype; //no warning in release
 #if !defined(NDEBUG)
 		ENTER_FUNC();
 #if defined(USE_MPI)
@@ -6224,6 +6225,7 @@ namespace INMOST
 
 	void Mesh::CheckProcsSorted(std::string file, int line)
 	{
+		(void)file,(void)line;
 #if !defined(NDEBUG)
 		ENTER_FUNC();
 		int err = 0;
@@ -6257,6 +6259,7 @@ namespace INMOST
 	
 	void Mesh::CheckSetLinks(std::string file, int line)
 	{
+		(void)file,(void)line;
 		ENTER_FUNC();
 #if !defined(NDEBUG)
 		Storage::integer err = 0;
@@ -6284,6 +6287,7 @@ namespace INMOST
 	
 	void Mesh::CheckCentroids(std::string file, int line)
 	{
+		(void)file,(void)line; //no warning
 #if !defined(NDEBUG)
 		ENTER_FUNC();
 		TagRealArray checker = CreateTag("CHECK_CENTROIDS",DATA_REAL,CELL|FACE|EDGE|NODE,CELL|FACE|EDGE|NODE,3);

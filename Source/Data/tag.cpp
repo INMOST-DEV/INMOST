@@ -460,6 +460,7 @@ namespace INMOST
 		if( delete_entirely )
 		{
 			bool flag = false;
+			(void)flag;
 #if !defined(LAZY_SPARSE_ALLOCATION)
 			bool have_sparse[6] = {false,false,false,false,false,false};
 			for(int j = 0; j < 6; j++)

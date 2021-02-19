@@ -976,7 +976,7 @@ namespace INMOST
 		std::vector<HandleType> new_cells;
 		std::vector<HandleType> new_sets;
 		INMOST_DATA_ENUM_TYPE size,i,q;
-		TopologyCheck tmp;
+		TopologyCheck tmp = 0;
 		INMOST_DATA_ENUM_TYPE current_dim = GetDimensions();
 		
 		bool start = false;
@@ -1138,6 +1138,11 @@ namespace INMOST
 							undef = uint32_t(~uint32_t(0));
 						if( sizeof(uint64_t) == uconv.get_source_iByteSize() )
 							undef = uint64_t(~uint64_t(0));
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " Unknown size for enumerator in source file " << uconv.get_source_iByteSize() << std::endl;
+							undef = (INMOST_DATA_ENUM_TYPE)(~(INMOST_DATA_ENUM_TYPE)(0));
+						}
 						if( datalength == undef )
 							datalength = ENUMUNDEF;
 					}
@@ -1579,15 +1584,15 @@ namespace INMOST
 											if( noderivs.find(tags_name[j]) != noderivs.end() )
 												noder = true;
 											Storage::var_array arr = VariableArray(he,tags[j]);
-											Storage::real val;
-											Storage::integer ival;
+											Storage::real val = 0;
+											Storage::integer ival = 0;
 											for(k = 0; k < recsize; k++)
 											{
 												Sparse::Row & r = arr[k].GetRow();
 												iconv.read_fValue(in,val);
 												arr[k].SetValue(val);
 												iconv.read_iValue(in,ival);
-												int rend = ival;
+												Storage::integer rend = ival;
 												if( noder )
 												{
 													for(int l = 0; l < rend; ++l)

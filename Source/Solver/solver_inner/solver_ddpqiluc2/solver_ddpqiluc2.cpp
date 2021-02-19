@@ -403,12 +403,11 @@ using namespace INMOST;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(mobeg, moend,EOL), Lbeg(mobeg, moend,EOL), Bbeg(mobeg,moend,EOL),Abeg(mobeg,moend,EOL), Fbeg(mobeg,moend,EOL);
 
 
-
 		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
 #if defined(ESTIMATOR)
 		INMOST_DATA_REAL_TYPE mup, mum, smup, smum, NuU = 1, NuL = 1, NuD, NuL1 = 1, NuL2 = 1, NuU1 = 1, NuU2 = 1;
 		INMOST_DATA_REAL_TYPE NuU1_old = 1, NuL1_old = 1, NuU2_old = 1, NuL2_old = 1;
-		INMOST_DATA_REAL_TYPE NuU1_new, NuU2_new, NuL1_new, NuL2_new, vp, vm, v;
+		INMOST_DATA_REAL_TYPE NuU1_new = 1, NuU2_new = 1, NuL1_new = 1, NuL2_new = 1, vp, vm, v;
 		INMOST_DATA_ENUM_TYPE np, nm;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL1(mobeg, moend,0.0), EstU1(mobeg, moend,0.0), CondU(mobeg,moend,1.0);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL2(mobeg, moend,0.0), EstU2(mobeg, moend,0.0), CondL(mobeg,moend,1.0);

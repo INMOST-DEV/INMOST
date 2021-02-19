@@ -158,6 +158,7 @@ namespace INMOST
 #endif
 		m_link = this;
 		integer selfid = 1;
+		(void)selfid;
 		selfid = TieElement(5);
 		assert(selfid == 0);
 		dim = 3;
@@ -364,6 +365,7 @@ namespace INMOST
 #endif
 		m_link = this;
 		integer selfid = 1;
+		(void)selfid;
 		selfid = TieElement(5);
 		assert(selfid == 0);
 		//TagManager constuctor copied only tags

@@ -851,9 +851,9 @@ namespace INMOST
 	public:
 		void clear()
 		{
-			if (beg_index != end_index) delete [] (parray + beg_index);
+			if (!empty()) delete [] (parray + beg_index);
 			parray = NULL;
-			beg_index = end_index = 0;
+			end_index = beg_index;
 		}
 		void swap(interval<IndType, ValType> & other)
 		{
@@ -919,15 +919,13 @@ namespace INMOST
 		}
 		~interval()
 		{
-			if( beg_index != end_index ) delete [] (parray+beg_index);
-			parray = NULL;
+			clear();
 		}
 		interval & operator =(interval const & other)
 		{
 			if( &other != this )
 			{
-				IndType old_beg_index = beg_index;
-				//IndType old_end_index = end_index;
+				clear();
 				beg_index = other.beg_index;
 				end_index = other.end_index;
 				if( beg_index != end_index )
@@ -936,17 +934,10 @@ namespace INMOST
 #if defined(DEBUGMEM)
 					if( tmp == NULL ) {std::cout << __FILE__ << ":" << __LINE__ << "allocation returns NULL\n";}
 #endif
-					//std::copy(parray+old_beg_index,parray+old_end_index,tmp);
-					delete [] (parray+old_beg_index);
 					parray = static_cast<ValType *>(tmp);
 					assert(parray != NULL);
 					parray = parray - beg_index;
 					std::copy(other.parray+beg_index,other.parray+end_index,parray+beg_index);
-				}
-				else 
-				{
-					delete [] (parray + old_beg_index);
-					parray = NULL;
 				}
 			}
 			return *this;
@@ -991,20 +982,18 @@ namespace INMOST
 #endif
 				assert(parray_new != NULL);
 				parray_new = parray_new - beg_index;
+				//IndType mbeg = beg_index;
 				IndType mend = std::min(end,end_index);
-				if( parray ) 
+				if( !empty() ) 
 				{
+					//~ std::cout << beg_index << ":" << end_index << " new end " << end << " old ptr " << (void*)parray << " new ptr " << (void *)parray_new << std::endl;
 					std::copy(parray+beg_index,parray+mend,parray_new+beg_index);
-					delete [] (parray+beg_index);
+					clear();
 				}
 				if( mend < end ) std::fill(parray_new+mend,parray_new+end,c);
 				parray = parray_new;
 			}
-			else 
-			{
-				delete [] (parray+beg_index);
-				parray = NULL;
-			}
+			else clear();
 			end_index = end;
 		}
 
