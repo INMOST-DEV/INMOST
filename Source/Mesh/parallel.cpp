@@ -3895,7 +3895,7 @@ namespace INMOST
 	{
 		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum)
 		{
-			int q = 0;
+			INMOST_DATA_INTEGER_TYPE q = 0;
 			for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); it++)
 			{
 				pack_position[*it] = q++;
@@ -4566,6 +4566,8 @@ namespace INMOST
 					//names_buff[names_buff_pos+set.GetName().length()] = '\0';
 					//names_buff_pos += set.GetName().length() + 1;
 					// Add all low conns to low_conn_nums
+					// std::cout << "From " << GetProcessorRank() << " to " << destination;
+					// std::cout << " for set " << set.GetName() << " send elements ";
 					low_conn_size[k] = 0;
 					Element::adj_type const & lc = LowConn(*it);
 					for(Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); jt++)
@@ -4575,10 +4577,13 @@ namespace INMOST
 							assert(HaveData(*jt,arr_position));
 							assert((size_t)arr_position[*jt] < selems[GetHandleElementNum(*jt)].size() );
 							assert(*jt == selems[GetHandleElementNum(*jt)][arr_position[*jt]]);
+							// std::cout << " " << ElementTypeName(GetHandleElementType(*jt));
+							// std::cout << ":" << GetHandleID(*jt);
 							low_conn_nums.push_back(ComposeHandle(GetHandleElementType(*jt),arr_position[*jt]));
 							low_conn_size[k]++;
 						}
 					}
+					// std::cout << " total " << low_conn_size[k] << " elements " <<  std::endl;
 					//if( print ) std::cout << GetProcessorRank() << " set " << set.GetName();
 					high_conn_size[k] = 1; //reserve for parent
 					if( set.HaveParent() && set.GetParent().HaveData(arr_position) )
@@ -4626,6 +4631,8 @@ namespace INMOST
 					*/
 				k++;
 			}
+
+			//std::cout << "number of sets: " << selems[4].size() << std::endl;
 			//if( selems[4].size() ) RemMarkerArray(&selems[4][0],selems[4].size(),pack_set);
 			//ReleaseMarker(pack_set);
 			pack_data(buffer,selems[4].size(),GetCommunicator());
@@ -5231,6 +5238,7 @@ namespace INMOST
 			}
 			assert(names.size() == num);
 			
+			//std::cout << "number of sets: " << num << std::endl;
 			
 			// Looking to all names and create the sets if it's needed
 			size_t found = 0, marked_for_data = 0, marked_ghost = 0;
@@ -5241,6 +5249,7 @@ namespace INMOST
 				ElementSet set = GetSet(names[i]);
 				if (set == InvalidElementSet())
 				{
+					// std::cout << "Create set " << names[i] << std::endl;
 					//REPORT_VAL("create new set", names[i]);
 					set = CreateSetUnique(names[i]).first;
 					//REPORT_VAL("create new ",set->GetHandle());
@@ -5257,6 +5266,7 @@ namespace INMOST
 				}
 				else
 				{
+					// std::cout << "Found set " << names[i] << std::endl;
 					//REPORT_VAL("found old ",set->GetHandle());
 					//REPORT_VAL("owner ",IntegerDF(set.GetHandle(),tag_owner));
 					if( set.IntegerDF(tag_owner) != GetProcessorRank() )
@@ -5283,14 +5293,19 @@ namespace INMOST
 				for (size_t i = 0; i < num; i++) 
 				{
 					ElementSet set(this, selems[4][i]);
+					// std::cout << "Set " << set.GetName() << " receives " << low_conn_size[i] << " elements ";
+					// std::cout << "from " << source;
 					//unpack elements
 					for (INMOST_DATA_ENUM_TYPE j = 0; j < low_conn_size[i]; j++)
 					{
-						Storage::integer type = GetHandleElementNum(low_conn_nums[ind+j]);
+						Storage::integer etype = GetHandleElementNum(low_conn_nums[ind+j]);
 						Storage::integer array_pos = GetHandleID(low_conn_nums[ind+j]);
-						assert(type == GetHandleElementNum(selems[type][array_pos]));
-						low_conn_nums[ind+j] = selems[type][array_pos];
+						assert(type == GetHandleElementNum(selems[etype][array_pos]));
+						low_conn_nums[ind+j] = selems[etype][array_pos];
+						// std::cout << " " << ElementTypeName(GetHandleElementType(low_conn_nums[ind+j]));
+						// std::cout << ":" << GetHandleID(low_conn_nums[ind+j]);
 					}
+					// std::cout << std::endl;
 					if( low_conn_size[i] ) set.AddElements(&low_conn_nums[ind],low_conn_size[i]);
 					ind += low_conn_size[i];
 					//unpack parent

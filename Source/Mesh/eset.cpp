@@ -1767,16 +1767,59 @@ namespace INMOST
 		Mesh * m = GetMeshLink();
 		if( m->GetMeshState() == Mesh::Serial ) return;
 		
-		if( GetStatus() != Element::Owned )
+		//~ if( GetStatus() != Element::Owned )
 		{
 			Storage::integer_array set_procs = IntegerArray(m->ProcessorsTag());
 			//Storage::integer_array elem_procs;
-			std::set<Storage::integer> send_set(set_procs.begin(),set_procs.end());
+			//std::set<Storage::integer> send_set(set_procs.begin(),set_procs.end());
 			//for(iterator it = Begin(); it != End(); ++it)
 			//{
 			//	elem_procs = m->IntegerArray(*it,m->ProcessorsTag());
 			//	send_set.insert(elem_procs.begin(),elem_procs.end());
 			//}
+			//~ std::cout << "On " << m->GetProcessorRank() << " send set " << GetName() << " to ";
+			//~ for(Storage::integer_array::iterator it = set_procs.begin(); it != set_procs.end(); ++it)
+				//~ std::cout << *it << " ";
+			//SendTo(set_procs);
+			//~ std::cout << " with elements";
+			//force send the set along with the elements
+			Storage::integer_array send_to = IntegerArray(m->SendtoTag());
+			std::set<Storage::integer> send_set(send_to.begin(),send_to.end());
+			send_set.insert(set_procs.begin(),set_procs.end());
+			send_set.erase(m->GetProcessorRank());
+			send_to.replace(send_to.begin(),send_to.end(),send_set.begin(),send_set.end());
+			for(iterator it = Begin(); it != End(); ++it)
+			{
+				//~ std::cout << " " << ElementTypeName(it->GetElementType()) << ":" << it->GlobalID();
+				//it->SendTo(send_set);
+				it->SendTo(set_procs);
+			}
+			//~ std::cout << std::endl;
+		}
+	}
+	void ElementSet::SynchronizeSetElementsWithOwner()
+	{
+		Mesh * m = GetMeshLink();
+		if( m->GetMeshState() == Mesh::Serial ) return;
+		
+		if( GetStatus() != Element::Owned )
+		{
+			//Storage::integer_array set_procs = IntegerArray(m->ProcessorsTag());
+			Storage::integer set_owner = Integer(m->OwnerTag());
+			//Storage::integer_array elem_procs;
+			//std::set<Storage::integer> send_set;//(set_procs.begin(),set_procs.end());
+			//send_set.insert(set_owner);
+			//for(iterator it = Begin(); it != End(); ++it)
+			//{
+			//	elem_procs = m->IntegerArray(*it,m->ProcessorsTag());
+			//	send_set.insert(elem_procs.begin(),elem_procs.end());
+			//}
+			//force send the set along with the elements
+			Storage::integer_array send_to = IntegerArray(m->SendtoTag());
+			std::set<Storage::integer> send_set(send_to.begin(),send_to.end());
+			send_set.insert(set_owner);
+			send_to.replace(send_to.begin(),send_to.end(),send_set.begin(),send_set.end());
+			//SendTo(send_set);
 			for(iterator it = Begin(); it != End(); ++it)
 				it->SendTo(send_set);
 		}
