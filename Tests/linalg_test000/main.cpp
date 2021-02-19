@@ -434,8 +434,11 @@ int main(int argc,char ** argv)
 			assert(get_pool().allocations() == 0);
 		}
 	}
-	
-	if( fabs(err) > 1.0e-7 )
+#if defined(USE_FP64)
+	if( fabs(err) > 1.0e-10 )
+#else
+	if( fabs(err) > 1.0e-5 )
+#endif
 	{
 		std::cout << "error is " << err << std::endl;
 		return -1;

@@ -13,7 +13,7 @@ int main(int argc,char ** argv)
 	INMOST_DATA_REAL_TYPE y = 0.25;
 	INMOST_DATA_REAL_TYPE z = 0.15;
 	INMOST_DATA_REAL_TYPE t = 0.1;
-	INMOST_DATA_REAL_TYPE dx, dy, dz, dt, dxdx, dydy, dzdz, dtdt, dxdy, dxdz, dydz, dxdt, dydt, dzdt;
+	INMOST_DATA_REAL_TYPE dx = 0, dy = 0, dz = 0, dt = 0, dxdx = 0, dydy = 0, dzdz = 0, dtdt = 0, dxdy = 0, dxdz = 0, dydz = 0, dxdt = 0, dydt = 0, dzdt = 0;
 	unknown vx(x,0), vy(y,1), vz(z,2), vt(t,3);
 	hessian_variable f;
 	variable f2;
