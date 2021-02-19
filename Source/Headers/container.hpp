@@ -1624,7 +1624,7 @@ namespace INMOST
 			for(size_type q = oldnchunks2; q < newnchunks2; q++)
 			{
 				assert(chunks[q] == NULL);
-				chunks[q] = new element[block_size];//(element *)malloc(block_size);
+				chunks[q] = new element[block_size/sizeof(element)];//(element *)malloc(block_size);
 #if defined(DEBUGMEM)
 				if( chunks[q] == NULL ) {std::cout << __FILE__ << ":" << __LINE__ << "allocation returns NULL\n";}
 #endif
