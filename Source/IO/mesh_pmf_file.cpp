@@ -1136,11 +1136,12 @@ namespace INMOST
 							undef = uint16_t(~uint16_t(0));
 						else if( sizeof(uint32_t) == uconv.get_source_iByteSize() )
 							undef = uint32_t(~uint32_t(0));
-						if( sizeof(uint64_t) == uconv.get_source_iByteSize() )
+						else if( sizeof(uint64_t) == uconv.get_source_iByteSize() )
 							undef = uint64_t(~uint64_t(0));
 						else
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " Unknown size for enumerator in source file " << uconv.get_source_iByteSize() << std::endl;
+							std::cout << __FILE__ << ":" << __LINE__ << " Unknown size for enumerator in source file " << (int)uconv.get_source_iByteSize() << std::endl;
+							std::cout << "unit8_t " << sizeof(uint8_t) << " uint16_t " << sizeof(uint16_t) << " uint32_t " << sizeof(uint32_t) << " uint64_t " << sizeof(uint64_t) << std::endl;
 							undef = (INMOST_DATA_ENUM_TYPE)(~(INMOST_DATA_ENUM_TYPE)(0));
 						}
 						if( datalength == undef )
