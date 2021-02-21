@@ -726,7 +726,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		pG_out.set_interval_end(wend);
 #if defined(USE_OMP)
 #pragma omp parallel for
-#endif
+#endif	
 		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
 			// std::swap(pG_out[k],pG_in[invP[k]]); //invP is where to get the row
@@ -981,8 +981,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) 
 		{
 			localP[k] = ENUMUNDEF;
-			if( wgt_blk ) wadj_blk[k-wbeg] = G[k].size(); //row connection wgt
-			if( wgt_sep ) wadj_sep[k-wbeg] = pG[k].size();
+			if( wgt_blk ) wadj_blk[k-wbeg] = (int)G[k].size(); //row connection wgt
+			if( wgt_sep ) wadj_sep[k-wbeg] = (int)pG[k].size();
 		}
 
 		for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k) localQ[k] = ENUMUNDEF;
@@ -1340,6 +1340,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 	MLMTILUC_preconditioner::MLMTILUC_preconditioner(Solver::OrderInfo & info)
 		:tau(DEFAULT_TAU),info(&info)
 	{
+		condestL = condestU = 1;
+		verbosity = 0;
 		Alink = NULL;
 		init = false;
 		sciters = 8;

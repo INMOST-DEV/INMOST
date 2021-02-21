@@ -162,8 +162,8 @@ namespace INMOST
 				INMOST_DATA_REAL_TYPE second; ///< the real value of the row element.
 				/// Comparison operator that helps sorting entries.
 				bool operator < (const entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
-				entry_s& operator =(entry_s const& b) { first = b.first; second = b.second; return *this; }
-				entry_s(const entry_s& b) : first(b.first), second(b.second) {}
+				//entry_s& operator =(entry_s const& b) { first = b.first; second = b.second; return *this; }
+				//entry_s(const entry_s& b) : first(b.first), second(b.second) {}
 				entry_s() : first(ENUMUNDEF), second(0.0) {}
 			} entry;
 			/// Assemble an entry of entry_s type.

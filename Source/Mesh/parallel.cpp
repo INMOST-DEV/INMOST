@@ -5300,7 +5300,7 @@ namespace INMOST
 					{
 						Storage::integer etype = GetHandleElementNum(low_conn_nums[ind+j]);
 						Storage::integer array_pos = GetHandleID(low_conn_nums[ind+j]);
-						assert(type == GetHandleElementNum(selems[etype][array_pos]));
+						assert(etype == GetHandleElementNum(selems[etype][array_pos]));
 						low_conn_nums[ind+j] = selems[etype][array_pos];
 						// std::cout << " " << ElementTypeName(GetHandleElementType(low_conn_nums[ind+j]));
 						// std::cout << ":" << GetHandleID(low_conn_nums[ind+j]);

@@ -304,7 +304,7 @@ namespace INMOST
 			{
 				ElementArray<Cell> n_cells = it->getCells(); //get all cells of the node
 				for (size_t k = 0; k < n_cells.size(); ++k) //assign local enumeration to the cells
-					n_cells[k].IntegerDF(indexes) = k;
+					n_cells[k].IntegerDF(indexes) = static_cast<Storage::integer>(k);
 				for (size_t k = 0; k < n_faces.size(); ++k) //stich together node's numbers corresponding to cells if no fracture separates them
 				{
 					if (!n_faces[k].GetMarker(frac_markers) && n_faces[k].FrontCell().isValid())
@@ -988,7 +988,7 @@ namespace INMOST
 		for (size_t k = 0; k < transfer.size(); ++k) //tags
 		{
 			INMOST_DATA_ENUM_TYPE size = a->GetDataSize(transfer[k]);
-			copy[k].resize(transfer[k].GetBytesSize()*size);
+			copy[k].resize((size_t)transfer[k].GetBytesSize()*size);
 			if (!copy.empty()) a->GetData(transfer[k], 0, size, &copy[k][0]);
 		}
 
@@ -998,7 +998,7 @@ namespace INMOST
 		//duplicate data
 		for (size_t k = 0; k < transfer.size(); ++k)
 		{
-			INMOST_DATA_ENUM_TYPE size = copy[k].size() / transfer[k].GetBytesSize();
+			INMOST_DATA_ENUM_TYPE size = static_cast<INMOST_DATA_ENUM_TYPE>(copy[k].size() / transfer[k].GetBytesSize());
 			if (size) for (int l = 0; l < 2; ++l) //two parts
 			{
 				splitted_a[l].SetDataSize(transfer[k], size);
@@ -1020,7 +1020,7 @@ namespace INMOST
 		std::set<Point> intersections;
 		std::vector<HandleType> initials(segments.size() * 2);
 		MarkerType initial = m->CreatePrivateMarker();
-		for (int k = 0; k < (int)segments.size(); ++k)
+		for (size_t k = 0; k < segments.size(); ++k)
 		{
 			initials[k * 2 + 0] = segments[k]->getBeg()->GetHandle();
 			initials[k * 2 + 1] = segments[k]->getEnd()->GetHandle();
@@ -1029,9 +1029,9 @@ namespace INMOST
 			intersections.insert(make_point(segments[k]->getBeg(), pnt));
 			intersections.insert(make_point(segments[k]->getEnd(), pnt));
 		}
-		for (int i = 0; i < (int)segments.size(); ++i)
+		for (size_t i = 0; i < segments.size(); ++i)
 		{
-			for (int j = i + 1; j < (int)segments.size(); ++j)
+			for (size_t j = i + 1; j < segments.size(); ++j)
 			{
 				std::pair<bool, Point> I = intersect_segments(m, segments[i], segments[j], intersections, pnt, print);
 				if (I.first)
@@ -3595,7 +3595,7 @@ namespace INMOST
 								assert(e.size() == b.size());
 								//sort indices according to b
 								indices_sort.resize(b.size());
-								for (size_t l = 0; l < indices_sort.size(); ++l) indices_sort[l] = l;
+								for (size_t l = 0; l < indices_sort.size(); ++l) indices_sort[l] = static_cast<int>(l);
 								std::sort(indices_sort.begin(), indices_sort.end(), index_comparator(b));
 								//arrange data in b and e arrays according to indices_sort
 								temporary.resize(b.size());

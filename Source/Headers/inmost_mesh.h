@@ -169,8 +169,8 @@ namespace INMOST
 			iterator &    operator --() {cont_t::iterator::operator--(); return *this;}
 			iterator      operator --(int) {iterator ret(*this); cont_t::iterator::operator--(); return ret;}
 			iterator &    operator =(iterator const & other) {m_link = other.m_link; cont_t::iterator::operator=(static_cast<cont_t::iterator const &>(other)); return *this; }
-			HandleType &  operator *() { return cont_t::iterator::operator *(); }
-			StorageType   operator->() { return StorageType(m_link,&cont_t::iterator::operator *()); }
+			HandleType &  operator *() const { return cont_t::iterator::operator *(); }
+			StorageType   operator->() const { return StorageType(m_link,&cont_t::iterator::operator *()); }
 		};
 		class reverse_iterator : public cont_t::reverse_iterator
 		{
@@ -186,8 +186,8 @@ namespace INMOST
 			reverse_iterator &    operator --() {cont_t::reverse_iterator::operator--(); return *this;}
 			reverse_iterator      operator --(int) {reverse_iterator ret(*this); cont_t::reverse_iterator::operator--(); return ret;}
 			reverse_iterator & operator =(reverse_iterator const & other) {m_link = other.m_link; cont_t::reverse_iterator::operator=(static_cast<cont_t::reverse_iterator const &>(other)); return *this; }
-			HandleType &       operator *() { return cont_t::reverse_iterator::operator *(); }
-			StorageType        operator->() { return StorageType(m_link,&cont_t::reverse_iterator::operator *()); }
+			HandleType &       operator *() const { return cont_t::reverse_iterator::operator *(); }
+			StorageType        operator->() const { return StorageType(m_link,&cont_t::reverse_iterator::operator *()); }
 		};
 		class const_iterator : public cont_t::const_iterator
 		{
@@ -201,8 +201,8 @@ namespace INMOST
 			const_iterator &    operator --() {cont_t::const_iterator::operator--(); return *this;}
 			const_iterator      operator --(int) {const_iterator ret(*this); cont_t::const_iterator::operator--(); return ret;}
 			const_iterator &    operator =(const_iterator const & other) {m_link = other.m_link; cont_t::const_iterator::operator=(static_cast<cont_t::const_iterator const &>(other)); return *this; }
-			const HandleType &  operator *() { return cont_t::const_iterator::operator *(); }
-			StorageType         operator->() { return StorageType(m_link,cont_t::const_iterator::operator *()); }
+			const HandleType &  operator *() const { return cont_t::const_iterator::operator *(); }
+			StorageType         operator->() const { return StorageType(m_link,cont_t::const_iterator::operator *()); }
 		};
 		class const_reverse_iterator : public cont_t::const_reverse_iterator
 		{
@@ -216,8 +216,8 @@ namespace INMOST
 			const_reverse_iterator &    operator --() {cont_t::const_reverse_iterator::operator--(); return *this;}
 			const_reverse_iterator      operator --(int) {const_reverse_iterator ret(*this); cont_t::const_reverse_iterator::operator--(); return ret;}
 			const_reverse_iterator & operator =(const_reverse_iterator const & other) { cont_t::const_reverse_iterator::operator=(static_cast<cont_t::const_reverse_iterator const &>(other)); return *this; }
-			const HandleType &       operator *() { return cont_t::const_reverse_iterator::operator *(); }
-			StorageType              operator->() { return StorageType(m_link,cont_t::const_reverse_iterator::operator *()); }
+			const HandleType &       operator *() const { return cont_t::const_reverse_iterator::operator *(); }
+			StorageType              operator->() const { return StorageType(m_link,cont_t::const_reverse_iterator::operator *()); }
 		};
 	public:
 		template<class InputIterator>
