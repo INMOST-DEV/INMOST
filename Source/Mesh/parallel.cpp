@@ -708,6 +708,7 @@ namespace INMOST
 					break;
 				case SYNC_BIT_OR:
 					ReduceData(t,mask,0,UnpackSyncMarkerOR);
+					ExchangeData(t,mask,0);
 					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
 						if( it->GetStatus() & (Element::Ghost | Element::Shared) )
@@ -718,6 +719,7 @@ namespace INMOST
 					break;
 				case SYNC_BIT_AND:
 					ReduceData(t,mask,0,UnpackSyncMarkerAND);
+					ExchangeData(t,mask,0);
 					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
 						if( it->GetStatus() & (Element::Ghost | Element::Shared))
@@ -728,6 +730,7 @@ namespace INMOST
 					break;
 				case SYNC_BIT_XOR:
 					ReduceData(t,mask,0,UnpackSyncMarkerXOR);
+					ExchangeData(t,mask,0);
 					for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
 					{
 						if( it->GetStatus() & (Element::Ghost | Element::Shared))
