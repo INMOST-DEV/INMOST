@@ -385,6 +385,7 @@ namespace INMOST
 				m_arr = realloc(m_arr,m_size,m_size+1);
 				if( s ) copy(m_arr+d,m_arr+d+s,m_arr+d+1);
 				m_arr[d] = x;
+				m_size++;
 				return m_arr+d;
 			}
 		}
