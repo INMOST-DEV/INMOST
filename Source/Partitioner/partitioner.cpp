@@ -1333,33 +1333,37 @@ namespace INMOST
 		}
 		if( package == 3 ) //KMEANS
 		{
-			
-			INMOST_DATA_INTEGER_TYPE total_points = 0;
+			typedef INMOST_DATA_REAL_TYPE real;
+			typedef INMOST_DATA_INTEGER_TYPE idx;
+			INMOST_MPI_Type MPI_REALT = INMOST_MPI_DATA_REAL_TYPE;
+			INMOST_MPI_Type MPI_IDXT = INMOST_MPI_DATA_INTEGER_TYPE;
+			idx total_points = 0;
 			int K = (int)m->GetProcessorsNumber(), rank = (int)m->GetProcessorRank(); //number of clusters
 			//std::cout << "Start K-means on " << m->GetProcessorRank() << " clusters " << K << std::endl;
 			int max_iterations = 100;
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:total_points)
 #endif
-			for(int q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
+			for(idx q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
 			{
 				Cell n = m->CellByLocalID(q);
 				if( n->GetStatus() != Element::Ghost ) total_points++;
 			}
-			std::vector< INMOST_DATA_INTEGER_TYPE > points_node(total_points);
-			std::vector< INMOST_DATA_REAL_TYPE > points_center(total_points*3);
-			std::vector< INMOST_DATA_INTEGER_TYPE > points_cluster(total_points,-1);
-			std::vector< INMOST_DATA_REAL_TYPE > cluster_center(K*3,0.0);
-			std::vector< INMOST_DATA_INTEGER_TYPE > cluster_npoints(K,0);
-			std::vector< INMOST_DATA_REAL_TYPE > cluster_weight(K,1/(double)K);
-			std::vector< INMOST_DATA_REAL_TYPE > cluster_shift(K*3,0);
+			std::vector< idx > points_node(total_points);
+			std::vector< real > points_center(total_points*3);
+			std::vector< idx > points_cluster(total_points,-1);
+			std::vector< real > cluster_center(K*3,0.0);
+			std::vector< real > cluster_center_old(K*3);
+			std::vector< idx > cluster_npoints(K,0);
+			std::vector< real > cluster_weight(K,1/(real)K);
+			std::vector< real > cluster_shift(K*3,0);
 #if defined(USE_MPI)
-			std::vector< INMOST_DATA_REAL_TYPE > cluster_center_tmp(K*3);
-			std::vector< INMOST_DATA_INTEGER_TYPE > cluster_npoints_tmp(K);
+			std::vector< real > cluster_center_tmp(K*3);
+			std::vector< idx > cluster_npoints_tmp(K);
 #endif
 			
-			INMOST_DATA_ENUM_TYPE k = 0;
-			for(int q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
+			idx k = 0;
+			for(idx q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
 			{
 				Cell n = m->CellByLocalID(q);
 				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
@@ -1367,10 +1371,10 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for			
 #endif
-			for(INMOST_DATA_INTEGER_TYPE q = 0; q < total_points; ++q) if( m->isValidCell(q) )
+			for(idx q = 0; q < total_points; ++q)
 			{
 				Cell n = m->CellByLocalID(points_node[q]);
-				INMOST_DATA_REAL_TYPE cnt[3];
+				real cnt[3];
 				n->Centroid(cnt);
 				points_center[q*3+0] = cnt[0];
 				points_center[q*3+1] = cnt[1];
@@ -1380,47 +1384,47 @@ namespace INMOST
 				cluster_center[rank*3+2] += cnt[2];
 			}
 			
-			INMOST_DATA_REAL_TYPE minv = std::numeric_limits<INMOST_DATA_REAL_TYPE>::lowest();
-			INMOST_DATA_REAL_TYPE maxv = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
-			INMOST_DATA_REAL_TYPE pmax[3] = {minv,minv,minv};
-			INMOST_DATA_REAL_TYPE pmin[3] = {maxv,maxv,maxv};
+			real vmax = std::numeric_limits<real>::max();
+			real vmin = std::numeric_limits<real>::lowest();
+			real pmax[3] = {vmin,vmin,vmin};
+			real pmin[3] = {vmax,vmax,vmax};
 			
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 			{
-				INMOST_DATA_REAL_TYPE pmaxl[3] = {minv,minv,minv};
-				INMOST_DATA_REAL_TYPE pminl[3] = {maxv,maxv,maxv};
+				real pmaxl[3] = {vmin,vmin,vmin};
+				real pminl[3] = {vmax,vmax,vmax};
 #if defined(USE_OMP)
 #pragma omp	for
 #endif
 				for(int q = 0; q < total_points; ++q)
 				{
 					Cell n = m->CellByLocalID(points_node[q]);
-					if( pmaxl[0] < points_center[q*3+0] ) pmaxl[0] = std::max(pmaxl[0],points_center[q*3+0]);
-					if( pmaxl[1] < points_center[q*3+1] ) pmaxl[1] = std::max(pmaxl[1],points_center[q*3+1]);
-					if( pmaxl[2] < points_center[q*3+2] ) pmaxl[2] = std::max(pmaxl[2],points_center[q*3+2]);
-					if( pminl[0] > points_center[q*3+0] ) pminl[0] = std::min(pminl[0],points_center[q*3+0]);
-					if( pminl[1] > points_center[q*3+1] ) pminl[1] = std::min(pminl[1],points_center[q*3+1]);
-					if( pminl[2] > points_center[q*3+2] ) pminl[2] = std::min(pminl[2],points_center[q*3+2]);
+					pmaxl[0] = std::max(pmaxl[0],points_center[q*3+0]);
+					pmaxl[1] = std::max(pmaxl[1],points_center[q*3+1]);
+					pmaxl[2] = std::max(pmaxl[2],points_center[q*3+2]);
+					pminl[0] = std::min(pminl[0],points_center[q*3+0]);
+					pminl[1] = std::min(pminl[1],points_center[q*3+1]);
+					pminl[2] = std::min(pminl[2],points_center[q*3+2]);
 				}
 #if defined(USE_OMP)
 #pragma omp	critical
 #endif
 				{
-					if( pmax[0] < pmaxl[0] ) pmax[0] = std::max(pmax[0],pmaxl[0]);
-					if( pmax[1] < pmaxl[1] ) pmax[1] = std::max(pmax[1],pmaxl[1]);
-					if( pmax[2] < pmaxl[2] ) pmax[2] = std::max(pmax[2],pmaxl[2]);
-					if( pmin[0] > pminl[0] ) pmin[0] = std::min(pmin[0],pminl[0]);
-					if( pmin[1] > pminl[1] ) pmin[1] = std::min(pmin[1],pminl[1]);
-					if( pmin[2] > pminl[2] ) pmin[2] = std::min(pmin[2],pminl[2]);
+					pmax[0] = std::max(pmax[0],pmaxl[0]);
+					pmax[1] = std::max(pmax[1],pmaxl[1]);
+					pmax[2] = std::max(pmax[2],pmaxl[2]);
+					pmin[0] = std::min(pmin[0],pminl[0]);
+					pmin[1] = std::min(pmin[1],pminl[1]);
+					pmin[2] = std::min(pmin[2],pminl[2]);
 				}
 			}
 			m->AggregateMax(pmax,3);
 			m->AggregateMin(pmin,3);
 			
-			INMOST_DATA_REAL_TYPE mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
-			mesh_dist /= (INMOST_DATA_REAL_TYPE)K*3.0;
+			real mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
+			mesh_dist /= (real)K*3.0;
 			
 			//mesh_dist *= 10;
 			/*
@@ -1435,28 +1439,28 @@ namespace INMOST
 			*/
 #if defined(USE_MPI)
 			cluster_npoints[rank] = total_points;
-			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,MPI_COMM_WORLD);
-			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_REALT,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
 			cluster_center.swap(cluster_center_tmp);
 			cluster_npoints.swap(cluster_npoints_tmp);
 #endif
 			
 			for(int i = 0; i < K; ++i)
 			{
-				cluster_center[i*3+0] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
-				cluster_center[i*3+1] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
-				cluster_center[i*3+2] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+				cluster_center[i*3+0] /= (real) cluster_npoints[i];
+				cluster_center[i*3+1] /= (real) cluster_npoints[i];
+				cluster_center[i*3+2] /= (real) cluster_npoints[i];
 			}
 			
-			INMOST_DATA_INTEGER_TYPE total_global_points = total_points;
+			idx total_global_points = total_points;
 #if defined(USE_MPI)
 			std::vector<int> displs(m->GetProcessorsNumber());
 			std::vector<int> counts(m->GetProcessorsNumber());
-			std::vector<INMOST_DATA_INTEGER_TYPE> npoints(m->GetProcessorsNumber());
+			std::vector<idx> npoints(m->GetProcessorsNumber());
 			total_global_points = 0;
-			INMOST_DATA_INTEGER_TYPE total_local_points = 0;
+			idx total_local_points = 0;
 			bool balance = false;
-			MPI_Allgather(&total_points,1,INMOST_MPI_DATA_INTEGER_TYPE,&npoints[0],1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_COMM_WORLD);
+			MPI_Allgather(&total_points,1,MPI_IDXT,&npoints[0],1,MPI_IDXT,MPI_COMM_WORLD);
 			double imbalance = 1;
 			for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
 			{
@@ -1473,10 +1477,10 @@ namespace INMOST
 				balance = true;
 			if( balance )//redistribute points
 			{
-				total_local_points = (INMOST_DATA_INTEGER_TYPE)floor((double)total_global_points/(double)m->GetProcessorsNumber());
+				total_local_points = (idx)floor((double)total_global_points/(double)m->GetProcessorsNumber());
 				//std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
 				
-				std::vector<INMOST_DATA_REAL_TYPE> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
+				std::vector<real> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
 				displs[0] = 0;
 				counts[0] = npoints[0]*3;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1484,7 +1488,7 @@ namespace INMOST
 					displs[k] = displs[k-1] + counts[k-1];
 					counts[k] = npoints[k]*3;
 				}
-				MPI_Gatherv(&points_center[0],total_points*3,INMOST_MPI_DATA_REAL_TYPE,&points_center_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_REAL_TYPE,0,MPI_COMM_WORLD);
+				MPI_Gatherv(&points_center[0],total_points*3,MPI_REALT,&points_center_global[0],&counts[0],&displs[0],MPI_REALT,0,MPI_COMM_WORLD);
 				displs[0] = 0;
 				counts[0] = total_local_points*3;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1495,7 +1499,7 @@ namespace INMOST
 				counts.back() = total_global_points*3 - displs.back();
 				total_points = counts[m->GetProcessorRank()]/3;
 				points_center.resize(total_points*3);
-				MPI_Scatterv(&points_center_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_REAL_TYPE,&points_center[0],total_points*3,INMOST_MPI_DATA_REAL_TYPE,0,MPI_COMM_WORLD);
+				MPI_Scatterv(&points_center_global[0],&counts[0],&displs[0],MPI_REALT,&points_center[0],total_points*3,MPI_REALT,0,MPI_COMM_WORLD);
 				points_cluster.resize(total_points,-1);
 			}
 #endif
@@ -1523,7 +1527,7 @@ namespace INMOST
 					{
 						while(true)
 						{
-							INMOST_DATA_INTEGER_TYPE index_point = (rand()*rand()) % total_points;
+							int index_point = rand() % total_points;
 							if(points_cluster[index_point]==-1)
 							{
 								cluster_center[i*3+0] = points_center[index_point*3+0];
@@ -1561,7 +1565,7 @@ namespace INMOST
 						cluster_center_tmp[i*3+1] = cluster_center[i*3+1];
 						cluster_center_tmp[i*3+2] = cluster_center[i*3+2];
 					}
-					MPI_Allgatherv(&cluster_center_tmp[Kstart*3],(Kend-Kstart)*3,MPI_DOUBLE,&cluster_center[0],&counts[0],&displs[0],MPI_DOUBLE,MPI_COMM_WORLD);
+					MPI_Allgatherv(&cluster_center_tmp[Kstart*3],(Kend-Kstart)*3,MPI_REALT,&cluster_center[0],&counts[0],&displs[0],MPI_REALT,MPI_COMM_WORLD);
 				}
 #endif
 			}
@@ -1577,32 +1581,32 @@ namespace INMOST
 			//	std::cout << "Start clustering" << std::endl;
 			
 			int iter = 1;
-			//~ double t = Timer();
+			//double t = Timer();
 			while(true)
 			{
 				
 				
-				INMOST_DATA_INTEGER_TYPE changed = 0;
+				idx changed = 0;
 				// associates each point to the nearest center
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:changed)
 #endif
-				for(INMOST_DATA_INTEGER_TYPE i = 0; i < total_points; i++)
+				for(idx i = 0; i < total_points; i++)
 				{
-					int id_old_cluster = points_cluster[i];
+					idx id_old_cluster = points_cluster[i];
 					int id_nearest_center = -1;
 					
-					INMOST_DATA_REAL_TYPE lmin = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					real lmin = vmax;
 					
 					for(int j = 0; j < K; ++j)
 					{
-						INMOST_DATA_REAL_TYPE v[3];
+						real v[3];
 						v[0] = (points_center[i*3+0] - cluster_center[j*3+0]);
 						v[1] = (points_center[i*3+1] - cluster_center[j*3+1]);
 						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
 						
 						//the bigger is the cluster weight the further is the distance
-						INMOST_DATA_REAL_TYPE l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) + cluster_weight[j]*mesh_dist;
+						real l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);// + cluster_weight[j]*mesh_dist;
 						if( l < lmin )
 						{
 							lmin = l;
@@ -1620,8 +1624,8 @@ namespace INMOST
 				}
 				
 #if defined(USE_MPI)
-				INMOST_DATA_INTEGER_TYPE tmp = changed;
-				MPI_Allreduce(&tmp,&changed,1,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
+				idx tmp = changed;
+				MPI_Allreduce(&tmp,&changed,1,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
 #endif
 				
 				if(changed == 0 || iter >= max_iterations)
@@ -1633,6 +1637,9 @@ namespace INMOST
 				
 				for(int i = 0; i < K; i++)
 				{
+					cluster_center_old[i*3+0] = cluster_center[i*3+0];
+					cluster_center_old[i*3+1] = cluster_center[i*3+1];
+					cluster_center_old[i*3+2] = cluster_center[i*3+2];
 					cluster_center[i*3+0] = 0;
 					cluster_center[i*3+1] = 0;
 					cluster_center[i*3+2] = 0;
@@ -1643,12 +1650,12 @@ namespace INMOST
 #pragma omp parallel
 #endif
 				{
-					std::vector< INMOST_DATA_REAL_TYPE > local_sum(K*3,0.0);
-					std::vector< INMOST_DATA_INTEGER_TYPE > local_npoints(K,0);
+					std::vector< real > local_sum(K*3,0.0);
+					std::vector< idx > local_npoints(K,0);
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-					for(int j = 0; j < total_points; ++j)
+					for(idx j = 0; j < total_points; ++j)
 					{
 						local_sum[points_cluster[j]*3+0] += points_center[j*3+0];
 						local_sum[points_cluster[j]*3+1] += points_center[j*3+1];
@@ -1669,21 +1676,27 @@ namespace INMOST
 					}
 				}
 #if defined(USE_MPI)
-				MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,MPI_COMM_WORLD);
-				MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,MPI_COMM_WORLD);
+				MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_REALT,MPI_SUM,MPI_COMM_WORLD);
+				MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
 				cluster_center.swap(cluster_center_tmp);
 				cluster_npoints.swap(cluster_npoints_tmp);
 #endif
 				//if( m->GetProcessorRank() == 0 ) std::cout << "cluster weight: " << std::endl;
-				//~ if( m->GetProcessorRank() == 0 ) std::cout << "iteration " <<  iter << std::endl;
+				//if( m->GetProcessorRank() == 0 ) std::cout << "iteration " <<  iter << std::endl;
 				for(int i = 0; i < K; i++)
 				{
-					cluster_center[i*3+0] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
-					cluster_center[i*3+1] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
-					cluster_center[i*3+2] /= (INMOST_DATA_REAL_TYPE) cluster_npoints[i];
+					cluster_center[i*3+0] /= (real) cluster_npoints[i];
+					cluster_center[i*3+1] /= (real) cluster_npoints[i];
+					cluster_center[i*3+2] /= (real) cluster_npoints[i];
+					if( iter > 1 )
+					{
+						cluster_center[i*3+0] = cluster_center_old[i*3+0]*0.15 + cluster_center[i*3+0]*0.85;
+						cluster_center[i*3+1] = cluster_center_old[i*3+1]*0.15 + cluster_center[i*3+1]*0.85;
+						cluster_center[i*3+2] = cluster_center_old[i*3+2]*0.15 + cluster_center[i*3+2]*0.85;
+					}
 					//recompute cluster weights based on the number of points each cluster possess
-					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(INMOST_DATA_REAL_TYPE)total_global_points*0.75);
-					//~ if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << "," << cluster_npoints[i] << " , " << cluster_weight[i] << ") " << std::endl;
+					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(real)total_global_points*0.75);
+					//if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << ", p " << cluster_npoints[i] << " , w " << cluster_weight[i] << ") " << std::endl;
 				}
 				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
 				/*
@@ -1735,7 +1748,7 @@ namespace INMOST
 #if defined(USE_MPI)
 			if( balance )
 			{
-				std::vector<INMOST_DATA_INTEGER_TYPE> points_cluster_global(total_global_points);
+				std::vector<idx> points_cluster_global(total_global_points);
 				displs[0] = 0;
 				counts[0] = total_local_points;
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1744,7 +1757,7 @@ namespace INMOST
 					counts[k] = total_local_points;
 				}
 				counts.back() = total_global_points - displs.back();
-				MPI_Gatherv(&points_cluster[0],total_points,INMOST_MPI_DATA_INTEGER_TYPE,&points_cluster_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_INTEGER_TYPE,0,MPI_COMM_WORLD);
+				MPI_Gatherv(&points_cluster[0],total_points,MPI_IDXT,&points_cluster_global[0],&counts[0],&displs[0],MPI_IDXT,0,MPI_COMM_WORLD);
 				displs[0] = 0;
 				counts[0] = npoints[0];
 				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
@@ -1754,7 +1767,7 @@ namespace INMOST
 				}
 				total_points = counts[m->GetProcessorRank()];
 				points_cluster.resize(total_points);
-				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],INMOST_MPI_DATA_INTEGER_TYPE,&points_cluster[0],total_points,INMOST_MPI_DATA_INTEGER_TYPE,0,MPI_COMM_WORLD);
+				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],MPI_IDXT,&points_cluster[0],total_points,MPI_IDXT,0,MPI_COMM_WORLD);
 			}
 #endif
 			// shows elements of clusters
@@ -1762,7 +1775,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
-			for(INMOST_DATA_INTEGER_TYPE j = 0; j < total_points; ++j)
+			for(idx j = 0; j < total_points; ++j)
 				mat[m->CellByLocalID(points_node[j])] = points_cluster[j];
 			//m->ExchangeData(mat,CELL,0);
 		}

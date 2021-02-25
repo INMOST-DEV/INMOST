@@ -657,6 +657,7 @@ namespace INMOST
 			hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
 			//recompute geometric data
 			m->RecomputeGeometricData(cells[it]);
+			m->EndTopologyCheck(cells[it],0);
 		}
 		
 		return ret;
@@ -928,10 +929,48 @@ namespace INMOST
 		for(dynarray<adj_type::size_type,64>::size_type k = 0; k < insert_pos.size(); k++)
 		{
 			adj_type & lc = m->LowConn(faces[k]);
+			std::vector<HandleType> tlc(lc.begin(),lc.end());
 			lc.insert(lc.begin()+insert_pos[k],e->GetHandle());
 			ehc.push_back(faces[k]);
 			m->ComputeGeometricType(faces[k]);
 			m->RecomputeGeometricData(faces[k]);
+			m->EndTopologyCheck(faces[k],0);
+			/*
+			if( !m->EndTopologyCheck(faces[k],0) )
+			{
+				for(std::map<HandleType,int>::iterator it = nodes.begin(); it != nodes.end(); it++)
+				{
+					Storage::real_array c = m->NodeByLocalID(GetHandleID(it->first)).Coords();
+					std::cout << "node " << it->first << " at " << c[0] << " " << c[1] << " " << c[2] << " dup " << it->second << std::endl;
+				}
+				ElementArray<Edge> edges = m->FaceByLocalID(GetHandleID(faces[k])).getEdges();
+				std::cout << "edges: " << edges.size() << " lc: " << lc.size() << std::endl;
+				for(int mt = 0; mt < lc.size(); ++mt) std::cout << lc[mt] << " " << (m->GetMarker(lc[mt],hm) ? "hidden":"visible") << " ";
+				std::cout << std::endl;
+				for(ElementArray<Edge>::iterator mt = edges.begin(); mt != edges.end(); ++mt)
+				{
+					std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
+					std::cout << "<->";
+					std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
+					std::cout << std::endl;
+				}
+				std::cout << "lc insert pos: " << insert_pos[k] << " before insert: " << tlc.size() << " after: " << lc.size() << std::endl;
+				for(int mi = 0; mi != lc.size(); ++mi) std::cout << " " << lc[mi]; std::cout << std::endl;
+				for(int mi = 0; mi != tlc.size(); ++mi) std::cout << " " << tlc[mi]; std::cout << std::endl;
+				for(int mi = 0; mi != tlc.size(); ++mi)
+				{
+					int eid = GetHandleID(tlc[mi]);
+					Edge mt = m->EdgeByLocalID(eid);
+					std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
+					std::cout << "<->";
+					std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
+					std::cout << std::endl;
+				}
+
+				
+				throw Impossible;
+			}
+			*/
 		}
 
 		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); ++it)
@@ -949,6 +988,7 @@ namespace INMOST
 			hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
 			//update centroid, volume, orientation, etc
 			m->RecomputeGeometricData(cells[it]);
+			m->EndTopologyCheck(cells[it],0);
 		}
 		
 		
@@ -1237,16 +1277,24 @@ namespace INMOST
 
 		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
 		{
+			bool found = false;
 			adj_type const ilc = m->LowConn(faces[it]);
 			for(adj_type::size_type jt = 0; jt < ilc.size(); ++jt) if( !m->GetMarker(ilc[jt],hm) )
 			{
 				if( ilc[jt] == e->GetHandle() )
 				{
 					insert_pos.push_back(jt);
+					found = true;
 					break;
 				}
 			}
+			if( !found )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " cannot find edge " << e->GetHandle() << " in face " << faces[it] << " connections " << std::endl;
+			}
+			assert(found);
 		}
+		assert(insert_pos.size() == faces.size());
 		
 
 		if( !e->Hide() ) //we cannot hide the edge, should disconnect faces
@@ -1268,17 +1316,20 @@ namespace INMOST
 			build_nodes.at(0) = n[0];
 			build_nodes.at(1) = nodes.at(0);
 			ret.push_back(m->CreateEdge(build_nodes).first->GetHandle());
+			assert(!m->GetMarker(ret.back().GetHandle(),hm));
 			
 			for(ElementArray<Node>::size_type k = 0; k < nodes.size()-1; k++)
 			{
 				build_nodes.at(0) = nodes.at(k);
 				build_nodes.at(1) = nodes.at(k+1);
 				ret.push_back(m->CreateEdge(build_nodes).first->GetHandle());
+				assert(!m->GetMarker(ret.back().GetHandle(),hm));
 			}
 
 			build_nodes.at(0) = nodes.at(nodes.size()-1);
 			build_nodes.at(1) = n[1];
 			ret.push_back(m->CreateEdge(build_nodes).first->GetHandle());
+			assert(!m->GetMarker(ret.back().GetHandle(),hm));
 		}
 
 		//connect new edges to faces
@@ -1294,6 +1345,7 @@ namespace INMOST
 				lc.insert(lc.begin()+insert_pos[it],ret.rbegin(),ret.rend());
 			m->ComputeGeometricType(faces[it]);
 			m->RecomputeGeometricData(faces[it]);
+			m->EndTopologyCheck(faces[it],0);
 			//Face(m,faces[it]).FixEdgeOrder();
 		}
 		//inform edges that they are connected to faces
@@ -1316,6 +1368,7 @@ namespace INMOST
 				if( m->Hidden(hc[k]) ) nn.push_back(hc[k]);
 			hc.replace(hc.begin(),hc.end(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
+			m->EndTopologyCheck(cells[it],0);
 			//connect nodes to cells
 			for(ElementArray<Node>::size_type k = 0; k < nn.size(); k++)
 			{
@@ -1515,6 +1568,7 @@ namespace INMOST
 				if( m->Hidden(hc[k]) ) nn.push_back(hc[k]);
 			hc.replace(hc.begin(),hc.end(),nn.begin(),nn.end());
 			m->RecomputeGeometricData(cells[it]);
+			m->EndTopologyCheck(cells[it],0);
 			//have to add cell to nodes that do not yet have connection to the cell
 			for(ElementArray<Node>::iterator jt = nn.begin(); jt != nn.end(); ++jt)
 			{
@@ -1777,6 +1831,7 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " before resolve shared new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
+
 		CheckSetLinks(__FILE__,__LINE__);
 		ResolveSets();
 		CheckSetLinks(__FILE__,__LINE__);
@@ -1799,6 +1854,7 @@ namespace INMOST
 		//std::cout << "layers " << Integer(GetHandle(),tag_layers) << " bridge " << ElementTypeName(ElementType(Integer(GetHandle(),tag_bridge))) << std::endl;
 		if( Integer(GetHandle(),tag_layers) )
 			ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
+
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		//Save("after_exchange_ghost.pvtk");
@@ -2041,9 +2097,14 @@ namespace INMOST
 						std::swap(hc[k1],hc[k2]);
 						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
 						//hc.resize(1); //just remove element, we will do this anyway later
-						if( m->HaveGeometricData(ORIENTATION,FACE) ) Face(m,lc[it])->FixNormalOrientation(); //restore orientation
+						if( m->HaveGeometricData(ORIENTATION,FACE) ) 
+							Face(m,lc[it])->FixNormalOrientation(false); //restore orientation
 					}
 				}
+				//~ if( !Face(m,lc[it])->CheckNormalOrientation() )
+				//~ {
+					//~ std::cout << __FILE__ << ":" << __LINE__ << " on " << GetMeshLink()->GetProcessorRank() << " face " << lc[it] << " of cell " << GetHandle() << " bad orientation, count " << m->Count(hc.data(),static_cast<enumerator>(hc.size()),hm) << " hc " << hc.size() << std::endl;
+				//~ }
 			}
 		}
 	}
@@ -2079,7 +2140,7 @@ namespace INMOST
 								k2 = m->getNext(hc.data(),static_cast<enumerator>(hc.size()),k1,hm);
 								hc[k1] = hc[k2];
 								hc[k2] = GetHandle();
-								Face(m,*it)->FixNormalOrientation(); //restore orientation
+								Face(m,*it)->FixNormalOrientation(false); //restore orientation
 							}
 						}
 					}

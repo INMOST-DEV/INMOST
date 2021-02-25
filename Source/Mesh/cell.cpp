@@ -68,15 +68,18 @@ namespace INMOST
 				else if ( !(last == rlc[k1] || last == rlc[k2]) )
 					return false;
 				adj_type::size_type it = 1, iend = lc.size()-1;
-				while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+				while(it != iend)
 				{
-					adj_type const & ilc = m->LowConn(lc[it]);
-					k1 = ENUMUNDEF; 
-					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					if( last == ilc[k1] ) last = ilc[k2];
-					else if( last == ilc[k2] ) last = ilc[k1];
-					else return false;
+					if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					{
+						adj_type const & ilc = m->LowConn(lc[it]);
+						k1 = ENUMUNDEF; 
+						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						if( last == ilc[k1] ) last = ilc[k2];
+						else if( last == ilc[k2] ) last = ilc[k1];
+						else return false;
+					}
 					++it;
 				}
 			}
@@ -215,29 +218,32 @@ namespace INMOST
 				else if( !(last == rlc[k1] || last == rlc[k2]) )
 				{
 					adj_type::size_type jt = i+1, jend = lc.size();
-					while(jt < jend) if( !m->GetMarker(lc[jt],hm) ) //loop over edges
+					while(jt < jend)
 					{
-						adj_type const & ilc = m->LowConn(lc[jt]);
-						if( m->Count(ilc.data(),ilc.size(),hm) != 2 ) return false;
-						k1 = ENUMUNDEF; 
-						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						if( first == ilc[k1] || first == ilc[k2] )
+						if( !m->GetMarker(lc[jt],hm) ) //loop over edges
 						{
-							HandleType temp = lc[i];
-							lc[i] = lc[jt];
-							lc[jt] = temp;
-							temp = first;
-							first = last;
-							last = temp;
-							break;
-						}
-						else if( last == ilc[k1] || last == ilc[k2] )
-						{
-							HandleType temp = lc[i];
-							lc[i] = lc[jt];
-							lc[jt] = temp;
-							break;
+							adj_type const & ilc = m->LowConn(lc[jt]);
+							if( m->Count(ilc.data(),ilc.size(),hm) != 2 ) return false;
+							k1 = ENUMUNDEF; 
+							k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							if( first == ilc[k1] || first == ilc[k2] )
+							{
+								HandleType temp = lc[i];
+								lc[i] = lc[jt];
+								lc[jt] = temp;
+								temp = first;
+								first = last;
+								last = temp;
+								break;
+							}
+							else if( last == ilc[k1] || last == ilc[k2] )
+							{
+								HandleType temp = lc[i];
+								lc[i] = lc[jt];
+								lc[jt] = temp;
+								break;
+							}
 						}
 						++jt;
 					}
@@ -281,7 +287,7 @@ namespace INMOST
 						}
 						if( jt == jend ) return false; //no matching edge
 					}
-				}
+				} else ++it;
 				//check that the loop is closed
 				adj_type const & ilc = m->LowConn(lc[iend]);
 				if(m->Count(ilc.data(),ilc.size(),hm)!=2) return false;
@@ -447,16 +453,19 @@ namespace INMOST
 					}
 				}
 				adj_type::size_type it = 1, iend = lc.size()-1;
-				while(it < iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+				while(it < iend)
 				{
-					adj_type const & ilc = m->LowConn(lc[it]);
-					k1 = ENUMUNDEF; 
-					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					if( aret.atback() == ilc[k1] ) 
-						aret.push_back(ilc[k2]);
-					else 
-						aret.push_back(ilc[k1]);
+					if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					{
+						adj_type const & ilc = m->LowConn(lc[it]);
+						k1 = ENUMUNDEF; 
+						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						if( aret.atback() == ilc[k1] ) 
+							aret.push_back(ilc[k2]);
+						else 
+							aret.push_back(ilc[k1]);
+					}
 					++it;
 				}
 			}
@@ -579,16 +588,19 @@ namespace INMOST
 						}
 					}
 					adj_type::size_type it = 1, iend = lc.size()-1;
-					while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					while(it != iend)
 					{
-						adj_type const & ilc = m->LowConn(lc[it]);
-						k1 = ENUMUNDEF; 
-						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						if( last == ilc[k1] ) 
-							last = ilc[k2];
-						else last = ilc[k1];
-						if( invert ^ m->GetPrivateMarker(last,mask) ) aret.push_back(last);
+						if( !m->GetMarker(lc[it],hm) ) //loop over edges
+						{
+							adj_type const & ilc = m->LowConn(lc[it]);
+							k1 = ENUMUNDEF; 
+							k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							if( last == ilc[k1] ) 
+								last = ilc[k2];
+							else last = ilc[k1];
+							if( invert ^ m->GetPrivateMarker(last,mask) ) aret.push_back(last);
+						}
 						++it;
 					}
 				}
@@ -703,16 +715,19 @@ namespace INMOST
 						}
 					}
 					adj_type::size_type it = 1, iend = lc.size()-1;
-					while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					while(it != iend) 
 					{
-						adj_type const & ilc = m->LowConn(lc[it]);
-						k1 = ENUMUNDEF; 
-						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						if( last == ilc[k1] ) 
-							last = ilc[k2];
-						else last = ilc[k1];
-						if( invert ^ m->GetMarker(last,mask) ) aret.push_back(last);
+						if( !m->GetMarker(lc[it],hm) ) //loop over edges
+						{
+							adj_type const & ilc = m->LowConn(lc[it]);
+							k1 = ENUMUNDEF; 
+							k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							if( last == ilc[k1] ) 
+								last = ilc[k2];
+							else last = ilc[k1];
+							if( invert ^ m->GetMarker(last,mask) ) aret.push_back(last);
+						}
 						++it;
 					}
 				}

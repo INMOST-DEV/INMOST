@@ -191,6 +191,7 @@ namespace INMOST
 				while(it < iend) //loop over edges
 				{
 					adj_type const & ilc = m->LowConn(lc[it]);
+					if( ilc.size() != 2 ) return false;
 					if( last == ilc[0] ) last = ilc[1];
 					else if( last == ilc[1] ) last = ilc[0];
 					else return false;
@@ -233,15 +234,20 @@ namespace INMOST
 				else if ( !(last == rlc[k1] || last == rlc[k2]) )
 					return false;
 				adj_type::size_type it = 1, iend = lc.size()-1;
-				while(it != iend) if( !m->GetMarker(lc[it],hm) ) //loop over edges
+				while(it != iend) 
 				{
-					adj_type const & ilc = m->LowConn(lc[it]);
-					k1 = ENUMUNDEF; 
-					k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-					if( last == ilc[k1] ) last = ilc[k2];
-					else if( last == ilc[k2] ) last = ilc[k1];
-					else return false;
+					if( !m->GetMarker(lc[it],hm) ) //loop over edges
+					{
+						adj_type const & ilc = m->LowConn(lc[it]);
+						if( m->Count(ilc.data(),ilc.size(),hm) != 2 ) return false;
+						k1 = ENUMUNDEF; 
+						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+						if( k1 == ilc.size() || k2 == ilc.size() ) return false;
+						if( last == ilc[k1] ) last = ilc[k2];
+						else if( last == ilc[k2] ) last = ilc[k1];
+						else return false;
+					}
 					++it;
 				}
 			}
@@ -378,29 +384,32 @@ namespace INMOST
 				else if( !(last == rlc[k1] || last == rlc[k2]) )
 				{
 					adj_type::size_type jt = i+1, jend = lc.size();
-					while(jt < jend) if( !m->GetMarker(lc[jt],hm) ) //loop over edges
+					while(jt < jend) 
 					{
-						adj_type const & ilc = m->LowConn(lc[jt]);
-						if( m->Count(ilc.data(),ilc.size(),hm) != 2 ) return false;
-						k1 = ENUMUNDEF; 
-						k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-						if( first == ilc[k1] || first == ilc[k2] )
+						if( !m->GetMarker(lc[jt],hm) ) //loop over edges
 						{
-							HandleType temp = lc[i];
-							lc[i] = lc[jt];
-							lc[jt] = temp;
-							temp = first;
-							first = last;
-							last = temp;
-							break;
-						}
-						else if( last == ilc[k1] || last == ilc[k2] )
-						{
-							HandleType temp = lc[i];
-							lc[i] = lc[jt];
-							lc[jt] = temp;
-							break;
+							adj_type const & ilc = m->LowConn(lc[jt]);
+							if( m->Count(ilc.data(),ilc.size(),hm) != 2 ) return false;
+							k1 = ENUMUNDEF; 
+							k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+							if( first == ilc[k1] || first == ilc[k2] )
+							{
+								HandleType temp = lc[i];
+								lc[i] = lc[jt];
+								lc[jt] = temp;
+								temp = first;
+								first = last;
+								last = temp;
+								break;
+							}
+							else if( last == ilc[k1] || last == ilc[k2] )
+							{
+								HandleType temp = lc[i];
+								lc[i] = lc[jt];
+								lc[jt] = temp;
+								break;
+							}
 						}
 						++jt;
 					}
@@ -427,25 +436,28 @@ namespace INMOST
 					else//search for the connected edge and swap with current
 					{
 						adj_type::size_type jt = it+1, jend = lc.size();
-						while(jt < jend) if( !m->GetMarker(lc[jt],hm) ) //loop over edges
+						while(jt < jend)
 						{
-							adj_type const & ilc = m->LowConn(lc[jt]);
-							if(m->Count(ilc.data(),ilc.size(),hm)!=2) return false;
-							k1 = ENUMUNDEF; 
-							k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-							k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
-							if( last == ilc[k1] || last == ilc[k2] )
+							if( !m->GetMarker(lc[jt],hm) ) //loop over edges
 							{
-								HandleType temp = lc[it];
-								lc[it] = lc[jt];
-								lc[jt] = temp;
-								break;
+								adj_type const & ilc = m->LowConn(lc[jt]);
+								if(m->Count(ilc.data(),ilc.size(),hm)!=2) return false;
+								k1 = ENUMUNDEF; 
+								k1 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+								k2 = m->getNext(ilc.data(),static_cast<enumerator>(ilc.size()),k1,hm);
+								if( last == ilc[k1] || last == ilc[k2] )
+								{
+									HandleType temp = lc[it];
+									lc[it] = lc[jt];
+									lc[jt] = temp;
+									break;
+								}
 							}
 							++jt;
 						}
 						if( jt == jend ) return false; //no matching edge
 					}
-				}
+				} else ++it;
 				//check that the loop is closed
 				adj_type const & ilc = m->LowConn(lc[iend]);
 				if(m->Count(ilc.data(),ilc.size(),hm)!=2) return false;
@@ -698,7 +710,7 @@ namespace INMOST
 							last = ilc[k1];
 						}
 						++it;
-					}
+					} else ++it;
 				}
 
 			}

@@ -6,7 +6,7 @@ bool output_file = true;
 bool balance_mesh = true;
 bool balance_mesh_refine = false;
 bool balance_mesh_coarse = false;
-std::string file_format = ".pmf";
+std::string file_format = ".pvtu";
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932
@@ -26,21 +26,31 @@ int main(int argc, char ** argv)
 		else if( m.GetProcessorRank() == 0 )
 			m.Load(argv[1]);
 	
-		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE
-		//				   | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE
-		//				   | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL
-		//				   | INTERLEAVED_FACES | NEED_TEST_CLOSURE
-		//				   | DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL
-		//				   | ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
+		//~ m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE 
+						   //~ | PROHIBIT_CONCAVE_CELL
+						   //~ | FACE_EDGES_ORDER
+						   //~ | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE
+						   //~ | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL
+						   //~ | INTERLEAVED_FACES | NEED_TEST_CLOSURE
+						   //~ | DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL
+						   //~ | ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
 		//m.RemTopologyCheck(THROW_EXCEPTION);
+		
+		{
+			Mesh::GeomParam table;
+			table[ORIENTATION] = FACE;
+			table[NORMAL] = FACE;
+			table[CENTROID] = CELL | FACE;
+			m.PrepareGeometricData(table);
+		}
 #if defined(USE_PARTITIONER)
 		std::vector<Storage::integer> nc(m.GetProcessorsNumber());
 		Partitioner p(&m);
 		if( true )
 		{
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
-			//p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
+			//p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
 			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
@@ -48,7 +58,7 @@ int main(int argc, char ** argv)
 			
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			m.Barrier();
-			//p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
+			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
 		m.ExchangeGhost(1,FACE);
@@ -61,6 +71,9 @@ int main(int argc, char ** argv)
 #if defined(USE_PARTITIONER)
 		p.SetWeight(wgt);
 #endif
+
+		//m.Save("init"+file_format);
+		
 		/*
 		for(Mesh::iteratorCell it = m.BeginCell(); it != m.EndCell(); ++it)
 			indicator[*it] = 1;
@@ -112,7 +125,7 @@ int main(int argc, char ** argv)
 
 			m.ClearFile();
 			
-			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			
 			ref_time = Timer();
 			Storage::integer numref;
@@ -142,6 +155,7 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+					//~ std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "refine_" << k << "_" << refcnt << " "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 					tmp_time = Timer();
 #if defined(USE_PARTITIONER)
 					if( balance_mesh_refine && refcnt == 0)
@@ -224,6 +238,7 @@ int main(int argc, char ** argv)
 				numref = m.Integrate(numref);
 				if( numref )
 				{
+					//~ std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "coarse_" << k << "_" << refcnt << " "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 					tmp_time = Timer();
 #if defined(USE_PARTITIONER)
 					if( balance_mesh_coarse && refcnt == 0)
@@ -286,20 +301,20 @@ int main(int argc, char ** argv)
 			{
 				//m.Barrier();
 				p.SetWeight(Tag());
-				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//~ std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				if( m.GetProcessorRank() == 0 ) std::cout << "call Evaluate" << std::endl;
 				p.Evaluate();
 				if( m.GetProcessorRank() == 0 ) std::cout << "call Redistribute" << std::endl;
 				m.Redistribute();
 				if( m.GetProcessorRank() == 0 ) std::cout << "balance done" << std::endl;
-				//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+				//~ std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 				//m.Barrier();
 			}
 #endif
 			tmp_time = Timer() - tmp_time;
 			redist_time += tmp_time;
 			
-			//std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
+			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "finish "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			 
 			 
 
@@ -314,16 +329,28 @@ int main(int argc, char ** argv)
 					tag_owner[*it] = tag_owner0[*it];
 					tag_stat[*it] = it->GetStatus();
 				}
-				std::stringstream file;
-				file << "step_" << k << file_format;
-				m.Save(file.str());
-				if( m.GetProcessorRank() == 0 )
-					std::cout << "Save " << file.str() << std::endl;
+				{
+					std::stringstream file;
+					file << "step_" << k << file_format;
+					m.Save(file.str());
+					if( m.GetProcessorRank() == 0 )
+						std::cout << "Save " << file.str() << std::endl;
+				}
+				if( false )
+				{
+					std::stringstream file;
+					file << "step_" << k << ".pmf";
+					m.Save(file.str());
+					if( m.GetProcessorRank() == 0 )
+						std::cout << "Save " << file.str() << std::endl;
+				}
 			}
 			else if( m.GetProcessorRank() == 0 ) std::cout << "step " << k << std::endl;
 			
 			step_time = Timer() - step_time;
 			if( m.GetProcessorRank() == 0 ) std::cout << "step time " << step_time << " refine " << ref_time << " coarse " << crs_time << " balance " << redist_time << std::endl;
+			//~ MPI_Barrier(MPI_COMM_WORLD);
+			//~ MPI_Abort(MPI_COMM_WORLD,-1);
 		}
 
 

@@ -31,6 +31,9 @@ __INLINE std::string NameSlash(std::string input)
 	return input;
 }
 
+const bool check_orientation = false;
+const bool check_convexity = false;
+
 
 /// todo:
 /// 1. coarsment
@@ -583,10 +586,15 @@ namespace INMOST
 		//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//6.Refine
+
+		assert(Element::CheckConnectivity(m));
+		CheckClosure(__FILE__,__LINE__);
 		ENTER_BLOCK();
 		m->BeginModification();
 		while(schedule_counter)
 		{
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			Storage::real xyz[3] = {0,0,0};
 			//7.split all edges of the current schedule
 			ENTER_BLOCK();
@@ -615,8 +623,10 @@ namespace INMOST
 					//for each face provide link to a new hanging node
 					for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
 						hanging_nodes[edge_faces[kt]].push_back(n);
+					//CheckClosure(__FILE__,__LINE__);
 					//split the edge by the middle node
 					ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(m,1,n.GetHandle()),0);
+					for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt) assert(edge_faces[kt].Closure());
 					//set increased level for new edges
 					level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
 #if defined(USE_AUTODIFF) && defined(USE_SOLVER)
@@ -626,11 +636,13 @@ namespace INMOST
 					//{
 					//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
 					//}
-					
+					//CheckClosure(__FILE__,__LINE__);
 					//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
 				}
 			}
 			EXIT_BLOCK();
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//8.split all faces of the current schedule, using hanging nodes on edges
 			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
@@ -714,6 +726,8 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//this tag helps recreate internal face
 			TagReferenceArray internal_face_edges = m->CreateTag("INTERNAL_FACE_EDGES",DATA_REFERENCE,NODE,NODE,4);
 			//this marker helps detect edges of current cell only
@@ -893,6 +907,8 @@ namespace INMOST
 			m->ReleaseMarker(mark_hanging_nodes);
 			m->ReleaseMarker(mark_cell_edges);
 			m->DeleteTag(internal_face_edges);
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//10.jump to later schedule, and go to 7.
 			schedule_counter--;
 		}
@@ -900,10 +916,78 @@ namespace INMOST
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
 
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nfixednew = 0, nfixedbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->New() )
+						nfixednew++;
+					if( it->Boundary() )
+						nfixedbnd++;
+					if( it->GetStatus() == Element::Ghost )
+						nghost++;
+					std::cout << "rank " << m->GetProcessorRank() << " face " << it->GetHandle() << std::endl;
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << " (new " << nfixednew << " bnd " << nfixedbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
+			}
+			EXIT_BLOCK();
+		}
+		
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
+
 
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//11. Restore parallel connectivity, global ids
 		m->ResolveModification();
+
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nfixednew = 0, nfixedbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->New() )
+						nfixednew++;
+					if( it->Boundary() )
+						nfixedbnd++;
+					if( it->GetStatus() == Element::Ghost )
+						nghost++;
+					std::cout << "rank " << m->GetProcessorRank() << " face " << it->GetHandle() << std::endl;
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << " (new " << nfixednew << " bnd " << nfixedbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
+			}
+			EXIT_BLOCK();
+		}
+		
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
 		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
@@ -914,12 +998,49 @@ namespace INMOST
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
+
+
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nfixednew = 0, nfixedbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->New() )
+						nfixednew++;
+					if( it->Boundary() )
+						nfixedbnd++;
+					if( it->GetStatus() == Element::Ghost )
+						nghost++;
+					std::cout << "rank " << m->GetProcessorRank() << " face " << it->GetHandle() << " cells " << it->nbAdjElements(CELL) << std::endl;
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << " (new " << nfixednew << " bnd " << nfixedbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
+			}
+			EXIT_BLOCK();
+		}
+		
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
 		
 		//m->ExchangeGhost(1,NODE,m->NewMarker());
 		//14. Done
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
 		EXIT_BLOCK();
+		assert(Element::CheckConnectivity(m));
+		CheckClosure(__FILE__,__LINE__);
 		
 		//keep links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
@@ -968,19 +1089,34 @@ namespace INMOST
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
 		
-		/*
-		ENTER_BLOCK();
-		int nfixed = 0;
-		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
-			if( !it->CheckNormalOrientation() )
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->Boundary() ) nbnd++;
+					if( it->GetStatus() == Element::Ghost ) nghost++;
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
 			{
-				it->FixNormalOrientation();
-				nfixed++;
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << "(bnd " << nbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
 			}
-			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) REPORT_STR(rank << " fixed " << nfixed << " faces");
-		EXIT_BLOCK();
-		 */
+			EXIT_BLOCK();
+		}
+		
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
 		
 		/*
 		for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
@@ -1378,6 +1514,9 @@ namespace INMOST
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
 		//	PrintSet(fout,it->self());
+
+		assert(Element::CheckConnectivity(m));
+		CheckClosure(__FILE__,__LINE__);
 		
 		//m->Save("unschdind"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save unschdind"+std::to_string(fi)+".pvtk" << std::endl;
@@ -1386,6 +1525,8 @@ namespace INMOST
 		m->BeginModification();
 		while(schedule_counter)
 		{
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//CheckParentSet(__FILE__,__LINE__);//,indicator);
 			//CheckParentSet();
 			//fout << "schedule_counter " << schedule_counter << std::endl;
@@ -1435,7 +1576,7 @@ namespace INMOST
 					//	fout << " " << chld.GetName();
 					//fout << std::endl;
 					//only one should be found
-					if( center_node.size() != 1 )
+					if( center_node.size() != 1 )// || it == 127 )
 					{
 						INMOST_DATA_REAL_TYPE x[3];
 						std::cout << "call_counter " << call_counter << " schedule_counter " << schedule_counter << std::endl;
@@ -1457,6 +1598,25 @@ namespace INMOST
 						for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())
 							std::cout << " " << chld.GetName();
 						std::cout << std::endl;
+						for(kt = 0; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
+						{
+							ElementArray<Face> faces = unite_cells[kt].getFaces();
+							std::cout << "cell " << unite_cells[kt].LocalID() << " faces " << faces.size() << " lc " << m->LowConn(unite_cells.at(kt)).size() << std::endl;
+							std::cout << (unite_cells[kt].Closure() ? "closed" : "open") << " ";
+							for(ElementArray<Face>::iterator qt = faces.begin(); qt != faces.end(); ++qt) std::cout << "f" << qt->LocalID() << " " << (qt->Closure() ? "closed" : "open") << " ";
+							std::cout << std::endl;
+							for(ElementArray<Face>::iterator qt = faces.begin(); qt != faces.end(); ++qt)
+							{
+								ElementArray<Edge> edges = qt->getEdges();
+								for(ElementArray<Edge>::iterator mt = edges.begin(); mt != edges.end(); ++mt)
+								{
+									std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
+									std::cout << "<->";
+									std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
+									std::cout << std::endl;
+								}
+							}
+						}
 					}
 					assert(center_node.size() == 1);
 					ElementArray<Node> hanging = center_node[0].BridgeAdjacencies2Node(EDGE);
@@ -1490,6 +1650,8 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//unite faces
 			//should find and set hanging nodes on edges
 			//find single node at the center, all other nodes,
@@ -1521,6 +1683,22 @@ namespace INMOST
 							//those to be united
 							ElementArray<Face> unite_faces = cells[kt].getFaces();
 							unite_faces.Intersect(nodes[0].getFaces());
+							/*if( it == 498 || it == 484)
+							{
+								for(ElementArray<Face>::iterator qt = unite_faces.begin(); qt != unite_faces.end(); ++qt)
+								{
+									ElementArray<Edge> edges = qt->getEdges();
+									for(ElementArray<Edge>::iterator mt = edges.begin(); mt != edges.end(); ++mt)
+									{
+										std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
+										std::cout << "<->";
+										std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
+										std::cout << std::endl;
+									}
+								}
+								for(ElementArray<Face>::iterator qt = unite_faces.begin(); qt != unite_faces.end(); ++qt)
+									std::cout << " face " << qt->LocalID() << " edges: " << qt->getEdges().size() << " nb: " << qt->nbAdjElements(EDGE) << " lc: " << m->LowConn(*qt).size() << std::endl;
+							}*/
 							//unmark faces to prevent visit
 							for(ElementArray<Face>::size_type lt = 0; lt < unite_faces.size(); ++lt)
 								indicator[unite_faces[lt]] = 0;
@@ -1547,6 +1725,9 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
+
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			//unite edges
 			ENTER_BLOCK();
 			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
@@ -1588,6 +1769,8 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
+			assert(Element::CheckConnectivity(m));
+			CheckClosure(__FILE__,__LINE__);
 			/*
 			for(Storage::integer it = 0; it < NodeLastLocalID(); ++it) if( isValidNode(it) )
 			{
@@ -1605,6 +1788,40 @@ namespace INMOST
 			//jump to later schedule
 			schedule_counter--;
 		}
+
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nfixednew = 0, nfixedbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->New() )
+						nfixednew++;
+					if( it->Boundary() )
+						nfixedbnd++;
+					if( it->GetStatus() == Element::Ghost )
+						nghost++;
+
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << " (new " << nfixednew << " bnd " << nfixedbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
+			}
+			EXIT_BLOCK();
+		}
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
+
 		//free created tag
 		m->DeleteTag(indicator,FACE|EDGE);
 		//todo:
@@ -1615,10 +1832,14 @@ namespace INMOST
 		if( model ) model->Adaptation(*m);
 #endif
 		m->ApplyModification();
+
+		
 		//done
 		m->EndModification();
 		EXIT_BLOCK();
 		//fout.close();
+		assert(Element::CheckConnectivity(m));
+		CheckClosure(__FILE__,__LINE__);
 
 		//restore links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
@@ -1681,19 +1902,35 @@ namespace INMOST
 		//restore face orientation
 		//BUG: bad orientation not fixed automatically
 		
-		/*
-		ENTER_BLOCK();
-		int nfixed = 0;
-		for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
-			if( !it->CheckNormalOrientation() )
+		if( check_orientation )
+		{
+			ENTER_BLOCK();
+			int nfixed = 0, nbnd = 0, nghost = 0;
+			for(Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it) 
+				if( !it->CheckNormalOrientation() )
+				{
+					//it->FixNormalOrientation();
+					nfixed++;
+					if( it->Boundary() ) nbnd++;
+					if( it->GetStatus() == Element::Ghost ) nghost++;
+				}
+				//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
+			if( nfixed ) 
 			{
-				it->FixNormalOrientation();
-				nfixed++;
+				std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " bad " << nfixed << "(bnd " << nbnd << " ghost " << nghost << ") faces " << std::endl;
+				REPORT_STR(rank << " bad " << nfixed << " faces");
 			}
-			//std::cout << "Face " << it->LocalID() << " oriented incorrectly " << std::endl;
-		if( nfixed ) REPORT_STR("fixed " << nfixed << " faces");
-		EXIT_BLOCK();
-		 */
+			EXIT_BLOCK();
+		}
+		
+		if( check_convexity )
+		{
+			int nbad = 0;
+			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+				if( !it->CheckConvexity() ) nbad++;
+			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
+		}
+		 
 		
 		//reorder element's data to free up space
 		ENTER_BLOCK();
@@ -1746,6 +1983,35 @@ namespace INMOST
 			}
 			else wgt[*it] = 0;
 		}
+	}
+
+	void AdaptiveMesh::CheckClosure(std::string file, int line)
+	{
+		ENTER_BLOCK();
+		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
+		{
+			Cell c = m->CellByLocalID(it);
+			assert(c.Hidden() || c.Closure());
+		}
+		for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
+		{
+			Face c = m->FaceByLocalID(it);
+			if( !c.Hidden() && !c.Closure() )
+			{
+				std::cout << "no closure face " << it << " at " << file << ":" << line << std::endl;
+				ElementArray<Edge> edges = c.getEdges();
+				std::cout << "edges: " << edges.size() << " lc: " << m->LowConn(c.GetHandle()).size() << std::endl;
+				for(ElementArray<Edge>::iterator mt = edges.begin(); mt != edges.end(); ++mt)
+				{
+					std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
+					std::cout << "<->";
+					std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
+					std::cout << std::endl;
+				}
+			}
+			assert(c.Hidden() || c.Closure());
+		}
+		EXIT_BLOCK();
 	}
 	
 }

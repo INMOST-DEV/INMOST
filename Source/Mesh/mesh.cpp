@@ -985,6 +985,14 @@ namespace INMOST
 							if( GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(DEGENERATE_CELL) << std::endl;
 						} 
 					}
+					if( GetTopologyCheck(PROHIBIT_CONCAVE_CELL) )
+					{
+						if( !CheckConvexity(ElementArray<Face>(this,adj,adj+s)) )
+						{
+							chk |= PROHIBIT_CONCAVE_CELL;
+							if( GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(PROHIBIT_CONCAVE_CELL) << std::endl;
+						}
+					}
 				break;
 			}
 		}
@@ -1035,9 +1043,9 @@ namespace INMOST
 		return chk;
 	}
 	
-	TopologyCheck Mesh::EndTopologyCheck(HandleType he)
+	bool Mesh::EndTopologyCheck(HandleType he, TopologyCheck begin_checks)
 	{
-		TopologyCheck chk = 0;
+		TopologyCheck chk = begin_checks;
 		Element e = ElementByHandle(he);
 		switch(e->GetGeometricDimension(e->GetGeometricType()))
 		{
@@ -1121,7 +1129,14 @@ namespace INMOST
 			}
 		}
 		errorset |= chk;
-		return chk;
+		if( chk != 0 )
+		{
+			if( GetTopologyCheck(MARK_ON_ERROR) ) Integer(he,TopologyErrorTag()) = chk;
+			if( GetTopologyCheck(DELETE_ON_ERROR) ) { Destroy(he); he = InvalidHandle();}
+			if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
+			return false;
+		}
+		return true;
 	}
 	
 	Node Mesh::CreateNode(const real * coords)
@@ -1220,6 +1235,8 @@ namespace INMOST
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
 			RecomputeGeometricData(he);
+			EndTopologyCheck(he,chk);
+			/*
 			chk |= EndTopologyCheck(he);
 			if( chk != 0 )
 			{
@@ -1227,6 +1244,7 @@ namespace INMOST
 				if( GetTopologyCheck(DELETE_ON_ERROR) ) { Destroy(he); he = InvalidHandle();}
 				if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 			}
+			*/
 		}
 		return std::make_pair(Edge(this,he),true);
 	}
@@ -1316,6 +1334,8 @@ namespace INMOST
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
 			RecomputeGeometricData(he);
+			EndTopologyCheck(he,chk);
+			/*
 			chk |= EndTopologyCheck(he);
 			if( chk != 0 )
 			{
@@ -1323,6 +1343,7 @@ namespace INMOST
 				if( GetTopologyCheck(DELETE_ON_ERROR) ) { Destroy(he); he = InvalidHandle();}
 				if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 			}
+			*/
 		}
 		return std::make_pair(Face(this,he),true);
 	}
@@ -1741,6 +1762,8 @@ namespace INMOST
 				//END DEBUG
 				SetMarker(he,NewMarker());
 				RecomputeGeometricData(he);
+				EndTopologyCheck(he,chk);
+				/*
 				chk |= EndTopologyCheck(he);
 				if( chk != 0 )
 				{
@@ -1748,6 +1771,7 @@ namespace INMOST
 					if( GetTopologyCheck(DELETE_ON_ERROR) ) { Destroy(he); he = InvalidHandle();}
 					if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 				}
+				*/
 			}
 
 			

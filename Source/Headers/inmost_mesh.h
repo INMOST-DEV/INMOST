@@ -641,7 +641,7 @@ namespace INMOST
 		void                        UnitNormal              (real * nrm) const;
 		void                        OrientedNormal          (Cell c, real * nrm) const;
 		void                        OrientedUnitNormal      (Cell c, real * nrm) const;
-		bool                        FixNormalOrientation    () const;  //returns true if orientation was corrected, otherwise returns false
+		bool                        FixNormalOrientation    (bool allow_swap = true) const;  //returns true if orientation was corrected, otherwise returns false
 		bool                        CheckNormalOrientation  () const; //returns true if orientation is correct, otherwise returns false
 		bool                        Closure                 () const; // test integrity of polygon
 		bool                        Inside                  (const real * point) const; //is point inside face
@@ -938,6 +938,8 @@ namespace INMOST
 		bool                        Closure                 () const;
 		/// For each adjacent cell make me a front cell and fix normal orientation accordingly.
 		void                        SwapBackCell            () const;
+
+		bool                        CheckConvexity          () const;
 	};
 
 	///
@@ -3239,6 +3241,7 @@ namespace INMOST
 		/// If marker is set then face is reversed.
 		/// Then all faces are oriented either inside or outside of the cell.
 		void                              FacesOrientation(ElementArray<Face> & faces, MarkerType rev);
+		bool                              CheckConvexity(const ElementArray<Face> & faces) const;
 		void                              PrepareGeometricData(GeomParam table);
 		void                              RemoveGeometricData(GeomParam table);
 		bool                              HaveGeometricData  (GeometricData type, ElementType mask) const {return remember[type][ElementNum(mask)-1];} // requests to only one geometric and element type allowed
@@ -3350,7 +3353,7 @@ namespace INMOST
 		///
 		/// \todo
 		/// list checks performed inside in description.
-		TopologyCheck                     EndTopologyCheck   (HandleType e); //check created element
+		bool                              EndTopologyCheck   (HandleType e, TopologyCheck begin_check); //check created element
 		/// This will return tag by which you can retrieve error mark to any element on which topogy check failed.
 		/// As this is sparse tag you can check presence of error by Element::HaveData or Mesh::HaveData check.
 		/// This tag will be valid only if you pass MARK_ON_ERROR to Mesh::GetTopologyCheck

@@ -19,6 +19,7 @@ namespace INMOST
 		/// Prepare sets for coarsements.
 		/// Do not do this in constructor, since mesh may contain no cells.
 		void PrepareSet();
+		void CheckClosure(std::string file, int line);
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         //void SynchronizeIndicated(TagInteger& indicator);
 	public:

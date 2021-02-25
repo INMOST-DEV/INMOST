@@ -759,6 +759,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		REPORT_MPI(MPI_Allreduce(&etype,&etypeout,1,INMOST_MPI_DATA_BULK_TYPE,MPI_BOR,GetCommunicator()));
 #endif//USE_MPI
+		EXIT_FUNC();
 		return etypeout;
 	}
 	Storage::integer Mesh::TotalNumberOf(ElementType mask)
@@ -2538,6 +2539,7 @@ namespace INMOST
 #endif //USE_PARALLEL_STORAGE
 			//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
 			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
+			
 			delete_elements.clear();
 			//std::cout << GetProcessorRank() << " finish " << ElementTypeName(mask) << std::endl;
 		}
@@ -4647,7 +4649,7 @@ namespace INMOST
 			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
-			REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
+			//REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -5090,6 +5092,11 @@ namespace INMOST
 					}
 					++found;
 				}
+
+				// if( !Face(this,new_face).CheckNormalOrientation() )
+				// {
+				// 	std::cout << __FILE__ << ":" << __LINE__ << " rank " << GetProcessorRank() << " face " << new_face << " " << (Face(this,new_face).Boundary()?"bnd":"int") << " " << Element::StatusName(Face(this,new_face).GetStatus()) << std::endl;
+				// }
 				
 				selems[2].push_back(new_face);
 			}
@@ -5171,7 +5178,7 @@ namespace INMOST
 				}
 				if( new_cell == InvalidHandle() )
 				{
-					new_cell = CreateCell(c_faces,c_nodes).first->GetHandle();
+					new_cell = CreateCell(c_faces/*,c_nodes*/).first->GetHandle();
 					assert(GetStatus(new_cell) == Element::Any);
 					SetStatus(new_cell,Element::Ghost);
 					IntegerDF(new_cell,tag_owner) = -1;

@@ -645,7 +645,7 @@ namespace INMOST
 					buconv.read_iByteOrder(header);
 					buconv.read_iByteSize(header);
 					
-					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(buconv.get_iByteOrder()));
 					REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 					
 					
@@ -777,7 +777,7 @@ namespace INMOST
 					
 					REPORT_VAL("file position",fin.tellg());
 					
-					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+					REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(buconv.get_iByteOrder()));
 					REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 					
 					
@@ -924,7 +924,7 @@ namespace INMOST
 			
 			REPORT_VAL("file position",fin.tellg());
 			
-			REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(uconv.get_iByteOrder()));
+			REPORT_VAL("integer_byte_order",buconv.str_iByteOrder(buconv.get_iByteOrder()));
 			REPORT_VAL("integer_byte_size",(int)buconv.get_iByteSize());
 			
 			INMOST_DATA_ENUM_TYPE datanum,k;
