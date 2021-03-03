@@ -26,10 +26,6 @@ if (USE_SOLVER_TRILINOS AND USE_MPI)
     add_subdirectory(solver_trilinos)
 endif()
 
-if (USE_SOLVER_ANI AND TEST_FORTRAN_ANI3D)
-    add_subdirectory(solver_ani)
-endif()
-
 if (USE_SOLVER_SUPERLU)
     add_subdirectory(solver_superlu)
 endif()
