@@ -391,7 +391,7 @@ namespace INMOST
 	public:
 		typedef const_multiplication_expression<A> argument;
 		typedef unary_pool_expression< argument, A> pool;
-		typedef dynarray< argument, 64 > container;
+		typedef std::vector< argument > container;
 	private:
 		container arg;
 		INMOST_DATA_REAL_TYPE value;
@@ -724,7 +724,7 @@ template<class A>          __INLINE                                             
 template<class A>          __INLINE                                                                                        INMOST::table_variable<A> get_table(INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg, const INMOST::keyval_table & Table) {return INMOST::table_variable<A>(Arg,Table);}
 template<class A>          __INLINE                                                                                    INMOST::stencil_expression<A>   stencil(INMOST::HandleType * elems, INMOST_DATA_REAL_TYPE * coefs, INMOST_DATA_ENUM_TYPE num, INMOST::shell_dynamic_variable<typename A::Var,A> const & Arg)
 {
-	INMOST::dynarray< INMOST::const_multiplication_expression<typename A::Var>, 64> tmp;
+	std::vector< INMOST::const_multiplication_expression<typename A::Var> > tmp;
 	for( INMOST_DATA_ENUM_TYPE k = 0; k < num; ++k) if( elems[k] != 0 )
 		tmp.push_back(INMOST::const_multiplication_expression<typename A::Var>(Arg[elems[k]],coefs[k]));
 	return INMOST::stencil_expression<typename A::Var>(tmp);

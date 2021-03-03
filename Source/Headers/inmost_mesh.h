@@ -138,7 +138,7 @@ namespace INMOST
 	class ElementArray
 	{
 	public:
-		typedef dynarray<HandleType,64>      cont_t;
+		typedef std::vector<HandleType>      cont_t;
 		typedef cont_t::size_type            size_type;
 	private:
 		Mesh *                               m_link;

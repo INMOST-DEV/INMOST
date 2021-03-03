@@ -69,7 +69,7 @@ namespace INMOST
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
 		Mesh * mesh = GetMeshLink();
-		dynarray<HandleType,128> result;
+		std::vector<HandleType> result;
 		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
 		INMOST_DATA_INTEGER_TYPE myconn = -1, i;
 		enumerator ret = 0;
@@ -132,7 +132,7 @@ namespace INMOST
 						}		
 						ret += static_cast<enumerator>(result.size());
 					}
-					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+					for(size_t it = 0; it < result.size(); it++)
 						mesh->RemPrivateMarker(result[it],mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
@@ -195,7 +195,7 @@ namespace INMOST
 						}
 						ret += static_cast<enumerator>(result.size());
 					}
-					for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+					for(size_t it = 0; it < result.size(); it++)
 						mesh->RemPrivateMarker(result[it],mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
@@ -212,7 +212,7 @@ namespace INMOST
 		assert( !(_etype & MESH) );
 		assert( !(_etype & ESET) );
 		Mesh * mesh = GetMeshLink();
-		dynarray<HandleType,128> result;
+		std::vector<HandleType> result;
 		INMOST_DATA_INTEGER_TYPE conn[4] = {0,0,0,0};
 		INMOST_DATA_INTEGER_TYPE myconn = -1, i;
 		enumerator ret = 0;
@@ -277,7 +277,7 @@ namespace INMOST
 							}
 							ret += static_cast<enumerator>(result.size());
 						}
-						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+						for(size_t it = 0; it < result.size(); it++)
 							mesh->RemPrivateMarker(result[it],mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
@@ -338,7 +338,7 @@ namespace INMOST
 							}		
 							ret += static_cast<enumerator>(result.size());
 						}
-						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+						for(size_t it = 0; it < result.size(); it++)
 							mesh->RemPrivateMarker(result[it],mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
@@ -401,7 +401,7 @@ namespace INMOST
 							}
 							ret += static_cast<enumerator>(result.size());
 						}
-						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+						for(size_t it = 0; it < result.size(); it++)
 							mesh->RemPrivateMarker(result[it],mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
@@ -462,7 +462,7 @@ namespace INMOST
 							}		
 							ret += static_cast<enumerator>(result.size());
 						}
-						for(dynarray<HandleType,128>::size_type it = 0; it < result.size(); it++)
+						for(size_t it = 0; it < result.size(); it++)
 							mesh->RemPrivateMarker(result[it],mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
@@ -1279,7 +1279,7 @@ namespace INMOST
 		Storage::integer_array set_procs = e->IntegerArray(e->GetMeshLink()->ProcessorsTag());
 		Storage::integer_array sendto = e->IntegerArray(e->GetMeshLink()->SendtoTag());
 		std::sort(sendto.begin(),sendto.end());
-		dynarray<Storage::integer,64> tmp1(cont.size()),tmp2;
+		std::vector<Storage::integer> tmp1(cont.size()),tmp2;
 		tmp1.resize(std::set_difference(cont.begin(),cont.end(),set_procs.begin(),set_procs.end(),tmp1.begin())-tmp1.begin());
 		tmp2.resize(tmp1.size()+sendto.size());
 		tmp2.resize(std::set_union(tmp1.begin(),tmp1.end(),sendto.begin(),sendto.end(),tmp2.begin())-tmp2.begin());

@@ -117,7 +117,7 @@ namespace INMOST
           {
             std::vector<INMOST_DATA_REAL_TYPE> Vector;
             int Repeat;
-            dynarray<Storage::real,3> xyz;
+            std::vector<Storage::real> xyz;
             for(std::string val = reader.GetContentsWord(); !reader.isContentsEnded(); val = reader.GetContentsWord() )
             {
               reader.ParseReal(val,Vector,Repeat,nnodes);
@@ -1056,7 +1056,7 @@ namespace INMOST
     Integer(GetHandle(),idx) = 0;
     fout << "\t\t<Nodes Number=\"" << NumberOfNodes() << "\" Dimensions=\"" << GetDimensions() << "\">\n";
     fout << "\t\t\t<![CDATA[\n";
-    dynarray<Storage::real,3> xyz(GetDimensions());
+    std::vector<Storage::real> xyz(GetDimensions());
     int cnt = 0;
     for(iteratorNode it = BeginNode(); it != EndNode(); ++it)
     {

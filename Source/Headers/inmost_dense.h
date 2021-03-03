@@ -274,7 +274,7 @@ namespace INMOST
 				}
 				else return false;
 			} //m <= n
-			dynarray<Var,128> rv1(m);
+			std::vector<Var> rv1(m);
 			//array<Var> _rv1(m);
 			//shell<Var> rv1(_rv1);
 			std::swap(n,m); //this how original algorithm takes it
@@ -3218,7 +3218,7 @@ namespace INMOST
 		//enumerator l = AtB.Cols();
         //enumerator n = Rows();
 		
-		dynarray<enumerator,128> order(m);
+		std::vector<enumerator> order(m);
 		
 		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
@@ -3848,9 +3848,9 @@ namespace INMOST
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
 	/// shortcut for matrix of integer values in stack-preallocated and dynamically reallocated array.
-	typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
+	//typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
 	/// shortcut for matrix of real values in stack-preallocated and dynamically reallocated array.
-	typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
+	//typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
 	/// shortcut for matrix of integer values in pool-allocated array (beaware of deallocation order issue).
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipMatrix;
 	/// shortcut for matrix of real values in pool-allocated array (beaware of deallocation order issue).
@@ -3864,9 +3864,9 @@ namespace INMOST
 	/// shortcut for symmetric matrix of real values.
 	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE> rSymmetricMatrix;
 	/// shortcut for symmetric matrix of integer values in stack-preallocated and dynamically reallocated array.
-	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idSymmetricMatrix;
+	//typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idSymmetricMatrix;
 	/// shortcut for symmetric matrix of real values in stack-preallocated and dynamically reallocated array.
-	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,dynarray<INMOST_DATA_REAL_TYPE,128> > rdSymmetricMatrix;
+	//typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,dynarray<INMOST_DATA_REAL_TYPE,128> > rdSymmetricMatrix;
 	/// shortcut for symmetric matrix of integer values in pool-allocated array (beaware of deallocation order issue).
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipSymmetricMatrix;
 	/// shortcut for symmetric matrix of real values in pool-allocated array (beaware of deallocation order issue).
@@ -3888,11 +3888,11 @@ namespace INMOST
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
 	/// shortcut for matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
-	typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
+	//typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
 	/// shortcut for matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
-	typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
+	//typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
-	typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
+	//typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
 	/// shortcut for matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
 	typedef Matrix<unknown, pool_array_t<unknown> > upMatrix;
 	/// shortcut for matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).
@@ -3912,11 +3912,11 @@ namespace INMOST
 	/// shortcut for matrix of variables in existing array.
 	typedef SymmetricMatrix<hessian_variable,shell<hessian_variable> > haSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
-	typedef SymmetricMatrix<unknown, dynarray<unknown,128> > udSymmetricMatrix;
+	//typedef SymmetricMatrix<unknown, dynarray<unknown,128> > udSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
-	typedef SymmetricMatrix<variable, dynarray<variable,128> > vdSymmetricMatrix;
+	//typedef SymmetricMatrix<variable, dynarray<variable,128> > vdSymmetricMatrix;
 	//< shortcut for symmetric matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
-	typedef SymmetricMatrix<hessian_variable, dynarray<hessian_variable,128> > hdSymmetricMatrix;
+	//typedef SymmetricMatrix<hessian_variable, dynarray<hessian_variable,128> > hdSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
 	typedef SymmetricMatrix<unknown, pool_array_t<unknown> > upSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).

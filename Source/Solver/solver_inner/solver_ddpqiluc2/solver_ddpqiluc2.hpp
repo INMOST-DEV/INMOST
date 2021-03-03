@@ -21,7 +21,7 @@ class ILUC_preconditioner : public Method
 		Sparse::Row row, col;
 		INMOST_DATA_REAL_TYPE diag;
 	} row_col;
-	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
+	typedef std::vector<INMOST_DATA_ENUM_TYPE> levels_t;
 	//result of multilevel preconditioner
 	//        |LDU  F |
 	//  A  =  |       |

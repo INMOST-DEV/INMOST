@@ -34,7 +34,7 @@ namespace INMOST
 	void Element::Disconnect(bool del_upper) const
 	{
 		
-		dynarray<adj_type::size_type,64> del;
+		std::vector<adj_type::size_type> del;
 		Mesh * m = GetMeshLink();
 		//BEGIN NEW CODE - CHECK
 		//Reorder face edges, so that they always apear in right direction
@@ -89,12 +89,12 @@ namespace INMOST
 			{
 				if( Hidden() ) 
 				{
-					for(dynarray<adj_type::size_type,64>::iterator it = del.begin(); it != del.end(); it++)
+					for(std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
 						if( m->GetMarker(hc[*it],m->HideMarker()) ) m->Delete(hc[*it]);
 				}
 				else 
 				{
-					for(dynarray<adj_type::size_type,64>::iterator it = del.begin(); it != del.end(); it++)
+					for(std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
 						m->Delete(hc[*it]);
 				}
 			}
@@ -120,7 +120,7 @@ namespace INMOST
 		if( unite.empty() ) return Cell(m,InvalidHandle());
 		std::map<HandleType, int> face_visit; // we check all edges of faces, inner edges are visited several times, outer - once
 		ElementArray<Face> faces(m); 
-		dynarray<HandleType,64> inner_faces;
+		std::vector<HandleType> inner_faces;
 		bool doexit = false;
 		MarkerType hm = m->HideMarker();
 		//Compute which faces of the provided cells lay on boundary (1 visit) and
@@ -135,8 +135,8 @@ namespace INMOST
 		}
 		if( doexit ) return Cell(m,InvalidHandle());
 		MarkerType visited = m->CreateMarker(), rem = m->CreateMarker();
-		dynarray<HandleType,64> edges;
-		dynarray<HandleType,64> nodes;
+		std::vector<HandleType> edges;
+		std::vector<HandleType> nodes;
 		//gather boundary faces into set that will be used to create new cell
 		//mark internal faces to be deleted. For internal faces find out
 		//all internal edges that should be deleted as well.
@@ -164,7 +164,7 @@ namespace INMOST
 		//for edges of internal faces gather their nodes,
 		//for each edge check if all it's faces are to be deleted,
 		//then the edge should be deleted, otherwise keep the edge
-		for(dynarray<HandleType,64>::size_type i = 0; i < edges.size(); i++) 
+		for(size_t i = 0; i < edges.size(); i++) 
 		{
 			m->RemMarker(edges[i],visited);
 			//access nodes of the edge, gather into array
@@ -192,7 +192,7 @@ namespace INMOST
 		}
 		//for nodes of internal faces check is there any edges
 		//that should not be deleted
-		for(dynarray<HandleType,64>::size_type i = 0; i < nodes.size(); i++) 
+		for(size_t i = 0; i < nodes.size(); i++) 
 		{
 			m->RemMarker(nodes[i],visited);
 			int nonzero = 0;
@@ -228,7 +228,7 @@ namespace INMOST
 				m->Delete(unite.at(j));
 		}
 		//delete inner faces
-		for(dynarray<HandleType,64>::size_type j = 0; j < inner_faces.size(); j++)
+		for(size_t j = 0; j < inner_faces.size(); j++)
 		{
 			//std::cout << "delete face " << GetHandleID(inner_faces[j]) << std::endl;
 			if( m->GetMarker(inner_faces[j],rem) )
@@ -243,7 +243,7 @@ namespace INMOST
 			}
 		}
 		//delete unused edges
-		for(dynarray<HandleType,64>::size_type j = 0; j < edges.size(); j++)
+		for(size_t j = 0; j < edges.size(); j++)
 		{
 			if( m->GetMarker(edges[j],rem) )
 			{
@@ -257,7 +257,7 @@ namespace INMOST
 			}
 		}
 		//delete unused nodes
-		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++)
+		for(size_t j = 0; j < nodes.size(); j++)
 		{
 
 			if( m->GetMarker(nodes[j],rem) ) //there are no edges that use this edge
@@ -314,8 +314,8 @@ namespace INMOST
 		}
 		if( doexit ) return false;
 		MarkerType rem = m->CreateMarker();
-		dynarray<HandleType,64> edges;
-		dynarray<HandleType,64> nodes;		
+		std::vector<HandleType> edges;
+		std::vector<HandleType> nodes;		
 		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
 		{
 			if( it->second != 1 )
@@ -331,7 +331,7 @@ namespace INMOST
 					}
 			}
 		}
-		for(dynarray<HandleType,64>::size_type i = 0; i < edges.size(); i++) 
+		for(size_t i = 0; i < edges.size(); i++) 
 		{
 			m->RemMarker(edges[i],rem);
 			adj_type const & lc = m->LowConn(edges[i]);
@@ -353,7 +353,7 @@ namespace INMOST
 			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
 				doexit = true;
 		}
-		for(dynarray<HandleType,64>::size_type i = 0; i < nodes.size(); i++) 
+		for(size_t i = 0; i < nodes.size(); i++) 
 		{
 			int nonzero = 0;
 			//access edges of the node, check is there
@@ -385,7 +385,7 @@ namespace INMOST
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		if( doexit ) return Face(m,InvalidHandle());
-		dynarray<HandleType,64> cells;
+		std::vector<HandleType> cells;
 		MarkerType edge_set = m->CreateMarker();
 		MarkerType rem = m->CreateMarker();
 		
@@ -413,7 +413,7 @@ namespace INMOST
 			if( m->GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
 		}
 		
-		dynarray<HandleType,64> nodes;
+		std::vector<HandleType> nodes;
 		std::map<HandleType, int> edge_visit;
 		ElementArray<Edge> edges(m);
 		//compute how many times each edge is visited
@@ -461,7 +461,7 @@ namespace INMOST
 			}
 		}
 		//Find out set of nodes to be deleted
-		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++) 
+		for(size_t j = 0; j < nodes.size(); j++) 
 		{
 			m->RemMarker(nodes[j],edge_set);
 			int nonzero = 0;
@@ -546,7 +546,7 @@ namespace INMOST
 		{
 			unite.SetMarker(rem);
 			//untie every face from the cell
-			for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)
+			for(size_t it = 0; it < cells.size(); it++)
 			{
 				adj_type & lc = m->LowConn(cells[it]);
 				adj_type::iterator jt = lc.begin();
@@ -590,7 +590,7 @@ namespace INMOST
 			
 		
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < nodes.size(); it++) //delete nodes inside the face
+		for(size_t it = 0; it < nodes.size(); it++) //delete nodes inside the face
 		{
 			//adj_type const & hc = m->HighConn(nodes[it]);
 			if( m->GetMarker(nodes[it],rem) )
@@ -631,7 +631,7 @@ namespace INMOST
 		
 		
 		adj_type & hc = m->HighConn(ret->GetHandle());
-		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)  //tie new face to old cells
+		for(size_t it = 0; it < cells.size(); it++)  //tie new face to old cells
 		{
 			hc.push_back(cells[it]); // connect new face to cells
 			m->LowConn(cells[it]).push_back(ret.GetHandle()); // connect cells to new face
@@ -639,7 +639,7 @@ namespace INMOST
 		}
 		
 		
-		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); it++)  //tie new face to old cells
+		for(size_t it = 0; it < cells.size(); it++)  //tie new face to old cells
 		{
 			assert(m->Count(m->LowConn(cells[it]).data(),m->LowConn(cells[it]).size(),hm) >= 4);
 			//compute geometric data
@@ -674,7 +674,7 @@ namespace INMOST
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		MarkerType hm = m->HideMarker();
 		if( doexit ) return false;
-		dynarray<HandleType,64> cells;
+		std::vector<HandleType> cells;
 		MarkerType rem = m->CreateMarker();
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
@@ -687,7 +687,7 @@ namespace INMOST
 				}
 		}
 		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
-		dynarray<HandleType,64> nodes;
+		std::vector<HandleType> nodes;
 		std::map<HandleType, int> edge_visit;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
@@ -717,7 +717,7 @@ namespace INMOST
 				dothrow = true;
 			}
 		}
-		for(dynarray<HandleType,64>::size_type j = 0; j < nodes.size(); j++) 
+		for(size_t j = 0; j < nodes.size(); j++) 
 		{
 			m->RemMarker(nodes[j],rem);
 			int nonzero = 0;
@@ -748,8 +748,8 @@ namespace INMOST
 		(void)dothrow;
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
-		dynarray<HandleType,64> cells;
-		dynarray<HandleType,64> faces;
+		std::vector<HandleType> cells;
+		std::vector<HandleType> faces;
 		std::map<HandleType,int> nodes;
 		ElementArray<Node> build_nodes(m);
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
@@ -770,7 +770,7 @@ namespace INMOST
 				nodes[lc[jt]]++;
 		}
 		
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 		{
 			m->RemMarker(faces[it],rem);
 			adj_type const & hc = m->HighConn(faces[it]);
@@ -823,12 +823,12 @@ namespace INMOST
 		}
 
 
-		dynarray<adj_type::size_type,64> insert_pos; //position where we insert new edge
+		std::vector<adj_type::size_type> insert_pos; //position where we insert new edge
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
 			m->SetMarker(edges.at(it),rem);
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 		{
 			adj_type const & lc = m->LowConn(faces[it]); //edges of face
 			bool found_rem = false;
@@ -872,7 +872,7 @@ namespace INMOST
 
 		if( !m->HideMarker() ) //disconnect if cannot hide
 		{
-			for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+			for(size_t it = 0; it < faces.size(); ++it)
 			{
 				adj_type & lc = m->LowConn(faces[it]);
 				adj_iterator jt = lc.begin(); //iterate over edges of faces
@@ -926,7 +926,7 @@ namespace INMOST
 		Edge e = m->CreateEdge(build_nodes).first;
 		adj_type & ehc = m->HighConn(e->GetHandle());
 
-		for(dynarray<adj_type::size_type,64>::size_type k = 0; k < insert_pos.size(); k++)
+		for(size_t k = 0; k < insert_pos.size(); k++)
 		{
 			adj_type & lc = m->LowConn(faces[k]);
 			std::vector<HandleType> tlc(lc.begin(),lc.end());
@@ -973,7 +973,7 @@ namespace INMOST
 			*/
 		}
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < cells.size(); ++it)
+		for(size_t it = 0; it < cells.size(); ++it)
 		{
 			m->ComputeGeometricType(cells[it]);
 			//change nodes of the cell according to ordering
@@ -1003,7 +1003,7 @@ namespace INMOST
 		(void)dothrow;
 		MarkerType hm = m->HideMarker();
 		MarkerType rem = m->CreateMarker();
-		dynarray<HandleType,64> faces;
+		std::vector<HandleType> faces;
 		std::map<HandleType,int> nodes;
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
@@ -1024,7 +1024,7 @@ namespace INMOST
 				nodes[lc[jt]]++;
 		}
 		
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 			m->RemMarker(faces[it],rem);
 
 		if( doexit )
@@ -1063,7 +1063,7 @@ namespace INMOST
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->SetMarker(edges.at(it),rem);
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 		{
 			adj_type const & lc = m->LowConn(faces[it]);
 			bool found_rem = false;
@@ -1235,8 +1235,8 @@ namespace INMOST
 	{
 		Mesh * m = e->GetMeshLink();
 		ElementArray<Edge> ret(m);
-		dynarray<HandleType,64> faces;
-		dynarray<HandleType,128> cells;
+		std::vector<HandleType> faces;
+		std::vector<HandleType> cells;
 		HandleType n[2];
 		if( e->GetMarker(del_protect) || nodes.empty() ) return ret;
 		ret.reserve(nodes.size()+1);
@@ -1258,7 +1258,7 @@ namespace INMOST
 			}
 		}
 
-		for(dynarray<HandleType,128>::size_type it = 0; it < cells.size(); ++it)
+		for(size_t it = 0; it < cells.size(); ++it)
 			m->RemMarker(cells[it],dup);
 
 		m->ReleaseMarker(dup);
@@ -1273,9 +1273,9 @@ namespace INMOST
 
 		assert( k == 2 );
 
-		dynarray<adj_type::size_type,64> insert_pos; //position where we insert new edges
+		std::vector<adj_type::size_type> insert_pos; //position where we insert new edges
 
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 		{
 			bool found = false;
 			adj_type const ilc = m->LowConn(faces[it]);
@@ -1333,7 +1333,7 @@ namespace INMOST
 		}
 
 		//connect new edges to faces
-		for(dynarray<HandleType,64>::size_type it = 0; it < faces.size(); ++it)
+		for(size_t it = 0; it < faces.size(); ++it)
 		{
 			adj_type & lc = m->LowConn(faces[it]);
 			//check that that one of the nodes of privious edge match n[0],
@@ -1355,7 +1355,7 @@ namespace INMOST
 			hc.insert(hc.end(),faces.begin(),faces.end());
 		}
 
-		for(dynarray<HandleType,128>::size_type it = 0; it < cells.size(); ++it)
+		for(size_t it = 0; it < cells.size(); ++it)
 		{
 			adj_type & hc = m->HighConn(cells[it]); //cell nodes
 			//hc.clear(); //have to recompute cell nodes
@@ -1397,10 +1397,10 @@ namespace INMOST
 		Mesh * m = face->GetMeshLink();
 		ElementArray<Edge> loop(m);
 		ElementArray<Face> ret(m);
-		dynarray<HandleType,128> temp;
+		std::vector<HandleType> temp;
 		if( edges.empty() || face->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
-		dynarray<HandleType,2> cells;
+		std::vector<HandleType> cells;
 		
 		//if( report ) std::cout << "Marker for hidden elements: " << hm << std::endl;
 
@@ -1495,7 +1495,7 @@ namespace INMOST
 		
 		if( !face->Hide() )
 		{
-			for(dynarray<HandleType,2>::size_type k = 0; k < cells.size(); k++)
+			for(size_t k = 0; k < cells.size(); k++)
 			{
 				adj_type & ilc = m->LowConn(cells[k]);
 				for(adj_type::size_type it = 0; it < ilc.size(); ++it)
@@ -1556,7 +1556,7 @@ namespace INMOST
 
 
 
-		for(dynarray<HandleType,2>::size_type it = 0; it < cells.size(); ++it)
+		for(size_t it = 0; it < cells.size(); ++it)
 		{
 			adj_type & hc = m->HighConn(cells[it]); //cell nodes
 			//hc.clear(); //have to recompute cell nodes
@@ -1597,7 +1597,7 @@ namespace INMOST
 		Mesh * m = cell->GetMeshLink();
 		ElementArray<Cell> ret(m);
 		ElementArray<Face> loop(m);
-		dynarray<HandleType,128> temp;
+		std::vector<HandleType> temp;
 		if( faces.empty() || cell->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
 
@@ -2116,7 +2116,7 @@ namespace INMOST
 	{
 		Mesh * m = GetMeshLink();
 		INMOST_DATA_ENUM_TYPE k = 0;
-		dynarray<HandleType,64> arr[4];
+		std::vector<HandleType> arr[4];
 		MarkerType mrk = m->CreateMarker(), mod = m->CreateMarker();
 		for(k = 0; k < num; k++) m->SetMarker(adjacent[k], mrk);
 		adj_iterator it;
@@ -2219,7 +2219,7 @@ namespace INMOST
 		for(ElementType etype = NODE; etype <= CELL; etype = etype << 1 )
 		{
 			int el_num = ElementNum(etype);
-			for(dynarray<HandleType, 64>::size_type it = 0; it < arr[el_num].size(); it++) 
+			for(size_t it = 0; it < arr[el_num].size(); it++) 
 			{
 				assert( GetHandleElementType(arr[el_num][it]) == etype );
 				if( etype < CELL ) //check for upper adjacencies of current element
@@ -2278,7 +2278,7 @@ namespace INMOST
 	{
 		assert( !(GetElementType() == EDGE && GetMeshLink()->LowConn(GetHandle()).size() > 2) ); // cannot add another node to edge
 		Mesh * m = GetMeshLink();
-		dynarray<HandleType, 64> arr[4];
+		std::vector<HandleType> arr[4];
 		MarkerType mod = m->CreateMarker();
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < num; k++)
 		{
@@ -2353,7 +2353,7 @@ namespace INMOST
 		for (ElementType etype = NODE; etype <= CELL; etype = etype << 1)
 		{
 			int el_num = ElementNum(etype);
-			for (dynarray<HandleType, 64>::size_type it = 0; it < arr[el_num].size(); it++)
+			for (size_t it = 0; it < arr[el_num].size(); it++)
 			{
 				assert(GetHandleElementType(arr[el_num][it]) == etype);
 				if (etype < CELL) //check for upper adjacencies of current element

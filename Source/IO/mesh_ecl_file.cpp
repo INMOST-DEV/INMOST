@@ -318,7 +318,7 @@ namespace INMOST
 						}
 					}
 				}
-				dynarray<int, 64> nums(n_cells.size()); //store all numbers
+				std::vector<int> nums(n_cells.size()); //store all numbers
 				for (size_t k = 0; k < n_cells.size(); ++k) nums[k] = n_cells[k].IntegerDF(indexes);
 				std::sort(nums.begin(), nums.end());
 				nums.resize(std::unique(nums.begin(), nums.end()) - nums.begin());
@@ -1061,8 +1061,7 @@ namespace INMOST
 		Storage::integer_array bn = n->IntegerArray(write);
 		if (!adj.empty())
 		{
-			dynarray<int, 64> uni, tmp;
-			//std::vector<int> uni, tmp;
+			std::vector<int> uni, tmp;
 			for (ElementArray<Edge>::size_type k = 0; k < adj.size(); ++k)
 			{
 				Storage::integer_array be = adj[k]->IntegerArray(block);
@@ -1080,8 +1079,7 @@ namespace INMOST
 		Storage::integer_array bn = n->IntegerArray(write);
 		if (!adj.empty())
 		{
-			dynarray<int, 64> uni(bn.begin(), bn.end()), tmp(uni.size());
-			//std::vector<int> uni(bn.begin(), bn.end()), tmp(uni.size());
+			std::vector<int> uni(bn.begin(), bn.end()), tmp(uni.size());
 			for (ElementArray<Edge>::size_type k = 0; k < adj.size(); ++k)
 			{
 				Storage::integer_array be = adj[k]->IntegerArray(block);
@@ -1099,8 +1097,7 @@ namespace INMOST
 		if (!adj.empty())
 		{
 			Storage::integer_array be = adj[0]->IntegerArray(block);
-			dynarray<int, 64> inter(be.begin(), be.end()), tmp(inter.size());
-			//std::vector<int> inter(be.begin(), be.end()), tmp(inter.size());
+			std::vector<int> inter(be.begin(), be.end()), tmp(inter.size());
 			for (ElementArray<Edge>::size_type k = 1; k < adj.size(); ++k)
 			{
 				be = adj[k]->IntegerArray(block);

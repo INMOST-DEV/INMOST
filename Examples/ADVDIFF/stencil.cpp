@@ -78,11 +78,11 @@ bool find_stencils(Cell cK,
 
 	
 	//store all the precomputed interpolation directions
-	dynarray<real,128> dirs; //all directions
-	dynarray<real,128> bndrhs; //right hand sides coming out of boundary conditions
-	dynarray<real,128> bndmlt; //multiplier for original cell
-	dynarray<integer,128> weights; //layer number
-	dynarray<HandleType,128> handles; //elements corresponding to each direction
+	std::vector<real> dirs; //all directions
+	std::vector<real> bndrhs; //right hand sides coming out of boundary conditions
+	std::vector<real> bndmlt; //multiplier for original cell
+	std::vector<integer> weights; //layer number
+	std::vector<HandleType> handles; //elements corresponding to each direction
 
 	//variables used for interpolation calculation
 	rMatrix xK(1,3), //current cell position

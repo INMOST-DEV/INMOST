@@ -399,7 +399,7 @@ int main(int argc,char ** argv)
 		Storage::real B[] = {-1,5,-21};
 		raMatrix mA = raMatrixMake(A,3,1);
 		raMatrix mB = raMatrixMake(B,3,1);
-		rdMatrix Q = mA.Transform(mB);
+		rMatrix Q = mA.Transform(mB);
 		std::cout << "Q:" << std::endl;
 		Q.Print();
 		std::cout << "Q*mA:" << std::endl;

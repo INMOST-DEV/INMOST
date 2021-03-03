@@ -474,7 +474,7 @@ namespace INMOST
 			cells[k]->RemMarker(marker);
 		}
 		tree->intersect_plane_edge(clip_point, clip_state, cells, marker, p, n);
-		dynarray<edge_point, 128> clipcoords, loopcoords;
+		std::vector<edge_point> clipcoords, loopcoords;
 		std::vector<bool> closed;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < cells.size(); ++k)
 		{
@@ -970,8 +970,8 @@ namespace INMOST
 				face2gl f;
 				f.set_color(0.6, 0.6, 0.6, 1);
 				ElementArray<Node> nodes = Element(mm, faces[k])->getNodes();
-				dynarray<bool, 64> nodepos(nodes.size());
-				dynarray<Storage::real, 64> faceverts;
+				std::vector<bool> nodepos(nodes.size());
+				std::vector<Storage::real> faceverts;
 				Storage::real_array coords = nodes[0].Coords();
 				for (INMOST_DATA_ENUM_TYPE q = 0; q < nodes.size(); q++)
 				{

@@ -92,18 +92,18 @@ namespace INMOST
 	class incident_matrix
 	{
 		Mesh * mesh;
-		dynarray< unsigned char, 4096 > matrix;
-		dynarray< char ,256 > visits;
-		dynarray< char ,256 > visits0;
-		dynarray<HandleType, 256> head_column;
-		dynarray<HandleType, 256> head_row;
-		dynarray<unsigned char ,256> head_row_count;
-		dynarray<unsigned, 256> insert_order;
+		std::vector< unsigned char > matrix;
+		std::vector< char > visits;
+		std::vector< char > visits0;
+		std::vector<HandleType> head_column;
+		std::vector<HandleType> head_row;
+		std::vector<unsigned char> head_row_count;
+		std::vector<unsigned> insert_order;
 		bool exit_recurse;
 		ElementArray<T> min_loop, temp_loop; //used as return
-		dynarray< char , 256 > hide_column;
-		dynarray< char , 256 > hide_row;
-		dynarray< char , 256 > stub_row;
+		std::vector< char > hide_column;
+		std::vector< char > hide_row;
+		std::vector< char > stub_row;
 #if defined(RECORD_PATH)
 		std::vector< std::pair<std::vector<int>,double> > remember;
 #endif
@@ -440,11 +440,11 @@ namespace INMOST
 				else
 				{
 					bool stub = false;
-					for(dynarray<unsigned char,256>::size_type j = 0; j < head_row_count.size() && !exit_recurse; j++) //first try follow the order
+					for(size_t j = 0; j < head_row_count.size() && !exit_recurse; j++) //first try follow the order
 					{
 						if( stub_row[j] == 0 && matrix[node*head_row_count.size()+j] == 1 && head_row_count[j] == 1 )
 						{
-							for(dynarray<HandleType,256>::size_type q = 0; q < head_column.size() && !exit_recurse; q++)
+							for(size_t q = 0; q < head_column.size() && !exit_recurse; q++)
 							{
 								if( visits[q] > 0 && matrix[q*head_row_count.size()+j] == 1 && hide_column[q] == 1 )
 								{
@@ -460,11 +460,11 @@ namespace INMOST
 						}
 					}
 					
-					if( !stub ) for(dynarray<unsigned char,256>::size_type j = 0; j < head_row_count.size() && !exit_recurse; j++)
+					if( !stub ) for(size_t j = 0; j < head_row_count.size() && !exit_recurse; j++)
 					{
 						if( stub_row[j] == 0 && matrix[node*head_row_count.size()+j] == 0 && head_row_count[j] == 1 )
 						{
-							for(dynarray<HandleType,256>::size_type q = 0; q < head_column.size() && !exit_recurse; q++)
+							for(size_t q = 0; q < head_column.size() && !exit_recurse; q++)
 							{
 								if( visits[q] > 0 && matrix[q*head_row_count.size()+j] == 1 && hide_column[q] == 1 )
 								{
@@ -486,23 +486,23 @@ namespace INMOST
 			//else if( print ) std::cout << "fail" << std::endl;
 			if( length == 1 )
 			{
-				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
+				for(size_t j = 0; j < head_row.size(); j++)
 					stub_row[j] = 0;
 			}
 		}
 	public:
 		bool all_visited()
 		{
-			for(dynarray<char,256>::size_type k = 0; k < visits.size(); k++)
+			for(size_t k = 0; k < visits.size(); k++)
 				if( visits[k] != 0 ) return false;
 			return true;
 		}
 		void print_matrix()
 		{
 			Storage::real cnt[3];
-			for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
+			for(size_t k = 0; k < head_column.size(); k++)
 			{
-				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
+				for(size_t j = 0; j < head_row.size(); j++)
 					std::cout << static_cast<int>(matrix[k*head_row.size()+ j]);
 				std::cout << " " << (int)visits[k] << " " << (int)visits0[k];
 				Element(mesh,head_column[k])->Centroid(cnt);
@@ -552,7 +552,7 @@ namespace INMOST
 				visits.resize(head_column.size());
 				visits0.resize(head_column.size());
 				/*
-				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
+				for(size_t it = 0; it < head_column.size(); ++it)
 				{
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
@@ -560,7 +560,7 @@ namespace INMOST
 							printf("element %s:%d already have marker %d\n",ElementTypeName(GetHandleElementType(sub[jt])),GetHandleID(sub[jt]),hide_marker);
 				}
 				 */
-				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
+				for(size_t it = 0; it < head_column.size(); ++it)
 				{
 					visits[it] = it < num_inner ? 2 : 1;
 					visits0[it] = visits[it];
@@ -575,7 +575,7 @@ namespace INMOST
 					}
 				}
 				std::map<HandleType,int> mat_num;
-				for(dynarray<HandleType,256>::size_type it = 0; it < head_row.size(); ++it)
+				for(size_t it = 0; it < head_row.size(); ++it)
 				{
 					mesh->RemPrivateMarker(head_row[it],hide_marker);
 					mat_num[head_row[it]] = static_cast<int>(it);
@@ -587,7 +587,7 @@ namespace INMOST
 				
 				
 				
-				for(typename dynarray<HandleType,256>::size_type it = 0; it < head_column.size(); ++it)
+				for(size_t it = 0; it < head_column.size(); ++it)
 				{
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
@@ -669,7 +669,7 @@ namespace INMOST
 				MarkerType hide_marker = mesh->CreatePrivateMarker();
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetPrivateMarker(ret.at(k),hide_marker);
 				if( print ) std::cout << "return loop [" << ret.size() << "]:";
-				for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
+				for(size_t k = 0; k < head_column.size(); k++)
 					if( mesh->GetPrivateMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;
@@ -698,18 +698,18 @@ namespace INMOST
 	class incident_matrix
 	{
 		Mesh * mesh;
-		dynarray< unsigned char, 4096 > matrix;
-		dynarray< char ,256 > visits;
-		dynarray< char ,256 > visits0;
-		dynarray<HandleType, 256> head_column;
-		dynarray<HandleType, 256> head_row;
-		dynarray<unsigned char ,256> head_row_count;
-		dynarray<unsigned, 256> insert_order;
+		std::vector< unsigned char > matrix;
+		std::vector< char > visits;
+		std::vector< char > visits0;
+		std::vector<HandleType > head_column;
+		std::vector<HandleType > head_row;
+		std::vector<unsigned char > head_row_count;
+		std::vector<unsigned > insert_order;
 		bool exit_recurse;
 		ElementArray<T> min_loop, temp_loop; //used as return
-		dynarray< char , 256 > hide_column;
-		dynarray< char , 256 > hide_row;
-		dynarray< char , 256 > stub_row;
+		std::vector< char > hide_column;
+		std::vector< char > hide_row;
+		std::vector< char > stub_row;
 #if defined(RECORD_PATH)
 		std::vector< std::pair<std::vector<int>,double> > remember;
 #endif
@@ -1016,11 +1016,11 @@ namespace INMOST
 				else
 				{
 					bool stub = false;
-					for(dynarray<unsigned char,256>::size_type j = 0; j < head_row_count.size() && !exit_recurse; j++) //first try follow the order
+					for(size_t j = 0; j < head_row_count.size() && !exit_recurse; j++) //first try follow the order
 					{
 						if( stub_row[j] == 0 && matrix[node*head_row_count.size()+j] == 1 && head_row_count[j] == 1 )
 						{
-							for(dynarray<HandleType,256>::size_type q = 0; q < head_column.size() && !exit_recurse; q++)
+							for(size_t q = 0; q < head_column.size() && !exit_recurse; q++)
 							{
 								if( visits[q] > 0 && matrix[q*head_row_count.size()+j] == 1 && hide_column[q] == 1 )
 								{
@@ -1036,11 +1036,11 @@ namespace INMOST
 						}
 					}
 					
-					if( !stub ) for(dynarray<unsigned char,256>::size_type j = 0; j < head_row_count.size() && !exit_recurse; j++)
+					if( !stub ) for(size_t j = 0; j < head_row_count.size() && !exit_recurse; j++)
 					{
 						if( stub_row[j] == 0 && matrix[node*head_row_count.size()+j] == 0 && head_row_count[j] == 1 )
 						{
-							for(dynarray<HandleType,256>::size_type q = 0; q < head_column.size() && !exit_recurse; q++)
+							for(size_t q = 0; q < head_column.size() && !exit_recurse; q++)
 							{
 								if( visits[q] > 0 && matrix[q*head_row_count.size()+j] == 1 && hide_column[q] == 1 )
 								{
@@ -1061,23 +1061,23 @@ namespace INMOST
 			}
 			if( length == 1 )
 			{
-				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
+				for(size_t j = 0; j < head_row.size(); j++)
 					stub_row[j] = 0;
 			}
 		}
 	public:
 		bool all_visited()
 		{
-			for(dynarray<char,256>::size_type k = 0; k < visits.size(); k++)
+			for(size_t k = 0; k < visits.size(); k++)
 				if( visits[k] != 0 ) return false;
 			return true;
 		}
 		void print_matrix()
 		{
 			Storage::real cnt[3];
-			for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
+			for(size_t k = 0; k < head_column.size(); k++)
 			{
-				for(dynarray<HandleType,256>::size_type j = 0; j < head_row.size(); j++)
+				for(size_t j = 0; j < head_row.size(); j++)
 					std::cout << static_cast<int>(matrix[k*head_row.size()+ j]);
 				std::cout << " " << (int)visits[k] << " " << (int)visits0[k];
 				Element(mesh,head_column[k])->Centroid(cnt);
@@ -1111,7 +1111,7 @@ namespace INMOST
 				}
 			}
 		}
-		void MapData(const dynarray<HandleType,256> & set)
+		void MapData(const std::vector<HandleType> & set)
 		{
 			
 		}
@@ -1129,7 +1129,7 @@ namespace INMOST
 				visits.resize(head_column.size());
 				visits0.resize(head_column.size());
 				/*
-				 for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
+				 for(size_t it = 0; it < head_column.size(); ++it)
 				 {
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
@@ -1137,7 +1137,7 @@ namespace INMOST
 				 printf("element %s:%d already have marker %d\n",ElementTypeName(GetHandleElementType(sub[jt])),GetHandleID(sub[jt]),hide_marker);
 				 }
 				 */
-				for(typename dynarray<HandleType, 256>::size_type it = 0; it < head_column.size(); ++it)
+				for(size_t it = 0; it < head_column.size(); ++it)
 				{
 					visits[it] = it < num_inner ? 2 : 1;
 					visits0[it] = visits[it];
@@ -1152,7 +1152,7 @@ namespace INMOST
 					}
 				}
 				std::map<HandleType,int> mat_num;
-				for(dynarray<HandleType,256>::size_type it = 0; it < head_row.size(); ++it)
+				for(size_t it = 0; it < head_row.size(); ++it)
 				{
 					mesh->RemPrivateMarker(head_row[it],hide_marker);
 					mat_num[head_row[it]] = static_cast<int>(it);
@@ -1164,7 +1164,7 @@ namespace INMOST
 				
 				
 				
-				for(typename dynarray<HandleType,256>::size_type it = 0; it < head_column.size(); ++it)
+				for(size_t it = 0; it < head_column.size(); ++it)
 				{
 					Element::adj_type const & sub = mesh->LowConn(head_column[it]);
 					for(Element::adj_type::size_type jt = 0; jt < sub.size(); ++jt)
@@ -1246,7 +1246,7 @@ namespace INMOST
 				MarkerType hide_marker = mesh->CreatePrivateMarker();
 				for(typename ElementArray<T>::size_type k = 0; k < ret.size(); k++) mesh->SetPrivateMarker(ret.at(k),hide_marker);
 				if( print ) std::cout << "return loop [" << ret.size() << "]:";
-				for(dynarray<HandleType,256>::size_type k = 0; k < head_column.size(); k++)
+				for(size_t k = 0; k < head_column.size(); k++)
 					if( mesh->GetPrivateMarker(head_column[k],hide_marker) )
 					{
 						visits[k]--;

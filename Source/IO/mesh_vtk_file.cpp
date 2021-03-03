@@ -213,7 +213,7 @@ namespace INMOST
 			f << "\n";
 		}
 		{
-			dynarray<int,64> values;
+			std::vector<int> values;
 			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
 			{	
 				switch(it->GetGeometricType())
@@ -347,7 +347,7 @@ safe_output:
 			else
 				f << "CELLS " << NumberOfCells() << " " << values.size() << "\n";
 
-			for(dynarray<Storage::integer,64>::size_type i = 0; i < values.size(); i++)
+			for(size_t i = 0; i < values.size(); i++)
 			{
 				f << values[i] << " ";
 				if( (i+1) % 20 == 0) f << "\n";
@@ -2178,8 +2178,8 @@ safe_output:
 								{
 									int k = j;
 									k++; //skip number of total number of integers
-									dynarray<integer,64> sizes(cp[k++]);
-									for(dynarray<integer,64>::size_type m = 0; m < sizes.size(); m++)
+									std::vector<integer> sizes(cp[k++]);
+									for(size_t m = 0; m < sizes.size(); m++)
 									{
 										sizes[m] = cp[k++];
 										for (integer l = 0; l < sizes[m]; l++)

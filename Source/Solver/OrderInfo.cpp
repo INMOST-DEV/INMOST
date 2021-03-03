@@ -37,7 +37,7 @@ namespace INMOST
 #endif
 		{
 			int ierr = 0;
-			dynarray<INMOST_DATA_REAL_TYPE, 1024> temp(num);
+			std::vector<INMOST_DATA_REAL_TYPE> temp(num);
 			memcpy(temp.data(), inout, sizeof(INMOST_DATA_REAL_TYPE) * num);
 			GUARD_MPI(MPI_Allreduce(temp.data(), inout, num, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm));
 		}

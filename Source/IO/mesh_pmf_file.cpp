@@ -600,7 +600,7 @@ namespace INMOST
 		io_converter<INMOST_DATA_ENUM_TYPE    ,INMOST_DATA_REAL_TYPE> uconv;
 		io_converter<INMOST_DATA_BIG_ENUM_TYPE,INMOST_DATA_REAL_TYPE> buconv;
 		REPORT_STR("start load pmf");
-		dynarray<INMOST_DATA_ENUM_TYPE,128> myprocs;
+		std::vector<INMOST_DATA_ENUM_TYPE> myprocs;
 		std::stringstream in(std::ios::in | std::ios::out | std::ios::binary);
 		HeaderType token;
 		std::set< std::string > noload, loadonly, noderivs;

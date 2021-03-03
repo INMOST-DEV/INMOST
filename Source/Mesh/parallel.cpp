@@ -367,7 +367,7 @@ namespace INMOST
 		{
 			Storage::integer_array p1 = e->IntegerArray(tag);
 			const Storage::integer * p2 = static_cast<const Storage::integer *>(static_cast<const void *>(data));
-			dynarray<Storage::integer,64> result(static_cast<size_t>(p1.size())+size);
+			std::vector<Storage::integer> result(static_cast<size_t>(p1.size())+size);
 			result.resize(std::set_union(p1.begin(),p1.end(),p2,p2+size,result.begin())-result.begin());
 			p1.replace(p1.begin(),p1.end(),result.begin(),result.end());
 		}
@@ -902,7 +902,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp;
+		static std::vector<Storage::real> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
@@ -917,7 +917,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp;
+		static std::vector<Storage::integer> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
@@ -932,7 +932,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::enumerator,64> temp;
+		static std::vector<Storage::enumerator> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
@@ -1032,7 +1032,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp;
+		static std::vector<Storage::real> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
@@ -1047,7 +1047,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp;
+		static std::vector<Storage::integer> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
@@ -1062,7 +1062,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::enumerator,64> temp;
+		static std::vector<Storage::enumerator> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MAX,comm));
@@ -1116,7 +1116,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::real,64> temp;
+		static std::vector<Storage::real> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::real)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
@@ -1131,7 +1131,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::enumerator,64> temp;
+		static std::vector<Storage::enumerator> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MIN,comm));
@@ -1146,7 +1146,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static dynarray<Storage::integer,64> temp;
+		static std::vector<Storage::integer> temp;
 		temp.resize(size);
 		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
 		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
@@ -1311,7 +1311,7 @@ namespace INMOST
 	
 	
 	
-	void determine_my_procs_low(Mesh * m, HandleType h, dynarray<Storage::integer,64> & result, dynarray<Storage::integer,64> & intersection)
+	void determine_my_procs_low(Mesh * m, HandleType h, std::vector<Storage::integer> & result, std::vector<Storage::integer> & intersection)
 	{
 		MarkerType hm = m->HideMarker();
 		Element::adj_type const & subelements = m->LowConn(h);
@@ -1330,14 +1330,14 @@ namespace INMOST
 			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
 			Storage::integer_array q = m->IntegerArrayDV(*i,m->ProcessorsTag());
 			intersection.resize(std::max(static_cast<INMOST_DATA_ENUM_TYPE>(result.size()),static_cast<INMOST_DATA_ENUM_TYPE>(q.size())));
-			dynarray<Storage::integer,64>::iterator qt = std::set_intersection(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
+			std::vector<Storage::integer>::iterator qt = std::set_intersection(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
 			intersection.resize(qt-intersection.begin());
 			result.swap(intersection);
 			i++;
 		}
 	}
 	
-	void determine_my_procs_high(Mesh * m, HandleType h, const Tag & procs, dynarray<Storage::integer,64> & result, dynarray<Storage::integer,64> & intersection)
+	void determine_my_procs_high(Mesh * m, HandleType h, const Tag & procs, std::vector<Storage::integer> & result, std::vector<Storage::integer> & intersection)
 	{
 		MarkerType hm = m->HideMarker();
 		Element::adj_type const & overelements = m->HighConn(h);
@@ -1349,7 +1349,7 @@ namespace INMOST
 			if( hm && m->GetMarker(*i,hm) ) {i++; continue;}
 			Storage::integer_array q = m->IntegerArrayDV(*i,procs);
 			intersection.resize(result.size()+q.size());
-			dynarray<Storage::integer,64>::iterator qt = std::set_union(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
+			std::vector<Storage::integer>::iterator qt = std::set_union(result.begin(),result.end(),q.begin(),q.end(),intersection.begin());
 			intersection.resize(qt-intersection.begin());
 			result.swap(intersection);
 			i++;
@@ -1480,7 +1480,7 @@ namespace INMOST
 #endif //USE_PARALLEL_STORAGE
 		ReportParallelStorage();
 		//determine which bboxes i intersect
-		dynarray<int,64> procs;
+		std::vector<int> procs;
 		Storage::real bbox[6]; //local bounding box
 		std::vector<Storage::real> bboxs((size_t)mpisize*6);
 		//Compute local bounding box containing nodes.
@@ -1742,7 +1742,7 @@ namespace INMOST
 					std::vector<size_t> sendsizeall(mpisize);
 					ENTER_BLOCK();
 					
-					for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
+					for(size_t k = 0; k < procs.size(); k++)
 					{
 						send_buffs[k].first = procs[k];
 						pack_data(send_buffs[k].second,exch_data.size(),GetCommunicator());
@@ -1772,7 +1772,7 @@ namespace INMOST
 					{
 						
 						ENTER_BLOCK();
-						for(dynarray<integer,64>::size_type k = 0; k < procs.size(); k++)
+						for(size_t k = 0; k < procs.size(); k++)
 						{
 							send_buffs[k].first = procs[k];
 							send_buffs[k].second = exch_data;
@@ -1942,7 +1942,7 @@ namespace INMOST
 #pragma omp parallel
 #endif
 						{
-							dynarray<Storage::integer,64> result, intersection;
+							std::vector<Storage::integer> result, intersection;
 #if defined(USE_OMP)
 #pragma omp for
 #endif
@@ -2090,7 +2090,7 @@ namespace INMOST
 							{
 								integer conn_size = message_recv[m][pos++], flag = 1;
 								//REPORT_VAL("number of connxections",conn_size);
-								dynarray<HandleType,64> sub_elements;
+								std::vector<HandleType> sub_elements;
 								for(integer j = 0; j < conn_size; j++)
 								{
 									integer global_id = message_recv[m][pos++];
@@ -6820,7 +6820,7 @@ namespace INMOST
 		Tag tag_new_processors = CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET | CELL | FACE | EDGE | NODE, NONE);
 		ElementType bridge = Integer(GetHandle(),tag_bridge);
 		Storage::integer layers = Integer(GetHandle(),tag_layers);
-		dynarray<Storage::integer,64> result,intersection;
+		std::vector<Storage::integer> result,intersection;
 		
 		ExchangeData(tag_new_owner,CELL,0);
 		
@@ -7163,7 +7163,7 @@ namespace INMOST
 				//compute processors that should have the entity but they have not
 				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
 				result.resize(new_procs.size());
-				dynarray<Storage::integer,64>::iterator end = std::set_difference(new_procs.begin(),new_procs.end(),old_procs.begin(),old_procs.end(),result.begin());
+				std::vector<Storage::integer>::iterator end = std::set_difference(new_procs.begin(),new_procs.end(),old_procs.begin(),old_procs.end(),result.begin());
 				result.resize(end-result.begin());
 				//mark to send entity to processors that don't have it
 				Storage::integer_array sendto = it->IntegerArray(tag_sendto);

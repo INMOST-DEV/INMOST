@@ -799,7 +799,7 @@ namespace INMOST
 		{
 			{
 				enumerator flag0, flag1, i;
-				dynarray<Element::adj_type const *, 64> hcarr(s);
+				std::vector<Element::adj_type const *> hcarr(s);
 				hcarr[0] = &HighConn(arr[0]);
 				if( !hcarr[0]->empty() ) 
 				{

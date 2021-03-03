@@ -483,18 +483,18 @@ typedef struct orient_face_t
 template<class T>
 class incident_matrix
 {
-	dynarray< unsigned char, 4096 > matrix;
-	dynarray< char ,256 > visits;
-	dynarray< T , 256> head_column;
-	dynarray<Element, 256> head_row;
-	dynarray<unsigned char ,256> head_row_count;
-	dynarray<unsigned, 256> insert_order;
+	std::vector< unsigned char > matrix;
+	std::vector< char > visits;
+	std::vector< T > head_column;
+	std::vector<Element> head_row;
+	std::vector<unsigned char > head_row_count;
+	std::vector<unsigned> insert_order;
 	bool exit_recurse;
-	dynarray<T,64> min_loop, temp_loop; //used as return
-	dynarray< char , 256 > hide_column;
-	dynarray< char , 256 > hide_row;
-	dynarray< char , 256 > stub_row;
-	dynarray< double, 192 > centroids, normals;
+	std::vector<T> min_loop, temp_loop; //used as return
+	std::vector< char > hide_column;
+	std::vector< char > hide_row;
+	std::vector< char > stub_row;
+	std::vector< double > centroids, normals;
 	double min_loop_measure;
 	Mesh * mesh;
 	
@@ -551,7 +551,7 @@ class incident_matrix
 		}
 		return success;
 	}
-	Storage::real compute_measure(dynarray<T,64> & data)
+	Storage::real compute_measure(std::vector<T> & data)
 	{
 		Storage::real measure = 0;
 		if( data[0]->GetElementDimension() == 1 ) //this is edge //use geometric dimension here for 2d compatibility
@@ -824,7 +824,7 @@ public:
 			MarkerType hide_marker = m->CreateMarker();
 
 			visits.resize(head_column.size());
-			for(typename dynarray<T, 256>::iterator it = head_column.begin(); it != head_column.end(); ++it)
+			for(typename std::vector<T>::iterator it = head_column.begin(); it != head_column.end(); ++it)
 			{
 				unsigned k = it-head_column.begin();
 				visits[k] = k < num_inner ? 2 : 1;
@@ -839,9 +839,9 @@ public:
 			
 			
 			
-			tiny_map<Element,int,256> mat_num;
+			std::map<Element,int> mat_num;
 			
-			for(dynarray<Element,256>::iterator it = head_row.begin(); it != head_row.end(); ++it)
+			for(std::vector<Element>::iterator it = head_row.begin(); it != head_row.end(); ++it)
 			{
 				(*it)->RemMarker(hide_marker);
 				mat_num[*it] = it-head_row.begin();
@@ -853,7 +853,7 @@ public:
 			
 			
 			
-			for(typename dynarray<T,256>::iterator it = head_column.begin(); it != head_column.end(); ++it)
+			for(typename std::vector<T>::iterator it = head_column.begin(); it != head_column.end(); ++it)
 			{
 				ElementArray<Element> sub = (*it)->getAdjElements((*it)->GetElementType() >> 1);
 				for(ElementArray<Element>::iterator jt = sub.begin(); jt != sub.end(); ++jt)
@@ -916,7 +916,7 @@ public:
 			}
 		} while( min_loop.empty() && first != UINT_MAX );
 		
-		for(typename dynarray<T,64>::iterator it = min_loop.begin(); it != min_loop.end(); ++it)
+		for(typename std::vector<T>::iterator it = min_loop.begin(); it != min_loop.end(); ++it)
 			ret.push_back(it->self());
 		//ret.insert(ret.end(),min_loop.begin(),min_loop.end());
 		min_loop.clear();
@@ -1119,22 +1119,22 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 		MarkerType edge_on_edge = g->mesh->CreateMarker();
 		MarkerType multi_edge   = g->mesh->CreateMarker();
 		
-		dynarray<Element,16> en1;
-		tiny_map<int,int, 64> edges_mat;
-		dynarray<Edge,128> face_edges;
-		dynarray<Edge,128> potential_edges;
-		dynarray<Edge,128> skipped_edges;
-		dynarray<dynarray<Node,128> ,24> edge_cut_nodes(l);
-		dynarray<dynarray<Node,128> ,24> edge_cut_nodes2(l);
-		dynarray<Element,128> face_elements; // collect nodes and edges here in good order (normal outside)
-		dynarray<Storage::integer,64> mat_intersection, mat_union, matse0,matse1;
+		std::vector<Element> en1;
+		std::map<int,int> edges_mat;
+		std::vector<Edge> face_edges;
+		std::vector<Edge> potential_edges;
+		std::vector<Edge> skipped_edges;
+		std::vector<std::vector<Node> > edge_cut_nodes(l);
+		std::vector<std::vector<Node> > edge_cut_nodes2(l);
+		std::vector<Element> face_elements; // collect nodes and edges here in good order (normal outside)
+		std::vector<Storage::integer> mat_intersection, mat_union, matse0,matse1;
 		mat_ret_type mat0d,mat2d;
-		dynarray<Node,24> node_in_face(l,InvalidNode());
-		dynarray<HandleType,128> faces_on_face;
-		dynarray<Face,128> inner_faces;
-		dynarray<int,64> can_skip, cannot_skip, skip_mats;
-		tiny_map<int,int,64> mat_cuts_on_edge[4];
-		tiny_map<int, dynarray<Edge,128> ,64> edges_by_material; // edges that lay inside inital octree face
+		std::vector<Node> node_in_face(l,InvalidNode());
+		std::vector<HandleType> faces_on_face;
+		std::vector<Face> inner_faces;
+		std::vector<int> can_skip, cannot_skip, skip_mats;
+		std::map<int,int> mat_cuts_on_edge[4];
+		std::map<int, std::vector<Edge> > edges_by_material; // edges that lay inside inital octree face
 		ElementArray<Node> split_node(g->mesh,1);
 		if( print ) std::cout << "calculate cutcell" << std::endl;
 
@@ -1480,14 +1480,14 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 				cannot_skip.clear();
 				can_skip.clear();
 				
-				for(dynarray<Element, 128>::iterator it = face_elements.begin(); it != face_elements.end(); ++it)
+				for(std::vector<Element>::iterator it = face_elements.begin(); it != face_elements.end(); ++it)
 					if( (*it)->GetElementType() == EDGE )
 					{
 						Storage::integer_array a = (*it)->IntegerArray(g->materials);
 						if( a.size() == 1 )
 							cannot_skip.push_back(a[0]);
 					}
-				for(tiny_map<int,int,64>::iterator it = edges_mat.begin(); it != edges_mat.end() && !is_create_center_node; ++it) 
+				for(std::map<int,int>::iterator it = edges_mat.begin(); it != edges_mat.end() && !is_create_center_node; ++it) 
 				{
 					if( (it->second & 1) + ((it->second & 2) >> 1) + ((it->second & 4) >> 2) + ((it->second & 8) >> 3) <= 1 )
 						can_skip.push_back(it->first);
@@ -1519,12 +1519,12 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 			{
 				unsigned found = 0;
 				Storage::integer_array mats0, mats1, matse0a, matse1a;
-				tiny_map<int,int,5> edge_sides;
+				std::map<int,int> edge_sides;
 				bool stuck = false;
 				while( !stuck )
 				{
-					tiny_map<int,int,64> nummats;
-					tiny_map<int,int,64>::iterator minmat, qt;
+					std::map<int,int nummats;
+					std::map<int,int>::iterator minmat, qt;
 					int local_found = 0, last_q = -1, last_e = -1, last_j = -1, cutnodes = 0;
 					Storage::integer curmat;
 					for(j = 1; j < face_elements.size(); j+=2) //traverse all edges
@@ -1560,7 +1560,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 						
 						if( print ) std::cout << "current material " << curmat << std::endl;
 						
-						dynarray< std::pair< std::pair<int,int> , int > , 64 > maxpath;
+						std::vector< std::pair< std::pair<int,int> , int > > maxpath;
 						found = 0;
 						while( found < face_elements.size() )
 						{
@@ -1853,7 +1853,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 										std::cout << std::endl;
 									}
 									//~ for(unsigned jjj = 0; jjj < mat_union.size(); jjj++)
-										//~ for(tiny_map<int,int,64>::iterator it = edges_mat.begin(); it != edges_mat.end(); ++it) 
+										//~ for(std::map<int,int>::iterator it = edges_mat.begin(); it != edges_mat.end(); ++it) 
 											//~ if( it->first == mat_union[jjj] )
 											//~ {
 												//~ if( print ) std::cout << "erase material: " << it->first << std::endl;
@@ -1864,7 +1864,7 @@ void cellCreateINMOST(struct grid * g, int m, bool print = false)
 								}
 								
 								{ //find new face_elements array
-									dynarray<Element,128> replace;
+									std::vector<Element> replace;
 									int started_good = 0, pushed = 0;
 									for(unsigned jj = 0; jj < face_elements.size(); jj++)
 									{
@@ -1995,7 +1995,7 @@ exit_work:				if( !success )
 					{
 						
 						Storage::real coord[3],coord2[3];
-						dynarray<matcenter,32> centers;
+						std::vector<matcenter> centers;
 						for(j = 0; j < face_elements.size(); j+=2)
 							centers.push_back(matcenter(face_elements[j]->IntegerArray(g->materials),&face_elements[j]->getAsNode()->Coords()[0]));
 						int max = centers.size();
@@ -2070,7 +2070,7 @@ exit_work:				if( !success )
 					MarkerType del = g->mesh->CreateMarker();
 					for(j = 1; j < face_elements.size(); j+=2) if( !face_elements[j]->GetMarker(edge_on_edge) ) face_elements[j]->SetMarker(del);
 
-					dynarray<Edge,128>::iterator it = face_edges.begin();
+					std::vector<Edge>::iterator it = face_edges.begin();
 					while(it != face_edges.end())
 						if((*it)->GetMarker(del) ) 
 						{
@@ -2081,7 +2081,7 @@ exit_work:				if( !success )
 						else it++;
 						
 					
-					for(tiny_map<int, dynarray<Edge,128> ,64>::iterator jt = edges_by_material.begin();
+					for(std::map<int, std::vector<Edge> >::iterator jt = edges_by_material.begin();
 						jt != edges_by_material.end(); ++jt)
 					{
 						it = jt->second.begin();
@@ -2165,7 +2165,7 @@ exit_work:				if( !success )
 					//try to adjust the position of the face center node
 					/*
 					{
-						dynarray<Element *,64> other_node;
+						std::vector<Element *> other_node;
 						for(j = 0; j < face_edges.size(); j++)
 						{
 							adjacent<Element> n = face_edges[j]->getAdjElements(NODE);
@@ -2322,7 +2322,7 @@ exit_work:				if( !success )
 		
 		if( false )
 		{
-			dynarray<HandleType,128> faces_on_face_copy(faces_on_face);
+			std::vector<HandleType> faces_on_face_copy(faces_on_face);
 			std::sort(faces_on_face_copy.begin(),faces_on_face_copy.end());
 			int old_size = faces_on_face_copy.size();
 			faces_on_face_copy.resize(std::unique(faces_on_face_copy.begin(),faces_on_face_copy.end())-faces_on_face_copy.begin());
@@ -2418,7 +2418,7 @@ exit_work:				if( !success )
 				*/
 				
 				Storage::real coord[3],coord2[3];
-				dynarray<matcenter,24> centers;
+				std::vector<matcenter> centers;
 				for(j = 0; j < l; j++) if( node_in_face[j].isValid() )
 					centers.push_back(matcenter(node_in_face[j]->IntegerArray(g->materials),&node_in_face[j]->Coords()[0]));
 				//make iterations to find correct position of the node
@@ -2912,7 +2912,7 @@ exit_work:				if( !success )
 			//Now create all the faces that lay inside the cell
 			
 			if( print ) std::cout << "create inner faces " << m << std::endl;
-			for(tiny_map<int, dynarray<Edge,128>, 64 >::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
+			for(std::map<int, std::vector<Edge> >::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
 			{
 				std::sort(it->second.begin(),it->second.end());
 				it->second.resize(std::unique(it->second.begin(),it->second.end())-it->second.begin());
@@ -2941,7 +2941,7 @@ exit_work:				if( !success )
 
 				
 				unsigned num_inner_edges = 0, num = 0;
-				dynarray<Edge,128> edges(it->second.size());
+				std::vector<Edge> edges(it->second.size());
 				for(k = 0; k < it->second.size(); k++)
 					if( !it->second[k]->GetMarker(edge_on_face) )
 					{
@@ -2998,7 +2998,7 @@ exit_work:				if( !success )
 				{ 
 					
 					int num_edge_on_face = 0, num_edge_on_edge = 0;
-					tiny_map<int,int,128> num_faces;
+					std::map<int,int> num_faces;
 					for(k = 0; k < loop.size(); k++)
 					{
 						if( loop[k]->GetMarker(edge_on_edge) ) num_edge_on_edge++;
@@ -3113,7 +3113,7 @@ exit_work:				if( !success )
 			faces_on_face.resize(std::unique(faces_on_face.begin(),faces_on_face.end())-faces_on_face.begin());
 			unsigned num_inner_faces = inner_faces.size();
 
-			for(dynarray<HandleType,128>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it)
+			for(std::vector<HandleType>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it)
 				inner_faces.push_back(Face(g->mesh,*it));
 			
 			incident_matrix<Face> matrix(inner_faces.begin(),inner_faces.end(),num_inner_faces);
@@ -3319,8 +3319,8 @@ exit_work:				if( !success )
 		
 		
 		
-		for(tiny_map<int, dynarray<Edge,128> ,64>::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
-			for(dynarray<Edge,128>::iterator jt = it->second.begin(); jt != it->second.end(); jt++)
+		for(std::map<int, std::vector<Edge> >::iterator it = edges_by_material.begin(); it != edges_by_material.end(); ++it) // iterate over materials
+			for(std::vector<Edge>::iterator jt = it->second.begin(); jt != it->second.end(); jt++)
 			{
 				(*jt)->RemMarker(edge_on_face);
 				(*jt)->RemMarker(edge_on_edge);
@@ -3335,7 +3335,7 @@ exit_work:				if( !success )
 		g->mesh->ReleaseMarker(edge_on_face);
 		g->mesh->ReleaseMarker(multi_edge);
 		
-		for(dynarray<HandleType,128>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it) // iterate over materials
+		for(std::vector<HandleType>::iterator it = faces_on_face.begin(); it != faces_on_face.end(); ++it) // iterate over materials
 			Face(g->mesh,*it)->RemMarker(face_on_face);
 		
 		//~ for(std::map<int, std::vector<Face *> >::iterator it = faces_by_material.begin(); it != faces_by_material.end(); ++it) // iterate over materials

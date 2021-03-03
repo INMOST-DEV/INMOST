@@ -76,7 +76,7 @@ class MLMTILUC_preconditioner : public Method
 		INMOST_DATA_ENUM_TYPE first, last;
 		INMOST_DATA_ENUM_TYPE Size() const { return last - first; }
 	} Interval;
-	typedef dynarray<INMOST_DATA_ENUM_TYPE,256> levels_t;
+	typedef std::vector<INMOST_DATA_ENUM_TYPE> levels_t;
 	std::vector<Sparse::Row::entry> L_Entries, U_Entries, B_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
 	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address, B_Address;

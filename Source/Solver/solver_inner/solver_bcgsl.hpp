@@ -49,7 +49,7 @@ namespace INMOST
         int flag, i, its, j, jj, k, l, nm;
         INMOST_DATA_REAL_TYPE c, f, h, s, x, y, z;
         INMOST_DATA_REAL_TYPE anorm = 0.0, g = 0.0, scale = 0.0;
-        dynarray<INMOST_DATA_REAL_TYPE,64> rv1;
+        std::vector<INMOST_DATA_REAL_TYPE> rv1;
         rv1.resize(n);
         // Householder reduction to bidiagonal form
         for (i = 0; i < n*n; ++i) u[i] = a[i];

@@ -78,7 +78,7 @@ using namespace INMOST;
 	}
 
 	void MTILUC_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-									array<Sparse::Row::entry> & Entries,
+									std::vector<Sparse::Row::entry> & Entries,
 									INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
 									std::string file_name)
 	{
@@ -162,7 +162,7 @@ using namespace INMOST;
 		fout.close();
 	}
 	void MTILUC_preconditioner::CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 array<Sparse::Row::entry> & Entries, 
+					 std::vector<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend)
 	{
 		INMOST_DATA_ENUM_TYPE i,r;
@@ -212,7 +212,7 @@ using namespace INMOST;
 		}
 	}
 	void MTILUC_preconditioner::SwapEntries(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					 array<Sparse::Row::entry> & Entries, 
+					 std::vector<Sparse::Row::entry> & Entries, 
 					 INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend, 
 					 INMOST_DATA_ENUM_TYPE k, INMOST_DATA_ENUM_TYPE j)
 	{
@@ -588,7 +588,7 @@ using namespace INMOST;
 #if defined(ILUC2)
 		INMOST_DATA_ENUM_TYPE nzLU2 = 0;
 		INMOST_DATA_REAL_TYPE tau2 = iluc2_tau;
-		array<Sparse::Row::entry> LU2_Entries;
+		std::vector<Sparse::Row::entry> LU2_Entries;
 		interval<INMOST_DATA_ENUM_TYPE, Interval> L2_Address(mobeg, moend+1), U2_Address(mobeg, moend+1);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2list(mobeg, moend, UNDEF), L2list(mobeg, moend, UNDEF);
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2beg(mobeg, moend, EOL), L2beg(mobeg, moend, EOL);

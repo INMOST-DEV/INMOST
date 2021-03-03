@@ -56,8 +56,8 @@ namespace INMOST
 		int nnodes, ncells, nchars, nodenum, elemnum, elemtype, numtags, elemnodes, temp;
 		int ascii, float_size, verlow, verhigh;
 		char skip_keyword[2048];
-		dynarray<int,128> elemtags;
-		dynarray<int,128> nodelist;
+		std::vector<int> elemtags;
+		std::vector<int> nodelist;
 		ElementArray<Node> c_nodes(this);
 		FILE * f = fopen(File.c_str(),"r");
 		if( f == NULL )
@@ -467,7 +467,7 @@ read_elem_num_link:
 
 						if( --elemnodes == 0 ) 
 						{
-							for(dynarray<int,128>::size_type k = 0; k < nodelist.size(); ++k)
+							for(size_t k = 0; k < nodelist.size(); ++k)
 								c_nodes.push_back(newnodes[nodelist[k]]);
 
 							//Create new element

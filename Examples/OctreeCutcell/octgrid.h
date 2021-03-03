@@ -42,7 +42,7 @@ typedef std::vector<HandleType> cell_vector;
 typedef std::map<Tag, Storage::real > data_by_mat;
 typedef std::pair< Storage::real, std::map<Tag, Storage::real> > vol_and_data_by_mat;
 typedef std::map<Storage::integer, vol_and_data_by_mat > data_storage;
-typedef dynarray<Storage::integer, 32> mat_ret_type;
+typedef std::vector<Storage::integer> mat_ret_type;
 
 struct cell
 {	
