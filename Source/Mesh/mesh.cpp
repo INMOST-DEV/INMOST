@@ -14,6 +14,35 @@
 #define PROCESSID -1
 #endif
 
+__INLINE std::string NameSlash(std::string input)
+{
+	for(size_t l = input.size(); l > 0; --l)
+		if( input[l-1] == '/' || input[l-1] == '\\' )
+			return std::string(input.c_str() + l);
+	return input;
+}
+
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
+#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << GetFuncID()++ << "\">" << std::endl; Enter();
+#define EXIT_BLOCK() WriteTab(out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#else // USE_PARALLEL_WRITE_TIME
+#define REPORT_MPI(x) x
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_FUNC() {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
+#define EXIT_FUNC() {}
+#define EXIT_FUNC_DIE()  {}
+#endif // USE_PARALLEL_WRITE_TIME
+
+
 namespace INMOST
 {
   static std::vector<Mesh *> allocated_meshes;
@@ -708,6 +737,8 @@ namespace INMOST
 	}
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)
 	{
+		ENTER_FUNC();
+		REPORT_VAL("for ", tag.GetTagName());
 		//std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
 		//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
 		//std::cout << std::endl;
@@ -718,30 +749,44 @@ namespace INMOST
 			{
 				if( tag.isSparse(etype) )
 				{
+					ENTER_BLOCK();
+					REPORT_STR("Deallocate sparse on " << ElementTypeName(etype));
+					integer total = 0;
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel for reduction(+:total)
 #endif
 					for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 						if( isValidElement(etype,lid) )
-							DelSparseData(ComposeHandle(etype,lid),tag);
+						{
+							if( DelSparseData(ComposeHandle(etype,lid),tag) ) total++;
+						}
+					REPORT_VAL("total deallocated ",total);
+					EXIT_BLOCK();
 				}
 				else if( tag.GetSize() == ENUMUNDEF )
 				{
+					ENTER_BLOCK();
+					REPORT_STR("Deallocate variable length " << ElementTypeName(etype));
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 					for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 						if( isValidElement(etype,lid) )
 							DelDenseData(ComposeHandle(etype,lid),tag);
+					EXIT_BLOCK();
 				}
 			}
 		}
+		ENTER_BLOCK();
+		REPORT_STR("Call delete tag in tag manager");
 #if defined(USE_OMP)
 #pragma omp critical (change_tags)
 #endif
 		{
 			tag = TagManager::DeleteTag(tag,type_mask);
 		}
+		EXIT_BLOCK();
+		EXIT_FUNC();
 		return tag;
 	}
 	
@@ -2420,7 +2465,10 @@ namespace INMOST
 
 	void Mesh::AllocateSparseData(void * & q, const Tag & tag)
 	{
-		q = calloc(1,tag.GetRecordSize());
+		//q = calloc(1,tag.GetRecordSize());
+		char * cq = new char[tag.GetRecordSize()];
+		std::fill(cq,cq+tag.GetRecordSize(),0);
+		q = static_cast<void *>(cq);
 		assert(q != NULL);
 #if defined(USE_AUTODIFF)
 		if( tag.GetDataType() == DATA_VARIABLE && tag.GetSize() != ENUMUNDEF )
@@ -2452,7 +2500,7 @@ namespace INMOST
 		if( data != NULL ) DelDenseData(data,tag);
 	}
 
-	void Mesh::DelSparseData(HandleType h,const Tag & tag)
+	bool Mesh::DelSparseData(HandleType h,const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
 		assert( tag.isSparseByDim(GetHandleElementNum(h)) );
@@ -2468,10 +2516,12 @@ namespace INMOST
 					(static_cast<variable *>(s[i].rec)[k]).~variable();
 			}
 #endif
-			free(s[i].rec);
+			delete [] static_cast<char *>(s[i].rec);
+			//~ free(s[i].rec);
 			s.erase(s.begin()+i);
-			break;
+			return true;
 		}
+		return false;
 	}
 	
 	void Mesh::DelData(HandleType h,const Tag & tag)

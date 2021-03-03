@@ -371,6 +371,89 @@ namespace INMOST
 			glVertex3dv(&verts[(k + 3) % verts.size()]);
 		}
 	}
+	
+	__INLINE void vfill4(const double vi[3], double tc, float v[4])
+	{
+		v[0] = vi[0], v[1] = vi[1], v[2] = vi[2], v[3] = tc;
+	}
+	__INLINE void vfill3(const double vi[3], float v[3])
+	{
+		v[0] = vi[0], v[1] = vi[1], v[2] = vi[2];
+	}
+	
+	void face2gl::wgl_draw(std::ostream & file) const
+	{
+		size_t k;
+		for (k = 0; k < verts.size()-3; k += 3)
+		{
+			file << cnt[0] << " " << cnt[1] << " " << cnt[2] << " " << (texcoords.empty() ? 1.0 : cnttexcoord) << std::endl;
+			file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << " " << (texcoords.empty() ? 1.0 : texcoords[k/3+0]) << std::endl;
+			file << verts[k+3] << " " << verts[k+4] << " " << verts[k+5] << " " << (texcoords.empty() ? 1.0 : texcoords[k/3+1]) << std::endl;
+		}
+		file << cnt[0] << " " << cnt[1] << " " << cnt[2] << " " << (texcoords.empty() ? 1.0 : cnttexcoord) << std::endl;
+		k = verts.size()-3;
+		file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << " " << (texcoords.empty() ? 1.0 : texcoords[k/3+0]) << std::endl;
+		k = 0;
+		file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << " " << (texcoords.empty() ? 1.0 : texcoords[k/3+0]) << std::endl;
+	}
+	
+	void face2gl::wgl_draw_bin(std::ostream & file) const
+	{
+		size_t k;
+		float v[4];
+		for (k = 0; k < verts.size()-3; k += 3)
+		{
+			vfill4(cnt        ,texcoords.empty() ? 1.0 : cnttexcoord,v);
+			file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+			vfill4(&verts[k+0],texcoords.empty() ? 1.0 : texcoords[k/3+0],v);
+			file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+			vfill4(&verts[k+3],texcoords.empty() ? 1.0 : texcoords[k/3+1],v);
+			file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+		}
+		vfill4(cnt        ,texcoords.empty() ? 1.0 : cnttexcoord,v);
+		file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+		k = verts.size()-3;
+		vfill4(&verts[k+0],texcoords.empty() ? 1.0 : texcoords[k/3+0],v);
+		file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+		k = 0;
+		vfill4(&verts[k+0],texcoords.empty() ? 1.0 : texcoords[k/3+0],v);
+		file.write(reinterpret_cast<char *>(v),sizeof(float)*4);
+	}
+	
+	void face2gl::wgl_draw_edges(std::ostream & file) const
+	{
+		size_t k;
+		for (k = 0; k < verts.size()-3; k += 3)
+		{
+			file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << std::endl;
+			file << verts[k+3] << " " << verts[k+4] << " " << verts[k+5] << std::endl;
+		}
+		k = verts.size()-3;
+		file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << std::endl;
+		k = 0;
+		file << verts[k+0] << " " << verts[k+1] << " " << verts[k+2] << std::endl;
+	}
+	
+	void face2gl::wgl_draw_edges_bin(std::ostream & file) const
+	{
+		size_t k;
+		float v[3];
+		for (k = 0; k < verts.size()-3; k += 3)
+		{
+			vfill3(&verts[k+0],v);
+			file.write(reinterpret_cast<char *>(v),sizeof(float)*3);
+			vfill3(&verts[k+3],v);
+			file.write(reinterpret_cast<char *>(v),sizeof(float)*3);
+		}
+		k = verts.size()-3;
+		vfill3(&verts[k+0],v);
+		file.write(reinterpret_cast<char *>(v),sizeof(float)*3);
+		k = 0;
+		vfill3(&verts[k+0],v);
+		file.write(reinterpret_cast<char *>(v),sizeof(float)*3);
+	}
+	
+	
 
 	void face2gl::svg_draw(std::ostream & file, bool drawedges, double modelview[16], double projection[16], int viewport[4]) const
 	{
@@ -528,6 +611,31 @@ namespace INMOST
 		glPrintError();
 
 	}
+	
+	void wgl_draw_faces(std::ostream & file, const std::vector<face2gl> & set)
+	{
+		for (size_t q = 0; q < set.size(); q++)
+			set[q].wgl_draw(file);
+	}
+	
+	void wgl_draw_edges(std::ostream & file, const std::vector<face2gl> & set)
+	{
+		for (size_t q = 0; q < set.size(); q++)
+			set[q].wgl_draw_edges(file);
+	}
+	
+	void wgl_draw_faces_bin(std::ostream & file, const std::vector<face2gl> & set)
+	{
+		for (size_t q = 0; q < set.size(); q++)
+			set[q].wgl_draw_bin(file);
+	}
+	
+	void wgl_draw_edges_bin(std::ostream & file, const std::vector<face2gl> & set)
+	{
+		for (size_t q = 0; q < set.size(); q++)
+			set[q].wgl_draw_edges_bin(file);
+	}
+
 
 	void svg_draw_faces(std::ostream & file, std::vector<face2gl> & set, bool drawedges, double modelview[16], double projection[16], int viewport[4], int highlight)
 	{

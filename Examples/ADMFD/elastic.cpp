@@ -247,7 +247,11 @@ void KTensor(const real_array & Cv, rMatrix & K)
 void GetBC(const real_array & bc, const rMatrix & n, rMatrix & Ra, rMatrix & Rb, rMatrix & r)
 {
 	const rMatrix I = rMatrix::Unit(3);
-	Storage::real alpha_perp, alpha_parallel, beta_perp, beta_parallel;
+	Storage::real 
+		alpha_perp = 0, 
+		alpha_parallel = 0, 
+		beta_perp = 1, 
+		beta_parallel = 1;
 
 	if( bc.size() == 6 )
 	{

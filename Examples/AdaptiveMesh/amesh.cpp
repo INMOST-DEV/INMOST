@@ -386,6 +386,7 @@ namespace INMOST
 	
 	void AdaptiveMesh::CheckParentSet(std::string file, int line)//, TagInteger indicator)
 	{
+		(void)file,(void)line;
 		ENTER_FUNC();
 #if !defined(NDEBUG)
 		Storage::integer err = 0;
@@ -1665,6 +1666,7 @@ namespace INMOST
 				{
 					//one (or both) of the adjacent cells were coarsened and has lower level
 					bool visited = false;
+					(void)visited;
 					ElementArray<Cell> cells = f.getCells();
 					for(ElementArray<Cell>::size_type kt = 0; kt < cells.size(); ++kt)
 					{
@@ -1737,6 +1739,7 @@ namespace INMOST
 				{
 					//at least one face must have lower level
 					bool visited = false;
+					(void)visited;
 					ElementArray<Face> faces = e.getFaces();
 					for(ElementArray<Face>::size_type kt = 0; kt < faces.size(); ++kt)
 					{

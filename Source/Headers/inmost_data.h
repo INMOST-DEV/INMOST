@@ -597,7 +597,7 @@ namespace INMOST
                                                              const void * data) const;
 		__INLINE void                       DelData             (const Tag & tag) const;
 		/// Deallocates space allocated for sparse data, frees variable array if necessary
-		__INLINE void                       DelSparseData       (const Tag & tag) const;
+		__INLINE bool                       DelSparseData       (const Tag & tag) const;
 		/// Frees variable array or fills field with zeroes
 		__INLINE void                       DelDenseData        (const Tag & tag) const;
 		/// Check if any data is associated with Tag.

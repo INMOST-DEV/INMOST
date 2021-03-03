@@ -1512,6 +1512,9 @@ namespace INMOST
 		}
 		
 		incident_matrix<Edge> mat(m,temp.begin(),temp.end(),ninner);
+		
+		//mat.print_matrix();
+		//std::cin.get();
 
 		
 		do

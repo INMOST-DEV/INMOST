@@ -123,7 +123,7 @@ int main(int argc, char ** argv)
 			cnt[0] = cnt0[0] + 0.25*r0*sin(k/20.0*M_PI);
 			cnt[1] = cnt0[1] + 0.25*r0*cos(k/20.0*M_PI);
 
-			m.ClearFile();
+			//m.ClearFile();
 			
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "start "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			

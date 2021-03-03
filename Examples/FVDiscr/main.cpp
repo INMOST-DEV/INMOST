@@ -211,7 +211,7 @@ int main(int argc,char ** argv)
 		{
 			Face face(m,ComposeHandle(FACE,fi));
 			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
-			Element::Status s1,s2;
+			Element::Status s1 = Element::Any,s2 = Element::Any;
 			Cell r1 = face->BackCell();
 			Cell r2 = face->FrontCell();
 			if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +

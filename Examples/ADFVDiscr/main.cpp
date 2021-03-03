@@ -225,7 +225,7 @@ int main(int argc,char ** argv)
 				for(Storage::integer iface = 0; iface < m->FaceLastLocalID(); ++iface ) if( m->isValidFace(iface) )
 				{
 					Face face = Face(m,ComposeFaceHandle(iface));
-					Element::Status s1,s2;
+					Element::Status s1 = Element::Any, s2 = Element::Any;
 					Cell r1 = face->BackCell();
 					Cell r2 = face->FrontCell();
 					if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +

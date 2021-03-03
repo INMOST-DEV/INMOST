@@ -852,6 +852,25 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		write_state("state.txt");
 	}
+	else if( key == 'g' )
+	{
+		{
+			std::ofstream file("wgl.bin",std::ios::binary);
+			wgl_draw_faces_bin(file,clip_boundary);
+		}
+		{
+			std::ofstream file("wgle.bin",std::ios::binary);
+			wgl_draw_edges_bin(file,clip_boundary);
+		}
+		{
+			std::ofstream file("wgl.txt",std::ios::binary);
+			wgl_draw_faces(file,clip_boundary);
+		}
+		{
+			std::ofstream file("wgle.txt",std::ios::binary);
+			wgl_draw_edges(file,clip_boundary);
+		}
+	}
 }
 
 void keyboard2(unsigned char key, int x, int y)
@@ -1126,7 +1145,7 @@ double display_elem_info(Element e, double top, double left, double interval)
 		if( e->HaveData(*t) )
 		{
 			std::stringstream sstr;
-			int dsize;
+			int dsize = 0;
 			switch(t->GetDataType())
 			{
 				case DATA_INTEGER:
@@ -1217,7 +1236,7 @@ double display_elem_info_cout(Element e)
 		if( e->HaveData(*t) )
 		{
 			std::stringstream sstr;
-			int dsize;
+			int dsize = 0;
 			switch(t->GetDataType())
 			{
 				case DATA_INTEGER:
@@ -1322,7 +1341,7 @@ void ProcessCommonInput(char inpstr[8192], int inptype)
 	}
 	else if( inptype == 3 )
 	{
-		int k1 = 0, k2, slen = (int)strlen(inpstr);
+		int k1 = 0, slen = (int)strlen(inpstr), k2 = slen;
 		for(int k = 0; k < slen; ++k)
 		{
 			if( inpstr[k] == ',' )

@@ -276,7 +276,7 @@ int main(int argc, char ** argv)
 	
 	Tag proj_coords = A.CreateTag("PROJECTED_COORDS",DATA_REAL,NODE,NONE,2);
 	MarkerType myedges = A.CreateMarker();
-	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], orthx[3], orthy[3], d, nd;
+	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], orthx[3] = {0,0,0}, orthy[3] = {0,0,0}, d, nd;
 	(void)nd;
 	std::cout << "Start splitting faces" << std::endl;
 	int nsplit = 0, had_faces = A.NumberOfFaces();

@@ -6,7 +6,7 @@ using namespace INMOST;
 
 Storage::real Slice::Search(Storage::real r0, Storage::real r1, Storage::real c0[3], Storage::real c1[3], Storage::real p[3], bool binary) const
 {
-	Storage::real rp = 1.0e20, rp_min = 1.0e20, p_min[3];
+	Storage::real rp = 1.0e20, rp_min = 1.0e20, p_min[3] = {0,0,0};
 	int iters = 0;
 	do
 	{

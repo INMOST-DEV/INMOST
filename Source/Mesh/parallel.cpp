@@ -42,7 +42,6 @@ __INLINE std::string NameSlash(std::string input)
 #define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
 #define ENTER_BLOCK() { double btime = Timer(); WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << GetFuncID()++ << "\">" << std::endl; Enter();
 #define EXIT_BLOCK() WriteTab(out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
-
 #define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #else // USE_PARALLEL_WRITE_TIME
@@ -3402,6 +3401,8 @@ namespace INMOST
 				have_reference_tag = true;
 		}
 		//precompute sizes
+		ENTER_BLOCK();
+		REPORT_STR("precompute sizes");
 		for(p = procs.begin(); p != procs.end(); p++ )
 		{
 			int pos = static_cast<int>(p-procs.begin());
@@ -3433,13 +3434,18 @@ namespace INMOST
 						recv_size[pos] += static_cast<INMOST_DATA_ENUM_TYPE>(find->second[i].size());
 			}
 		}
-		
+		EXIT_BLOCK();
 		int num_send = 0, num_recv = 0;
 		TagInteger pack_position;
 		tag_set tag_pack_list;
 		if( have_reference_tag )
 		{
+			ENTER_BLOCK();
+			REPORT_STR("Create tag");
 			pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+			EXIT_BLOCK();
+			ENTER_BLOCK();
+			REPORT_STR("List tags");
 			ListTags(tag_pack_list);
 			{
 				tag_set::iterator it = tag_pack_list.begin();
@@ -3454,6 +3460,7 @@ namespace INMOST
 					else it++;
 				}
 			}
+			EXIT_BLOCK();
 		}
         ///////////
 		for(p = procs.begin(); p != procs.end(); p++ )
@@ -3461,6 +3468,8 @@ namespace INMOST
 			REPORT_VAL("for processor",*p);//p-procs.begin());
 			REPORT_VAL("send size",send_size[p-procs.begin()]);
 			REPORT_VAL("recv size",recv_size[p-procs.begin()]);
+			ENTER_BLOCK();
+			REPORT_STR("Pack elements and data");
 			if( send_size[p-procs.begin()] )
 			{
 				elements_by_type selems;
@@ -3478,6 +3487,9 @@ namespace INMOST
 				storage.send_buffers[num_send].first = *p;
 				num_send++;
 			}
+			EXIT_BLOCK();
+			ENTER_BLOCK();
+			REPORT_STR("Resize recv buffers");
 			if( recv_size[p-procs.begin()] )
 			{
 				if( !unknown_size )
@@ -3500,9 +3512,15 @@ namespace INMOST
 				storage.recv_buffers[num_recv].first = *p;
 				num_recv++;
 			}
+			EXIT_BLOCK();
 		}
 		if( have_reference_tag )
+		{
+			ENTER_BLOCK();
+			REPORT_STR("Delete tag");
 			DeleteTag(pack_position);
+			EXIT_BLOCK();
+		}
 		storage.send_buffers.resize(num_send);
 		storage.recv_buffers.resize(num_recv);
 		if( unknown_size ) 
@@ -3536,7 +3554,13 @@ namespace INMOST
 		storage.send_buffers.resize(send_elements.size());
 		
 		int num_wait = 0;
-		TagInteger pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		TagInteger pack_position;
+		ENTER_BLOCK();
+		REPORT_STR("Create tag");
+		pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		REPORT_STR("Pack elements");
 		for(proc_elements_by_type::iterator it = send_elements.begin(); it != send_elements.end(); it++)
 		{
 			if( !it->second.empty() )
@@ -3549,7 +3573,11 @@ namespace INMOST
 				num_wait++;
 			}
 		}
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		REPORT_STR("Delete tag");
 		DeleteTag(pack_position);
+		EXIT_BLOCK();
 		storage.send_buffers.resize(num_wait);
 		
 		PrepareReceiveInner(UnknownSource, storage.send_buffers,storage.recv_buffers);
@@ -5883,7 +5911,13 @@ namespace INMOST
         //std::cout << mpirank << ": Send size: " << send_elements.size() << std::endl;
 		ENTER_BLOCK();
 		REPORT_STR("Packing elements to send");
-		TagInteger pack_position =  CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		TagInteger pack_position;
+		ENTER_BLOCK();
+		REPORT_STR("Create tag");
+		pack_position =  CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		REPORT_STR("pack elements");
 		for(proc_elements_by_type::iterator it = send_elements.begin(); it != send_elements.end(); it++)
 			if( !it->second.empty() )
 			{
@@ -5898,8 +5932,12 @@ namespace INMOST
 				storage.send_buffers[num_wait].first = it->first;
 				num_wait++;
 			}
+		EXIT_BLOCK();
 		storage.send_buffers.resize(num_wait);
+		ENTER_BLOCK();
+		REPORT_STR("Delete tag");
 		DeleteTag(pack_position);
+		EXIT_BLOCK();
 		EXIT_BLOCK();
 
 		PrepareReceiveInner(UnknownSource, storage.send_buffers,storage.recv_buffers);

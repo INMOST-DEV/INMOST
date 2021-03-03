@@ -131,7 +131,7 @@ int main(int argc,char ** argv)
 		case 8: /*reserved*/ break;
 	}
 
-	Partitioner::Action action;
+	Partitioner::Action action = Partitioner::Partition;
 	switch(iaction)
 	{
 		case 0: action = Partitioner::Partition; break;

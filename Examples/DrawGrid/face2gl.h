@@ -33,6 +33,10 @@ namespace INMOST
 		void draw_colour_alpha(double alpha) const;
 		void draw() const;
 		void svg_draw(std::ostream & file, bool drawedges, double modelview[16], double projection[16], int viewport[4]) const;
+		void wgl_draw_bin(std::ostream & file) const;
+		void wgl_draw_edges_bin(std::ostream & file) const;
+		void wgl_draw(std::ostream & file) const;
+		void wgl_draw_edges(std::ostream & file) const;
 		void drawedges() const;
 		void svg_drawedges(std::ostream & file, double modelview[16], double projection[16], int viewport[4]) const;
 		bool operator <(const face2gl & other) const { return dist < other.dist; }
@@ -65,6 +69,10 @@ namespace INMOST
 	void svg_draw_faces_nc(std::ostream & file, std::vector<face2gl> & set, bool drawedges, double modelview[16], double projection[16], int viewport[4], int highlight = -1);
 	void svg_draw_faces(std::ostream & file, std::vector<face2gl> & set, bool drawedges, double modelview[16], double projection[16], int viewport[4], int highlight = -1);
 	void svg_draw_edges(std::ostream & file, std::vector<face2gl> & set, double modelview[16], double projection[16], int viewport[4], int highlight = -1);
+	void wgl_draw_faces_bin(std::ostream & file, const std::vector<face2gl> & set);
+	void wgl_draw_edges_bin(std::ostream & file, const std::vector<face2gl> & set);
+	void wgl_draw_faces(std::ostream & file, const std::vector<face2gl> & set);
+	void wgl_draw_edges(std::ostream & file, const std::vector<face2gl> & set);
 
 	void draw_faces_nc(std::vector<face2gl> & set, int highlight = -1);
 	void draw_faces(std::vector<face2gl> & set, int highlight = -1);

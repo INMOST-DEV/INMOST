@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
   for(int i = 0; i < n; ++i)
   {
     double x = i * 1.0 / (n - 1);
-    double ymid;
+    double ymid = 0;
     if( i <= nsub[0] )
       ymid = alpha;
     else if( i <= nsub[1] )

@@ -345,7 +345,7 @@ int main(int argc, char ** argv)
 	std::vector<segment> segments, joints;
 	std::vector<node> loop;
 	std::map<HandleType,real> hits;
-	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], fcnt[3], ray[3], orthx[3], orthy[3], d, nd;
+	real nrm[3], cnt[3], ncnt[3], scnt[3], pcnt[3], fcnt[3], ray[3], orthx[3] = {0,0,0}, orthy[3] = {0,0,0}, d, nd;
 	//for(Mesh::iteratorNode it = m.BeginNode(); it != m.EndNode(); ++it)
 	for(ElementArray<Node>::iterator it = nodes_rcm.begin(); it != nodes_rcm.end(); ++it)
 	{

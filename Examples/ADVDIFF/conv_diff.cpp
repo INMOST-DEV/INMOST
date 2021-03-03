@@ -117,18 +117,18 @@ ConvectionDiffusion::ConvectionDiffusion(Mesh * _m, Tag _tag_U, Tag _tag_K, Tag 
 		real	A, //area of the face
 				U, //normal component of the velocity
 				C, //coefficient for upstream cell
-				T, //two-point transmissibility
-				R, //right hand side
-				dK, //distance from center to interface at cell K
-				dL, //distance from center to interface at cell L
-				lambdaK, //projection of co-normal onto normal at cell K
-				lambdaL, //projection of co-normal onto normal at cell L
+				T = 0, //two-point transmissibility
+				R = 0, //right hand side
+				dK = 0, //distance from center to interface at cell K
+				dL = 0, //distance from center to interface at cell L
+				lambdaK = 0, //projection of co-normal onto normal at cell K
+				lambdaL = 0, //projection of co-normal onto normal at cell L
 				div //divider
 				;
 		const real eps = degenerate_diffusion_regularization;
 		Cell cK, cL, cU;
 		Face fKL;
-		bulk flag_DIFF, flag_CONV;
+		bulk flag_DIFF = 0, flag_CONV = 0;
 		KK.Zero();
 		KL.Zero();
 		KD.Zero();

@@ -2140,7 +2140,7 @@ namespace INMOST
 		/// Removes data of variable size and sparse tag data.
 		/// @param h handle to the element
 		/// @param tag tag that indicates the data
-		void                              DelSparseData      (HandleType h,const Tag & tag);
+		bool                              DelSparseData      (HandleType h,const Tag & tag);
 		/// Check whether data is present on given element.
 		/// Always returns true for dense tag data.
 		/// @param h handle to the element
@@ -3851,9 +3851,9 @@ namespace INMOST
 	{
 		GetMeshLink()->DelDenseData(GetHandle(),tag);
 	}
-	__INLINE void Storage::DelSparseData(const Tag & tag) const
+	__INLINE bool Storage::DelSparseData(const Tag & tag) const
 	{
-		GetMeshLink()->DelSparseData(GetHandle(),tag);
+		return GetMeshLink()->DelSparseData(GetHandle(),tag);
 	}
 	__INLINE void Storage::SetMarker(MarkerType n)  const
 	{

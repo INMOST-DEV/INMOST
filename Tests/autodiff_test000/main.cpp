@@ -10,7 +10,7 @@ int main(int argc,char ** argv)
 
 	INMOST_DATA_REAL_TYPE _x = 0.5;
 	INMOST_DATA_REAL_TYPE _y = 0.25;
-	INMOST_DATA_REAL_TYPE _dx, _dy, _dxdx, _dydy, _dxdy;
+	INMOST_DATA_REAL_TYPE _dx = 0, _dy = 0, _dxdx = 0, _dydy = 0, _dxdy = 0;
 	unknown x(_x,0), y(_y,1);
 	hessian_variable f;
 	variable f2;
