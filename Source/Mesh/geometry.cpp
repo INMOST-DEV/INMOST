@@ -594,9 +594,13 @@ namespace INMOST
 	void Mesh::ComputeGeometricType(HandleType h) 
 	{
 		SetGeometricType(h,Element::Unset);
-		Element::adj_type const & lc = LowConn(h);
-		if( !lc.empty() )
-			SetGeometricType(h,ComputeGeometricType(GetHandleElementType(h),lc.data(),static_cast<integer>(lc.size())));
+		if( GetElementType() > NODE )
+		{
+			Element::adj_type const & lc = LowConn(h);
+			if( !lc.empty() )
+				SetGeometricType(h,ComputeGeometricType(GetHandleElementType(h),lc.data(),static_cast<integer>(lc.size())));
+		}
+		else SetGeometricType(h,Element::Vertex);
 	}
 	
 	void Mesh::RecomputeGeometricData(HandleType e)
@@ -620,7 +624,7 @@ namespace INMOST
 		{
 			if( GetHandleElementType(e) == CELL ) //then correct the normal
 			{
-				Element::adj_type & lc = LowConn(e);
+				Element::adj_type & lc = LowConn(e); //faces
 				for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
 					if( !GetMarker(*it,HideMarker()) )
 					{

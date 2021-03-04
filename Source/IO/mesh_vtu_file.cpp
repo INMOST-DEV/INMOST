@@ -674,7 +674,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							Cell c = CreateCell(c_faces,hnodes).first;
+							//Cell c = CreateCell(c_faces,hnodes).first;
+							Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -703,7 +704,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces, hnodes).first;
+							Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -733,7 +735,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces, hnodes).first;
+							Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -757,7 +760,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces, hnodes).first;
+							Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else

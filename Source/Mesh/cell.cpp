@@ -141,7 +141,6 @@ namespace INMOST
 					if( jt == jend ) return false; //no matching edge
 				}
 				adj_type::size_type it = 1, iend = lc.size()-1;
-				bool corrected = false;
 				while(it < iend) //loop over edges
 				{
 					adj_type const & ilc = m->LowConn(lc[it]);
@@ -168,19 +167,11 @@ namespace INMOST
 								HandleType temp = lc[it];
 								lc[it] = lc[jt];
 								lc[jt] = temp;
-								corrected = true;
 								break;
 							}
 						}
 						if( jt == jend ) return false; //no matching edge
 					}
-				}
-				if( corrected )
-				{
-					ElementArray<Node> nodes(GetMeshLink());
-					GetMeshLink()->RestoreCellNodes(GetHandle(),nodes);
-					Element::adj_type & hc = GetMeshLink()->HighConn(GetHandle());
-					hc.replace(hc.begin(),hc.end(),nodes.begin(),nodes.end());
 				}
 				//check that the loop is closed
 				adj_type const & ilc = m->LowConn(lc[iend]);
@@ -305,20 +296,9 @@ namespace INMOST
 	{
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
-		if( !m->HideMarker() )
-		{
-			adj_type const & hc = m->HighConn(GetHandle());
-			return ElementArray<Node>(m,hc.data(),hc.data()+hc.size());
-		}
-		else
-		{
-			MarkerType hm = m->HideMarker();
-			ElementArray<Node> aret(m);
-			adj_type const & hc = m->HighConn(GetHandle());
-			for(adj_type::size_type it = 0; it < hc.size(); ++it)
-				if( !m->GetMarker(hc[it],hm) ) aret.push_back(hc[it]);
-			return aret;
-		}
+		ElementArray<Node> ret(m);
+		m->RestoreCellNodes(GetHandle(),ret);
+		return ret;
 	}
 
 
@@ -326,39 +306,19 @@ namespace INMOST
 	{
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
-		ElementArray<Node> aret(m);
-		if( !m->HideMarker() )
+		ElementArray<Node> aret(m), ret(m);
+		m->RestoreCellNodes(GetHandle(),ret);
+		if( isPrivate(mask) )
 		{
-			adj_type const & hc = m->HighConn(GetHandle());
-			if( isPrivate(mask) )
-			{
-				for(adj_type::size_type it = 0; it < hc.size(); ++it)
-					if( invert ^ m->GetPrivateMarker(hc[it],mask) ) 
-						aret.push_back(hc[it]);
-			}
-			else
-			{
-				for(adj_type::size_type it = 0; it < hc.size(); ++it)
-					if( invert ^ m->GetMarker(hc[it],mask) ) 
-						aret.push_back(hc[it]);
-			}
+			for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); ++it)
+				if( invert ^ m->GetPrivateMarker(*it,mask) ) 
+					aret.push_back(*it);
 		}
 		else
 		{
-			MarkerType hm = m->HideMarker();
-			adj_type const & hc = m->HighConn(GetHandle());
-			if( isPrivate(mask) )
-			{
-				for(adj_type::size_type it = 0; it < hc.size(); ++it)
-					if( (invert ^ m->GetPrivateMarker(hc[it],mask)) && !m->GetMarker(hc[it],hm) ) 
-						aret.push_back(hc[it]);
-			}
-			else
-			{
-				for(adj_type::size_type it = 0; it < hc.size(); ++it)
-					if( (invert ^ m->GetMarker(hc[it],mask)) && !m->GetMarker(hc[it],hm) ) 
-						aret.push_back(hc[it]);
-			}
+			for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); ++it)
+				if( invert ^ m->GetMarker(*it,mask) ) 
+					aret.push_back(*it);
 		}
 		return aret;
 	}

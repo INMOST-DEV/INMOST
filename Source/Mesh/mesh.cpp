@@ -201,8 +201,8 @@ namespace INMOST
 
 		memset(remember,0,sizeof(remember));
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -436,8 +436,8 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -565,8 +565,8 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|NODE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -795,6 +795,7 @@ namespace INMOST
 	HandleType Mesh::FindSharedAdjacency(const HandleType * arr, enumerator s) const
 	{
 		if( s == 0 ) return InvalidHandle();
+		for(enumerator q = 0; q < s; ++q) assert(GetHandleElementType(arr[q]) != CELL);
 		if( !HideMarker() )
 		{
 			{
@@ -1394,7 +1395,7 @@ namespace INMOST
 	}
 	
 	
-	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_sizes, integer s, const ElementArray<Node> & suggest_nodes_order)
+	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_sizes, integer s)//, const ElementArray<Node> & suggest_nodes_order)
 	{
 		ElementArray<Face> c_faces(this,s);
 		ElementArray<Node>::size_type j = 0;
@@ -1403,11 +1404,11 @@ namespace INMOST
 			c_faces.at(i) = CreateFace(ElementArray<Node>(this, c_f_nodes.data()+j, c_f_nodes.data()+j + c_f_sizes[i])).first->GetHandle();
 			j += c_f_sizes[i];
 		}
-		return CreateCell(c_faces,suggest_nodes_order);
+		return CreateCell(c_faces);//,suggest_nodes_order);
 	}
 	
 
-	std::pair<Cell, bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer s, const ElementArray<Node> & suggest_nodes_order)
+	std::pair<Cell, bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer s)//, const ElementArray<Node> & suggest_nodes_order)
 	{
 		integer j = 0;
 		ElementArray<Node> temp(this);
@@ -1421,7 +1422,7 @@ namespace INMOST
 			j += c_f_numnodes[i];
 			temp.clear();
 		}
-		return CreateCell(c_faces,suggest_nodes_order);
+		return CreateCell(c_faces);//,suggest_nodes_order);
 	}
 	
 	
@@ -1643,26 +1644,16 @@ namespace INMOST
 						Element::adj_type & ilc = LowConn(lc[i]);
 						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
 						{
-							if( !GetPrivateMarker(ilc[j],mrk) )
+							Element::adj_type & jlc = LowConn(ilc[j]);
+							for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
 							{
-								Element::adj_type & jlc = LowConn(ilc[j]);
-								for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+								if( !GetPrivateMarker(jlc[k],mrk) )
 								{
-									if( !GetPrivateMarker(jlc[k],mrk) )
-									{
-										SetPrivateMarker(jlc[k],mrk);
-										ret.push_back(jlc[k]);
-									}
+									SetPrivateMarker(jlc[k],mrk);
+									ret.push_back(jlc[k]);
 								}
-								SetPrivateMarker(ilc[j],mrk);
 							}
 						}
-					}
-					for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
-					{
-						Element::adj_type & ilc = LowConn(lc[i]);
-						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
-							RemPrivateMarker(ilc[j],mrk);
 					}
 				}
 				else
@@ -1673,29 +1664,19 @@ namespace INMOST
 						Element::adj_type & ilc = LowConn(lc[i]);
 						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
 						{
-							if( !GetPrivateMarker(ilc[j],mrk) )
+							Element::adj_type & jlc = LowConn(ilc[j]);
+							for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !Hidden(jlc[k]) ) //iterator over edge nodes
 							{
-								Element::adj_type & jlc = LowConn(ilc[j]);
-								for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !Hidden(jlc[k]) ) //iterator over edge nodes
+								if( !GetPrivateMarker(jlc[k], mrk) )
 								{
-									if( !GetPrivateMarker(jlc[k], mrk) )
-									{
-										SetPrivateMarker(jlc[k],mrk);
-										ret.push_back(jlc[k]);
-									}
+									SetPrivateMarker(jlc[k],mrk);
+									ret.push_back(jlc[k]);
 								}
-								SetPrivateMarker(ilc[j],mrk);
 							}
 						}
 					}
-					for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !Hidden(lc[i]) )  //iterate over faces
-					{
-						Element::adj_type & ilc = LowConn(lc[i]);
-						for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !Hidden(ilc[j]) ) //iterate over face edges
-							RemPrivateMarker(ilc[j],mrk);
-					}
 				}
-				for(ElementArray<Node>::size_type it = 0; it < ret.size(); it++) ret[it]->RemPrivateMarker(mrk);
+				ret.RemPrivateMarker(mrk);
 				ReleasePrivateMarker(mrk);
 				break;
 			}
@@ -1703,7 +1684,7 @@ namespace INMOST
 
 	}
 	
-	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Face> & c_faces, const ElementArray<Node> & c_nodes)
+	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Face> & c_faces)//, const ElementArray<Node> & c_nodes)
 	{
 		HandleType he = InvalidHandle();
 		if( !c_faces.empty() )
@@ -1732,95 +1713,9 @@ namespace INMOST
 			Element::adj_type & lc = LowConn(he);
 			lc.insert(lc.begin(),c_faces.begin(),c_faces.end());
 			ComputeGeometricType(he);		
-			{
-				//bool halt = false; //DEBUG
-				if( c_nodes.empty() ) 
-				{
-					ElementArray<Node> nodes(this);
-					RestoreCellNodes(he,nodes);
-					for(ElementArray<Node>::size_type k = 0; k < nodes.size(); k++)
-					{
-						Element::adj_type & lc = LowConn(nodes.at(k));
-#if defined(USE_OMP)
-#pragma omp critical (node_low_conn)
-#endif
-						lc.push_back(he);
-					}
-					Element::adj_type & hc = HighConn(he);
-					hc.insert(hc.begin(),nodes.begin(),nodes.end());
-
-					//DEBUG
-					/*
-					for(ElementArray<Node>::size_type i = 0; i < nodes.size(); i++) 
-					{
-						if(!nodes[i]->CheckElementConnectivity())
-						{
-							nodes[i]->PrintElementConnectivity();
-							halt = true;
-						}
-					}
-					*/
-					//END DEBUG
-				}
-				else
-				{
-					for(ElementArray<Node>::size_type k = 0; k < c_nodes.size(); k++)
-					{
-						Element::adj_type & lc = LowConn(c_nodes.at(k));
-#if defined(USE_OMP)
-#pragma omp critical (node_low_conn)
-#endif
-						lc.push_back(he);
-					}
-					Element::adj_type & hc = HighConn(he);
-					hc.insert(hc.begin(),c_nodes.begin(),c_nodes.end());
-					//DEBUG
-					/*
-					for(ElementArray<Face>::size_type i = 0; i < c_nodes.size(); i++) 
-					{
-						if(!c_nodes[i]->CheckElementConnectivity())
-						{
-							c_nodes[i]->PrintElementConnectivity();
-							halt = true;
-						}
-					}
-					*/
-					//END DEBUG
-				}
-				//DEBUG
-				/*
-				if(!Element(this,he)->CheckElementConnectivity())
-				{
-					Element(this,he)->PrintElementConnectivity();
-					halt = true;
-				}
-				for(ElementArray<Face>::size_type i = 0; i < c_faces.size(); i++)
-				{
-					if( !c_faces[i]->CheckElementConnectivity() )
-					{
-						c_faces[i]->PrintElementConnectivity();
-						halt = true;
-					}
-				}
-				assert(!halt);
-				*/
-				//END DEBUG
-				SetMarker(he,NewMarker());
-				RecomputeGeometricData(he);
-				EndTopologyCheck(he,chk);
-				/*
-				chk |= EndTopologyCheck(he);
-				if( chk != 0 )
-				{
-					if( GetTopologyCheck(MARK_ON_ERROR)   ) Integer(he, TopologyErrorTag()) = chk;
-					if( GetTopologyCheck(DELETE_ON_ERROR) ) { Destroy(he); he = InvalidHandle();}
-					if( GetTopologyCheck(THROW_EXCEPTION) ) throw TopologyCheckError;
-				}
-				*/
-			}
-
-			
-			
+			SetMarker(he,NewMarker());
+			RecomputeGeometricData(he);
+			EndTopologyCheck(he,chk);
 		}
 		return std::make_pair(Cell(this,he),true);
 	}

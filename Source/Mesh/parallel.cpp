@@ -4054,18 +4054,6 @@ namespace INMOST
 							SetMarker(*jt,busy);
 						}
 					}
-					if( etypenum == ElementNum(CELL) )
-					{
-						Element::adj_type const & adj = HighConn(*it);
-						for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
-						{
-							if( !Hidden(*jt) && !GetMarker(*jt,busy) )
-							{
-								selems[0].push_back(*jt);
-								SetMarker(*jt,busy);
-							}
-						}
-					}
 				}
 			}
 		}
@@ -4396,12 +4384,9 @@ namespace INMOST
 		ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[3].size());
-			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[3].size());
 			std::vector<Storage::integer> low_conn_nums;
-			std::vector<Storage::integer> high_conn_nums;
 			low_conn_nums.reserve(selems[3].size()*6);
-			high_conn_nums.reserve(selems[3].size()*8);
-			size_t num = 0, k = 0, num_high = 0;
+			size_t num = 0, k = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			for(element_set::iterator it = selems[3].begin(); it != selems[3].end(); it++) 
 			{
@@ -4416,7 +4401,6 @@ namespace INMOST
 				if( pack_gid )
 				{
 					low_conn_size[k] = ENUMUNDEF;
-					high_conn_size[k] = 0;
 					low_conn_nums.push_back(Integer(*it,tag_owner));
 					low_conn_nums.push_back(GlobalID(*it));
 					num+=2;
@@ -4443,27 +4427,7 @@ namespace INMOST
 						low_conn_size[k]++;
 						num++;
 					}
-					//REPORT_VAL("pack low size",low_conn_size[k]);
-					high_conn_size[k] = 0;
-					Element::adj_type const & hc = HighConn(*it);
-					for(Element::adj_type::const_iterator jt = hc.begin(); jt != hc.end(); jt++) if( !Hidden(*jt) )
-					{
-						//TODO 44 old
-						//element_set::iterator find = std::lower_bound(selems[0].begin(),selems[0].end(),(*jt));
-						//assert( find == selems[0].end());
-						//assert((*find) == (*jt) );
-						//high_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
-						//assert( GetMarker(*jt,busy) );
-						assert( HaveData(*jt,arr_position) );
-						assert( (size_t)arr_position[*jt] < selems[0].size() );
-						assert( *jt == selems[0][arr_position[*jt]] );
-						//REPORT_VAL("pack node position",Integer(*jt,arr_position));
-						high_conn_nums.push_back(arr_position[*jt]);
-						high_conn_size[k]++;
-						num_high++;
-					}
 				}
-				//REPORT_VAL("pack high size",high_conn_size[k]);
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
 				{
 					if( owner == GetProcessorRank() )
@@ -4489,7 +4453,6 @@ namespace INMOST
 				k++;
 			}
 			REPORT_VAL("number of cell faces",num);
-			REPORT_VAL("number of cell nodes",num_high);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
 			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
@@ -4497,8 +4460,6 @@ namespace INMOST
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
-			pack_data_vector(buffer,high_conn_size,GetCommunicator());
-			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -5151,21 +5112,17 @@ namespace INMOST
 			ElementArray<Face> c_faces(this);
 			ElementArray<Node> c_nodes(this);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
-			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
-			std::vector<Storage::integer> high_conn_nums;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of cells",num);
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
-			unpack_data_vector(buffer,buffer_position,high_conn_size,GetCommunicator());
-			unpack_data_vector(buffer,buffer_position,high_conn_nums,GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[3].reserve(num);
 			
-			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0, shift_high = 0;
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_cell = InvalidHandle();
@@ -5192,15 +5149,7 @@ namespace INMOST
 						c_faces.at(j) = selems[2][low_conn_nums[shift+j]];
 					}
 					shift += low_conn_size[i];
-					//REPORT_VAL("Unpack high size",low_conn_size[i]);
-					c_nodes.resize(high_conn_size[i]);
-					for(INMOST_DATA_ENUM_TYPE j = 0; j < high_conn_size[i]; j++)
-					{
-						assert((size_t)high_conn_nums[shift_high+j] < selems[0].size());
-						//REPORT_VAL("Unpack node position",high_conn_nums[shift_high+j]);
-						c_nodes.at(j) = selems[0][high_conn_nums[shift_high+j]];
-					}
-					shift_high += high_conn_size[i];
+					
 					if( !c_faces.empty() )
 						new_cell = FindSharedAdjacency(c_faces.data(),static_cast<enumerator>(c_faces.size()));
 				}

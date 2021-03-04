@@ -1882,7 +1882,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces,c_nodes).first;
+										Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else
@@ -1921,7 +1922,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces,c_nodes).first;
+										Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else newcells[i] = CreateFace(c_nodes).first->GetHandle();
@@ -1948,7 +1950,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces,c_nodes).first;
+										Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else newcells[i] = CreateFace(c_nodes).first->GetHandle();

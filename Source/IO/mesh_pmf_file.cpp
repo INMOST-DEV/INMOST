@@ -234,14 +234,8 @@ namespace INMOST
 				lid = IntegerDF(lc[kt],set_id);
 				uconv.write_iValue(out,lid);
 			}
-			Element::adj_type & hc = HighConn(*it);
-			nhigh = static_cast<INMOST_DATA_ENUM_TYPE>(hc.size());
+			nhigh = 0;
 			uconv.write_iValue(out,nhigh);
-			for(Element::adj_type::size_type kt = 0; kt < hc.size(); ++kt)
-			{
-				lid = IntegerDF(hc[kt],set_id);
-				uconv.write_iValue(out,lid);
-			}
 		}
 		
 		// Element Sets
@@ -1259,7 +1253,8 @@ namespace INMOST
 						uconv.read_iValue(in,lid);
 						suggest_nodes.push_back(new_nodes[lid]);
 					}
-					new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
+					//new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
+					new_cells[i] = CreateCell(sub_elements).first->GetHandle();
 					sub_elements.clear();
 					suggest_nodes.clear();
 				}

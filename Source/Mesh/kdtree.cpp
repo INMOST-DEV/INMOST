@@ -138,7 +138,25 @@ namespace INMOST
 					checkm = true;
 					if( m->GetMarker(set[0].e,m->HideMarker()) ) invm = true;
 				}
-				Element::adj_type & nodes = m->HighConn(set[0].e); 
+				//Element::adj_type & nodes = m->HighConn(set[0].e); 
+				std::vector<HandleType> nodes;
+				MarkerType mrk = m->CreatePrivateMarker();
+				Element::adj_type & faces = m->LowConn(set[0].e);
+				for(unsigned k = 0; k < faces.size(); ++k)
+				{
+					Element::adj_type & fedges = m->LowConn(faces[k]);
+					for(unsigned q = 0; q < fedges.size(); ++q)
+					{
+						Element::adj_type & enodes = m->LowConn(fedges[k]);
+						for(unsigned l = 0; l < enodes.size(); ++l) if( !m->GetMarker(enodes[l],mrk) )
+						{
+							nodes.push_back(enodes[l]);
+							m->SetMarker(enodes[l],mrk);
+						}
+					}
+				}
+				if( !nodes.empty() ) m->RemPrivateMarkerArray(&nodes[0],nodes.size(),mrk);
+				m->ReleasePrivateMarker(mrk);
 				bbox[0] = bbox[2] = bbox[4] = 1.0e20f;
 				bbox[1] = bbox[3] = bbox[5] = -1.0e20f;
 				if( checkm )

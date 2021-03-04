@@ -1488,11 +1488,11 @@ namespace INMOST
 		std::pair<Edge,bool>              CreateEdge         (const ElementArray<Node> & nodes);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Edge> & edges);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Node> & nodes);
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Face> & faces, const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_f_nodes, const integer * c_f_numnodes, integer num_c_faces, 
-		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces, 
-		                                                      const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Face> & faces);//, const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_f_nodes, const integer * c_f_numnodes, integer num_c_faces);//, 
+		                                                      //const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces);//, 
+		                                                      //const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
 		std::pair<ElementSet,bool>        CreateSet          (std::string name);
 		/// Same as Mesh::CreateSet without checking existance of the set
 		std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
