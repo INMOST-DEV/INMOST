@@ -289,7 +289,7 @@ namespace INMOST
 					return false;
 			}
 		}
-		return false;
+		return true;
 	}
 	
 	ElementArray<Node> Cell::getNodes() const
@@ -297,7 +297,51 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Node> ret(m);
-		m->RestoreCellNodes(GetHandle(),ret);
+		MarkerType mrk = m->CreatePrivateMarker();
+		HandleType hc = GetHandle();
+		if( !m->HideMarker() )
+		{
+			Element::adj_type & lc = m->LowConn(hc);
+			for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+			{
+				Element::adj_type & ilc = m->LowConn(lc[i]);
+				for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+				{
+					Element::adj_type & jlc = m->LowConn(ilc[j]);
+					for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+					{
+						if( !m->GetPrivateMarker(jlc[k],mrk) )
+						{
+							m->SetPrivateMarker(jlc[k],mrk);
+							ret.push_back(jlc[k]);
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			MarkerType hm = m->HideMarker();
+			Element::adj_type & lc = m->LowConn(hc);
+			for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+			{
+				Element::adj_type & ilc = m->LowConn(lc[i]);
+				for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+				{
+					Element::adj_type & jlc = m->LowConn(ilc[j]);
+					for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+					{
+						if( !m->GetPrivateMarker(jlc[k], mrk) )
+						{
+							m->SetPrivateMarker(jlc[k],mrk);
+							ret.push_back(jlc[k]);
+						}
+					}
+				}
+			}
+		}
+		ret.RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
 		return ret;
 	}
 
@@ -306,21 +350,100 @@ namespace INMOST
 	{
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
-		ElementArray<Node> aret(m), ret(m);
-		m->RestoreCellNodes(GetHandle(),ret);
+		ElementArray<Node> ret(m);
+		MarkerType mrk = m->CreatePrivateMarker();
+		HandleType hc = GetHandle();
 		if( isPrivate(mask) )
 		{
-			for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); ++it)
-				if( invert ^ m->GetPrivateMarker(*it,mask) ) 
-					aret.push_back(*it);
+			if( !m->HideMarker() )
+			{
+				Element::adj_type & lc = m->LowConn(hc);
+				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+				{
+					Element::adj_type & ilc = m->LowConn(lc[i]);
+					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+					{
+						Element::adj_type & jlc = m->LowConn(ilc[j]);
+						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+						{
+							if( (invert ^ m->GetPrivateMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k],mrk) )
+							{
+								m->SetPrivateMarker(jlc[k],mrk);
+								ret.push_back(jlc[k]);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = m->HideMarker();
+				Element::adj_type & lc = m->LowConn(hc);
+				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+				{
+					Element::adj_type & ilc = m->LowConn(lc[i]);
+					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+					{
+						Element::adj_type & jlc = m->LowConn(ilc[j]);
+						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+						{
+							if( (invert ^ m->GetPrivateMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k], mrk) )
+							{
+								m->SetPrivateMarker(jlc[k],mrk);
+								ret.push_back(jlc[k]);
+							}
+						}
+					}
+				}
+			}
 		}
 		else
 		{
-			for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); ++it)
-				if( invert ^ m->GetMarker(*it,mask) ) 
-					aret.push_back(*it);
+			if( !m->HideMarker() )
+			{
+				Element::adj_type & lc = m->LowConn(hc);
+				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+				{
+					Element::adj_type & ilc = m->LowConn(lc[i]);
+					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+					{
+						Element::adj_type & jlc = m->LowConn(ilc[j]);
+						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+						{
+							if( (invert ^ m->GetMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k],mrk) )
+							{
+								m->SetPrivateMarker(jlc[k],mrk);
+								ret.push_back(jlc[k]);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				MarkerType hm = m->HideMarker();
+				Element::adj_type & lc = m->LowConn(hc);
+				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+				{
+					Element::adj_type & ilc = m->LowConn(lc[i]);
+					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+					{
+						Element::adj_type & jlc = m->LowConn(ilc[j]);
+						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+						{
+							if( (invert ^ m->GetMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k], mrk) )
+							{
+								m->SetPrivateMarker(jlc[k],mrk);
+								ret.push_back(jlc[k]);
+							}
+						}
+					}
+				}
+			}
 		}
-		return aret;
+		ret.RemPrivateMarker(mrk);
+		m->ReleasePrivateMarker(mrk);
+		return ret;
 	}
 
 	ElementArray<Edge> Cell::getEdges() const

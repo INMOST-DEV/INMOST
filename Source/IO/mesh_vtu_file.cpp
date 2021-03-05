@@ -344,7 +344,9 @@ namespace INMOST
 		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << std::endl;
 		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
 		{
-			ElementArray<Node> nodes = jt->getNodes();
+			ElementArray<Node> nodes(this); //= jt->getNodes();
+			RestoreCellNodes(*jt,nodes);
+			assert(nodes.size() == jt->nbAdjElements(NODE));
 			for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); ++kt)
 				f << nid[*kt] << " ";
 			f << std::endl;
@@ -355,8 +357,9 @@ namespace INMOST
 			size_t offset = 0;
 			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
 			{
-				ElementArray<Node> nodes = jt->getNodes();
-				offset += nodes.size();
+				//ElementArray<Node> nodes = jt->getNodes();
+				//offset += nodes.size();
+				offset += jt->nbAdjElements(NODE);
 				f << offset << std::endl;
 			}
 		}
@@ -383,6 +386,7 @@ namespace INMOST
 					for(ElementArray<Face>::iterator kt = faces.begin(); kt != faces.end(); ++kt)
 					{
 						ElementArray<Node> nodes = kt->getNodes();
+						assert(nodes.size() == kt->nbAdjElements(NODE));
 						f << nodes.size() << " ";
 						for(ElementArray<Node>::iterator qt = nodes.begin(); qt != nodes.end(); ++qt)
 							f << nid[*qt] << " ";
@@ -405,7 +409,8 @@ namespace INMOST
 						for(ElementArray<Face>::iterator kt = faces.begin(); kt != faces.end(); ++kt)
 						{
 							offset++; //number of nodes in face
-							offset+= kt->getNodes().size(); //node ids
+							//offset+= kt->getNodes().size(); //node ids
+							offset += kt->nbAdjElements(NODE);
 						}
 						f << offset << std::endl;
 					}

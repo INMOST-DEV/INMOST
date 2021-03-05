@@ -227,7 +227,8 @@ namespace INMOST
 					case Element::Pyramid:
 					case Element::Prism:
 					{
-						ElementArray<Node> nodes = it->getNodes();
+						ElementArray<Node> nodes(this);// = it->getNodes();
+						RestoreCellNodes(*it,nodes);
 						if( nodes.size() != VtkElementNodes(it->GetGeometricType()) ) goto safe_output;
 						values.push_back(static_cast<integer>(nodes.size()));
 						for(ElementArray<Node>::iterator jt = nodes.begin(); jt != nodes.end(); jt++)
@@ -243,50 +244,6 @@ namespace INMOST
 							values.push_back(jt->IntegerDF(set_id));
 						break;
 					}
-						/*
-					case Element::Prism:
-					{
-						ElementArray<Node> nodes = it->getNodes();
-						if( nodes.size() != 6 ) goto safe_output;
-						values.push_back(static_cast<integer>(nodes.size()));
-						values.push_back(nodes[0].IntegerDF(set_id));
-						values.push_back(nodes[2].IntegerDF(set_id));
-						values.push_back(nodes[1].IntegerDF(set_id));
-						values.push_back(nodes[3].IntegerDF(set_id));
-						values.push_back(nodes[5].IntegerDF(set_id));
-						values.push_back(nodes[4].IntegerDF(set_id));
-						break;
-					}
-						 */
-					/*
-					case Element::Hex:
-					{
-						ElementArray<Node> nodes = it->getNodes();
-						if( nodes.size() != 8 ) goto safe_output;
-						values.push_back(static_cast<integer>(nodes.size()));
-						values.push_back(nodes[0].IntegerDF(set_id));
-						values.push_back(nodes[3].IntegerDF(set_id));
-						values.push_back(nodes[2].IntegerDF(set_id));
-						values.push_back(nodes[1].IntegerDF(set_id));
-						values.push_back(nodes[4].IntegerDF(set_id));
-						values.push_back(nodes[7].IntegerDF(set_id));
-						values.push_back(nodes[6].IntegerDF(set_id));
-						values.push_back(nodes[5].IntegerDF(set_id));
-						break;
-					}
-					case Element::Pyramid:
-					{
-						ElementArray<Node> nodes = it->getNodes();
-						if( nodes.size() != 5 ) goto safe_output;
-						values.push_back(static_cast<integer>(nodes.size()));
-						values.push_back(nodes[0].IntegerDF(set_id));
-						values.push_back(nodes[3].IntegerDF(set_id));
-						values.push_back(nodes[2].IntegerDF(set_id));
-						values.push_back(nodes[1].IntegerDF(set_id));
-						values.push_back(nodes[4].IntegerDF(set_id));
-						break;
-					}
-					 */
 					case Element::Polyhedron:
 					case Element::MultiPolygon:
 					{

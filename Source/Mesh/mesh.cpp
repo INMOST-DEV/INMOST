@@ -1460,39 +1460,49 @@ namespace INMOST
 				 */
 			case Element::Hex:
 			{
-				MarkerType cemrk = CreatePrivateMarker();
-				MarkerType femrk = CreatePrivateMarker();
-				ElementArray<Face> faces = c->getFaces();
+				MarkerType mrk = CreatePrivateMarker();
+				const ElementArray<Face> faces = c->getFaces();
 				Face face = faces[0];
 				ret.reserve(8);
-				ElementArray<Node> verts = face->getNodes();
-				if( face->BackCell() == c )
-					ret.insert(ret.end(),verts.rbegin(),verts.rend());
-				else
-					ret.insert(ret.end(),verts.begin(),verts.end());
-				ElementArray<Edge> c_edges = c->getEdges();
-				ElementArray<Edge> f_edges = face->getEdges();
-				c_edges.SetPrivateMarker(cemrk);
-				f_edges.SetPrivateMarker(femrk);
-				for(unsigned int k = 0; k < 4; k++)
 				{
-					ElementArray<Edge> v_edges = ret[k]->getEdges(cemrk);
-					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
+					const ElementArray<Node> verts = face->getNodes();
+					if( face->FaceOrientedOutside(c) )
+						ret.insert(ret.end(),verts.rbegin(),verts.rend());
+					else
+						ret.insert(ret.end(),verts.begin(),verts.end());
+				}
+				ret.SetPrivateMarker(mrk);
+				ret.resize(8);
+				for(ElementArray<Face>::size_type k = 1; k < faces.size(); ++k)
+				{
+					if( faces[k].nbAdjElements(NODE,mrk) == 2 )
 					{
-						if( !it->GetPrivateMarker(femrk) )
-						{
-							if( it->getBeg() == ret[k] )
-								ret.push_back(it->getEnd());
-							else
-								ret.push_back(it->getBeg());
-							break;
-						}
+						int inspos[2] = {-1,-1}, r = 0;
+						const ElementArray<Node> verts = faces[k].getNodes();
+						for(ElementArray<Node>::size_type q = 0; q < verts.size(); ++q)
+							if( verts[q].GetPrivateMarker(mrk) )
+							{
+								for(int l = 0; l < 4; ++l) if( ret[l] == verts[q] )
+								{
+									inspos[r] = l+4;
+									break;
+								}
+								assert(inspos[r] != -1);
+								ElementArray<Node>::size_type nxt = (q+1)%verts.size();
+								ElementArray<Node>::size_type prv = (q-1+verts.size())%verts.size();
+								if( verts[nxt].GetPrivateMarker(mrk) )
+									ret[inspos[r]] = verts[prv];
+								else if( verts[prv].GetPrivateMarker(mrk) )
+									ret[inspos[r]] = verts[nxt];
+								else assert(false); //this should not happen
+								r++;
+							}
+						ret[inspos[0]].SetPrivateMarker(mrk);
+						ret[inspos[1]].SetPrivateMarker(mrk);
 					}
 				}
-				c_edges.RemPrivateMarker(cemrk);
-				f_edges.RemPrivateMarker(femrk);
-				ReleasePrivateMarker(cemrk);
-				ReleasePrivateMarker(femrk);
+				ret.RemPrivateMarker(mrk);
+				ReleasePrivateMarker(mrk);
 				break;
 			}
 				/*
@@ -1503,43 +1513,53 @@ namespace INMOST
 				 */
 			case Element::Prism:
 			{
-				MarkerType cemrk = CreatePrivateMarker();
-				MarkerType femrk = CreatePrivateMarker();
+				MarkerType mrk = CreatePrivateMarker();
 				ret.reserve(6);
 				Face face;
-				ElementArray<Face> faces = c->getFaces();
+				const ElementArray<Face> faces = c->getFaces();
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //iterate over faces
 					if( faces[i].nbAdjElements(EDGE) == 3 ) //number of edges in i-th face
 					{
 						face = faces[i];
 						break;
 					}
-				ElementArray<Node> verts = face->getNodes();
-				if( face->BackCell() == c )
-					ret.insert(ret.end(),verts.rbegin(),verts.rend());
-				else
-					ret.insert(ret.end(),verts.begin(),verts.end());
-				ElementArray<Edge> c_edges = c->getEdges();
-				ElementArray<Edge> f_edges = face->getEdges();
-				c_edges.SetPrivateMarker(cemrk);
-				f_edges.SetPrivateMarker(femrk);
-				for(ElementArray<Cell>::size_type k = 0; k < 3; k++)
 				{
-					ElementArray<Edge> v_edges = ret[k]->getEdges(cemrk);
-					for(ElementArray<Edge>::iterator it = v_edges.begin(); it != v_edges.end(); it++)
-						if( !it->GetPrivateMarker(femrk) )
-						{
-							if( it->getBeg() == ret[k] )
-								ret.push_back(it->getEnd());
-							else
-								ret.push_back(it->getBeg());
-							break;
-						}
+					const ElementArray<Node> verts = face->getNodes();
+					if( face->FaceOrientedOutside(c) )
+						ret.insert(ret.end(),verts.rbegin(),verts.rend());
+					else
+						ret.insert(ret.end(),verts.begin(),verts.end());
 				}
-				c_edges.RemPrivateMarker(cemrk);
-				f_edges.RemPrivateMarker(femrk);
-				ReleasePrivateMarker(cemrk);
-				ReleasePrivateMarker(femrk);
+				ret.SetPrivateMarker(mrk);
+				ret.resize(6);
+				for(ElementArray<Face>::size_type k = 0; k < faces.size(); ++k)
+				{
+					if( faces[k].nbAdjElements(NODE,mrk) == 2 )
+					{
+						int inspos[2] = {-1,-1}, r = 0;
+						const ElementArray<Node> verts = faces[k].getNodes();
+						for(ElementArray<Node>::size_type q = 0; q < verts.size(); ++q)
+							if( verts[q].GetPrivateMarker(mrk) )
+							{
+								for(int l = 0; l < 3; ++l) if( ret[l] == verts[q] )
+								{
+									inspos[r] = l+3;
+									break;
+								}
+								assert(inspos[r] != -1);
+								ElementArray<Node>::size_type nxt = (q+1)%verts.size();
+								ElementArray<Node>::size_type prv = (q-1+verts.size())%verts.size();
+								if( verts[nxt].GetPrivateMarker(mrk) )
+									ret[inspos[r]] = verts[prv];
+								else if( verts[prv].GetPrivateMarker(mrk) )
+									ret[inspos[r]] = verts[nxt];
+								else assert(false); //this should not happen
+								r++;
+							}
+					}
+				}
+				ret.RemPrivateMarker(mrk);
+				ReleasePrivateMarker(mrk);
 				break;
 			}
 				/*
@@ -1550,49 +1570,31 @@ namespace INMOST
 			case Element::Pyramid:
 			{
 				ret.reserve(5);
-				Face quad, triangle;
+				Face face;
 				MarkerType mrk = CreatePrivateMarker();
-				ElementArray<Face> faces = c->getFaces();
+				const ElementArray<Face> faces = c->getFaces();
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //go over faces
-				{
 					if( faces[i].nbAdjElements(EDGE) == 4 ) //check if number of edges = 4
 					{
-						quad = faces[i];
+						face = faces[i];
 						break;
 					}
+				{
+					const ElementArray<Node> verts = face->getNodes();
+					if( face->FaceOrientedOutside(c) )
+						ret.insert(ret.begin(),verts.rbegin(),verts.rend());
+					else
+						ret.insert(ret.begin(),verts.begin(),verts.end());
 				}
+				ret.SetPrivateMarker(mrk);
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //go over faces
-				{
-					if( faces[i].nbAdjElements(EDGE) == 3 ) //check if number of edges = 3
+					if( faces[i].nbAdjElements(NODE) == 3 )
 					{
-						triangle = faces[i];
+						ret.Unite(faces[i]->getNodes(mrk,true));
+						assert(ret.size() == 5);
 						break;
 					}
-				}
-				ElementArray<Node> base_nodes = quad->getNodes();
-				if( quad->BackCell() == c )
-					for(ElementArray<Node>::reverse_iterator it = base_nodes.rbegin(); it != base_nodes.rend(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
-				else
-					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
-				ElementArray<Node> tri_nodes = triangle->getNodes();
-				for(ElementArray<Node>::iterator it = tri_nodes.begin(); it != tri_nodes.end(); it++)
-				{
-					if( !it->GetPrivateMarker(mrk) )
-					{
-						ret.push_back(*it);
-						break;
-					}
-				}
-				for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); it++)
-					it->RemPrivateMarker(mrk);
+				ret.RemPrivateMarker(mrk);
 				ReleasePrivateMarker(mrk);
 				break;
 			}
@@ -1605,31 +1607,18 @@ namespace INMOST
 			{
 				ret.reserve(4);
 				MarkerType mrk = CreatePrivateMarker();
-				ElementArray<Face> faces = c->getFaces();
-				ElementArray<Node> base_nodes = faces[0]->getNodes();
-				if( faces[0]->BackCell() == c )
-					for(ElementArray<Node>::reverse_iterator it = base_nodes.rbegin(); it != base_nodes.rend(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
-				else
-					for(ElementArray<Node>::iterator it = base_nodes.begin(); it != base_nodes.end(); it++)
-					{
-						ret.push_back(*it);
-						it->SetPrivateMarker(mrk);
-					}
-				ElementArray<Node> tri_nodes = faces[1]->getNodes();
-				for(ElementArray<Node>::iterator it = tri_nodes.begin(); it != tri_nodes.end(); it++)
+				const ElementArray<Face> faces = c->getFaces();
 				{
-					if( !it->GetPrivateMarker(mrk) )
-					{
-						ret.push_back(*it);
-						break;
-					}
+					const ElementArray<Node> verts = faces[0]->getNodes();
+					if( faces[0]->FaceOrientedOutside(c) )
+						ret.insert(ret.begin(),verts.rbegin(),verts.rend());
+					else
+						ret.insert(ret.begin(),verts.begin(),verts.end());
+					ret.SetPrivateMarker(mrk);
 				}
-				for(ElementArray<Node>::iterator it = ret.begin(); it != ret.end(); it++)
-					it->RemPrivateMarker(mrk);
+				ret.Unite(faces[1]->getNodes(mrk,true));
+				assert(ret.size() == 4);
+				ret.RemPrivateMarker(mrk);
 				ReleasePrivateMarker(mrk);
 				break;
 			}
@@ -1681,7 +1670,117 @@ namespace INMOST
 				break;
 			}
 		}
-
+	}
+	
+	ElementType Mesh::HaveUpperAdjacencies() const
+	{
+		ElementType ret = NONE;
+		if( tag_high_conn.isValid() )
+		{
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
+				if( tag_high_conn.isDefined(etype) )
+					ret |= etype;
+			return ret;
+		}
+		else return NONE;
+	}
+	
+	ElementType Mesh::HaveLowerAdjacencies() const
+	{
+		ElementType ret = NONE;
+		if( tag_low_conn.isValid() )
+		{
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
+				if( tag_low_conn.isDefined(etype) )
+					ret |= etype;
+			return ret;
+		}
+		else return NONE;
+	}
+	
+	
+	void Mesh::RemoveUpperAdjacencies(ElementType mask)
+	{
+		if( (HaveUpperAdjacencies() & mask) != NONE )
+			tag_high_conn = DeleteTag(tag_high_conn,(NODE|EDGE|FACE) & mask);
+		else
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " Upper adjacencies were already removed for";
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype)) if( etype & mask ) 
+				std::cout << " " << ElementTypeName(etype);
+			std::cout << std::endl;
+		}
+	}
+	
+	
+	void Mesh::RemoveLowerAdjacencies(ElementType mask)
+	{
+		if( (HaveLowerAdjacencies() & mask) != NONE )
+			tag_low_conn = DeleteTag(tag_low_conn,(EDGE|FACE|CELL) & mask);
+		else
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " Lower adjacencies were already removed for";
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype)) if( etype & mask ) 
+				std::cout << " " << ElementTypeName(etype);
+			std::cout << std::endl;
+		}
+	}
+	
+	void Mesh::RestoreUpperAdjacencies(ElementType mask)
+	{
+		ElementType had = HaveUpperAdjacencies();
+		if( (had & mask) == mask )
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " Upper adjacencies already exist for";
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype)) if( etype & mask ) 
+				std::cout << " " << ElementTypeName(etype);
+			std::cout << std::endl;
+		}
+		else
+		{
+			tag_high_conn = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,(FACE|EDGE|NODE) & mask,NONE);
+			for(ElementType etype = CELL; etype > NODE; etype = PrevElementType(etype)) if( (PrevElementType(etype) & mask) && !(PrevElementType(etype) & had) )
+				for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+				{
+					HandleType me = ComposeHandle(etype,it);
+					const Element::adj_type & lc = LowConn(me);
+					for(Element::adj_type::const_iterator it = lc.begin(); it != lc.end(); ++it)
+						HighConn(*it).push_back(me);
+				}
+			if( (mask & FACE) && !(had & FACE) && HaveGeometricData(ORIENTATION,FACE) )
+				for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+					FaceByLocalID(it).FixNormalOrientation(true);
+		}
+	}
+	
+	void Mesh::RestoreLowerAdjacencies(ElementType mask)
+	{
+		ElementType had = HaveLowerAdjacencies();
+		if( (had & mask) == mask )
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " Lower adjacencies already exist for";
+			for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype)) if( etype & mask ) 
+				std::cout << " " << ElementTypeName(etype);
+			std::cout << std::endl;
+		}
+		else
+		{
+			tag_low_conn = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,(CELL|FACE|EDGE) & mask,NONE);
+			for(ElementType etype = NODE; etype < CELL; etype = NextElementType(etype)) if( (NextElementType(etype) & mask) && !(NextElementType(etype) & had) )
+				for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
+				{
+					HandleType me = ComposeHandle(etype,it);
+					const Element::adj_type & hc = HighConn(me);
+					for(Element::adj_type::const_iterator it = hc.begin(); it != hc.end(); ++it)
+						LowConn(*it).push_back(me);
+				}
+			if( (mask & FACE) && !(had & FACE) ) //fix edge order
+				for(integer it = 0; it < FaceLastLocalID(); ++it) if( isValidFace(it) )
+					FaceByLocalID(it).FixEdgeOrder();
+			if( (mask & CELL) && !(had & CELL) ) //fix edge order
+				for(integer it = 0; it < CellLastLocalID(); ++it) if( isValidCell(it) )
+					CellByLocalID(it).FixEdgeOrder();
+		}
 	}
 	
 	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Face> & c_faces)//, const ElementArray<Node> & c_nodes)

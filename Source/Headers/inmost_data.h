@@ -881,9 +881,9 @@ namespace INMOST
 	__INLINE bool Tag::isDefinedMask(ElementType mask) const 
 	{
 		assert(mem!=NULL);
-		bool ret = false;
+		bool ret = true;
 		for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
-			if( etype & mask ) ret |= isDefined(etype&mask);
+			if( etype & mask ) ret &= isDefined(etype&mask);
 		return ret;
 	}
 	__INLINE bool Tag::isSparse(ElementType type) const 

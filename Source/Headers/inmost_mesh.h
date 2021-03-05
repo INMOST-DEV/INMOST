@@ -2068,6 +2068,18 @@ namespace INMOST
 		/// @see Face::FixNormalOrientation
 		/// @see Mesh::LowConn
 		Element::adj_type &               HighConn           (HandleType h) {return *static_cast<inner_reference_array*>(MGetDenseLink(h,HighConnTag()));}
+		/// Check that upper adjacencies are stored
+		ElementType                       HaveUpperAdjacencies() const;
+		/// Delete all upper adjacencies, access to HighConn should fire assertion and retrival of upper adjacencies is no longer valid
+		void                              RemoveUpperAdjacencies(ElementType mask = (NODE|EDGE|FACE));
+		/// Restore all upper adjacencies
+		void                              RestoreUpperAdjacencies(ElementType mask = (NODE|EDGE|FACE));
+		/// Check that upper adjacencies are stored
+		ElementType                       HaveLowerAdjacencies() const;
+		/// Delete all upper adjacencies, access to HighConn should fire assertion and retrival of upper adjacencies is no longer valid
+		void                              RemoveLowerAdjacencies(ElementType mask = (EDGE|FACE|CELL));
+		/// Restore all upper adjacencies
+		void                              RestoreLowerAdjacencies(ElementType mask = (EDGE|FACE|CELL));
 		/// Access directly higher order adjacencies of current element without right of modification.
 		Element::adj_type const&          HighConn           (HandleType h) const {return *static_cast<const inner_reference_array*>(MGetDenseLink(h,HighConnTag()));}
 		/// Access directly lower order adjacencies of current element with right of modification.

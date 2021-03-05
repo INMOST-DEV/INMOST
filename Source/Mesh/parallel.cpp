@@ -902,10 +902,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::real> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
+		std::vector<Storage::real> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::real)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_SUM,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -917,10 +919,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::integer> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
+		std::vector<Storage::integer> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::integer)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_SUM,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -932,10 +936,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::enumerator> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
+		std::vector<Storage::enumerator> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::enumerator)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1032,10 +1038,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::real> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
+		std::vector<Storage::real> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::real)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MAX,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1047,10 +1055,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::integer> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
+		std::vector<Storage::integer> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::integer)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MAX,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1062,10 +1072,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::enumerator> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MAX,comm));
+		std::vector<Storage::enumerator> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::enumerator)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MAX,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1116,10 +1128,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::real> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::real)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
+		std::vector<Storage::real> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::real)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_REAL_TYPE,MPI_MIN,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1131,10 +1145,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::enumerator> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::enumerator)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MIN,comm));
+		std::vector<Storage::enumerator> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::enumerator)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_ENUM_TYPE,MPI_MIN,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
@@ -1146,10 +1162,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		static std::vector<Storage::integer> temp;
-		temp.resize(size);
-		memcpy(temp.data(),input,sizeof(Storage::integer)*size);
-		REPORT_MPI(MPI_Allreduce(temp.data(),input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
+		std::vector<Storage::integer> temp(size);
+		if( !temp.empty() )
+		{
+			memcpy(&temp[0],input,sizeof(Storage::integer)*size);
+			REPORT_MPI(MPI_Allreduce(&temp[0],input,size,INMOST_MPI_DATA_INTEGER_TYPE,MPI_MIN,comm));
+		}
 #else//USE_MPI
 		(void) input;
 		(void) size;
