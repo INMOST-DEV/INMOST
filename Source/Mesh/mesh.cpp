@@ -1702,7 +1702,18 @@ namespace INMOST
 	void Mesh::RemoveUpperAdjacencies(ElementType mask)
 	{
 		if( (HaveUpperAdjacencies() & mask) != NONE )
+		{
+			ElementType test = PrevElementType(HaveLowerAdjacencies()) & mask;
+			if( (test & mask) != mask )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " You're deleting both upper and lower adjacency connections for ";
+				for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+					if( (etype & mask) && !(etype & test) ) std::cout << ElementTypeName(etype);
+				std::cout << std::endl;
+			}
+			assert((PrevElementType(HaveLowerAdjacencies()) & mask) == mask);
 			tag_high_conn = DeleteTag(tag_high_conn,(NODE|EDGE|FACE) & mask);
+		}
 		else
 		{
 			std::cout << __FILE__ << ":" << __LINE__ << " Upper adjacencies were already removed for";
@@ -1716,7 +1727,18 @@ namespace INMOST
 	void Mesh::RemoveLowerAdjacencies(ElementType mask)
 	{
 		if( (HaveLowerAdjacencies() & mask) != NONE )
+		{
+			ElementType test = NextElementType(HaveUpperAdjacencies()) & mask;
+			if( (test & mask) != mask )
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " You're deleting both upper and lower adjacency connections for ";
+				for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
+					if( (etype & mask) && !(etype & test) ) std::cout << ElementTypeName(etype);
+				std::cout << std::endl;
+			}
+			assert((NextElementType(HaveUpperAdjacencies()) & mask) == mask);
 			tag_low_conn = DeleteTag(tag_low_conn,(EDGE|FACE|CELL) & mask);
+		}
 		else
 		{
 			std::cout << __FILE__ << ":" << __LINE__ << " Lower adjacencies were already removed for";
