@@ -1462,11 +1462,10 @@ namespace INMOST
 			{
 				MarkerType mrk = CreatePrivateMarker();
 				const ElementArray<Face> faces = c->getFaces();
-				Face face = faces[0];
 				ret.reserve(8);
 				{
-					const ElementArray<Node> verts = face->getNodes();
-					if( face->FaceOrientedOutside(c) )
+					const ElementArray<Node> verts = faces[0]->getNodes();
+					if( faces[0]->FaceOrientedOutside(c) )
 						ret.insert(ret.end(),verts.rbegin(),verts.rend());
 					else
 						ret.insert(ret.end(),verts.begin(),verts.end());
@@ -1497,8 +1496,6 @@ namespace INMOST
 								else assert(false); //this should not happen
 								r++;
 							}
-						ret[inspos[0]].SetPrivateMarker(mrk);
-						ret[inspos[1]].SetPrivateMarker(mrk);
 					}
 				}
 				ret.RemPrivateMarker(mrk);
@@ -1515,21 +1512,17 @@ namespace INMOST
 			{
 				MarkerType mrk = CreatePrivateMarker();
 				ret.reserve(6);
-				Face face;
 				const ElementArray<Face> faces = c->getFaces();
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //iterate over faces
 					if( faces[i].nbAdjElements(EDGE) == 3 ) //number of edges in i-th face
 					{
-						face = faces[i];
+						const ElementArray<Node> verts = faces[i]->getNodes();
+						if (faces[i]->FaceOrientedOutside(c))
+							ret.insert(ret.end(), verts.rbegin(), verts.rend());
+						else
+							ret.insert(ret.end(), verts.begin(), verts.end());
 						break;
 					}
-				{
-					const ElementArray<Node> verts = face->getNodes();
-					if( face->FaceOrientedOutside(c) )
-						ret.insert(ret.end(),verts.rbegin(),verts.rend());
-					else
-						ret.insert(ret.end(),verts.begin(),verts.end());
-				}
 				ret.SetPrivateMarker(mrk);
 				ret.resize(6);
 				for(ElementArray<Face>::size_type k = 0; k < faces.size(); ++k)
@@ -1570,22 +1563,18 @@ namespace INMOST
 			case Element::Pyramid:
 			{
 				ret.reserve(5);
-				Face face;
 				MarkerType mrk = CreatePrivateMarker();
 				const ElementArray<Face> faces = c->getFaces();
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //go over faces
 					if( faces[i].nbAdjElements(EDGE) == 4 ) //check if number of edges = 4
 					{
-						face = faces[i];
+						const ElementArray<Node> verts = faces[i]->getNodes();
+						if (faces[i]->FaceOrientedOutside(c))
+							ret.insert(ret.begin(), verts.rbegin(), verts.rend());
+						else
+							ret.insert(ret.begin(), verts.begin(), verts.end());
 						break;
 					}
-				{
-					const ElementArray<Node> verts = face->getNodes();
-					if( face->FaceOrientedOutside(c) )
-						ret.insert(ret.begin(),verts.rbegin(),verts.rend());
-					else
-						ret.insert(ret.begin(),verts.begin(),verts.end());
-				}
 				ret.SetPrivateMarker(mrk);
 				for(ElementArray<Face>::size_type i = 0; i < faces.size(); i++) //go over faces
 					if( faces[i].nbAdjElements(NODE) == 3 )
