@@ -601,8 +601,10 @@ using namespace INMOST;
 		{
 			U_Address[k].first = U_Address[k].last = ENUMUNDEF;
 			L_Address[k].first = L_Address[k].last = ENUMUNDEF;
+#if defined(ILUC2)
 			U2_Address[k].first = U2_Address[k].last = ENUMUNDEF;
 			L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
+#endif
 		}
 
 
@@ -1625,8 +1627,8 @@ using namespace INMOST;
 /////////// FACTORIZATION BEGIN ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-				nzLU2 = 0;
 #if defined(ILUC2)
+				nzLU2 = 0;
 				LU2_Entries.clear();
 #endif
 				mean_diag = 0.0;
@@ -3155,7 +3157,10 @@ swap_algorithm:
 							else 
 							{
 								std::cout << std::setw(6) << std::fixed << std::setprecision(2) << 100.0f*(k - cbeg) / (float)(cend - cbeg);
-								std::cout << " nnz LU " << std::setw(8) << nzLU << " LU2 " << std::setw(8) << nzLU2;
+								std::cout << " nnz LU " << std::setw(8) << nzLU;
+#if defined(ILUC2)
+								std::cout << " LU2 " << std::setw(8) << nzLU2;
+#endif
 								std::cout << " cond L " << std::setprecision(6) << std::setw(10) << NuL << " D " << NuD << " U " << NuD << " pivot " << std::setw(10) << swaps;
 								std::cout << "\r" << std::flush;
 							}
@@ -3170,7 +3175,9 @@ swap_algorithm:
 				{
 					std::cout << "size " << moend-mobeg;
 					std::cout << " total nonzeros in A " << nzA << " in LU " << nzLU;
+#if defined(ILUC2)
 					std::cout << " in LU2 " << nzLU2;
+#endif
 					std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max/* << " pivot swaps " << swaps*/ << std::endl;
 				}
 			}
