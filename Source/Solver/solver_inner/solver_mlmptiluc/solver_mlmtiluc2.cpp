@@ -3393,7 +3393,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								i = Bbeg[k];
 								while (i != EOL)
 								{
-									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[i].first].first) == k);
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(A_Entries[A_Address[i].first].first) == k);
 									LineValuesL[i] = A_Entries[A_Address[i].first].second;
 									j = LineIndecesL[j] = i;
 									i = Blist[i];
