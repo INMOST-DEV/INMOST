@@ -111,7 +111,7 @@ namespace INMOST
 							}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],(enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}					
@@ -130,7 +130,7 @@ namespace INMOST
 							}
 					}		
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -153,7 +153,7 @@ namespace INMOST
 						}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}					
@@ -176,7 +176,7 @@ namespace INMOST
 						}
 					}		
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -220,7 +220,7 @@ namespace INMOST
 						}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -239,7 +239,7 @@ namespace INMOST
 							}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -262,7 +262,7 @@ namespace INMOST
 						}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -285,7 +285,7 @@ namespace INMOST
 						}
 					}
 					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -349,7 +349,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -368,7 +368,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -393,7 +393,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -418,7 +418,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -460,7 +460,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -479,7 +479,7 @@ namespace INMOST
 								}
 						}		
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -504,7 +504,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -529,7 +529,7 @@ namespace INMOST
 							}
 						}		
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -573,7 +573,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -592,7 +592,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -617,7 +617,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -642,7 +642,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -684,7 +684,7 @@ namespace INMOST
 								}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -703,7 +703,7 @@ namespace INMOST
 								}
 						}		
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -728,7 +728,7 @@ namespace INMOST
 							}
 						}
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
@@ -753,7 +753,7 @@ namespace INMOST
 							}
 						}		
 						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0],result.size(),mrk);
+						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}

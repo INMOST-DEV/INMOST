@@ -177,8 +177,7 @@ namespace INMOST
 				return ret;
 			}
 		private:
-			//typedef dynarray<entry,16> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
-			typedef array<entry> Entries; ///< Container type for 
+			typedef std::vector<entry> Entries; ///< Container type for 
 		public:
 			typedef Entries::iterator iterator; ///< Iterator over pairs of index and value.
 			typedef Entries::const_iterator const_iterator; ///< Iterator over constant pairs of index and value.
@@ -349,8 +348,7 @@ namespace INMOST
 				return ret;
 			}
 		private:
-			typedef array<entry> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
-			//typedef dynarray<entry,8> Entries;
+			typedef std::vector<entry> Entries; //replace later with more memory-efficient chunk_array, with first chunk in stack
 		public:
 			typedef Entries::iterator iterator;
 			typedef Entries::const_iterator const_iterator;

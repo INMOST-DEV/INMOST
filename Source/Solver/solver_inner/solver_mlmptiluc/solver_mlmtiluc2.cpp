@@ -25,7 +25,6 @@ using namespace INMOST;
 //~ #define REORDER_RCM
 #define REORDER_WRCM
 //~ #define REORDER_BRCM
-//#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
 //~ #define REORDER_METIS_ND
 #endif
@@ -51,7 +50,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
-#define ILUC2
+//#define ILUC2
 //~ #define ILUC2_SCHUR
 
 //#define PIVOT_COND_DEFAULT 0.1/tau
@@ -1356,6 +1355,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 	bool MLMTILUC_preconditioner::isFinalized() { return !init; }
 	bool MLMTILUC_preconditioner::Initialize()
 	{
+		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 		int nthreads = Threads();
         const INMOST_DATA_REAL_TYPE subst = 1.0; (void)subst;
 		const INMOST_DATA_REAL_TYPE tol_modif = PIVOT_THRESHOLD_VALUE;
@@ -1375,12 +1375,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		info->GetOverlapRegion(info->GetRank(), mobeg, moend);
 		info->GetVectorRegion(vbeg,vend);
 		
-		//prepare temporal array
-		temp.set_interval_beg(vbeg);
-		temp.set_interval_end(vend);
-		//for(interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE>::iterator rit = temp.begin();
-		//	rit != temp.end(); ++rit) *rit = 0.0;
-		for(k = vbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(vend); ++k) temp[k] = 0.0;
+		
 
 		
 		//prepare reordering vectors
@@ -1396,20 +1391,21 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		DR.SetInterval(mobeg, moend);
 		DL0.SetInterval(mobeg, moend);
 		DR0.SetInterval(mobeg, moend);
-		for(k = mobeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(moend); ++k) DL[k] = DR[k] = DL0[k] = DR0[k] = 1.0;
-		//for(Sparse::Vector::iterator ri = DL.Begin(); ri != DL.End(); ++ri) *ri = 1.0;
-		//for(Sparse::Vector::iterator ri = DR.Begin(); ri != DR.End(); ++ri) *ri = 1.0;
-		//for(Sparse::Vector::iterator ri = DL0.Begin(); ri != DL0.End(); ++ri) *ri = 1.0;
-		//for(Sparse::Vector::iterator ri = DR0.Begin(); ri != DR0.End(); ++ri) *ri = 1.0;
-
+		for(k = mobeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(moend); ++k) 
+			DL[k] = DR[k] = DL0[k] = DR0[k] = 1.0;
+		
 		
 
-		for (k = mobeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(moend); k++) ddP[k] = ddQ[k] = k;
+		for (k = mobeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(moend); k++) 
+			ddP[k] = ddQ[k] = k;
 		// supplementary data for ddPQ reordering
 		interval<INMOST_DATA_ENUM_TYPE, bool> donePQ(mobeg, moend, false);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> invP(mobeg, moend), invQ(mobeg,moend), localP(mobeg, moend,ENUMUNDEF), localQ(mobeg,moend,ENUMUNDEF);		
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Bstart(mobeg,moend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> invP(mobeg, moend), invQ(mobeg, moend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> localP(mobeg, moend, ENUMUNDEF), localQ(mobeg, moend, ENUMUNDEF);
+		
 		interval<INMOST_DATA_ENUM_TYPE, bool> Pivot(mobeg,moend,false);
+
+		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 		//supplimentary data structures for ILUC
 		INMOST_DATA_ENUM_TYPE L_Beg, U_Beg, Sbeg;
@@ -1417,33 +1413,22 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		U_Address.set_interval_end(moend);
 		L_Address.set_interval_beg(mobeg);
 		L_Address.set_interval_end(moend);
-		B_Address.set_interval_beg(mobeg);
-		B_Address.set_interval_end(moend);
 		LU_Diag.set_interval_beg(mobeg);
 		LU_Diag.set_interval_end(moend);
-		std::vector<Sparse::Row::entry> A_Entries, S_Entries, LF_Entries, LFt_Entries;
-		std::vector<Sparse::Row::entry> EU_Entries;
+		std::vector<Sparse::Row::entry> A_Entries;
+		
+		
 		//std::vector<INMOST_DATA_ENUM_TYPE> sort_indeces;
-		interval<INMOST_DATA_ENUM_TYPE, Interval> A_Address(mobeg, moend), S_Address(mobeg,moend);
-		interval<INMOST_DATA_ENUM_TYPE, Interval> LF_Address(mobeg,moend), LFt_Address(mobeg,moend);
-		interval<INMOST_DATA_ENUM_TYPE, Interval> EU_Address(mobeg,moend);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ulist(mobeg, moend), Llist(mobeg, moend), Blist(mobeg,moend), Flist(mobeg,moend);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(mobeg, moend,EOL), Lbeg(mobeg, moend,EOL), Bbeg(mobeg,moend,EOL), Fbeg(mobeg,moend);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Scolmax(mobeg,moend,0.0), Srowmax(mobeg,moend,0.0);
-		std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> > Scolmax_local(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>(mobeg,moend,0.0));
-		//~ interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Scolnum(mobeg,moend,0), Srownum(mobeg,moend,0);
+		interval<INMOST_DATA_ENUM_TYPE, Interval> A_Address(mobeg, moend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ulist(mobeg, moend), Llist(mobeg, moend), Blist(mobeg, moend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Bbeg(mobeg,moend,EOL);
 #if defined(NNZ_PIVOT)
 		INMOST_DATA_ENUM_TYPE nnzL = 0, nnzU = 0, nnzL_max = 0, nnzU_max = 0;
 #endif
 		INMOST_DATA_ENUM_TYPE nnzE = 0, nnzF = 0, nnzA = 0;
 		INMOST_DATA_REAL_TYPE NuU = 1, NuL = 1, NuD = 1, NuU_max = 1.0, NuL_max = 1.0;
 		INMOST_DATA_REAL_TYPE NuU_acc = 1, NuL_acc = 1, NuD_acc = 1;
-		//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
-		INMOST_DATA_REAL_TYPE mu_update_L1, mu_update_L2, mu_update_U1, mu_update_U2;
-		INMOST_DATA_REAL_TYPE NuU_old = 1, NuL_old = 1, NuD_old = 1;
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL1(mobeg, moend,0.0), EstU1(mobeg, moend,0.0);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL2(mobeg, moend,0.0), EstU2(mobeg, moend,0.0);
-
+		
 		//supplimentary data structures for returning values of dropped elements
 		//~ INMOST_DATA_REAL_TYPE DropLk, DropUk, SumLk, SumUk;
 		//~ interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> DropU(mobeg,moend,0.0), DropL(mobeg,moend,0.0);
@@ -1454,18 +1439,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> U(mobeg,moend,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> V(mobeg,moend,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Dist(mobeg,moend+1,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-		
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(mobeg, moend,0.0), LineValuesL(mobeg,moend,0.0);
-		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(mobeg, moend+1,UNDEF), LineIndecesL(mobeg,moend+1,UNDEF);
-		
-		interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> > > TransposeU(mobeg,moend), TransposeL(mobeg,moend);
+		//interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> > > TransposeU(mobeg,moend), TransposeL(mobeg,moend);
 		
 		
-		std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> > LineValuesS(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>(mobeg,moend,0.0) );
-		std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > LineIndecesS(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>(mobeg,moend+1,UNDEF) );
-		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > indicesS(nthreads);
-		std::vector<INMOST_DATA_ENUM_TYPE> indicesU, indicesL;
+		
         double tfactor = 0.0, trescale = 0.0, treorder = 0.0, ttransversal = 0.0, treassamble = 0.0, ttotal, tt, testimator = 0.0, tschur = 0.0, tlocal;
 #if defined(REORDER_METIS_ND)
 		double tmetisgraph = 0, tmetisnd = 0;
@@ -1489,76 +1466,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 		//sort_indeces.reserve(256);
 		A_Entries.resize(nzA);
-		//B_Entries.reserve(nzA);
 		//LU_Entries.reserve(nzA*4);
 
-#if defined(REORDER_NNZ)
-		wgt_coords sort_wgts(2*(moend - mobeg));
-#endif
-
-#if defined(REORDER_ZOLTAN_HUND)
-#endif
-
-#if defined(REORDER_MONDRIAAN)
-		{
-			sparsematrix sp;
-			int numparts = 8;
-			int * cols = new int[nzA];
-			int * rows = new int[Alink->Size()+1];
-			double * values = new double[nzA];
-			int cnt = 0;
-			rows[0] = 0;
-			for (k = mobeg; k < moend; ++k)
-			{
-				for (Sparse::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r)
-				{
-					if (r->first >= mobeg && r->first < moend && fabs(r->second) > 0.0)
-					{
-						cols[cnt] = r->first;
-						values[cnt] = r->second;
-						++cnt;
-					}
-				}
-				rows[k-mobeg+1] = cnt;
-			}
-			CRSSparseMatrixInit(&sp,Alink->Size(),Alink->Size(),nzA,cols,rows,values,0);
-			
-			PstartInit(&sp,numparts);
-			opts options;
-			
-			SetDefaultOptions(&options);
-			//SetOption(&options,"SplitMethod","KLFM");
-			SetOption(&options,"Permute","BBD");
-			SetOption(&options,"SplitStrategy","onedimrow");
-			DistributeMatrixMondriaan(&sp,numparts,0.1,&options,NULL);
-			sp.
-
-			j = 0;
-			for (k = mobeg; k < moend; ++k)
-			{
-				A_Address[k].first = j;
-				for (Sparse::Row::iterator r = (*Alink)[sp.row_perm[k-mobeg]].Begin(); r != (*Alink)[sp.row_perm[k-mobeg]].End(); ++r)
-				{
-					if (r->first >= mobeg && r->first < moend && r->second != 0.0)
-						A_Entries[j++] = Sparse::Row::make_entry(sp.col_perm_inv[r->first-mobeg], r->second);
-				}
-				A_Address[k].last = j;
-				assert(A_Address[k].Size() != 0); //singular matrix
-			}
-			//DumpMatrix(A_Address,A_Entries,mobeg,moend,"mondriaan.mtx");
-			/*
-			sp.MMTypeCode[0] = 'M';
-			FILE * f = fopen("mondriaan.mtx","w");
-			MMWriteSparseMatrix(&sp,f,"mondriaan",&options);
-			fclose(f);
-			*/
-			MMDeleteSparseMatrix(&sp);
-			delete [] cols;
-			delete [] rows;
-			delete [] values;
-		}
-#else
-		
 		j = 0;
 		for (k = mobeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(moend); ++k)
 		{
@@ -1571,11 +1480,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			A_Address[k].last = j;
 			//assert(A_Address[k].Size() != 0); //singular matrix
 		}
-#endif
-		//DumpMatrix(A_Address, A_Entries, mobeg, moend, "A.mtx");
 
+		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 		
-		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
 		INMOST_DATA_REAL_TYPE Unorm, Lnorm;
 		//~ INMOST_DATA_REAL_TYPE Unum, Lnum;
 
@@ -1596,8 +1503,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		{
 			U_Address[k].first = U_Address[k].last = ENUMUNDEF;
 			L_Address[k].first = L_Address[k].last = ENUMUNDEF;
+#if defined(ILUC2)
 			U2_Address[k].first = U2_Address[k].last = ENUMUNDEF;
 			L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
+#endif
 		}
 
 		if( verbosity > 1 ) 
@@ -1612,6 +1521,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		{
 			//ddPQ reordering on current Schur complement
 			INMOST_DATA_ENUM_TYPE cbeg = wbeg, cend = wend; //next size of factored B block
+
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 			
 		//DumpMatrix(A_Address,A_Entries,cbeg,cend,"mat"+to_string(level_size.size())+".mtx");
 ///////////////////////////////////////////////////////////////////////////////////
@@ -1632,17 +1543,14 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Cmax(wbeg,wend,0.0);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Perm = localQ;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & IPerm = localP;
-				//interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & UpdateStack = Ulist;
-				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & ColumnList = Llist;//(wbeg,wend,ENUMUNDEF);
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & ColumnList = Llist;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Parent = Blist;
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
 				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnPosition(wbeg,wend,ENUMUNDEF);
-				
+				std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Dist(wbeg, wend + 1, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 				
 				BinaryHeap Heap(&Dist[wbeg],wend-wbeg);
-///////////////////////////////////////////////////////////////////////////////////
-///  Arrays initialization                                                      ///
-///////////////////////////////////////////////////////////////////////////////////
 				// arrays U,V,Dist are cleared at the end of schur complement calculation
 				//std::fill(U.begin() + wbeg - mobeg, U.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 				//std::fill(V.begin() + wbeg - mobeg, V.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
@@ -1655,11 +1563,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					Parent[k] = ENUMUNDEF;
 					ColumnList[k] = ENUMUNDEF;
 				}
-				C_Entries.resize(A_Entries.size());
-///////////////////////////////////////////////////////////////////////////////////
-///       Initial LOG transformation to dual problem and initial extreme match  ///
-///////////////////////////////////////////////////////////////////////////////////
-				//double T = Timer();
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+				
+				// Initial LOG transformation to dual problem and initial extreme match 
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
@@ -1681,9 +1588,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						else
 						{
 							C_Entries[it] = log(Cmax[i])-log(C_Entries[it]);
-							//C_Entries[it] = log10(Cmax[i])-log10(C_Entries[it]);
-							//C_Entries[it] = fabs(log10(Cmax[i]/C_Entries[it]));
-							//C_Entries[it] = fabs(log(Cmax[i]/C_Entries[it]));
 							if( C_Entries[it] < U[i] ) U[i] = C_Entries[it];
 						}
 					}
@@ -1696,11 +1600,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						if( u < V[k] ) V[k] = u;
 					}
 				}
-
-///////////////////////////////////////////////////////////////////////////////////
-///                  Update cost and match                                      ///
-///////////////////////////////////////////////////////////////////////////////////
-				
+				/// Update cost and match
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
@@ -1714,11 +1614,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						}
 					}
 				}
-				
-///////////////////////////////////////////////////////////////////////////////////
-/// 1-step augmentation                                                         ///
-///////////////////////////////////////////////////////////////////////////////////
-
+				/// 1-step augmentation
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					if( IPerm[k] == ENUMUNDEF ) //unmatched row
@@ -1749,10 +1645,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						}
 					}
 				}
-
-///////////////////////////////////////////////////////////////////////////////////
-///             Weighted bipartite matching                                     ///
-///////////////////////////////////////////////////////////////////////////////////
+				/// Weighted bipartite matching
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					if( IPerm[k] != ENUMUNDEF )
@@ -1846,9 +1739,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						Heap.Clear();
 					}
 				}
-				//fclose(rec);
-
-				//T = Timer();
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for private(k,l,u,i,j)
 #endif
@@ -1858,8 +1748,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					else l = exp(V[k]);
 					if( U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ) u = 1;
 					else u = exp(U[k])/Cmax[k];
-					//if( l != l || fabs(l) < 1.0e-12 || isnan(l) || isinf(l) ) std::cout << "k " << k << " l is " << l << " V " << V[k] << std::endl;
-					//if( u != u || fabs(u) < 1.0e-12 || isnan(u) || isinf(u) ) std::cout << "k " << k << " u is " << u << " U " << U[k] << " Cmax " << Cmax[k] << std::endl;
 					DL[k] = l;
 					DR[k] = u;
 					
@@ -1887,31 +1775,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 					if( flip_sign ) DL[k] *= -1;
 				}
-				/*
-				{
-					std::stringstream s;
-					s << "DL" << level_size.size() << ".mtx";
-					DL.Save(s.str());
-				}
-				{
-					std::stringstream s;
-					s << "DR" << level_size.size() << ".mtx";
-					DR.Save(s.str());
-				}
-				 */
-				/*
-				{
-					std::stringstream s;
-					s << "MPT" << level_size.size() << ".txt";
-					std::fstream fout(s.str().c_str(),std::ios::out);
-					for(k = cbeg; k < cend; ++k)
-					{
-						fout << k << " " << DL[k] << " " << DR[k] << " " << localQ[k] << std::endl;
-					}
-					fout.close();
-				}
-				*/
-				//std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
                 
                 { //check that there are no gaps in Perm
@@ -1935,20 +1798,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
                         {
                             Perm[k] = gaps.back();
                             gaps.pop_back();
-                        }
-                        
-                    //~ int perms = 0;
-                    //~ for(k = cbeg; k < cend; ++k)
-						//~ if( Perm[k] != k ) perms++;
-                    //~ std::cout << "@ perms: " << perms << std::endl;
-                    //std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
+                        }                        
                     for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
                 }
 				
-				
-				
-				//exit(-1);
-
 				ttransversal = Timer() - ttransversal;
 
 				treorder += ttransversal;
@@ -1964,9 +1817,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					DL[k] = DR[k] = 1;
 				}
 			}
-///////////////////////////////////////////////////////////////////////////////////
-///                  END MAXIMUM TRANSVERSE REORDERING                          ///
-///////////////////////////////////////////////////////////////////////////////////
+			///  END MAXIMUM TRANSVERSE REORDERING
 			tt = Timer();
 #if defined(REORDER_METIS_ND)
 			idx_t nvtxs = wend-wbeg;
@@ -2283,10 +2134,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 				for(k = wbeg; k < wend; ++k)
 				{
-					localP[k] = Ulist[k];//wend - Ulist[k] + 1;
-					localQ[k] = Ulist[k];//wend - Ulist[k] + 1;
-					//localP[Ulist[k]] = k;
-					//localQ[Ulist[k]] = k;
+					localP[k] = Ulist[k];
+					localQ[k] = Ulist[k];
 				}
 				cend = wend;
 				i = wend;
@@ -2298,6 +2147,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			{
 				if( verbosity > 1 ) 
 					std::cout << "Reordering with WRCM\n";
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 				//create a symmetric graph of the matrix A + A^T
 				std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1);
 				std::vector<INMOST_DATA_REAL_TYPE> wadj(wend-wbeg);
@@ -2323,10 +2173,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-					{
 						A_Entries[jt].first = localQ[A_Entries[jt].first];
-						//A_Entries[jt].second *= DL[k]*DR[A_Entries[jt].first];
-					}
 					std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
 				}
 				
@@ -2336,7 +2183,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				inversePQ(wbeg,wend,localP,localQ, invP,invQ);
 				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
 
-				
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 				
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
@@ -2344,12 +2191,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					Bbeg[k] = EOL;
 					Blist[k] = EOL;
 				}
-				//std::fill(Ulist.begin()+wbeg-mobeg, Ulist.begin()+wend-mobeg,EOL);
-				//std::fill(Bbeg.begin()+wbeg-mobeg, Bbeg.begin()+wend-mobeg,EOL);
-				//std::fill(Blist.begin()+wbeg-mobeg, Blist.begin()+wend-mobeg,EOL);
 				for (k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(wbeg); --k)
 				{
-					//vwgt[k-1] = 1;
 					if (A_Address[k-1].Size() > 0)
 					{
 						i = A_Entries[A_Address[k-1].first].first;
@@ -2361,28 +2204,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				xadj[0] = 0;
 				for(i = wbeg; i < wend; ++i)
 				{
-					/*
-					double Arowmax = 0, Acolmax = 0;
-					
-					for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
-						if( A_Entries[jt].first != i )
-							Arowmax = std::max(Arowmax,fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]));
-						
-					Li = Bbeg[i];
-					while (Li != EOL)
-					{
-						if( Li != i )
-							Acolmax = std::max(Acolmax,DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]);
-						Li = Blist[Li];
-					}
-					*/
 					wadj[i-wbeg] = 0;
-					
 					for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
 					{
 						if( A_Entries[jt].first != i  )//&& fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]) > 0.1*std::min(Acolmax,Arowmax) )
 						{
-							//~ adjncy.push_back(std::make_pair(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first),fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first])));
 							adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
 							wadj[i-wbeg] += fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]);
 						}
@@ -2393,7 +2219,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					{
 						if( Li != i )//&& fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]) > 0.1*std::min(Acolmax,Arowmax) )
 						{
-							//~ adjncy.push_back(std::make_pair(static_cast<INMOST_DATA_ENUM_TYPE>(Li),fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i])));
 							adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
 							wadj[i-wbeg] += fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]);
 						}
@@ -2416,32 +2241,15 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					}
 
 					std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
-					//~ if( adjncy.begin()+xadj[i-wbeg] != adjncy.end() )
-					//~ {
-						//~ std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> >::iterator first = adjncy.begin()+xadj[i-wbeg], result = first;
-						//~ while (++first != adjncy.end()) 
-						//~ {
-							//~ if( result->first != first->first )
-								//~ *(++result) = *first;
-							//~ else result->second += first->second;
-						//~ }
-						//~ adjncy.resize((++result)-adjncy.begin());
-					//~ }
 					adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
 
 					xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
-					//~ wadj[i-wbeg] = 0;
-					//~ for(std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> >::iterator kt = adjncy.begin()+xadj[i-wbeg]; kt != adjncy.end(); ++kt)
-						//~ wadj[i-wbeg] += kt->second;
 				}
-
-				//std::fill(Bbeg.begin()+wbeg - mobeg, Bbeg.begin()+wend - mobeg,EOL);
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) Bbeg[k] = EOL;
 
 				trcmgraph = Timer()-trcmgraph;
 
 				trcmorder = Timer();
-				//std::fill(Ulist.begin() + wbeg - mobeg, Ulist.begin() + wend - mobeg, ENUMUNDEF);
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) Ulist[k] = ENUMUNDEF;
 				//find node with the lowest order
                 INMOST_DATA_ENUM_TYPE index = wbeg;
@@ -2512,7 +2320,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				}
 				cend = wend;
 				i = wend;
-
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 				trcmorder = Timer() - trcmorder;
 			}
@@ -2997,14 +2805,15 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				DL0[k] = U[k];
 				DR0[k] = V[k];
 			}
+
 			
 			tlreorder = Timer() - tt;
 			treorder += tlreorder;
 			if( verbosity > 1 )
 				std::cout << "Time " << tlreorder << "\n";
-///////////////////////////////////////////////////////////////////////////////////
-///                  REASSAMBLE                                                 ///
-///////////////////////////////////////////////////////////////////////////////////
+
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+			/// REASSAMBLE
 			if( verbosity > 1 ) 
 				std::cout << "Reassemble\n";
 			//tt = Timer();
@@ -3020,27 +2829,36 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			//std::cout << "reorder: " << tt1 << std::endl;
 			tt2 = Timer();
 			nzA = 0;
-			B_Entries.clear();
-			for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 			{
-				B_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
-				for (INMOST_DATA_ENUM_TYPE jt = A_Address[invP[k]].first; jt < A_Address[invP[k]].last; ++jt)
+				//std::vector<Sparse::Row::entry> B_Entries;
+				interval<INMOST_DATA_ENUM_TYPE, Interval> B_Address(A_Address.get_interval_beg(),A_Address.get_interval_end());
+				for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 				{
-					i = localQ[A_Entries[jt].first];
-					u = A_Entries[jt].second;
-					B_Entries.push_back(Sparse::Row::make_entry(i, u));
+					B_Address[k].first = A_Address[invP[k]].first;// static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
+					for (INMOST_DATA_ENUM_TYPE jt = A_Address[invP[k]].first; jt < A_Address[invP[k]].last; ++jt)
+					{
+						i = localQ[A_Entries[jt].first];
+						//u = A_Entries[jt].second;
+						A_Entries[jt].first = i;
+						//B_Entries.push_back(Sparse::Row::make_entry(i, u));
+					}
+					B_Address[k].last = A_Address[invP[k]].last;//static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
+					nzA += A_Address[k].Size();
 				}
-				B_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(B_Entries.size());
-				nzA += A_Address[k].Size();
+				//B_Entries.push_back(Sparse::Row::make_entry(-1, 0.0));
+				A_Address.swap(B_Address);
+				//A_Entries.swap(B_Entries);
 			}
-			B_Entries.push_back(Sparse::Row::make_entry(-1,0.0));
-			
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for private(k)
 #endif
 			for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-				std::sort(B_Entries.begin() + B_Address[k].first, B_Entries.begin() + B_Address[k].last);
+				std::sort(A_Entries.begin() + A_Address[k].first, A_Entries.begin() + A_Address[k].last);
 			
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
 			double sparsity = nzA/(double)(cend-cbeg)/(double)(cend-cbeg);
 			
 			if( verbosity > 1 )
@@ -3050,48 +2868,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			{
 				block_pivot = true;
 			}
-			/*
-			{
-				std::stringstream s;
-				s << "B" << level_size.size() << ".mtx";
-				DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
-				std::cout << "Press any key" << std::endl;
-				scanf("%*c");
-			}
-			*/
-			/*
-			{
-				int rank = 0;
-#if defined(USE_MPI)
-				MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#endif
-				std::stringstream str;
-				str << "mat_reorder" << rank << ".mtx";
-				DumpMatrix(B_Address,B_Entries,cbeg,cend,str.str());
-			}
-#if defined(USE_MPI)
-			MPI_Barrier(MPI_COMM_WORLD);
-#endif
-			exit(0);
-			*/
-			//Setup column addressing for B,F, in descending order to keep list ordered
 			
-			//~ Move this after rescalinge
-			//~ Clear TransposeB
-			//~ PrepareTranspose(cbeg,cend,B_Address,B_Entries,TransposeB);
-			for (k = cend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(cbeg); --k)
-			{
-				if (B_Address[k - 1].Size() > 0)
-				{
-					i = B_Entries[B_Address[k - 1].first].first;
-					if (static_cast<INMOST_DATA_INTEGER_TYPE>(i) < k-1)
-					{
-						Blist[k-1] = Bbeg[i];
-						Bbeg[i] = k-1;
-					}
-				}
-			}
-
+			
 			tt2 = Timer() - tt2;
 
 			ttt = Timer();
@@ -3100,28 +2878,26 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			
 			//reset localPQ
 			
-			//for(int k = mobeg; k < moend; ++k) localP[k] = localQ[k] = k;
-			/*
-			{
-				std::stringstream s;
-				s << "C" << level_size.size() << ".mtx";
-				DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
-			}
-			*/
 			tlreassamble = Timer() - tt;
 			treassamble += tlreassamble;
 			if( verbosity > 1 )
 				std::cout << "Time " << tlreassamble << "\n";
-///////////////////////////////////////////////////////////////////////////////////
-///                  RESCALING                                                  ///
-///////////////////////////////////////////////////////////////////////////////////
+			/// RESCALING
+
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+	
 			//Rescale current B block by Row-Column alternating scaling
 			tt = Timer();
 			if( rescale_b )
 			{
 				if( verbosity > 1 )
 					std::cout << " rescaling block B, iters " << sciters << std::endl;
-					
+
+
+#if defined(EQUALIZE_IDOMINANCE)
+				std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> temp(cbeg,cend,0);
+#endif
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
 #endif
@@ -3133,50 +2909,12 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							B_Entries[r].second *= (DL[k] * DR[B_Entries[r].first]);
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							A_Entries[r].second *= (DL[k] * DR[A_Entries[r].first]);
 						
 						U[k] = DL[k];
 						V[k] = DR[k];
 					}
-					/*
-					{
-						std::stringstream s;
-						s << "CC" << level_size.size() << ".mtx";
-						DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
-					}
-					*/
-					//DumpMatrix(B_Address,B_Entries,cbeg,cend,"MC64_MPTILUC2.mtx");
-					/*
-					{
-						std::stringstream name;
-						name << "mc64_" << info->GetRank() << ".mtx";
-						DumpMatrix(B_Address,B_Entries,cbeg,cend,name.str());
-					}
-					*/
-				
-///////////////////////////////////////////////////////////////////////////////////
-///                COMPUTE GIRSCHGORIN RADIUS                                   ///
-///////////////////////////////////////////////////////////////////////////////////
-					/*
-#if defined(USE_OMP_FACT)
-#pragma omp single
-#endif
-					{
-						INMOST_DATA_REAL_TYPE radii = 0;
-						for (k = cbeg; k < cend; k++)
-						{
-							INMOST_DATA_REAL_TYPE local_radii = 0;
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-								if( B_Entries[r].first != k ) local_radii += fabs(B_Entries[r].second);
-							if( radii < local_radii ) radii = local_radii;
-						}
-
-						printf("Gershgorin's radius after mpt: %e\n",radii);
-					}
-					*/
-
-					//DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_mc64.mtx");
 #if defined(EQUALIZE_1NORM)
 ///////////////////////////////////////////////////////////////////////////////////
 ///         ROW-COLUMN ALTERNATING SCALING FOR 1-NORM BALANCING                 ///
@@ -3191,8 +2929,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							DL[k] += fabs(B_Entries[r].second);//*B_Entries[r].second;
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							DL[k] += fabs(A_Entries[r].second);
 					}
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
@@ -3211,13 +2949,13 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 						{
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
+							for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
 							{
-								u = DL[k] * fabs(B_Entries[r].second);
+								u = DL[k] * fabs(A_Entries[r].second);
 #if defined(USE_OMP_FACT)
 #pragma omp atomic
 #endif
-								DR[B_Entries[r].first] += u;//*B_Entries[r].second;
+								DR[A_Entries[r].first] += u;
 							}
 						}
 #if defined(USE_OMP_FACT)
@@ -3234,26 +2972,23 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 						{
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-								DL[k] += DR[B_Entries[r].first] * fabs(B_Entries[r].second);//*B_Entries[r].second;
+							for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+								DL[k] += DR[A_Entries[r].first] * fabs(A_Entries[r].second);
 						}
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 					}
-					//for (k = cbeg; k < cend; k++) DL[k] = sqrt(DL[k]);
-					//for (k = cbeg; k < cend; k++) DR[k] = sqrt(DR[k]);
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							B_Entries[r].second *= DL[k] * DR[B_Entries[r].first];
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							A_Entries[r].second *= DL[k] * DR[A_Entries[r].first];
 					}
 #elif defined(EQUALIZE_2NORM)
-				//std::fill(DL.Begin() + cbeg - mobeg, DL.Begin() + cend - mobeg, 0.0);
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
@@ -3263,8 +2998,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							DL[k] += B_Entries[r].second*B_Entries[r].second;
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							DL[k] += A_Entries[r].second*A_Entries[r].second;
 					}
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
@@ -3282,20 +3017,19 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 						{
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
+							for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
 							{
-								u = DL[k] * B_Entries[r].second*B_Entries[r].second;
+								u = DL[k] * A_Entries[r].second*A_Entries[r].second;
 #if defined(USE_OMP_FACT)
 #pragma omp atomic
 #endif
-								DR[B_Entries[r].first] += u;//DL[k] * B_Entries[r].second*B_Entries[r].second;
+								DR[A_Entries[r].first] += u;
 							}
 						}
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++) if (DR[k] < eps) DR[k] = 1.0 / subst; else DR[k] = 1.0 / DR[k];
-						//std::fill(DL.Begin()+cbeg-mobeg, DL.Begin()+cend-mobeg, 0.0);
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
@@ -3305,44 +3039,32 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 						{
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-								DL[k] += DR[B_Entries[r].first] * B_Entries[r].second*B_Entries[r].second;
+							for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+								DL[k] += DR[A_Entries[r].first] * A_Entries[r].second*A_Entries[r].second;
 						}
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 					}
-					//for (k = cbeg; k < cend; k++) DL[k] = sqrt(DL[k]);
-					//for (k = cbeg; k < cend; k++) DR[k] = sqrt(DR[k]);
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							B_Entries[r].second *= DL[k] * DR[B_Entries[r].first];
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							A_Entries[r].second *= DL[k] * DR[A_Entries[r].first];
 					}
 #elif defined(EQUALIZE_IDOMINANCE)
-///////////////////////////////////////////////////////////////////////////////////
-///        THIS VERSION OF RESCALING INCREASES DIAGONAL DOMINANCE               ///
-///////////////////////////////////////////////////////////////////////////////////
-#if defined(USE_OMP_FACT)
-#pragma omp single
-#endif
-					{
-						if( C_Entries.size() < B_Entries.size() )
-							C_Entries.resize(B_Entries.size());
-					}
-				
+					/// THIS VERSION OF RESCALING INCREASES DIAGONAL DOMINANCE
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k,u)
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
 						{
-							u = fabs(B_Entries[r].second);
+							u = fabs(A_Entries[r].second);
 							if( u > 1.0e-12 )
 								C_Entries[r] = -log(u);
 							else
@@ -3351,11 +3073,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					}
 
 				
-					//std::fill(temp.begin() + cbeg - mobeg, temp.begin() + cend - mobeg, 0.0);
-#if defined(USE_OMP_FACT)
-#pragma omp for private(k)
-#endif
-					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) temp[k] = 0.0;
+					
 
 					for (INMOST_DATA_ENUM_TYPE iter = 0; iter < sciters; iter++)
 					{
@@ -3372,9 +3090,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++) //row number
 						{
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
+							for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
 							{
-								i = B_Entries[r].first; //column number
+								i = A_Entries[r].first; //column number
 								if( static_cast<INMOST_DATA_INTEGER_TYPE>(i) != k ) //out of diagonal
 								{
 									u = C_Entries[r] + temp[k] - temp[i];
@@ -3414,31 +3132,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #endif
 					for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 					{
-						for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-							B_Entries[r].second *= (DL[k] * DR[B_Entries[r].first]);
+						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
+							A_Entries[r].second *= (DL[k] * DR[A_Entries[r].first]);
 					}
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-///              COMPUTE GIRSCHGORIN RADIUS                                     ///
-///////////////////////////////////////////////////////////////////////////////////
-					
-					/*
-#if defined(USE_OMP_FACT)
-#pragma omp single
-#endif
-					{
-						INMOST_DATA_REAL_TYPE radii = 0;
-						for (k = cbeg; k < cend; k++)
-						{
-							INMOST_DATA_REAL_TYPE local_radii = 0;
-							for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r)
-								if( B_Entries[r].first != k ) local_radii += fabs(B_Entries[r].second);
-							if( radii < local_radii ) radii = local_radii;
-						}
-
-						printf("Gershgorin's radius after %d equilibration iterations: %e\n",sciters,radii);
-					}
-					*/
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
 #endif
@@ -3448,10 +3145,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						DR[k] *= V[k];
 					}
 				//DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_equilibration.mtx");
-///////////////////////////////////////////////////////////////////////////////////
-///               RESCALING DONE                                                ///
-///////////////////////////////////////////////////////////////////////////////////
-				
+				/// RESCALING DONE
 				//stack scaling
 #if defined(USE_OMP_FACT)
 #pragma omp for private(k)
@@ -3462,15 +3156,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						DR0[k] *= DR[k];
 					}
 				
-					/*
-					DL.Save("DL_"+to_string(level_size.size())+".mtx");
-					DR.Save("DR_"+to_string(level_size.size())+".mtx");
-					DL0.Save("DL0_"+to_string(level_size.size())+".mtx");
-					DR0.Save("DR0_"+to_string(level_size.size())+".mtx");
-					DumpMatrix(B_Address,B_Entries,cbeg,cend,"mat_equil"+to_string(level_size.size())+".mtx");
-					 */
-					//DumpMatrix(B_Address,B_Entries,cbeg,cend,"rescale"+to_string(level_size.size())+".mtx");
-					//exit(-1);
 					//rescale EF
 					if( !level_size.empty() )
 					{
@@ -3513,50 +3198,79 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					std::cout << "Time " << tlrescale << "\n";
 
 			}
+
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 			/*
 			{
 				std::stringstream s;
 				s << "B" << level_size.size() << ".mtx";
-				DumpMatrix(B_Address,B_Entries,cbeg,cend,s.str());
+				DumpMatrix(A_Address,A_Entries,cbeg,cend,s.str());
 				std::cout << "Press any key" << std::endl;
 				scanf("%*c");
 			}
 			*/
-///////////////////////////////////////////////////////////////////////////////////
-///           FACTORIZATION BEGIN                                               ///
-///////////////////////////////////////////////////////////////////////////////////
+			/// FACTORIZATION BEGIN
 			{
-				
+				//Setup column addressing for B,F, in descending order to keep list ordered
+
+				//~ Clear TransposeB
+				//~ PrepareTranspose(cbeg,cend,A_Address,A_Entries,TransposeA);
+				for (k = cend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(cbeg); --k)
+				{
+					if (A_Address[k - 1].Size() > 0)
+					{
+						i = A_Entries[A_Address[k - 1].first].first;
+						if (static_cast<INMOST_DATA_INTEGER_TYPE>(i) < k - 1)
+						{
+							Blist[k - 1] = Bbeg[i];
+							Bbeg[i] = k - 1;
+						}
+					}
+				}
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+				//supplimentary data structures for condition estimates of L^{-1}, U^{-1}
+				INMOST_DATA_REAL_TYPE mu_update_L1, mu_update_L2, mu_update_U1, mu_update_U2;
+				INMOST_DATA_REAL_TYPE NuU_old = 1, NuL_old = 1, NuD_old = 1;
+
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LineValuesU(cbeg, cend, 0.0), LineValuesL(cbeg, cend, 0.0);
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> LineIndecesU(cbeg, cend + 1, UNDEF), LineIndecesL(cbeg, cend + 1, UNDEF);
+				std::vector<INMOST_DATA_ENUM_TYPE> indicesU, indicesL;
+
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL1(cbeg, cend, 0.0), EstU1(cbeg, cend, 0.0);
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> EstL2(cbeg, cend, 0.0), EstU2(cbeg, cend, 0.0);
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Bstart(cbeg, cend);
+
+				interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Ubeg(cbeg, cend, EOL), Lbeg(cbeg, cend, EOL);
+
+				L_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
+				U_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
 #if defined(ILUC2)
 				nzLU2tot += nzLU2;
 				nzLU2 = 0;
-				L_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
-				U_Beg = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
 				L2_Entries.clear();
 				U2_Entries.clear();
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//       setup diagonal values and memorize indices                              //
-///////////////////////////////////////////////////////////////////////////////////
-				//initialize diagonal values
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+				//setup diagonal values and memorize indices
 				for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
 				{
 					LU_Diag[k] = 0.0;
-					Bstart[k] = B_Address[k].first; //remember B block starts permutation for pivoting
-					for (i = B_Address[k].first; i < B_Address[k].last; i++)
+					Bstart[k] = A_Address[k].first; //remember B block starts permutation for pivoting
+					for (i = A_Address[k].first; i < A_Address[k].last; i++)
 					{
-						if (static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[i].first) == k)
+						if (static_cast<INMOST_DATA_INTEGER_TYPE>(A_Entries[i].first) == k)
 						{
-							LU_Diag[k] = B_Entries[i].second;
+							LU_Diag[k] = A_Entries[i].second;
 							break;
 						}
 					}
 				}
 				//Initialize data for condition estimator
 				tt = Timer();
-///////////////////////////////////////////////////////////////////////////////////
-//              initialize condition estimator                                   //
-///////////////////////////////////////////////////////////////////////////////////
 				if( estimator )
 				{
 					NuU_acc *= NuU;
@@ -3572,246 +3286,171 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				if( verbosity > 1 )
 					std::cout << " starting factorization " << std::endl;
 					
-				//~ for (k = cbeg; k < cend; ++k)
-				//~ {
-					//~ DropL[k] = 0;
-					//~ DropU[k] = 0;
-					//~ DropL2[k] = 0;
-					//~ DropU2[k] = 0;
-				//~ }
-//~ #if defined(USE_OMP_FACT)
-//~ #pragma omp parallel num_threads(3)
-//~ #endif
-				{
-//~ #if defined(USE_OMP_FACT)
-//~ #pragma omp single
-//~ #endif
-				{
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
 				for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 				{
-///////////////////////////////////////////////////////////////////////////////////
-//              starting factorization step                                      //
-///////////////////////////////////////////////////////////////////////////////////
-					/*
-					INMOST_DATA_REAL_TYPE udiag = LU_Diag[k]; // LU_Diag is calculated with less dropping
-///////////////////////////////////////////////////////////////////////////////////
-// Prevent small pivot, hopefully it would work with correct right hand side     //
-///////////////////////////////////////////////////////////////////////////////////
-#if defined(PIVOT_THRESHOLD)
-					if (fabs(udiag) < tol_modif) 
-						udiag = udiag < 0.0 ? -tol_modif : tol_modif;
-#endif
-///////////////////////////////////////////////////////////////////////////////////
-// Perturb diagonal value, this will shift eigenvalues                           //
-///////////////////////////////////////////////////////////////////////////////////
-#if defined(DIAGONAL_PERTURBATION)
-					udiag = udiag * (1.0 + DIAGONAL_PERTURBATION_REL) + (udiag < 0.0 ? -1.0 : 1.0)*DIAGONAL_PERTURBATION_ABS;
-#endif
-					*/
-					//~ DropLk = DropUk = 0.0;
-///////////////////////////////////////////////////////////////////////////////////
-//           Compute U-part                                                      //
-///////////////////////////////////////////////////////////////////////////////////	
 #if defined(USE_OMP_FACT)
-//~ #pragma omp task// shared(LineIndecesU,LineValuesU,EstU1,EstU2,mu_update_U1,mu_update_U2,NuU,NuU_old,testimator)
+#pragma omp parallel sections num_threads(2)
 #endif
 					{
-///////////////////////////////////////////////////////////////////////////////////
-//            Prepare linked list for U-part                                     //
-///////////////////////////////////////////////////////////////////////////////////	
-						INMOST_DATA_ENUM_TYPE Sbeg, i;
-						INMOST_DATA_REAL_TYPE coef;
-						//uncompress k-th row
-						// add diagonal value first, there shouldn't be values on left from diagonal
-						//assert(B_Entries[B_Address[k].first].first == k);
-						LineIndecesU[cbeg] = k;
-						LineIndecesU[k] = EOL;
-						LineValuesU[k] = 0.0;
-						if( B_Address[k].Size() )
+						// Compute U-part
+#if defined(USE_OMP_FACT)
+#pragma omp section
+#endif
 						{
-							if (static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[k].first].first) == k)
-								LineValuesU[k] = B_Entries[B_Address[k].first].second;
-							else
-								LineValuesU[k] = 0.0;
-							i = k;
-							for (INMOST_DATA_ENUM_TYPE it = B_Address[k].first + (static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[k].first].first) == k ? 1 : 0); it < B_Address[k].last; ++it)
+							// Prepare linked list for U-part
+							INMOST_DATA_ENUM_TYPE Sbeg, i;
+							INMOST_DATA_REAL_TYPE coef;
+							//uncompress k-th row
+							// add diagonal value first, there shouldn't be values on left from diagonal
+							//assert(B_Entries[A_Address[k].first].first == k);
+							LineIndecesU[cbeg] = k;
+							LineIndecesU[k] = EOL;
+							LineValuesU[k] = 0.0;
+							if (A_Address[k].Size())
 							{
-								LineValuesU[B_Entries[it].first] = B_Entries[it].second;
-								i = LineIndecesU[i] = B_Entries[it].first;
+								if (static_cast<INMOST_DATA_INTEGER_TYPE>(A_Entries[A_Address[k].first].first) == k)
+									LineValuesU[k] = A_Entries[A_Address[k].first].second;
+								else
+									LineValuesU[k] = 0.0;
+								i = k;
+								for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first + (static_cast<INMOST_DATA_INTEGER_TYPE>(A_Entries[A_Address[k].first].first) == k ? 1 : 0); it < A_Address[k].last; ++it)
+								{
+									LineValuesU[A_Entries[it].first] = A_Entries[it].second;
+									i = LineIndecesU[i] = A_Entries[it].first;
+								}
+								LineIndecesU[i] = EOL;
 							}
-							LineIndecesU[i] = EOL;
-						}
-						Sbeg = k;
-///////////////////////////////////////////////////////////////////////////////////
-//                    U-part elimination with L                                  //
-///////////////////////////////////////////////////////////////////////////////////
-						// perform the elimination from row
-						i = Lbeg[k];
-						while (i != EOL)
-						{
-							assert(i != UNDEF);
-							assert(static_cast<INMOST_DATA_INTEGER_TYPE>(L_Entries[L_Address[i].first].first) == k);
-							coef = -L_Entries[L_Address[i].first].second*LU_Diag[i];
-							AddListUnordered(Sbeg,U_Address[i],U_Entries,coef,LineIndecesU,LineValuesU,0.0);
-#if defined(ILUC2)
-							AddListUnordered(Sbeg,U2_Address[i],U2_Entries,coef,LineIndecesU,LineValuesU,0.0);
-#endif
-							i = Llist[i];
-						}
-#if defined(ILUC2)
-///////////////////////////////////////////////////////////////////////////////////
-//                 U-part elimination with second-order L                        //
-///////////////////////////////////////////////////////////////////////////////////
-						i = L2beg[k];
-						while (i != EOL)
-						{
-							assert(i != UNDEF);
-							assert(static_cast<INMOST_DATA_INTEGER_TYPE>(L2_Entries[L2_Address[i].first].first) == k);
-							coef = -L2_Entries[L2_Address[i].first].second*LU_Diag[i];
-							AddListUnordered(Sbeg,U_Address[i],U_Entries,coef,LineIndecesU,LineValuesU,0.0);
-#if 0
-							AddListUnordered(Sbeg,U2_Address[i],U2_Entries,coef,LineIndecesU,LineValuesU,0.0);
-#endif
-							i = L2list[i];
-						}
-#endif
-///////////////////////////////////////////////////////////////////////////////////
-//                  Order contents of linked list                                //
-///////////////////////////////////////////////////////////////////////////////////
-						OrderList(Sbeg,LineIndecesU,indicesU);
-///////////////////////////////////////////////////////////////////////////////////
-//                    Rescale with diagonal                                     //
-///////////////////////////////////////////////////////////////////////////////////
-						//rescale elements next after diagonal position
-						//~ std::cout << "Udiag["<<k<<"] drop " << LineValuesU[k] / udiag - 1.0 << " udiag " << udiag << std::endl;
-						//~ scanf("%*c");
-#if defined(PIVOT_THRESHOLD)
-						if( fabs(LineValuesU[k]) < tau2 ) LineValuesU[k] = (LineValuesU[k] < 0.0 ? -1 : 1)*tau2;
-#endif
-						ScaleList(1.0/LineValuesU[k],LineIndecesU[k],LineIndecesU,LineValuesU);
-						//~ ScaleList(1.0/udiag,LineIndecesU[k],LineIndecesU,LineValuesU);
-///////////////////////////////////////////////////////////////////////////////////
-//                    Condition estimator for U part                             //
-///////////////////////////////////////////////////////////////////////////////////
-						if( estimator )
-						{
-							tlocal = Timer();
-							NuU_old = NuU;
-							NuU = Estimator1(k,LineIndecesU,LineValuesU,EstU1,mu_update_U1);
-							NuU = std::max(NuU,Estimator2(k,LineIndecesU,LineValuesU,EstU2,mu_update_U2));
-							testimator += Timer()-tlocal;
-						} //if( estimator )
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//           Compute L-part                                                      //
-///////////////////////////////////////////////////////////////////////////////////	
-#if defined(USE_OMP_FACT)
-//~ #pragma omp task// shared(LineIndecesL,LineValuesL,EstL1,EstL2,mu_update_L1,mu_update_L2,NuL,NuL_old,testimator)
-#endif
-
-					{
-///////////////////////////////////////////////////////////////////////////////////
-//                 prepearing linked list for L-part                             //
-///////////////////////////////////////////////////////////////////////////////////
-						INMOST_DATA_ENUM_TYPE Sbeg, i,j;
-						INMOST_DATA_REAL_TYPE coef;
-						//uncompress column
-						//insert diagonal value first
-						LineIndecesL[cbeg] = k;
-						LineIndecesL[k] = EOL;
-						LineValuesL[k] = 0.0;
-						if( B_Address[k].Size() )
-						{
-							if (static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[k].first].first) == k)
-								LineValuesL[k] = B_Entries[B_Address[k].first].second;
-							else
-								LineValuesL[k] = 0.0;
-							//start from diagonal
-							j = k;
-							i = Bbeg[k];
+							Sbeg = k;
+							// U-part elimination with L
+							i = Lbeg[k];
 							while (i != EOL)
 							{
-								assert(static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[i].first].first) == k);
-								LineValuesL[i] = B_Entries[B_Address[i].first].second;
-								j = LineIndecesL[j] = i;
-								i = Blist[i];
+								assert(i != UNDEF);
+								assert(static_cast<INMOST_DATA_INTEGER_TYPE>(L_Entries[L_Address[i].first].first) == k);
+								coef = -L_Entries[L_Address[i].first].second * LU_Diag[i];
+								AddListUnordered(Sbeg, U_Address[i], U_Entries, coef, LineIndecesU, LineValuesU, 0.0);
+#if defined(ILUC2)
+								AddListUnordered(Sbeg, U2_Address[i], U2_Entries, coef, LineIndecesU, LineValuesU, 0.0);
+#endif
+								i = Llist[i];
 							}
-							LineIndecesL[j] = EOL;
-						}
-						Sbeg = cbeg;
-///////////////////////////////////////////////////////////////////////////////////
-//                 L-part elimination with U                                     //
-///////////////////////////////////////////////////////////////////////////////////
-						// perform the elimination from column
-						i = Ubeg[k];
-						while (i != EOL)
-						{
-							assert(i != UNDEF);
-							assert(static_cast<INMOST_DATA_INTEGER_TYPE>(U_Entries[U_Address[i].first].first) == k);
-							coef = -U_Entries[U_Address[i].first].second*LU_Diag[i];
-							AddListUnordered(Sbeg,L_Address[i],L_Entries,coef,LineIndecesL,LineValuesL,0.0);
 #if defined(ILUC2)
-							AddListUnordered(Sbeg,L2_Address[i],L2_Entries,coef,LineIndecesL,LineValuesL,0.0);
-#endif
-							i = Ulist[i];
-						}
-#if defined(ILUC2)
-///////////////////////////////////////////////////////////////////////////////////
-//                 L-part elimination with second-order U                        //
-///////////////////////////////////////////////////////////////////////////////////
-						i = U2beg[k];
-						while (i != EOL)
-						{
-							assert(i != UNDEF);
-							assert(static_cast<INMOST_DATA_INTEGER_TYPE>(U2_Entries[U2_Address[i].first].first) == k);
-							coef = -U2_Entries[U2_Address[i].first].second*LU_Diag[i];
-							AddListUnordered(Sbeg,L_Address[i],L_Entries,coef,LineIndecesL,LineValuesL,0.0);
+							// U-part elimination with second-order L 
+							i = L2beg[k];
+							while (i != EOL)
+							{
+								assert(i != UNDEF);
+								assert(static_cast<INMOST_DATA_INTEGER_TYPE>(L2_Entries[L2_Address[i].first].first) == k);
+								coef = -L2_Entries[L2_Address[i].first].second * LU_Diag[i];
+								AddListUnordered(Sbeg, U_Address[i], U_Entries, coef, LineIndecesU, LineValuesU, 0.0);
 #if 0
-							AddListUnordered(Sbeg,L2_Address[i],L2_Entries,coef,LineIndecesL,LineValuesL,0.0);
+								AddListUnordered(Sbeg, U2_Address[i], U2_Entries, coef, LineIndecesU, LineValuesU, 0.0);
 #endif
-							i = U2list[i];
-						}
+								i = L2list[i];
+							}
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//                  Order contents of linked list                                //
-///////////////////////////////////////////////////////////////////////////////////
-						OrderList(Sbeg,LineIndecesL,indicesL);
-///////////////////////////////////////////////////////////////////////////////////
-//                    Rescale with diagonal                                      //
-///////////////////////////////////////////////////////////////////////////////////
-						//rescale line by diagonal
-						//~ std::cout << "Ldiag["<<k<<"] drop" << LineValuesL[k] / udiag - 1.0 << " udiag " << udiag << std::endl;
-						//~ scanf("%*c");
+							// Order contents of linked list
+							OrderList(Sbeg, LineIndecesU, indicesU);
+							// Rescale with diagonal
 #if defined(PIVOT_THRESHOLD)
-						if( fabs(LineValuesL[k]) < tau2 ) LineValuesL[k] = (LineValuesL[k] < 0.0 ? -1 : 1)*tau2;
+							if (fabs(LineValuesU[k]) < tau2) LineValuesU[k] = (LineValuesU[k] < 0.0 ? -1 : 1) * tau2;
 #endif
-						ScaleList(1.0/LineValuesL[k],LineIndecesL[k],LineIndecesL,LineValuesL);
-						//~ ScaleList(1.0/udiag,LineIndecesU[k],LineIndecesU,LineValuesU);
-///////////////////////////////////////////////////////////////////////////////////
-//                 condition estimation for L part                               //
-///////////////////////////////////////////////////////////////////////////////////
-						//estimate condition for L^{-1}
-						if( estimator )
+							ScaleList(1.0 / LineValuesU[k], LineIndecesU[k], LineIndecesU, LineValuesU);
+							// Condition estimator for U part
+							if (estimator)
+							{
+								tlocal = Timer();
+								NuU_old = NuU;
+								NuU = Estimator1(k, LineIndecesU, LineValuesU, EstU1, mu_update_U1);
+								NuU = std::max(NuU, Estimator2(k, LineIndecesU, LineValuesU, EstU2, mu_update_U2));
+								testimator += Timer() - tlocal;
+							} //if( estimator )
+						}
+						// Compute L-part
+#if defined(USE_OMP_FACT)
+#pragma omp section
+#endif
 						{
-							tlocal = Timer();
-							NuL_old = NuL;
-							NuL = Estimator1(k,LineIndecesL,LineValuesL,EstL1,mu_update_L1);
-							NuL = std::max(NuL,Estimator2(k,LineIndecesL,LineValuesL,EstL2,mu_update_L2));
-							testimator += Timer()-tlocal;
+							// prepearing linked list for L-part
+							INMOST_DATA_ENUM_TYPE Sbeg, i, j;
+							INMOST_DATA_REAL_TYPE coef;
+							//uncompress column
+							//insert diagonal value first
+							LineIndecesL[cbeg] = k;
+							LineIndecesL[k] = EOL;
+							LineValuesL[k] = 0.0;
+							if (A_Address[k].Size())
+							{
+								if (static_cast<INMOST_DATA_INTEGER_TYPE>(A_Entries[A_Address[k].first].first) == k)
+									LineValuesL[k] = A_Entries[A_Address[k].first].second;
+								else
+									LineValuesL[k] = 0.0;
+								//start from diagonal
+								j = k;
+								i = Bbeg[k];
+								while (i != EOL)
+								{
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(B_Entries[B_Address[i].first].first) == k);
+									LineValuesL[i] = A_Entries[A_Address[i].first].second;
+									j = LineIndecesL[j] = i;
+									i = Blist[i];
+								}
+								LineIndecesL[j] = EOL;
+							}
+							Sbeg = cbeg;
+							// L-part elimination with U
+							i = Ubeg[k];
+							while (i != EOL)
+							{
+								assert(i != UNDEF);
+								assert(static_cast<INMOST_DATA_INTEGER_TYPE>(U_Entries[U_Address[i].first].first) == k);
+								coef = -U_Entries[U_Address[i].first].second * LU_Diag[i];
+								AddListUnordered(Sbeg, L_Address[i], L_Entries, coef, LineIndecesL, LineValuesL, 0.0);
+#if defined(ILUC2)
+								AddListUnordered(Sbeg, L2_Address[i], L2_Entries, coef, LineIndecesL, LineValuesL, 0.0);
+#endif
+								i = Ulist[i];
+							}
+#if defined(ILUC2)
+							// L-part elimination with second-order U
+							i = U2beg[k];
+							while (i != EOL)
+							{
+								assert(i != UNDEF);
+								assert(static_cast<INMOST_DATA_INTEGER_TYPE>(U2_Entries[U2_Address[i].first].first) == k);
+								coef = -U2_Entries[U2_Address[i].first].second * LU_Diag[i];
+								AddListUnordered(Sbeg, L_Address[i], L_Entries, coef, LineIndecesL, LineValuesL, 0.0);
+#if 0
+								AddListUnordered(Sbeg, L2_Address[i], L2_Entries, coef, LineIndecesL, LineValuesL, 0.0);
+#endif
+								i = U2list[i];
+							}
+#endif
+							// Order contents of linked list
+							OrderList(Sbeg, LineIndecesL, indicesL);
+							// Rescale with diagonal
+#if defined(PIVOT_THRESHOLD)
+							if (fabs(LineValuesL[k]) < tau2) LineValuesL[k] = (LineValuesL[k] < 0.0 ? -1 : 1) * tau2;
+#endif
+							ScaleList(1.0 / LineValuesL[k], LineIndecesL[k], LineIndecesL, LineValuesL);
+							// Estimate condition for L^{-1}
+							if (estimator)
+							{
+								tlocal = Timer();
+								NuL_old = NuL;
+								NuL = Estimator1(k, LineIndecesL, LineValuesL, EstL1, mu_update_L1);
+								NuL = std::max(NuL, Estimator2(k, LineIndecesL, LineValuesL, EstL2, mu_update_L2));
+								testimator += Timer() - tlocal;
+							}
 						}
 					}
-#if defined(USE_OMP_FACT)
-//~ #pragma omp taskwait
-#endif
 					LU_Diag[k] = (LineValuesU[k]+LineValuesL[k])*0.5;
-///////////////////////////////////////////////////////////////////////////////////
-//                    Condition estimator for diagonal D                         //
-///////////////////////////////////////////////////////////////////////////////////
+					// Condition estimator for diagonal D
 					NuD_old = NuD;
 					NuD = std::max<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]),max_diag) / std::min<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]),min_diag);
-///////////////////////////////////////////////////////////////////////////////////
-//         discarding current iteration based on condition numbers               //
-///////////////////////////////////////////////////////////////////////////////////
 					//discard line if condition number is too large
 #if defined(CONDITION_PIVOT)
 					if(allow_pivot && !block_pivot && (NuU > pivot_cond || NuL > pivot_cond || NuD > pivot_diag) )
@@ -3865,8 +3504,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						NuD = NuD_old;
 						U_Address[k].first = U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
 						L_Address[k].first = L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
+#if defined(ILU2)
 						U2_Address[k].first = U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
 						L2_Address[k].first = L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
+#endif
 					}
 					else
 					{
@@ -3874,271 +3515,220 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						NuU_max = std::max(NuU,NuU_max);
 						max_diag = std::max<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]),max_diag);
 						min_diag = std::min<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]),min_diag);
-///////////////////////////////////////////////////////////////////////////////////
-//                 reconstruct U-part from linked list                           //
-///////////////////////////////////////////////////////////////////////////////////
+						// Update values on the whole diagonal with L and U
+						//DiagonalUpdate(k, LU_Diag, LineIndecesL, LineValuesL, LineIndecesU, LineValuesU);
 #if defined(USE_OMP_FACT)
-//~ #pragma omp task
+#pragma omp parallel sections num_threads(2)
 #endif
 						{
-							Unorm = 0;
-							Ui = LineIndecesU[k];
-							while (Ui != EOL)
-							{
-								Unorm += LineValuesU[Ui]*LineValuesU[Ui];
-								Ui = LineIndecesU[Ui];
-							}
-							Unorm = sqrt(Unorm);
-							
-							
-							U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
-#if defined(ILUC2)
-							U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
-#endif
-						
-							Ui = LineIndecesU[k];
-							while (Ui != EOL)
-							{
-								u = fabs(LineValuesU[Ui]);
-								if (u*NuU > tau*Unorm) // apply dropping rule
-									U_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
-#if defined(ILUC2)
-								else if(u*NuU > tau2*Unorm)
-								{
-									U2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
-									//~ DropU2[Ui] += LineValuesU[Ui]*udiag*SumLk;
-								}
-#endif
-								else 
-								{
-									//~ DropUk += LineValuesU[Ui];
-									//~ DropU[Ui] += LineValuesU[Ui]*udiag*SumLk;
-									ndrops++;
-								}
-								Ui = LineIndecesU[Ui];
-							}
-							U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
-#if defined(ILUC2)
-							U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
-#endif
-///////////////////////////////////////////////////////////////////////////////////
-//                 Update estimator vectors                                      //
-///////////////////////////////////////////////////////////////////////////////////
-							if( estimator )
-							{
-								tlocal = Timer();
-								//U-estimator
-								EstimatorUpdate(k,LineIndecesU,LineValuesU,EstU1,mu_update_U1);
-								EstimatorUpdate(k,LineIndecesU,LineValuesU,EstU2,mu_update_U2);
-								testimator += Timer() - tlocal;
-							}
-						}
-///////////////////////////////////////////////////////////////////////////////////
-//                 reconstruct L-part from linked list                           //
-///////////////////////////////////////////////////////////////////////////////////
+							// reconstruct U-part from linked list
 #if defined(USE_OMP_FACT)
-//~ #pragma omp task
+#pragma omp section
 #endif
-						{
-							Lnorm = 0;
-							Li = LineIndecesL[k];
-							while (Li != EOL)
 							{
-								Lnorm += LineValuesL[Li]*LineValuesL[Li];
-								Li = LineIndecesL[Li];
-							}
-							Lnorm = sqrt(Lnorm);
-							
-							//insert column to L part
-							L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
-#if defined(ILUC2)
-							L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
-#endif
-							
-							Li = LineIndecesL[k];
-							while (Li != EOL)
-							{
-								u = fabs(LineValuesL[Li]);
-								if(u*NuL > tau*Lnorm)
-									L_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
-#if defined(ILUC2)
-								else if(u*NuL > tau2*Lnorm)
+								Unorm = 0;
+								Ui = LineIndecesU[k];
+								while (Ui != EOL)
 								{
-									L2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
-									//~ DropL2[Li] += LineValuesL[Li]*udiag*SumUk;
+									Unorm += LineValuesU[Ui] * LineValuesU[Ui];
+									Ui = LineIndecesU[Ui];
+								}
+								Unorm = sqrt(Unorm);
+								U_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
+#if defined(ILUC2)
+								U2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
+#endif
+								Ui = LineIndecesU[k];
+								while (Ui != EOL)
+								{
+									u = fabs(LineValuesU[Ui]);
+									if (u * NuU > tau * Unorm) // apply dropping rule
+										U_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
+#if defined(ILUC2)
+									else if (u * NuU > tau2 * Unorm)
+										U2_Entries.push_back(Sparse::Row::make_entry(Ui, LineValuesU[Ui]));
+#endif
+									else ndrops++;
+									Ui = LineIndecesU[Ui];
+								}
+								U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
+#if defined(ILUC2)
+								U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
+#endif
+								// Update estimator vectors
+								if (estimator)
+								{
+									tlocal = Timer();
+									//U-estimator
+									EstimatorUpdate(k, LineIndecesU, LineValuesU, EstU1, mu_update_U1);
+									EstimatorUpdate(k, LineIndecesU, LineValuesU, EstU2, mu_update_U2);
+									testimator += Timer() - tlocal;
+								}
+								// Cleanup structures
+								ClearList(cbeg, LineIndecesU, LineValuesU);
+								// Insert indexes for transposed U-part traversal
+								//~ PrepareTranspose(k,k+1,U_Address,U_Entries,TransposeU);
+								if (U_Address[k].Size() != 0)
+								{
+									INMOST_DATA_ENUM_TYPE  i = U_Entries[U_Address[k].first].first;
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
+									Ulist[k] = Ubeg[i];
+									Ubeg[i] = k;
+								}
+								// Shift indexes for transposed U-part traversal for next iteration
+								{
+									INMOST_DATA_ENUM_TYPE i = Ubeg[k];
+									while (i != EOL)
+									{
+										U_Address[i].first++;
+										INMOST_DATA_ENUM_TYPE Li = Ulist[i], Ui;
+										if (U_Address[i].Size() > 0)
+										{
+											Ui = U_Entries[U_Address[i].first].first;
+											Ulist[i] = Ubeg[Ui];
+											Ubeg[Ui] = i;
+										}
+										i = Li;
+									}
+								}
+#if defined(ILUC2)
+								// Insert indexes for transposed second-order U-part traversal
+								//~ PrepareTranspose(k,k+1,U2_Address,U2_Entries,TransposeU2);
+								if (U2_Address[k].Size() != 0)
+								{
+									INMOST_DATA_ENUM_TYPE i = U2_Entries[U2_Address[k].first].first;
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
+									U2list[k] = U2beg[i];
+									U2beg[i] = k;
+								}
+								// Shift indexes for transposed second-order U-part traversal
+								{
+									INMOST_DATA_ENUM_TYPE i = U2beg[k];
+									while (i != EOL)
+									{
+										U2_Address[i].first++;
+										INMOST_DATA_ENUM_TYPE Li = U2list[i], Ui;
+										if (U2_Address[i].Size() > 0)
+										{
+											Ui = U2_Entries[U2_Address[i].first].first;
+											U2list[i] = U2beg[Ui];
+											U2beg[Ui] = i;
+										}
+										i = Li;
+									}
 								}
 #endif
-								else 
-								{
-									//~ DropLk +=  LineValuesL[Li];
-									//~ DropL[Li] += LineValuesL[Li]*udiag*SumUk;
-									ndrops++;
-								}
-								Li = LineIndecesL[Li];
 							}
-							L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
-#if defined(ILUC2)
-							L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
-#endif
-///////////////////////////////////////////////////////////////////////////////////
-//                 Update estimator vectors                                      //
-///////////////////////////////////////////////////////////////////////////////////
-							if( estimator )
-							{
-								tlocal = Timer();
-								//L-estimator
-								EstimatorUpdate(k,LineIndecesL,LineValuesL,EstL1,mu_update_L1);
-								EstimatorUpdate(k,LineIndecesL,LineValuesL,EstL2,mu_update_L2);
-								testimator += Timer() - tlocal;
-							}
-						}
-///////////////////////////////////////////////////////////////////////////////////
-//         Update values on the whole diagonal with L and U                      //
-///////////////////////////////////////////////////////////////////////////////////
-						//~ DiagonalUpdate(k,LU_Diag,LineIndecesL,LineValuesL,LineIndecesU,LineValuesU);
-///////////////////////////////////////////////////////////////////////////////////
-//      Iteration exit point with cleanups and updates                           //
-///////////////////////////////////////////////////////////////////////////////////
+							// reconstruct L-part from linked list
 #if defined(USE_OMP_FACT)
-//~ #pragma omp taskwait
+#pragma omp section
 #endif
-
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//                 Cleaning data structures                                      //
-///////////////////////////////////////////////////////////////////////////////////
-					ClearList(cbeg,LineIndecesL,LineValuesL);
-					ClearList(cbeg,LineIndecesU,LineValuesU);
-///////////////////////////////////////////////////////////////////////////////////
-//                 Insert indexes for transposed U-part traversal                //
-///////////////////////////////////////////////////////////////////////////////////
-					//Update linked list for factors
-					//~ PrepareTranspose(k,k+1,U_Address,U_Entries,TransposeU);
-					if (U_Address[k].Size() != 0)
-					{
-						i = U_Entries[U_Address[k].first].first;
-						assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
-						Ulist[k] = Ubeg[i];
-						Ubeg[i] = k;
-					}
+							{
+								Lnorm = 0;
+								Li = LineIndecesL[k];
+								while (Li != EOL)
+								{
+									Lnorm += LineValuesL[Li] * LineValuesL[Li];
+									Li = LineIndecesL[Li];
+								}
+								Lnorm = sqrt(Lnorm);
+								//insert column to L part
+								L_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
 #if defined(ILUC2)
-///////////////////////////////////////////////////////////////////////////////////
-//         Insert indexes for transposed second-order U-part traversal           //
-///////////////////////////////////////////////////////////////////////////////////
-					//~ PrepareTranspose(k,k+1,U2_Address,U2_Entries,TransposeU2);
-					if (U2_Address[k].Size() != 0)
-					{
-						i = U2_Entries[U2_Address[k].first].first;
-						assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
-						U2list[k] = U2beg[i];
-						U2beg[i] = k;
-					}
+								L2_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//                 Insert indexes for transposed L-part traversal                //
-///////////////////////////////////////////////////////////////////////////////////
-					//~ PrepareTranspose(k,k+1,L_Address,L_Entries,TransposeU);
-					//update linked list for factors
-					if (L_Address[k].Size() > 0)
-					{
-						i = L_Entries[L_Address[k].first].first;
-						assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
-						Llist[k] = Lbeg[i];
-						Lbeg[i] = k;
-					}
+								Li = LineIndecesL[k];
+								while (Li != EOL)
+								{
+									u = fabs(LineValuesL[Li]);
+									if (u * NuL > tau * Lnorm)
+										L_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #if defined(ILUC2)
-///////////////////////////////////////////////////////////////////////////////////
-//         Insert indexes for transposed second-order L-part traversal           //
-///////////////////////////////////////////////////////////////////////////////////
-					//~ PrepareTranspose(k,k+1,L2_Address,L2_Entries,TransposeL2);
-					if (L2_Address[k].Size() != 0)
-					{
-						i = L2_Entries[L2_Address[k].first].first;
-						assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
-						L2list[k] = L2beg[i];
-						L2beg[i] = k;
-					}
+									else if (u * NuL > tau2 * Lnorm)
+										L2_Entries.push_back(Sparse::Row::make_entry(Li, LineValuesL[Li]));
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//     Shift indexes for transposed U-part traversal for next iteration          //
-///////////////////////////////////////////////////////////////////////////////////
-					//Update indeces in linked lists
-					i = Ubeg[k];
-					while (i != EOL)
-					{
-						U_Address[i].first++;
-						Li = Ulist[i];
-						if (U_Address[i].Size() > 0)
-						{
-							Ui = U_Entries[U_Address[i].first].first;
-							Ulist[i] = Ubeg[Ui];
-							Ubeg[Ui] = i;
-						}
-						i = Li;
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//     Shift indexes for transposed L-part traversal for next iteration          //
-///////////////////////////////////////////////////////////////////////////////////
-					i = Lbeg[k];
-					while (i != EOL)
-					{
-						L_Address[i].first++;
-						Li = Llist[i];
-						if (L_Address[i].Size() > 0)
-						{
-							Ui = L_Entries[L_Address[i].first].first;
-							Llist[i] = Lbeg[Ui];
-							Lbeg[Ui] = i;
-						}
-						i = Li;
-					}
+									else ndrops++;
+									Li = LineIndecesL[Li];
+								}
+								L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
 #if defined(ILUC2)
-///////////////////////////////////////////////////////////////////////////////////
-//         Shift indexes for transposed second-order U-part traversal            //
-///////////////////////////////////////////////////////////////////////////////////
-					i = U2beg[k];
-					while (i != EOL)
-					{
-						U2_Address[i].first++;
-						Li = U2list[i];
-						if (U2_Address[i].Size() > 0)
-						{
-							Ui = U2_Entries[U2_Address[i].first].first;
-							U2list[i] = U2beg[Ui];
-							U2beg[Ui] = i;
-						}
-						i = Li;
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//         Shift indexes for transposed second-order L-part traversal            //
-///////////////////////////////////////////////////////////////////////////////////
-					i = L2beg[k];
-					while (i != EOL)
-					{
-						L2_Address[i].first++;
-						Li = L2list[i];
-						if (L2_Address[i].Size())
-						{
-							Ui = L2_Entries[L2_Address[i].first].first;
-							L2list[i] = L2beg[Ui];
-							L2beg[Ui] = i;
-						}
-						i = Li;
-					}
-					nzLU2 += U2_Address[k].Size() + L2_Address[k].Size();
+								L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//         Shift indexes for transposed B matrix traversal                       //
-///////////////////////////////////////////////////////////////////////////////////
-					//update column
+								// Update estimator vectors
+								if (estimator)
+								{
+									tlocal = Timer();
+									//L-estimator
+									EstimatorUpdate(k, LineIndecesL, LineValuesL, EstL1, mu_update_L1);
+									EstimatorUpdate(k, LineIndecesL, LineValuesL, EstL2, mu_update_L2);
+									testimator += Timer() - tlocal;
+								}
+								// Cleanup structures
+								ClearList(cbeg, LineIndecesL, LineValuesL);
+								// Insert indexes for transposed L-part traversal
+								//~ PrepareTranspose(k,k+1,L_Address,L_Entries,TransposeU);
+								if (L_Address[k].Size() > 0)
+								{
+									INMOST_DATA_ENUM_TYPE i = L_Entries[L_Address[k].first].first;
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
+									Llist[k] = Lbeg[i];
+									Lbeg[i] = k;
+								}
+								// Shift indexes for transposed L-part traversal for next iteration
+								{
+									INMOST_DATA_ENUM_TYPE  i = Lbeg[k];
+									while (i != EOL)
+									{
+										L_Address[i].first++;
+										INMOST_DATA_ENUM_TYPE Li = Llist[i], Ui;
+										if (L_Address[i].Size() > 0)
+										{
+											Ui = L_Entries[L_Address[i].first].first;
+											Llist[i] = Lbeg[Ui];
+											Lbeg[Ui] = i;
+										}
+										i = Li;
+									}
+								}
+#if defined(ILUC2)
+								// Insert indexes for transposed second-order L-part traversal
+								//~ PrepareTranspose(k,k+1,L2_Address,L2_Entries,TransposeL2);
+								if (L2_Address[k].Size() != 0)
+								{
+									INMOST_DATA_ENUM_TYPE i = L2_Entries[L2_Address[k].first].first;
+									assert(static_cast<INMOST_DATA_INTEGER_TYPE>(i) > k);
+									L2list[k] = L2beg[i];
+									L2beg[i] = k;
+								}
+								// Shift indexes for transposed second-order L-part traversal
+								{
+									INMOST_DATA_ENUM_TYPE i = L2beg[k];
+									while (i != EOL)
+									{
+										L2_Address[i].first++;
+										INMOST_DATA_ENUM_TYPE Li = L2list[i], Ui;
+										if (L2_Address[i].Size())
+										{
+											Ui = L2_Entries[L2_Address[i].first].first;
+											L2list[i] = L2beg[Ui];
+											L2beg[Ui] = i;
+										}
+										i = Li;
+									}
+								}
+#endif
+							}
+						}
+					}
+					// Shift indexes for transposed B matrix traversal
 					Li = Bbeg[k];
 					while (Li != EOL)
 					{
-						B_Address[Li].first++;
+						A_Address[Li].first++;
 						Ui = Blist[Li];
-						if (B_Address[Li].Size() > 0)
+						if (A_Address[Li].Size() > 0)
 						{
-							i = B_Entries[B_Address[Li].first].first;
+							i = A_Entries[A_Address[Li].first].first;
 							if (i < Li)
 							{
 								if (Bbeg[i] > Li)
@@ -4165,6 +3755,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					}
 					//number of nonzeros
 					nzLU += U_Address[k].Size() + L_Address[k].Size() + 1;
+#if defined(ILUC2)
+					nzLU2 += U2_Address[k].Size() + L2_Address[k].Size();
+#endif
 					if( verbosity )
 					{
 						if( k % 100 == 0 )
@@ -4176,16 +3769,19 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							else 
 							{
 								std::cout << std::setw(6) << std::fixed << std::setprecision(2) << 100.0f*(k - cbeg) / (float)(cend - cbeg);
-								std::cout << " nnz LU " << std::setw(8) << nzLU << " LU2 " << std::setw(8) << nzLU2;
-								std::cout << " cond L " << std::setprecision(6) << std::setw(10) << NuL << " D " << NuD << " U " << NuD << " swaps " << std::setw(10) << swaps << " drops " << std::setw(10) << ndrops;
+								std::cout << " nnz LU " << std::setw(8) << nzLU;
+								std::cout << " LU2 " << std::setw(8) << nzLU2;
+								std::cout << " cond L " << std::setprecision(6) << std::setw(10) << NuL;
+								std::cout << " D " << std::setw(10) << NuD;
+								std::cout << " U " << std::setw(10) << NuU;
+								std::cout << " swaps " << std::setw(10) << swaps;
+								std::cout << " drops " << std::setw(10) << ndrops;
 								std::cout << "\r" << std::flush;
 							}
 							std::cout.copyfmt(save);
 						}
 					}
-///////////////////////////////////////////////////////////////////////////////////
-//                       iteration done                                          //
-///////////////////////////////////////////////////////////////////////////////////
+					// iteration done
 				}
 				if( verbosity > 1 )
 				{
@@ -4194,84 +3790,59 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					std::cout << " in LU2 " << nzLU2;
 					std::cout << " conditions L " << NuL_max << " D " << NuD << " U " << NuU_max << " pivot swaps " << swaps << " drops " << ndrops << "            " << std::endl;
 				}
-			}
-			}
+				//restore indexes
+				A_Address[cbeg].first = Bstart[cbeg];
+				U_Address[cbeg].first = U_Beg;
+				L_Address[cbeg].first = L_Beg;
+#if defined(ILUC2)
+				U2_Address[cbeg].first = 0;
+				L2_Address[cbeg].first = 0;
+#endif
+				for (k = cbeg + 1; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
+				{
+					A_Address[k].first = Bstart[k];
+					U_Address[k].first = U_Address[k - 1].last;
+					L_Address[k].first = L_Address[k - 1].last;
+#if defined(ILUC2)
+					U2_Address[k].first = U2_Address[k - 1].last;
+					L2_Address[k].first = L2_Address[k - 1].last;
+#endif
+				}
 			}
 
-			//restore indexes
-			B_Address[cbeg].first = Bstart[cbeg];
-			U_Address[cbeg].first = U_Beg;
-			L_Address[cbeg].first = L_Beg;
-#if defined(ILUC2)
-			U2_Address[cbeg].first = 0;
-			L2_Address[cbeg].first = 0;
-#endif
-			for (k = cbeg+1; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-			{
-				B_Address[k].first = Bstart[k];
-				U_Address[k].first = U_Address[k - 1].last;
-				L_Address[k].first = L_Address[k - 1].last;
-#if defined(ILUC2)
-				U2_Address[k].first = U2_Address[k - 1].last;
-				L2_Address[k].first = L2_Address[k - 1].last;
-#endif
-			}
-///////////////////////////////////////////////////////////////////////////////////
-///             FACTORIZATION COMPLETE                                          ///
-///////////////////////////////////////////////////////////////////////////////////
+			
+			/// FACTORIZATION COMPLETE
 			tlfactor = Timer() - tt;
 			tfactor += tlfactor;
 			if( verbosity > 1 )
 				std::cout << "Time " << tlfactor << "\n";
 
-			//After we have factored the rescaled matrix we must rescale obtained factors
-			/*
-			tt = Timer();
-			if( rescale_b )
-			{
-#if defined(REPORT_ILU)
-				std::cout << std::endl << " rescaling block B back " << std::endl;
-#endif
-				for (k = cbeg; k < cend; ++k)
-				{
-					LU_Diag[k] /= (DL[k] * DR[k]);
-					for (INMOST_DATA_ENUM_TYPE r = U_Address[k].first; r < U_Address[k].last; ++r) LU_Entries[r].second *= (DR[k] / DR[LU_Entries[r].first]);
-					for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r < L_Address[k].last; ++r) LU_Entries[r].second *= (DL[k] / DL[LU_Entries[r].first]);
-					for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) B_Entries[r].second /= (DL[k] * DR[B_Entries[r].first]);
-				}
-#if defined(ILUC2)
-				if( swaps )
-				{
-					for (k = cbeg; k < cend; ++k)
-					{
-						for (INMOST_DATA_ENUM_TYPE r = U2_Address[k].first; r < U2_Address[k].last; ++r) LU2_Entries[r].second *= (DR[k] / DR[LU2_Entries[r].first]);
-						for (INMOST_DATA_ENUM_TYPE r = L2_Address[k].first; r < L2_Address[k].last; ++r) LU2_Entries[r].second *= (DL[k] / DL[LU2_Entries[r].first]);
-					}
-				}
-#endif
-			}
-			tlrescale = Timer() - tt;
-			trescale += tlrescale;
-			 */
-///////////////////////////////////////////////////////////////////////////////////
-///                RESCALING DONE                                               ///
-///////////////////////////////////////////////////////////////////////////////////
+			if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 			
 			//reset the scaling vectors
 			for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) DL[k] = DR[k] = 1.0;
-///////////////////////////////////////////////////////////////////////////////////
-//  Check that we have to enter the next level due to pivoting                   //
-///////////////////////////////////////////////////////////////////////////////////
+			//  Check that we have to enter the next level due to pivoting
 			if( swaps )
 			{
 				tlocal = Timer();
 				cend = wend-swaps;
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+				std::vector<Sparse::Row::entry> C_Entries;
+				interval<INMOST_DATA_ENUM_TYPE, Interval> C_Address(cend, wend);
+
+
+
+
 				tt = Timer();
 				if( verbosity > 1 )
 				{
 					std::cout << "Total swaps: " << swaps << " interval: " << cend << " " << wend << std::endl;
 					std::cout << "Reassemble pivots\n";
 				}
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 				level_size.push_back(cend - wbeg);
 				i = wbeg;
@@ -4304,11 +3875,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				//inverse the ordering
 				ReorderEF(wbeg, wend, donePQ, localP, localQ);
 				inversePQ(wbeg,wend,localP,localQ, invP,invQ);
-///////////////////////////////////////////////////////////////////////////////////
-//          Reassamble matrix                                                    //
-///////////////////////////////////////////////////////////////////////////////////
+				// Reassamble matrix
 				//here F is stored by columns and E by rows
-				A_Entries.clear();
 				E_Address.push_back(new interval<INMOST_DATA_ENUM_TYPE, Interval>(cend, wend));
 				F_Address.push_back(new interval<INMOST_DATA_ENUM_TYPE, Interval>(cend, wend));
 				//find out the space required for each column of F
@@ -4320,9 +3888,9 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					j = invP[k];
 					if( k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend) )
 					{
-						for (INMOST_DATA_ENUM_TYPE jt = B_Address[j].first; jt < B_Address[j].last; ++jt)
+						for (INMOST_DATA_ENUM_TYPE jt = A_Address[j].first; jt < A_Address[j].last; ++jt)
 						{
-							i = localQ[B_Entries[jt].first];
+							i = localQ[A_Entries[jt].first];
 							if( i >= cend ) //put into F
 								F_Address.back()->at(i).last++;
 						}
@@ -4349,30 +3917,30 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					if( k >= static_cast<INMOST_DATA_INTEGER_TYPE>(cend) )
 					{
 						E_Address.back()->at(k).first = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
-						A_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries.size());
-						for (INMOST_DATA_ENUM_TYPE jt = B_Address[j].first; jt < B_Address[j].last; ++jt)
+						C_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
+						for (INMOST_DATA_ENUM_TYPE jt = A_Address[j].first; jt < A_Address[j].last; ++jt)
 						{
-							i = localQ[B_Entries[jt].first];
-							u = B_Entries[jt].second;
+							i = localQ[A_Entries[jt].first];
+							u = A_Entries[jt].second;
 							if( i >= cend ) //put into A
-								A_Entries.push_back(Sparse::Row::make_entry(i, u));
+								C_Entries.push_back(Sparse::Row::make_entry(i, u));
 							else //put into E
 							{
 								nnzE++;
 								E_Entries.push_back(Sparse::Row::make_entry(i, u));
 							}
 						}
-						A_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries.size());
+						C_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
 						E_Address.back()->at(k).last = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
-						std::sort(A_Entries.begin() + A_Address[k].first, A_Entries.end());
+						std::sort(C_Entries.begin() + C_Address[k].first, C_Entries.end());
 						std::sort(E_Entries.begin() + E_Address.back()->at(k).first, E_Entries.end());
 					}
 					else
 					{
-						for (INMOST_DATA_ENUM_TYPE jt = B_Address[j].first; jt < B_Address[j].last; ++jt)
+						for (INMOST_DATA_ENUM_TYPE jt = A_Address[j].first; jt < A_Address[j].last; ++jt)
 						{
-							i = localQ[B_Entries[jt].first];
-							u = B_Entries[jt].second;
+							i = localQ[A_Entries[jt].first];
+							u = A_Entries[jt].second;
 							if( i >= cend ) //put into F
 							{
 								nnzF++;
@@ -4381,37 +3949,15 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						}
 					}
 				}
-				//restore order in F
-				/*
-				for(k = cend; k < wend; ++k)
-				{
-					std::sort(F_Entries.begin()+F_Address.back()->at(k).first, F_Entries.begin()+F_Address.back()->at(k).last);
-				}
-				 */
-				A_Entries.push_back(Sparse::Row::make_entry(-1,0.0));
-				
-				//DumpMatrix(A_Address,A_Entries,cend,wend,"sA.mtx");
-				//DumpMatrix(*E_Address.back(),E_Entries,wbeg,wend,"E.mtx");
-				//DumpMatrix(*F_Address.back(),F_Entries,wbeg,wend,"F.mtx");
-				//reorder LU according to pivoting
-///////////////////////////////////////////////////////////////////////////////////
-//  Reassamble L and U                                                           //
-///////////////////////////////////////////////////////////////////////////////////
-				//DumpMatrix(L_Address,LU_Entries,wbeg,wend,"preL.mtx");
-				//DumpMatrix(U_Address,LU_Entries,wbeg,wend,"preU.mtx");
-				//DumpMatrix(L2_Address,LU2_Entries,wbeg,wend,"preL2.mtx");
-				//DumpMatrix(U2_Address,LU2_Entries,wbeg,wend,"preU2.mtx");
-				/*
-				{
-					std::fstream fout("preDiag.mtx",std::ios::out);
-					fout << "%%MatrixMarket matrix coordinate real general" << std::endl;
-					fout << std::scientific;
-					fout << wend-wbeg << " " << wend-wbeg << " " << wend-wbeg << std::endl;
-					for(k = wbeg; k < wend; ++k)
-						fout << k+1 << " " << k+1 << " " << LU_Diag[k] << std::endl;
-					fout.close();
-				}
-				*/
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+				A_Address.clear();
+				A_Entries.clear();
+				A_Entries.swap(std::vector<Sparse::Row::entry>()); //release memory
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+				//  Reassamble L and U
 				//first change positions
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
@@ -4458,6 +4004,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						U_Address[j].last -= cnt;
 					}
 				}
+#if defined(ILU2)
 				//now the same for second-order LU
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
@@ -4503,47 +4050,44 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						U2_Address[j].last -= cnt;
 					}
 				}
+#endif
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 				//first establish intervals in arrays
 				{
-					interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL(wbeg,cend), tmpU(wbeg,cend), tmpL2(wbeg,cend), tmpU2(wbeg,cend);
+					interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL(wbeg,cend), tmpU(wbeg,cend);
+#if defined(ILU2)
+					interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL2(wbeg, cend), tmpU2(wbeg, cend)
+#endif
 					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> tmpD(wbeg,cend);
 					for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 					{
 						j = invP[k];
 						tmpL[k] = L_Address[j];
 						tmpU[k] = U_Address[j];
+#if defined(ILU2)
 						tmpL2[k] = L2_Address[j];
 						tmpU2[k] = U2_Address[j];
+#endif
 						tmpD[k] = LU_Diag[j];
 					}
 					for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 					{
 						L_Address[k] = tmpL[k];
 						U_Address[k] = tmpU[k];
+#if defined(ILU2)
 						L2_Address[k] = tmpL2[k];
 						U2_Address[k] = tmpU2[k];
+#endif
 						LU_Diag[k] = tmpD[k];
 					}
 				}
-				//DumpMatrix(L_Address,LU_Entries,wbeg,cend,"L.mtx");
-				//DumpMatrix(U_Address,LU_Entries,wbeg,cend,"U.mtx");
-				//DumpMatrix(L2_Address,LU2_Entries,wbeg,cend,"L2.mtx");
-				//DumpMatrix(U2_Address,LU2_Entries,wbeg,cend,"U2.mtx");
-				/*
-				{
-					std::fstream fout("Diag.mtx",std::ios::out);
-					fout << "%%MatrixMarket matrix coordinate real general" << std::endl;
-					fout << std::scientific;
-					fout << cend-wbeg << " " << cend-wbeg << " " << cend-wbeg << std::endl;
-					for(k = wbeg; k < cend; ++k)
-						fout << k+1 << " " << k+1 << " " << LU_Diag[k] << std::endl;
-					fout.close();
-				}
-				 */
+				
 				applyPQ(wbeg, wend, localP, localQ, invP, invQ);
 				tt = Timer()-tt;
 				if( verbosity > 1 )
 					std::cout << "Time " << tt << "\n";
+
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 				int ndrops_lf = 0, ndrops_eu = 0, ndrops_s = 0;
 ///////////////////////////////////////////////////////////////////////////////////
@@ -4558,845 +4102,681 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				// S = C - (E U^{-1}) D^{-1} (L^{-1} F)
 				//
 				//first precompute LF block
-				tt = Timer();
-				if( verbosity > 1 )
-					std::cout << "Assemble LF\n";
+				{
+					if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+					std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> > LineValuesS(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>(mobeg, moend, 0.0));
+					std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > LineIndecesS(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>(mobeg, moend + 1, UNDEF));
+					std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > indicesS(nthreads);
+
+					std::vector<Sparse::Row::entry>  LFt_Entries, EU_Entries, S_Entries;
+					interval<INMOST_DATA_ENUM_TYPE, Interval> LFt_Address(wbeg, cend), EU_Address(cend, wend), S_Address(cend, wend);
+
+					{
+						std::vector<Sparse::Row::entry> LF_Entries;
+						interval<INMOST_DATA_ENUM_TYPE, Interval> LF_Address(cend, wend);
+
+						tt = Timer();
+						if (verbosity > 1)
+							std::cout << "Assemble LF\n";
+
+						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for private(k, Li, u, j, curr, next) reduction(+:ndrops_lf)
 #endif
-				for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-				{
-					int nthr = Thread();
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> & LineIndeces = LineIndecesS[nthr];
-					INMOST_DATA_REAL_TYPE Fmax = 0;//Fnorm = 0, Fnum = 0;
-					Li = cbeg;
-					for(INMOST_DATA_ENUM_TYPE jt = F_Address.back()->at(k).first; jt < F_Address.back()->at(k).last; ++jt)
-					{
-						u = F_Entries[jt].second;
-						j = F_Entries[jt].first;
-						LineValues[j] = u;
-						Li = LineIndeces[Li] = j+1;
-						//Fnorm += u*u;
-						//Fnum  ++;
-						Fmax = std::max<INMOST_DATA_REAL_TYPE>(Fmax,fabs(u));
-					}
-					LineIndeces[Li] = EOL;
-					//~ if( Fnum ) Fnorm = sqrt(Fnorm/Fnum);
-					//~ LFdrop = 0;
-///////////////////////////////////////////////////////////////////////////////////
-//         perform solve with L part                                             //
-///////////////////////////////////////////////////////////////////////////////////
-					//compute ~F_i = L^{-1} F_i
-					Li = LineIndeces[cbeg];
-					//Sbeg = cbeg;
-					while (Li != EOL)
-					{
-						curr = Li;
-						if( 1 + LineValues[Li - 1] != 1 )
+						for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 						{
-							double dtol = tau2*Fmax/NuL_max;
-							for (INMOST_DATA_ENUM_TYPE ru = L_Address[Li - 1].first; ru < L_Address[Li - 1].last; ++ru)
+							int nthr = Thread();
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& LineValues = LineValuesS[nthr];
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& LineIndeces = LineIndecesS[nthr];
+							INMOST_DATA_REAL_TYPE Fmax = 0;//Fnorm = 0, Fnum = 0;
+							Li = cbeg;
+							for (INMOST_DATA_ENUM_TYPE jt = F_Address.back()->at(k).first; jt < F_Address.back()->at(k).last; ++jt)
 							{
-								u = LineValues[Li - 1] * L_Entries[ru].second;
-								j = L_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-#if defined(SCHUR_DROPPING_LF_PREMATURE)
-								else if( fabs(u) > dtol*LU_Diag[j] )
-#else
-								else if( 1+u != 1 )
-#endif
-								{
-									
-									next = curr;
-									while (next < j + 1)
-									{
-										curr = next;
-										next = LineIndeces[curr];
-									}
-									assert(curr < j + 1);
-									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
-									
-									//LineValues[j] = -u;
-									//LineIndeces[j + 1] = Sbeg;
-									//Sbeg = j+1;
-								}
-								//else LFdrop += u/LU_Diag[j];
+								u = F_Entries[jt].second;
+								j = F_Entries[jt].first;
+								LineValues[j] = u;
+								Li = LineIndeces[Li] = j + 1;
+								//Fnorm += u*u;
+								//Fnum  ++;
+								Fmax = std::max<INMOST_DATA_REAL_TYPE>(Fmax, fabs(u));
 							}
+							LineIndeces[Li] = EOL;
+							//~ if( Fnum ) Fnorm = sqrt(Fnorm/Fnum);
+							//~ LFdrop = 0;
+							// perform solve with L part
+							//compute ~F_i = L^{-1} F_i
+							Li = LineIndeces[cbeg];
+							//Sbeg = cbeg;
+							while (Li != EOL)
+							{
+								curr = Li;
+								if (1 + LineValues[Li - 1] != 1)
+								{
+									double dtol = tau2 * Fmax / NuL_max;
+									for (INMOST_DATA_ENUM_TYPE ru = L_Address[Li - 1].first; ru < L_Address[Li - 1].last; ++ru)
+									{
+										u = LineValues[Li - 1] * L_Entries[ru].second;
+										j = L_Entries[ru].first;
+										if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
+											LineValues[j] -= u;
+#if defined(SCHUR_DROPPING_LF_PREMATURE)
+										else if (fabs(u) > dtol * LU_Diag[j])
+#else
+										else if (1 + u != 1)
+#endif
+										{
+
+											next = curr;
+											while (next < j + 1)
+											{
+												curr = next;
+												next = LineIndeces[curr];
+											}
+											assert(curr < j + 1);
+											assert(j + 1 < next);
+											LineIndeces[curr] = j + 1;
+											LineIndeces[j + 1] = next;
+											LineValues[j] = -u;
+
+											//LineValues[j] = -u;
+											//LineIndeces[j + 1] = Sbeg;
+											//Sbeg = j+1;
+										}
+										//else LFdrop += u/LU_Diag[j];
+									}
 #if defined(ILUC2) && defined(ILUC2_SCHUR)
-///////////////////////////////////////////////////////////////////////////////////
-//         perform solve with second-order L part                                //
-///////////////////////////////////////////////////////////////////////////////////
-							curr = Li;
-							for (INMOST_DATA_ENUM_TYPE ru = L2_Address[Li - 1].first; ru < L2_Address[Li - 1].last; ++ru)
-							{
-								u = LineValues[Li - 1] * L2_Entries[ru].second;
-								j = L2_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-#if defined(SCHUR_DROPPING_LF_PREMATURE)
-								else if( fabs(u) > dtol*LU_Diag[j] )
-#else
-								else if( 1+u != 1 )
-#endif
-								{
-									
-									next = curr;
-									while (next < j + 1)
+									// perform solve with second-order L part
+									curr = Li;
+									for (INMOST_DATA_ENUM_TYPE ru = L2_Address[Li - 1].first; ru < L2_Address[Li - 1].last; ++ru)
 									{
-										curr = next;
-										next = LineIndeces[curr];
+										u = LineValues[Li - 1] * L2_Entries[ru].second;
+										j = L2_Entries[ru].first;
+										if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
+											LineValues[j] -= u;
+#if defined(SCHUR_DROPPING_LF_PREMATURE)
+										else if (fabs(u) > dtol * LU_Diag[j])
+#else
+										else if (1 + u != 1)
+#endif
+										{
+
+											next = curr;
+											while (next < j + 1)
+											{
+												curr = next;
+												next = LineIndeces[curr];
+											}
+											assert(curr < j + 1);
+											assert(j + 1 < next);
+											LineIndeces[curr] = j + 1;
+											LineIndeces[j + 1] = next;
+											LineValues[j] = -u;
+
+											//LineValues[j] = -u;
+											//LineIndeces[j + 1] = Sbeg;
+											//Sbeg = j+1;
+										}
+										//else LFdrop += u/LU_Diag[j];
 									}
-									assert(curr < j + 1);
-									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
-									
-									//LineValues[j] = -u;
-									//LineIndeces[j + 1] = Sbeg;
-									//Sbeg = j+1;
+#endif
 								}
-								//else LFdrop += u/LU_Diag[j];
+								// solve iteration done
+								Li = LineIndeces[Li];
 							}
-#endif
-						}
-///////////////////////////////////////////////////////////////////////////////////
-//             solve iteration done                                              //
-///////////////////////////////////////////////////////////////////////////////////						
-						Li = LineIndeces[Li];
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//                 Rescale by diagonal                                           //
-///////////////////////////////////////////////////////////////////////////////////
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						LineValues[Li - 1] /= LU_Diag[Li-1]; //Li - 1 or k?
-						Li = LineIndeces[Li];
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//                 Compute norm for dropping                                     //
-///////////////////////////////////////////////////////////////////////////////////
+							// Rescale by diagonal
+							Li = LineIndeces[cbeg];
+							while (Li != EOL)
+							{
+								LineValues[Li - 1] /= LU_Diag[Li - 1]; //Li - 1 or k?
+								Li = LineIndeces[Li];
+							}
+							// Compute norm for dropping
 #if defined(SCHUR_DROPPING_LF)
-					INMOST_DATA_REAL_TYPE LFnorm, LFnum, LFmax, LFmin, LFtau;
-					LFnorm = LFnum = 0;
-					Li = LineIndeces[cbeg];
-					LFmax = 0;
-					LFmin = 1.0e+54;
-					while (Li != EOL)
-					{
-						u = fabs(LineValues[Li - 1]);
-						LFnorm += u*u;
-						if( u > LFmax ) LFmax = u;
-						if( u < LFmin ) LFmin = u;
-						LFnum++;
-						Li = LineIndeces[Li];
-					}
-					if( LFnum ) LFnorm = sqrt(LFnorm/LFnum);
-					//LFnorm = std::min(1.0,LFnorm);
-					//LFtau = LFmin + (LFmax - LFmin)*std::min(tau*tau,tau2) / NuL_max;
-					//LFtau = LFmin + std::min(tau*tau,tau2)*LFnorm;// / NuL_max;
-					LFtau = LFmin + (LFmax - LFmin)*pow(LFnorm/LFmax,2);
-					//LFtau = LFmin + (LFmax - LFmin)*pow(LFnorm/LFmax,4);
+							INMOST_DATA_REAL_TYPE LFnorm, LFnum, LFmax, LFmin, LFtau;
+							LFnorm = LFnum = 0;
+							Li = LineIndeces[cbeg];
+							LFmax = 0;
+							LFmin = 1.0e+54;
+							while (Li != EOL)
+							{
+								u = fabs(LineValues[Li - 1]);
+								LFnorm += u * u;
+								if (u > LFmax) LFmax = u;
+								if (u < LFmin) LFmin = u;
+								LFnum++;
+								Li = LineIndeces[Li];
+							}
+							if (LFnum) LFnorm = sqrt(LFnorm / LFnum);
+							//LFnorm = std::min(1.0,LFnorm);
+							//LFtau = LFmin + (LFmax - LFmin)*std::min(tau*tau,tau2) / NuL_max;
+							//LFtau = LFmin + std::min(tau*tau,tau2)*LFnorm;// / NuL_max;
+							LFtau = LFmin + (LFmax - LFmin) * pow(LFnorm / LFmax, 2);
+							//LFtau = LFmin + (LFmax - LFmin)*pow(LFnorm/LFmax,4);
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//                 Assemble column into matrix                                   //
-///////////////////////////////////////////////////////////////////////////////////
+						// Assemble column into matrix
 #if defined(USE_OMP_FACT)
 #pragma omp critical
 #endif
-					{
-						Li = LineIndeces[cbeg];
-						LF_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
-						while (Li != EOL)
-						{
-							u = LineValues[Li - 1];
-							assert(Li - 1 >= wbeg && Li - 1 < cend);
-#if defined(SCHUR_DROPPING_LF)
-							if( fabs(u) >= LFtau )
-#else
-							if( 1+u != 1 )
-#endif
-								LF_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
-							else 
 							{
-								//LFdrop += u;
-								ndrops_lf++;
+								Li = LineIndeces[cbeg];
+								LF_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
+								while (Li != EOL)
+								{
+									u = LineValues[Li - 1];
+									assert(Li - 1 >= wbeg && Li - 1 < cend);
+#if defined(SCHUR_DROPPING_LF)
+									if (fabs(u) >= LFtau)
+#else
+									if (1 + u != 1)
+#endif
+										LF_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
+									else
+									{
+										//LFdrop += u;
+										ndrops_lf++;
+									}
+									Li = LineIndeces[Li];
+								}
+								LF_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
 							}
-							Li = LineIndeces[Li];
+							// if( LFdrop )
+							// {
+							// 	LFdrop /= (double) LF_Address[k].Size();
+							// 	for(j = LF_Address[k].first; j < LF_Address[k].last; ++j)
+							// 		LF_Entries[j].second += LFdrop;
+							// }
+							//assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
+							// clean linked list
+							Li = LineIndeces[cbeg];
+							while (Li != EOL)
+							{
+								j = LineIndeces[Li];
+								LineIndeces[Li] = UNDEF;
+								LineValues[Li - 1] = 0.0;
+								Li = j;
+							}
+							LineIndeces[cbeg] = UNDEF;
+							if (verbosity)
+							{
+								if (k % 100 == 0)
+								{
+									std::ios save(NULL);
+									save.copyfmt(std::cout);
+									std::cout << "LF " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+									std::cout << " nnz " << std::setw(10) << LF_Entries.size() << " drops " << std::setw(10) << ndrops_lf;
+									std::cout << "\r" << std::flush;
+									std::cout.copyfmt(save);
+								}
+							}
+							// iteration done!
 						}
-						LF_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(LF_Entries.size());
-					}
-					// if( LFdrop )
-					// {
-					// 	LFdrop /= (double) LF_Address[k].Size();
-					// 	for(j = LF_Address[k].first; j < LF_Address[k].last; ++j)
-					// 		LF_Entries[j].second += LFdrop;
-					// }
-					//assert(std::is_sorted(LF_Entries.begin()+LF_Address[k].first,LF_Entries.end()));
-///////////////////////////////////////////////////////////////////////////////////
-//              clean linked list                                                //
-///////////////////////////////////////////////////////////////////////////////////
-					//Clean after use
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						j = LineIndeces[Li];
-						LineIndeces[Li] = UNDEF;
-						LineValues[Li - 1] = 0.0;
-						Li = j;
-					}
-					LineIndeces[cbeg] = UNDEF;
-					if( verbosity )
-					{
-						if (k % 100 == 0)
+						tt = Timer() - tt;
+						if (verbosity > 1)
 						{
-							std::ios save(NULL);
-							save.copyfmt(std::cout);
-							std::cout << "LF " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f*(k - cend+1) / (1.f*(wend - cend));
-							std::cout << " nnz " << std::setw(10) << LF_Entries.size() << " drops " << std::setw(10) << ndrops_lf;
-							std::cout << "\r" << std::flush;
-							std::cout.copyfmt(save);
+							std::cout << "F nnz " << nnzF << " LF nnz " << LF_Entries.size() << " drops " << ndrops_lf << "         \t\t\n";
+							std::cout << "Time " << tt << "\n";
 						}
-					}
 
-///////////////////////////////////////////////////////////////////////////////////
-//             iteration done!                                                   //
-///////////////////////////////////////////////////////////////////////////////////
-				}
-				tt = Timer()-tt;
-				if( verbosity > 1 )
-				{
-					std::cout << "F nnz " << nnzF << " LF nnz " << LF_Entries.size() << " drops " << ndrops_lf << "         \t\t\n";
-					std::cout << "Time " << tt << "\n";
-				}
+						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
-				//DumpMatrix(LF_Address,LF_Entries,wbeg,wend,"LF.mtx");
-///////////////////////////////////////////////////////////////////////////////////
-//         prepearing LF block for transposed traversal                          //
-///////////////////////////////////////////////////////////////////////////////////
-				tt = Timer();
-				if( verbosity > 1 )
-					std::cout << "Transpose LF\n";
-				//std::fill(Fbeg.begin() + wbeg - mobeg, Fbeg.begin() + cend - mobeg, EOL);
-				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) Fbeg[k] = EOL;
-				for(k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(cend); --k)
-				{
-					if (LF_Address[k-1].Size() > 0)
-					{
-						i = LF_Entries[LF_Address[k-1].first].first;
-						Flist[k-1] = Fbeg[i];
-						Fbeg[i] = k-1;
-					}
-					else Flist[k-1] = EOL;
-				}
-				//transpone LF matrix
-///////////////////////////////////////////////////////////////////////////////////
-//          transpose LF block                                                   //
-///////////////////////////////////////////////////////////////////////////////////
-				LFt_Entries.resize(LF_Entries.size());
-				j = 0;
-				for (k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
-				{
-///////////////////////////////////////////////////////////////////////////////////
-//         assemble line of transposed LF                                        //
-///////////////////////////////////////////////////////////////////////////////////
-					LFt_Address[k].first = j;
-					Li = Fbeg[k];
-					//Fnorms[k] = 0;
-					while (Li != EOL)
-					{
-						LFt_Entries[j].first = Li;
-						LFt_Entries[j].second = LF_Entries[LF_Address[Li].first].second;
-						j++;
-						Li = Flist[Li];
-					}
-					LFt_Address[k].last = j;
-///////////////////////////////////////////////////////////////////////////////////
-//          shift indices for transposed traversal                               //
-///////////////////////////////////////////////////////////////////////////////////
-					//Update row indexing
-					Li = Fbeg[k];
-					while (Li != EOL)
-					{
-						Ui = Flist[Li];
-						LF_Address[Li].first++;
-						if (LF_Address[Li].Size() > 0)
+						// prepearing LF block for transposed traversal
 						{
-							i = LF_Entries[LF_Address[Li].first].first;
-							Flist[Li] = Fbeg[i];
-							Fbeg[i] = Li;
-						}
-						Li = Ui;
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//              iteration done                                                   //
-///////////////////////////////////////////////////////////////////////////////////
-				}
-				LF_Entries.clear();
-				tt = Timer()-tt;
-				if( verbosity > 1 )
-					std::cout << "Time " << tt << "\n";
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Flist(cend, wend);
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Fbeg(wbeg, cend);
+							tt = Timer();
+							if (verbosity > 1)
+								std::cout << "Transpose LF\n";
+							//std::fill(Fbeg.begin() + wbeg - mobeg, Fbeg.begin() + cend - mobeg, EOL);
+							for (k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) Fbeg[k] = EOL;
+							for (k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(cend); --k)
+							{
+								if (LF_Address[k - 1].Size() > 0)
+								{
+									i = LF_Entries[LF_Address[k - 1].first].first;
+									Flist[k - 1] = Fbeg[i];
+									Fbeg[i] = k - 1;
+								}
+								else Flist[k - 1] = EOL;
+							}
+							//transpone LF matrix
+							LFt_Entries.resize(LF_Entries.size());
 
-				//DumpMatrix(LFt_Address,LFt_Entries,wbeg,wend,"LFt.mtx");
-///////////////////////////////////////////////////////////////////////////////////
-//             EU and Schur                                                      //
-///////////////////////////////////////////////////////////////////////////////////
-				tt = Timer();
-				if( verbosity > 1 )
-					std::cout << "Assemble EU\n";
+							if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+							j = 0;
+							for (k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); k++)
+							{
+								// assemble line of transposed LF
+								LFt_Address[k].first = j;
+								Li = Fbeg[k];
+								//Fnorms[k] = 0;
+								while (Li != EOL)
+								{
+									LFt_Entries[j].first = Li;
+									LFt_Entries[j].second = LF_Entries[LF_Address[Li].first].second;
+									j++;
+									Li = Flist[Li];
+								}
+								LFt_Address[k].last = j;
+								// shift indices for transposed traversal
+								Li = Fbeg[k];
+								while (Li != EOL)
+								{
+									Ui = Flist[Li];
+									LF_Address[Li].first++;
+									if (LF_Address[Li].Size() > 0)
+									{
+										i = LF_Entries[LF_Address[Li].first].first;
+										Flist[Li] = Fbeg[i];
+										Fbeg[i] = Li;
+									}
+									Li = Ui;
+								}
+								// iteration done
+							}
+						}
+						tt = Timer() - tt;
+						if (verbosity > 1)
+							std::cout << "Time " << tt << "\n";
+					}
+
+					if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+					//DumpMatrix(LFt_Address,LFt_Entries,wbeg,wend,"LFt.mtx");
+					// EU and Schur
+					tt = Timer();
+					if (verbosity > 1)
+						std::cout << "Assemble EU\n";
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for private(k, Li, u, i, j, curr, next) reduction(+:ndrops_eu)
 #endif
-				for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-				{
-					int nthr = Thread();
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> & LineIndeces = LineIndecesS[nthr];
-					double Emax = 0;//Enorm = 0, Enum = 0;
-///////////////////////////////////////////////////////////////////////////////////
-//          no values at E block - unpack C block into Schur                     //
-///////////////////////////////////////////////////////////////////////////////////
-					Li = cbeg;
-					for (j = E_Address.back()->at(k).first; j < E_Address.back()->at(k).last; ++j) //iterate over values of k-th row of E
+					for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 					{
-						u = E_Entries[j].second;
-						i = E_Entries[j].first;
-						LineValues[i] = u;
-						Li = LineIndeces[Li] = i + 1;
-						//~ Enorm += u*u;
-						//~ Enum  ++;
-						Emax = std::max(Emax,fabs(u));
-					}
-					LineIndeces[Li] = EOL;
-					//~ if( Enum ) Enorm = sqrt(Enorm/Enum);
-					//~ EUdrop = 0;
-///////////////////////////////////////////////////////////////////////////////////
-//         perform solve with U part                                             //
-///////////////////////////////////////////////////////////////////////////////////
-					// compute ~E_i = E_i U^{-1}
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						curr = Li;
-						if( 1 + LineValues[Li - 1] != 1 )
+						int nthr = Thread();
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& LineValues = LineValuesS[nthr];
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& LineIndeces = LineIndecesS[nthr];
+						double Emax = 0;//Enorm = 0, Enum = 0;
+						// no values at E block - unpack C block into Schur 
+						Li = cbeg;
+						for (j = E_Address.back()->at(k).first; j < E_Address.back()->at(k).last; ++j) //iterate over values of k-th row of E
 						{
-							double dtol = tau2*Emax/NuU_max;
-							for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru < U_Address[Li - 1].last; ++ru)
-							{
-								u = LineValues[Li - 1] * U_Entries[ru].second;
-								j = U_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-#if defined(SCHUR_DROPPING_EU_PREMATURE)
-								else if( fabs(u) > dtol*LU_Diag[j] )
-#else
-								else if ( 1+u != 1 )
-#endif
-								{
-									next = curr;
-									while (next < j + 1)
-									{
-										curr = next;
-										next = LineIndeces[curr];
-									}
-									assert(curr < j + 1);
-									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
-								}
-								//else EUdrop += u/LU_Diag[j];
-							}
-#if defined(ILUC2) && defined(ILUC2_SCHUR)
-///////////////////////////////////////////////////////////////////////////////////
-//         perform solve with second-order U part                                //
-///////////////////////////////////////////////////////////////////////////////////
-							curr = Li;
-							for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru < U2_Address[Li - 1].last; ++ru)
-							{
-								u = LineValues[Li - 1] * U2_Entries[ru].second;
-								j = U2_Entries[ru].first;
-								if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
-									LineValues[j] -= u;
-#if defined(SCHUR_DROPPING_EU_PREMATURE)
-								else if( fabs(u) > dtol*LU_Diag[j] )
-#else
-								else if ( 1+u != 1 )
-#endif
-								{
-									next = curr;
-									while (next < j + 1)
-									{
-										curr = next;
-										next = LineIndeces[curr];
-									}
-									assert(curr < j + 1);
-									assert(j + 1 < next);
-									LineIndeces[curr] = j + 1;
-									LineIndeces[j + 1] = next;
-									LineValues[j] = -u;
-								}
-								//else EUdrop += u/LU_Diag[j];
-							}
-#endif
+							u = E_Entries[j].second;
+							i = E_Entries[j].first;
+							LineValues[i] = u;
+							Li = LineIndeces[Li] = i + 1;
+							//~ Enorm += u*u;
+							//~ Enum  ++;
+							Emax = std::max(Emax, fabs(u));
 						}
-						Li = LineIndeces[Li];
-///////////////////////////////////////////////////////////////////////////////////
-//         solve iteration done                                                  //
-///////////////////////////////////////////////////////////////////////////////////
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//         rescale by diagonal                                                   //
-///////////////////////////////////////////////////////////////////////////////////
-					//rescale vector by diagonal *E = ~E_i D^{-1} = E_i U^{-1} D^{-1}
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						LineValues[Li - 1] /= LU_Diag[Li - 1];
-						Li = LineIndeces[Li];
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//       compute norm                                                            //
-///////////////////////////////////////////////////////////////////////////////////
-#if defined(SCHUR_DROPPING_EU)
-					INMOST_DATA_REAL_TYPE EUnorm, EUnum, EUmax, EUmin, EUtau;
-					EUnorm = EUnum = 0;
-					EUmax = 0;
-					EUmin = 1.0e+54;
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						u = fabs(LineValues[Li - 1]);
-						EUnorm += u*u;
-						if( u > EUmax ) EUmax = u;
-						if( u < EUmin ) EUmin = u;
-						EUnum++;
-						Li = LineIndeces[Li];
-					}
-					if( EUnum ) EUnorm = sqrt(EUnorm/EUnum);
-					//~ EUtau = EUmin + std::min(tau*tau,tau2)*EUnorm;// / NuU_max;
-					//EUnorm = std::min(1.0,EUnorm);
-					EUtau = EUmin + (EUmax - EUmin)*pow(EUnorm/EUmax,2);
-					//EUtau = EUmin + (EUmax - EUmin)*pow(EUnorm/EUmax,4);
+						LineIndeces[Li] = EOL;
+						//~ if( Enum ) Enorm = sqrt(Enorm/Enum);
+						//~ EUdrop = 0;
+						// perform solve with U part
+						// compute ~E_i = E_i U^{-1}
+						Li = LineIndeces[cbeg];
+						while (Li != EOL)
+						{
+							curr = Li;
+							if (1 + LineValues[Li - 1] != 1)
+							{
+								double dtol = tau2 * Emax / NuU_max;
+								for (INMOST_DATA_ENUM_TYPE ru = U_Address[Li - 1].first; ru < U_Address[Li - 1].last; ++ru)
+								{
+									u = LineValues[Li - 1] * U_Entries[ru].second;
+									j = U_Entries[ru].first;
+									if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
+										LineValues[j] -= u;
+#if defined(SCHUR_DROPPING_EU_PREMATURE)
+									else if (fabs(u) > dtol * LU_Diag[j])
+#else
+									else if (1 + u != 1)
 #endif
-///////////////////////////////////////////////////////////////////////////////////
-//drop values that do not satisfy tolerances from linked list of line of EU block//
-///////////////////////////////////////////////////////////////////////////////////
-					//Assemble column into matrix
-					Li = LineIndeces[cbeg];
+									{
+										next = curr;
+										while (next < j + 1)
+										{
+											curr = next;
+											next = LineIndeces[curr];
+										}
+										assert(curr < j + 1);
+										assert(j + 1 < next);
+										LineIndeces[curr] = j + 1;
+										LineIndeces[j + 1] = next;
+										LineValues[j] = -u;
+									}
+									//else EUdrop += u/LU_Diag[j];
+								}
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
+								// perform solve with second-order U part
+								curr = Li;
+								for (INMOST_DATA_ENUM_TYPE ru = U2_Address[Li - 1].first; ru < U2_Address[Li - 1].last; ++ru)
+								{
+									u = LineValues[Li - 1] * U2_Entries[ru].second;
+									j = U2_Entries[ru].first;
+									if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
+										LineValues[j] -= u;
+#if defined(SCHUR_DROPPING_EU_PREMATURE)
+									else if (fabs(u) > dtol * LU_Diag[j])
+#else
+									else if (1 + u != 1)
+#endif
+									{
+										next = curr;
+										while (next < j + 1)
+										{
+											curr = next;
+											next = LineIndeces[curr];
+										}
+										assert(curr < j + 1);
+										assert(j + 1 < next);
+										LineIndeces[curr] = j + 1;
+										LineIndeces[j + 1] = next;
+										LineValues[j] = -u;
+									}
+									//else EUdrop += u/LU_Diag[j];
+								}
+#endif
+							}
+							Li = LineIndeces[Li];
+							// solve iteration done
+						}
+						// rescale vector by diagonal *E = ~E_i D^{-1} = E_i U^{-1} D^{-1}
+						Li = LineIndeces[cbeg];
+						while (Li != EOL)
+						{
+							LineValues[Li - 1] /= LU_Diag[Li - 1];
+							Li = LineIndeces[Li];
+						}
+						// compute norm
+#if defined(SCHUR_DROPPING_EU)
+						INMOST_DATA_REAL_TYPE EUnorm, EUnum, EUmax, EUmin, EUtau;
+						EUnorm = EUnum = 0;
+						EUmax = 0;
+						EUmin = 1.0e+54;
+						Li = LineIndeces[cbeg];
+						while (Li != EOL)
+						{
+							u = fabs(LineValues[Li - 1]);
+							EUnorm += u * u;
+							if (u > EUmax) EUmax = u;
+							if (u < EUmin) EUmin = u;
+							EUnum++;
+							Li = LineIndeces[Li];
+						}
+						if (EUnum) EUnorm = sqrt(EUnorm / EUnum);
+						//~ EUtau = EUmin + std::min(tau*tau,tau2)*EUnorm;// / NuU_max;
+						//EUnorm = std::min(1.0,EUnorm);
+						EUtau = EUmin + (EUmax - EUmin) * pow(EUnorm / EUmax, 2);
+						//EUtau = EUmin + (EUmax - EUmin)*pow(EUnorm/EUmax,4);
+#endif
+						// drop values that do not satisfy tolerances from linked list of line of EU block
+						// Assemble column into matrix
+						Li = LineIndeces[cbeg];
 #if defined(USE_OMP_FACT)
 #pragma omp critical
 #endif
-					{
-						EU_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(EU_Entries.size());
+						{
+							EU_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(EU_Entries.size());
+							while (Li != EOL)
+							{
+								u = LineValues[Li - 1];
+								assert(Li - 1 >= wbeg && Li - 1 < cend);
+#if defined(SCHUR_DROPPING_EU)
+								if (fabs(u) >= EUtau)
+#else
+								if (1 + u != u)
+#endif
+									EU_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
+								else
+								{
+									//EUdrop += u;
+									ndrops_eu++;
+								}
+								Li = LineIndeces[Li];
+							}
+							EU_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(EU_Entries.size());
+						}
+						// if( EUdrop )
+						// {
+						// 	EUdrop /= (double)EU_Address[k].Size();
+						// 	for(INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
+						// 		EU_Entries[r].second += EUdrop;
+						// }
+	///////////////////////////////////////////////////////////////////////////////////
+	//         clean up linked list                                                  //
+	///////////////////////////////////////////////////////////////////////////////////
+						Li = LineIndeces[cbeg];
 						while (Li != EOL)
 						{
-							u = LineValues[Li - 1];
-							assert(Li - 1 >= wbeg && Li - 1 < cend);
-#if defined(SCHUR_DROPPING_EU)
-							if( fabs(u) >= EUtau )
-#else
-							if( 1 + u != u )
-#endif
-								EU_Entries.push_back(Sparse::Row::make_entry(Li - 1, u));
-							else
-							{
-								//EUdrop += u;
-								ndrops_eu++;
-							}
-							Li = LineIndeces[Li];
+							j = LineIndeces[Li];
+							LineIndeces[Li] = UNDEF;
+							LineValues[Li - 1] = 0.0;
+							Li = j;
 						}
-						EU_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(EU_Entries.size());
-					}			
-					// if( EUdrop )
-					// {
-					// 	EUdrop /= (double)EU_Address[k].Size();
-					// 	for(INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
-					// 		EU_Entries[r].second += EUdrop;
-					// }
-///////////////////////////////////////////////////////////////////////////////////
-//         clean up linked list                                                  //
-///////////////////////////////////////////////////////////////////////////////////
-					Li = LineIndeces[cbeg];
-					while (Li != EOL)
-					{
-						j = LineIndeces[Li];
-						LineIndeces[Li] = UNDEF;
-						LineValues[Li - 1] = 0.0;
-						Li = j;
-					}
-					LineIndeces[cbeg] = UNDEF;
-					if( verbosity )
-					{
-						if (k % 100 == 0)
-						{
-							std::ios save(NULL);
-							save.copyfmt(std::cout);
-							std::cout << "EU " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f*(k - cend+1) / (1.f*(wend - cend));
-							std::cout << " nnz " << std::setw(10) << EU_Entries.size() << " drops " << std::setw(10) << ndrops_eu;
-							std::cout << "\r" << std::flush;
-							std::cout.copyfmt(save);
-						}
-					}
-				}
-				tt = Timer()-tt;
-				if(verbosity > 1 )
-				{
-					std::cout << "E nnz " << nnzE << " EU nnz " << EU_Entries.size() << " drops " << ndrops_eu << "          \t\t\n";
-					std::cout << "Time " << tt << "\n";
-				}
-
-#if defined(SCHUR_DROPPING_S) || defined(SCHUR_DROPPING_S_PREMATURE)
-///////////////////////////////////////////////////////////////////////////////////
-//         Compute column-norms of schur                                         //
-///////////////////////////////////////////////////////////////////////////////////
-				tt = Timer();
-				if( verbosity > 1 )
-					std::cout << "Compute Schur column norm\n";
-
-				for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) 
-				{
-					//~ Scolnorm[k] = Srownorm[k] = 0.0;
-					//~ Scolnum[k] = Srownum[k] = 0;
-					Scolmax[k] = Srowmax[k] = 0;
-				}
-#if defined(USE_OMP_FACT)
-#pragma omp parallel private(k) 
-#endif
-				{
-					int nthr = Thread();
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> & LineIndeces = LineIndecesS[nthr];
-					interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Scolmaxloc = Scolmax_local[nthr];
-#if defined(USE_OMP_FACT)
-#pragma omp for
-#endif
-					for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-					{
-						INMOST_DATA_REAL_TYPE v, coef;
-						INMOST_DATA_ENUM_TYPE Sbeg = EOL, i, j;
-						for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
-						{
-							//Scolnorm[A_Entries[r].first] += A_Entries[r].second*A_Entries[r].second;
-							LineValues[A_Entries[r].first] = A_Entries[r].second;
-							LineIndeces[A_Entries[r].first] = Sbeg;
-							Sbeg = A_Entries[r].first;
-						}
-						for(INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
-						{
-							coef = -EU_Entries[r].second*LU_Diag[EU_Entries[r].first];
-							AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,coef,LineIndeces,LineValues,0);
-						}
-						i = Sbeg;
-						while(i != EOL)
-						{
-							j = i;
-							i = LineIndeces[i];
-							v = fabs(LineValues[j]);
-							Srowmax[k] = std::max(Srowmax[k],v);
-							Scolmaxloc[j] = std::max(Scolmaxloc[j],v);
-							LineValues[j] = 0;
-							LineIndeces[j] = UNDEF;
-						}
-						if( verbosity )
+						LineIndeces[cbeg] = UNDEF;
+						if (verbosity)
 						{
 							if (k % 100 == 0)
 							{
 								std::ios save(NULL);
 								save.copyfmt(std::cout);
-								std::cout << "Schur column norm " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f*(k - cend+1) / (1.f*(wend - cend));
-								std::cout << "\t\t\r" << std::flush;
+								std::cout << "EU " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+								std::cout << " nnz " << std::setw(10) << EU_Entries.size() << " drops " << std::setw(10) << ndrops_eu;
+								std::cout << "\r" << std::flush;
 								std::cout.copyfmt(save);
 							}
 						}
 					}
+					tt = Timer() - tt;
+					if (verbosity > 1)
+					{
+						std::cout << "E nnz " << nnzE << " EU nnz " << EU_Entries.size() << " drops " << ndrops_eu << "          \t\t\n";
+						std::cout << "Time " << tt << "\n";
+					}
+
+					if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+#if defined(SCHUR_DROPPING_S) || defined(SCHUR_DROPPING_S_PREMATURE)
+					{
+						///////////////////////////////////////////////////////////////////////////////////
+						//         Compute column-norms of schur                                         //
+						///////////////////////////////////////////////////////////////////////////////////
+						tt = Timer();
+
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Scolmax(mobeg, moend, 0.0), Srowmax(mobeg, moend, 0.0);
+						{
+							std::vector< interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> > Scolmax_local(nthreads, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>(mobeg, moend, 0.0));
+
+							if (verbosity > 1)
+								std::cout << "Compute Schur column norm\n";
+
+#if defined(USE_OMP_FACT)
+#pragma omp parallel private(k) 
+#endif
+							{
+								int nthr = Thread();
+								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& LineValues = LineValuesS[nthr];
+								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& LineIndeces = LineIndecesS[nthr];
+								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& Scolmaxloc = Scolmax_local[nthr];
 #if defined(USE_OMP_FACT)
 #pragma omp for
 #endif
-					for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-					{
-						for(unsigned j = 0; j < Scolmax_local.size(); ++j)
-							Scolmax[k] = std::max(Scolmax[k],Scolmax_local[j][k]);
-					}
-				}
+								for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+								{
+									INMOST_DATA_REAL_TYPE v, coef;
+									INMOST_DATA_ENUM_TYPE Sbeg = EOL, i, j;
+									for (INMOST_DATA_ENUM_TYPE r = C_Address[k].first; r < C_Address[k].last; ++r)
+									{
+										LineValues[C_Entries[r].first] = C_Entries[r].second;
+										LineIndeces[C_Entries[r].first] = Sbeg;
+										Sbeg = C_Entries[r].first;
+									}
+									for (INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
+									{
+										coef = -EU_Entries[r].second * LU_Diag[EU_Entries[r].first];
+										AddListUnordered(Sbeg, LFt_Address[EU_Entries[r].first], LFt_Entries, coef, LineIndeces, LineValues, 0);
+									}
+									i = Sbeg;
+									while (i != EOL)
+									{
+										j = i;
+										i = LineIndeces[i];
+										v = fabs(LineValues[j]);
+										Srowmax[k] = std::max(Srowmax[k], v);
+										Scolmaxloc[j] = std::max(Scolmaxloc[j], v);
+										LineValues[j] = 0;
+										LineIndeces[j] = UNDEF;
+									}
+									if (verbosity)
+									{
+										if (k % 100 == 0)
+										{
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "Schur column norm " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+											std::cout << "\t\t\r" << std::flush;
+											std::cout.copyfmt(save);
+										}
+									}
+								}
+#if defined(USE_OMP_FACT)
+#pragma omp for
+#endif
+								for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+								{
+									for (unsigned j = 0; j < Scolmax_local.size(); ++j)
+										Scolmax[k] = std::max(Scolmax[k], Scolmax_local[j][k]);
+								}
+							}
+						}
 
-				tt = Timer()-tt;
-				if( verbosity > 1 )
-					std::cout << "\nTime " << tt << "\n";
+						tt = Timer() - tt;
+						if (verbosity > 1)
+							std::cout << "\nTime " << tt << "\n";
+
+						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 #endif //SCHUR_DROPPING_S
-///////////////////////////////////////////////////////////////////////////////////
-//         Construction of Schur complement                                      //
-///////////////////////////////////////////////////////////////////////////////////
-				tt = Timer();
-				if( verbosity > 1 )
-					std::cout << "Construct Schur\n";
-					
-					
-				nnzA = 0;
-				for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) nnzA += A_Address[k].Size();
+						// Construction of Schur complement 
+						tt = Timer();
+						if (verbosity > 1)
+							std::cout << "Construct Schur\n";
+
+						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+						nnzA = 0;
+						for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) nnzA += C_Address[k].Size();
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for private(k,Sbeg, Li, Ui, i,j, u,l/*, Smin,Smax,Snorm,Snum,Stau,Sdrop*/) reduction(+:ndrops_s)
 #endif
-				for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-				{
-					int nthr = Thread();
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> & LineValues = LineValuesS[nthr];
-					interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> & LineIndeces = LineIndecesS[nthr];
-					std::vector<INMOST_DATA_ENUM_TYPE> & indices = indicesS[nthr];
-///////////////////////////////////////////////////////////////////////////////////
-//         unpack line of A matrix to temporary linked list                      //
-///////////////////////////////////////////////////////////////////////////////////
-					//Snorm = 0, Snum = 0;
-					//~ Sdrop = 0;
-					Sbeg = EOL;
-					for (INMOST_DATA_ENUM_TYPE r = A_Address[k].first; r < A_Address[k].last; ++r)
-					{
-						LineValues[A_Entries[r].first] = A_Entries[r].second;
-						LineIndeces[A_Entries[r].first] = Sbeg;
-						Sbeg = A_Entries[r].first;
-						
-						//Snorm += A_Entries[r].second*A_Entries[r].second;
-						//Snum  ++;
-					}
-					//if( Snum ) Snorm = sqrt(Snorm/Snum);
-					//multiply current row of EU by LF and add to list
+						for (k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+						{
+							int nthr = Thread();
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& LineValues = LineValuesS[nthr];
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& LineIndeces = LineIndecesS[nthr];
+							std::vector<INMOST_DATA_ENUM_TYPE>& indices = indicesS[nthr];
+							///////////////////////////////////////////////////////////////////////////////////
+							//         unpack line of A matrix to temporary linked list                      //
+							///////////////////////////////////////////////////////////////////////////////////
+							Sbeg = EOL;
+							for (INMOST_DATA_ENUM_TYPE r = C_Address[k].first; r < C_Address[k].last; ++r)
+							{
+								LineValues[C_Entries[r].first] = C_Entries[r].second;
+								LineIndeces[C_Entries[r].first] = Sbeg;
+								Sbeg = C_Entries[r].first;
+							}
 ///////////////////////////////////////////////////////////////////////////////////
 //        multiply EU and LF blocks and add to temporary linked list             //
 ///////////////////////////////////////////////////////////////////////////////////
-					for(INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
-					{
-						//iterate over corresponding row of LF, add multiplication to list
-						// Li = EU_Entries[r].first;
-						l = -EU_Entries[r].second*LU_Diag[EU_Entries[r].first];
-						AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,0);
-						//cannot optimize due to drop tolerance depending on j-column norm
-// #if defined(SCHUR_DROPPING_S_PREMATURE)
-// 						Sdrop += AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,std::min(Srowmax[k],Scolmax[j])*std::min(tau*tau,tau2));
-// #else
-// 						AddListUnordered(Sbeg,LFt_Address[EU_Entries[r].first],LFt_Entries,l,LineIndeces,LineValues,0);
-// #endif
-						/*
-						for (INMOST_DATA_ENUM_TYPE it = LFt_Address[Li].first; it < LFt_Address[Li].last; ++it)
-						{
-							//~ assert(!Pivot[i]); // pivoted rows should be empty
-							//~ assert(j >= k); // all indices are supposed to be to the right
-							INMOST_DATA_ENUM_TYPE j = LFt_Entries[it].first;
-							INMOST_DATA_REAL_TYPE u = l*LFt_Entries[it].second;
-							//eliminate values
-							if (LineIndeces[j] != UNDEF) //there is an entry in the list
-								LineValues[j] += u;
-#if defined(SCHUR_DROPPING_S_PREMATURE)
-							else if( fabs(u) > std::min(Srowmax[k],Scolmax[j])*std::min(tau*tau,tau2) )
-#else
-							else if( 1+u != 1 )
-#endif
+							for (INMOST_DATA_ENUM_TYPE r = EU_Address[k].first; r < EU_Address[k].last; ++r)
 							{
-								LineValues[j] = u;
-								LineIndeces[j] = Sbeg;
-								Sbeg = j;
+								//iterate over corresponding row of LF, add multiplication to list
+								l = -EU_Entries[r].second * LU_Diag[EU_Entries[r].first];
+								AddListUnordered(Sbeg, LFt_Address[EU_Entries[r].first], LFt_Entries, l, LineIndeces, LineValues, 0);
 							}
-							else 
-							{
-								Sdrop += u;
-								ndrops_s++;
-							}
-						}
-						*/
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//         sort contents of linked list                                          //
-///////////////////////////////////////////////////////////////////////////////////
-					OrderList(Sbeg,LineIndeces,indices);
-///////////////////////////////////////////////////////////////////////////////////
-//         prepare row norm for dropping                                         //
-///////////////////////////////////////////////////////////////////////////////////
-					/*
-#if defined(SCHUR_DROPPING_S)
-					Snorm = Snum = 0;
-					Smax = 0;
-					Smin = 1.0e+54;
-					
-					Ui = Sbeg;
-					while (Ui != EOL)
-					{
-						u = fabs(LineValues[Ui]);
-						if( u > Smax ) Smax = u;
-						if( u < Smin ) Smin = u;
-						Snorm += u*u;
-						Snum++;
-						Ui = LineIndeces[Ui];
-					}
-					if( Snum ) Snorm = sqrt(Snorm/Snum);
-					//Snorm = std::min(1.0,Snorm);
-					
-					Stau = Smin + (Smax-Smin)*pow(Snorm/Smax,2);
-					
-					//tauS = std::min(tau*tau,tau2)*Smax;
-					//Stau = std::min(tau*tau,tau2)/std::max(NuU_max,NuL_max);
-					//Stau = std::min(tau*tau,tau2);
-					//Stau = Smin + (Smax-Smin)*std::min(tau*tau,tau2);
-					//tauS = Smin + (Smax-Smin)*std::min(std::min(tau2,tau*tau),pow(Snorm/Smax,4));
-					//exp(log((fabs(u)-Smin)/(Smax-Smin)*127+1)) > exp(0.5*log(128))
-					//fabs(u) > exp(0.5)/127*(Smax-Smin) + Smax
-					//Stau = Smin + (Smax-Smin)*pow(Snorm/Smax,4);
-#endif
-					*/
-///////////////////////////////////////////////////////////////////////////////////
-//         put calculated row to Schur complement                                //
-///////////////////////////////////////////////////////////////////////////////////
-					Ui = Sbeg;
+							OrderList(Sbeg, LineIndeces, indices);
+							Ui = Sbeg;
 #if defined(USE_OMP_FACT)
 #pragma omp critical
 #endif
-					{
-						S_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
-						while (Ui != EOL)
-						{
-							u = LineValues[Ui];
+							{
+								S_Address[k].first = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
+								while (Ui != EOL)
+								{
+									u = LineValues[Ui];
 #if defined(SCHUR_DROPPING_S)
-							//if( fabs(Smax-Smin) < 1.0e-5 || log((fabs(u)-Smin)/(Smax-Smin)*127+1)/log(128) > tau )
-							//~ if( fabs(u) >= Stau || fabs(u) >= Scolnorm[Ui] )//*std::min(Snorm,Scolnorm[Ui]) )
-							if( fabs(u) >= std::min(Srowmax[k],Scolmax[Ui])*tau2 )
+									if (fabs(u) >= std::min(Srowmax[k], Scolmax[Ui]) * tau2)
 #else
-							if( 1+u != 1 )
+									if (1 + u != 1)
 #endif
-								S_Entries.push_back(Sparse::Row::make_entry(Ui,u));
-							else
-							{
-								//~ Sdrop += u;
-								ndrops_s++;
+										S_Entries.push_back(Sparse::Row::make_entry(Ui, u));
+									else ndrops_s++;
+									Ui = LineIndeces[Ui];
+								}
+								S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
 							}
-							Ui = LineIndeces[Ui];
-						}
-						S_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(S_Entries.size());
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//         Substract dropped elements from maximal element to keep sum of row    //
-//    (TODO: may collect dropping per row/column and preserve row-column sum)    //
-///////////////////////////////////////////////////////////////////////////////////
-					/*
-					if( Sdrop )
-					{
-						bool diag = false;
-						for(INMOST_DATA_ENUM_TYPE r = S_Address[k].first; r < S_Address[k].last; ++r)
-						{
-							if( S_Entries[r].first == k )
+							ClearList(Sbeg, LineIndeces, LineValues);
+							if (verbosity)
 							{
-								S_Entries[r].second += Sdrop;
-								diag = true;
-								break;
+								if (k % 100 == 0)
+								{
+									std::ios save(NULL);
+									save.copyfmt(std::cout);
+									std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+									std::cout << " nnz " << std::setw(10) << S_Entries.size() << " drop S " << ndrops_s;
+									std::cout << "\t\t\r" << std::flush;
+									std::cout.copyfmt(save);
+								}
 							}
 						}
-						if( !diag )
-						{
-							Sdrop /= (double)S_Address[k].Size();
-							for(INMOST_DATA_ENUM_TYPE r = S_Address[k].first; r < S_Address[k].last; ++r)
-								S_Entries[r].second += Sdrop;
-						}
+						///////////////////////////////////////////////////////////////////////////////////
+						//         Schur complement row done                                             //
+						///////////////////////////////////////////////////////////////////////////////////
 					}
-					*/
-					//assert(std::is_sorted(S_Entries.begin()+S_Addres[k].first,S_Entries.end()));
-///////////////////////////////////////////////////////////////////////////////////
-//         clean up temporary linked list                                        //
-///////////////////////////////////////////////////////////////////////////////////
-					//clean after use
-					ClearList(Sbeg,LineIndeces,LineValues);
-///////////////////////////////////////////////////////////////////////////////////
-//         clean up linked list                                                 //
-///////////////////////////////////////////////////////////////////////////////////
-					if( verbosity )
-					{
-						if (k % 100 == 0)
-						{
-							std::ios save(NULL);
-							save.copyfmt(std::cout);
-							std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f*(k - cend+1) / (1.f*(wend - cend));
-							std::cout << " nnz " << std::setw(10) << S_Entries.size() << " drop S " << ndrops_s;
-							std::cout << "\t\t\r" << std::flush;
-							std::cout.copyfmt(save);
-						}
-					}
-///////////////////////////////////////////////////////////////////////////////////
-//         Schur complement row done                                             //
-///////////////////////////////////////////////////////////////////////////////////
-				}
-				tt = Timer()-tt;
-				if( verbosity > 1 )
-				{
-					std::cout << "Schur nnz " << S_Entries.size() << " drop S " << ndrops_s << "          \t\t\n";
-					std::cout << "Time " << tt << "\n";
-				}
 
-				//DumpMatrix(EU_Address,EU_Entries,wbeg,wend,"EU.mtx");
-				LFt_Entries.clear();
-				EU_Entries.clear();
-				
-				A_Entries.swap(S_Entries);
-				A_Address.swap(S_Address);
-				
-				//DumpMatrix(S_Address,S_Entries,cend,wend,"S.mtx");
-				
-				//std::cout << "Press enter" << std::endl;
-				//scanf("%*c");
-				
-///////////////////////////////////////////////////////////////////////////////////
-//         Cleanup arrays for the next iteration                                 //
-///////////////////////////////////////////////////////////////////////////////////
+					tt = Timer() - tt;
+					if (verbosity > 1)
+					{
+						std::cout << "Schur nnz " << S_Entries.size() << " drop S " << ndrops_s << "          \t\t\n";
+						std::cout << "Time " << tt << "\n";
+					}
+
+					if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+					A_Entries.swap(S_Entries);
+					A_Address.swap(S_Address);
+				}
+				// Cleanup arrays for the next iteration
 				tt = Timer();
 				if( verbosity > 1 )
 					std::cout << "Cleanup\n";
 
+				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
 				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					localP[k] = localQ[k] = ENUMUNDEF;
-					Lbeg[k] = Ubeg[k] = L2beg[k] = U2beg[k] = Bbeg[k] = EOL;
-					EstL1[k] = EstU1[k] = EstL2[k] = EstU2[k] = 0.0;
-					Dist[k] = U[k] = V[k] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					Bbeg[k] = EOL;
+#if defined(ILU2)
+					L2beg[k] = U2beg[k] = EOL;
+#endif
+					U[k] = V[k] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					Pivot[k] = false;
 				}
-				//std::fill(localP.begin() + (wbeg - mobeg), localP.begin() + (wend - mobeg), ENUMUNDEF);
-				//std::fill(localQ.begin() + (wbeg - mobeg), localQ.begin() + (wend - mobeg), ENUMUNDEF);
-				//std::fill(Lbeg.begin() + (wbeg-mobeg), Lbeg.begin() + (wend-mobeg),EOL);
-				//std::fill(Ubeg.begin() + (wbeg-mobeg), Ubeg.begin() + (wend-mobeg),EOL);
-				//std::fill(L2beg.begin() + (wbeg-mobeg), L2beg.begin() + (wend-mobeg),EOL);
-				//std::fill(U2beg.begin() + (wbeg-mobeg), U2beg.begin() + (wend-mobeg),EOL);
-				//std::fill(Bbeg.begin() + (wbeg-mobeg), Bbeg.begin() + (wend-mobeg),EOL);
-				//std::fill(EstL1.begin() + (wbeg-mobeg), EstL1.begin() + (wend-mobeg),0.0);
-				//std::fill(EstU1.begin() + (wbeg-mobeg), EstU1.begin() + (wend-mobeg),0.0);
-				//std::fill(EstL2.begin() + (wbeg-mobeg), EstL2.begin() + (wend-mobeg),0.0);
-				//std::fill(EstU2.begin() + (wbeg-mobeg), EstU2.begin() + (wend-mobeg),0.0);
-				//std::fill(Dist.begin() + (wbeg-mobeg), Dist.begin() + (wend-mobeg),std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-				//std::fill(U.begin() + (wbeg-mobeg), U.begin() + (wend-mobeg),std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-				//std::fill(V.begin() + (wbeg-mobeg), V.begin() + (wend-mobeg),std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-				//std::fill(Pivot.begin() + (wbeg-mobeg), Pivot.begin() + (wend-mobeg),false);
 				for(k = cend; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 				{
 					U_Address[k].first = U_Address[k].last = ENUMUNDEF;
 					L_Address[k].first = L_Address[k].last = ENUMUNDEF;
+#if defined(ILU2)
 					U2_Address[k].first = U2_Address[k].last = ENUMUNDEF;
 					L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
+#endif
 				}
+#if defined(ILU2)
 				U2_Entries.clear();
 				L2_Entries.clear();
-				//no longer needed
-				S_Entries.clear();
-				LF_Entries.clear();
-				LFt_Entries.clear();
-				for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-				{
-					S_Address[k].first = S_Address[k].last = ENUMUNDEF;
-					LF_Address[k].first = LF_Address[k].last = ENUMUNDEF;
-					LFt_Address[k].first = LFt_Address[k].last = ENUMUNDEF;
-					//EU_Address[k].first = EU_Address[k].last = ENUMUNDEF;
-				}
-				
+#endif
 				if( /*wend-cend < 16 ||*/ A_Entries.empty() )
 					block_pivot = true;
 				//rescale_b = false;
@@ -5433,7 +4813,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				LU_Diag[k] /= (DL0[k] * DR0[k]);
 				for (INMOST_DATA_ENUM_TYPE r = U_Address[k].first; r < U_Address[k].last; ++r) U_Entries[r].second *= (DR0[k] / DR0[U_Entries[r].first]);
 				for (INMOST_DATA_ENUM_TYPE r = L_Address[k].first; r < L_Address[k].last; ++r) L_Entries[r].second *= (DL0[k] / DL0[L_Entries[r].first]);
-				//for (INMOST_DATA_ENUM_TYPE r = B_Address[k].first; r < B_Address[k].last; ++r) B_Entries[r].second /= (DL0[k] * DR0[B_Entries[r].first]);
 			}
 			
 			//rescale EF
@@ -5467,10 +4846,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				}
 			}
 		}
-		
-///////////////////////////////////////////////////////////////////////////////////
-///                RESCALING DONE                                               ///
-///////////////////////////////////////////////////////////////////////////////////
+		/// RESCALING DONE
 		tlrescale = Timer() - tt;
 		trescale += tlrescale;
 		
@@ -5485,9 +4861,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 				level_interval[k].last = level_interval[k].first + level_size[k];
 			}
 		}
-///////////////////////////////////////////////////////////////////////////////////
-///  FACTORIZATION COMPLETE                                                     ///
-///////////////////////////////////////////////////////////////////////////////////
+		/// MULTILEVEL FACTORIZATION COMPLETE
 		ttotal = Timer() - ttotal;
 		if( verbosity > 1 )
 		{
@@ -5509,6 +4883,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 			std::cout << "   cond    " << testimator   << " ("; fmt(std::cout,100.0*testimator/ttotal  ,6,2) << "%)\n";
 			std::cout << "nnz A " << nzA << " LU " << nzLU << " LU2 " << nzLU2tot << " swaps " << totswaps << "levels " << level_size.size() << "\n";
 		}
+		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 		init = true;
 		/*
 		{
@@ -5529,6 +4904,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 		condestL = NuL;
 		condestU = NuU;
+
+		//prepare temporal array
+		temp.set_interval_beg(vbeg);
+		temp.set_interval_end(vend);
+		for (k = vbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(vend); ++k) temp[k] = 0.0;
 		return true;
 	}
 	bool MLMTILUC_preconditioner::Finalize()
@@ -5538,8 +4918,6 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		U_Address.clear();
 		L_Entries.clear();
 		U_Entries.clear();
-		B_Entries.clear();
-		B_Address.clear();
 		temp.clear();
 		ddP.clear();
 		ddQ.clear();
@@ -5556,21 +4934,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 		F_Entries.clear();
 		return true;
 	}
-	void MLMTILUC_preconditioner::ApplyB(double alpha, Sparse::Vector & x, double beta, Sparse::Vector & y) // y = alpha A x + beta y
-	{
-		INMOST_DATA_ENUM_TYPE k, m, cbeg, cend;
-		INMOST_DATA_REAL_TYPE temp;
-		info->GetOverlapRegion(info->GetRank(), cbeg, cend);
-		for(k = cbeg; k < cend; ++k)
-		{
-			temp = 0.0;
-			for(m = B_Address[k].first; m < B_Address[k].last; ++m)
-			{
-				temp += B_Entries[m].second*x[B_Entries[m].first];
-			}
-			y[k] = beta*y[k] + alpha * temp;
-		}
-	}
+	
 	int MLMTILUC_preconditioner::Descend(INMOST_DATA_ENUM_TYPE level, Sparse::Vector & inout)
 	{
 		INMOST_DATA_ENUM_TYPE k, m, cbeg, cend;

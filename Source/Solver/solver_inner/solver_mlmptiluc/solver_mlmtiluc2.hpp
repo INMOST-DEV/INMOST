@@ -6,34 +6,6 @@
 #include "inmost_solver.h"
 #include "../solver_prototypes.hpp"
 
-/*
-class Range
-{
-	INMOST_DATA_ENUM_TYPE first, last;
-public:
-	Range(const Range & b):first(b.first), last(b.last) {}
-	Range(INMOST_DATA_ENUM_TYPE first, INMOST_DATA_ENUM_TYPE last) : first(first), last(last) {}
-	Range & operator =(Range const & b) {first = b.first; last = b.last; return *this;}
-	~Range() {}
-	INMOST_DATA_ENUM_TYPE Size() { return last - first; }
-	INMOST_DATA_ENUM_TYPE First() {return first;}
-	INMOST_DATA_ENUM_TYPE Last() {return last;}
-};
-
-class CSR_Row
-{
-	Range & range;
-	std::vector<Sparse::Row::entry> & entries;
-public:
-}
-
-class CSR_Matrix
-{
-	interval<INMOST_DATA_ENUM_TYPE, Range> Address;
-	std::vector<Sparse::Row::entry> Entries;
-public:
-};
-*/
 
 class MLMTILUC_preconditioner : public Method
 {
@@ -77,9 +49,9 @@ class MLMTILUC_preconditioner : public Method
 		INMOST_DATA_ENUM_TYPE Size() const { return last - first; }
 	} Interval;
 	typedef std::vector<INMOST_DATA_ENUM_TYPE> levels_t;
-	std::vector<Sparse::Row::entry> L_Entries, U_Entries, B_Entries;
+	std::vector<Sparse::Row::entry> L_Entries, U_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
-	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address, B_Address;
+	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address;
 	std::vector<interval<INMOST_DATA_ENUM_TYPE, Interval> *> F_Address, E_Address;
 	std::vector<Sparse::Row::entry> E_Entries, F_Entries;
 	levels_t level_size; //remember size of each level
@@ -268,7 +240,6 @@ public:
 	bool isFinalized();
 	bool Initialize();
 	bool Finalize();
-	void ApplyB(double alpha, Sparse::Vector & x, double beta, Sparse::Vector & y);
 	int Descend(INMOST_DATA_ENUM_TYPE level, Sparse::Vector & inout);
 	int Ascend(INMOST_DATA_ENUM_TYPE level, Sparse::Vector & inout);
 	bool Solve(Sparse::Vector & input, Sparse::Vector & output);

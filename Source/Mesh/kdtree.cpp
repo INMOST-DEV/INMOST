@@ -155,7 +155,7 @@ namespace INMOST
 						}
 					}
 				}
-				if( !nodes.empty() ) m->RemPrivateMarkerArray(&nodes[0],nodes.size(),mrk);
+				if( !nodes.empty() ) m->RemPrivateMarkerArray(&nodes[0],(Storage::enumerator)nodes.size(),mrk);
 				m->ReleasePrivateMarker(mrk);
 				bbox[0] = bbox[2] = bbox[4] = 1.0e20f;
 				bbox[1] = bbox[3] = bbox[5] = -1.0e20f;

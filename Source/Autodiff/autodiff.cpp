@@ -214,7 +214,7 @@ namespace INMOST
 	void Automatizator::EnumerateEntries()
 	{
 		first_num = last_num = 0;
-		const ElementType paralleltypes = NODE | EDGE | FACE | CELL;
+		const ElementType paralleltypes = NODE | EDGE | FACE | CELL | ESET;
 		
 		for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 		{

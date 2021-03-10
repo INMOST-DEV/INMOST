@@ -275,8 +275,6 @@ namespace INMOST
 				else return false;
 			} //m <= n
 			std::vector<Var> rv1(m);
-			//array<Var> _rv1(m);
-			//shell<Var> rv1(_rv1);
 			std::swap(n,m); //this how original algorithm takes it
 			// Householder reduction to bidiagonal form
 			for (i = 0; i < n; i++)
@@ -1234,7 +1232,6 @@ namespace INMOST
 		using AbstractMatrix<Var>::operator();
 		typedef unsigned enumerator; //< Integer type for indexes.
 	protected:
-		//array<Var> space; //< Array of row-wise stored elements.
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
 		enumerator m; //< Number of columns.
@@ -3626,16 +3623,15 @@ namespace INMOST
 		int n = Rows();
 		int m = Cols();
 		INMOST_DATA_REAL_TYPE u, l;
-		array<INMOST_DATA_REAL_TYPE> Cmax(m,0.0);
-		array<INMOST_DATA_REAL_TYPE> U(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-		array<INMOST_DATA_REAL_TYPE> V(n,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		std::vector<INMOST_DATA_REAL_TYPE> Cmax(m,0.0);
+		std::vector<INMOST_DATA_REAL_TYPE> U(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		std::vector<INMOST_DATA_REAL_TYPE> V(n,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 		std::fill(Perm,Perm+m,ENUMUNDEF);
-		//array<INMOST_DATA_ENUM_TYPE> Perm(m,ENUMUNDEF);
-		array<INMOST_DATA_ENUM_TYPE> IPerm(std::max(n,m),ENUMUNDEF);
-		array<INMOST_DATA_ENUM_TYPE> ColumnList(m,ENUMUNDEF);
-		array<INMOST_DATA_ENUM_TYPE> ColumnPosition(n,ENUMUNDEF);
-		array<INMOST_DATA_ENUM_TYPE> Parent(n,ENUMUNDEF);
-		array<INMOST_DATA_REAL_TYPE> Dist(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		std::vector<INMOST_DATA_ENUM_TYPE> IPerm(std::max(n,m),ENUMUNDEF);
+		std::vector<INMOST_DATA_ENUM_TYPE> ColumnList(m,ENUMUNDEF);
+		std::vector<INMOST_DATA_ENUM_TYPE> ColumnPosition(n,ENUMUNDEF);
+		std::vector<INMOST_DATA_ENUM_TYPE> Parent(n,ENUMUNDEF);
+		std::vector<INMOST_DATA_REAL_TYPE> Dist(m,std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 		const AbstractMatrix<Var> & A = *this;
 		Matrix<INMOST_DATA_REAL_TYPE> C(n,m);
 		INMOST_DATA_ENUM_TYPE Li, Ui;
@@ -3847,10 +3843,6 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
-	/// shortcut for matrix of integer values in stack-preallocated and dynamically reallocated array.
-	//typedef Matrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idMatrix;
-	/// shortcut for matrix of real values in stack-preallocated and dynamically reallocated array.
-	//typedef Matrix<INMOST_DATA_REAL_TYPE, dynarray<INMOST_DATA_REAL_TYPE,128> > rdMatrix;
 	/// shortcut for matrix of integer values in pool-allocated array (beaware of deallocation order issue).
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipMatrix;
 	/// shortcut for matrix of real values in pool-allocated array (beaware of deallocation order issue).
@@ -3863,10 +3855,6 @@ namespace INMOST
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE> iSymmetricMatrix;
 	/// shortcut for symmetric matrix of real values.
 	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE> rSymmetricMatrix;
-	/// shortcut for symmetric matrix of integer values in stack-preallocated and dynamically reallocated array.
-	//typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,dynarray<INMOST_DATA_INTEGER_TYPE,128> > idSymmetricMatrix;
-	/// shortcut for symmetric matrix of real values in stack-preallocated and dynamically reallocated array.
-	//typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,dynarray<INMOST_DATA_REAL_TYPE,128> > rdSymmetricMatrix;
 	/// shortcut for symmetric matrix of integer values in pool-allocated array (beaware of deallocation order issue).
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,pool_array_t<INMOST_DATA_INTEGER_TYPE> > ipSymmetricMatrix;
 	/// shortcut for symmetric matrix of real values in pool-allocated array (beaware of deallocation order issue).
@@ -3887,12 +3875,6 @@ namespace INMOST
 	typedef Matrix<variable> vMatrix;
 	//< shortcut for matrix of variables with first and second order derivatives.
 	typedef Matrix<hessian_variable> hMatrix;
-	/// shortcut for matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
-	//typedef Matrix<unknown, dynarray<unknown,128> > udMatrix;
-	/// shortcut for matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
-	//typedef Matrix<variable, dynarray<variable,128> > vdMatrix;
-	//< shortcut for matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
-	//typedef Matrix<hessian_variable, dynarray<hessian_variable,128> > hdMatrix;
 	/// shortcut for matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
 	typedef Matrix<unknown, pool_array_t<unknown> > upMatrix;
 	/// shortcut for matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).
@@ -3911,12 +3893,6 @@ namespace INMOST
 	typedef SymmetricMatrix<variable,shell<variable> > vaSymmetricMatrix;
 	/// shortcut for matrix of variables in existing array.
 	typedef SymmetricMatrix<hessian_variable,shell<hessian_variable> > haSymmetricMatrix;
-	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in stack-preallocated and dynamically reallocated array.
-	//typedef SymmetricMatrix<unknown, dynarray<unknown,128> > udSymmetricMatrix;
-	/// shortcut for symmetric matrix of variables with first order derivatives in stack-preallocated and dynamically reallocated array.
-	//typedef SymmetricMatrix<variable, dynarray<variable,128> > vdSymmetricMatrix;
-	//< shortcut for symmetric matrix of variables with first and second order derivatives in stack-preallocated and dynamically reallocated array.
-	//typedef SymmetricMatrix<hessian_variable, dynarray<hessian_variable,128> > hdSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with single unit entry of first order derivative in pool-allocated array (beaware of deallocation order issue).
 	typedef SymmetricMatrix<unknown, pool_array_t<unknown> > upSymmetricMatrix;
 	/// shortcut for symmetric matrix of variables with first order derivatives in pool-allocated array (beaware of deallocation order issue).

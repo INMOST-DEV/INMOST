@@ -330,10 +330,10 @@ namespace INMOST
 	template<typename Var>
 	class ConstBlockOfMatrix;
 	
-	template<typename Var, typename Storage = array<Var> >
+	template<typename Var, typename Storage = std::vector<Var> >
 	class Matrix;
 	
-	template<typename Var, typename Storage = array<Var> >
+	template<typename Var, typename Storage = std::vector<Var> >
 	class SymmetricMatrix;
 }
 
@@ -343,5 +343,8 @@ __INLINE bool __isnan__(double x) { return x != x; }
 __INLINE bool __isinf__(double x) { return fabs(x) > DBL_MAX; }
 __INLINE bool __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 
+//in Utils/mem.cpp
+size_t getPeakRSS();
+size_t getCurrentRSS();
 
 #endif //INMOST_COMMON_INCLUDED
