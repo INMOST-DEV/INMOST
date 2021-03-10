@@ -3954,7 +3954,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 				A_Address.clear();
 				A_Entries.clear();
-				A_Entries.swap(std::vector<Sparse::Row::entry>()); //release memory
+				{
+					std::vector<Sparse::Row::entry> empty;
+					A_Entries.swap(empty); //release memory
+				}
 
 				if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 				//  Reassamble L and U
