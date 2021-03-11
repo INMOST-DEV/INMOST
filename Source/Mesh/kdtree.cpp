@@ -147,11 +147,11 @@ namespace INMOST
 					Element::adj_type & fedges = m->LowConn(faces[k]);
 					for(unsigned q = 0; q < fedges.size(); ++q)
 					{
-						Element::adj_type & enodes = m->LowConn(fedges[k]);
-						for(unsigned l = 0; l < enodes.size(); ++l) if( !m->GetMarker(enodes[l],mrk) )
+						Element::adj_type & enodes = m->LowConn(fedges[q]);
+						for(unsigned l = 0; l < enodes.size(); ++l) if( !m->GetPrivateMarker(enodes[l],mrk) )
 						{
 							nodes.push_back(enodes[l]);
-							m->SetMarker(enodes[l],mrk);
+							m->SetPrivateMarker(enodes[l],mrk);
 						}
 					}
 				}
