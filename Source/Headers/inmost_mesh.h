@@ -1359,7 +1359,6 @@ namespace INMOST
 		void                                Init                (std::string name);
 	public:
 		Tag                                 tag_sendto;
-		TagInteger                         tag_an_id;
 		Tag                                 tag_processors;
 		/// Go through all elements and detect presence of prescribed element in
 		/// any reference data tag.

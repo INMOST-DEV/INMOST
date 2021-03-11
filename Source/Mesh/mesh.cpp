@@ -264,7 +264,10 @@ namespace INMOST
     n &= ~MarkerPrivateBit;
     int thread = GetLocalProcessorRank();
     const bulk * mem = static_cast<const bulk *>(MGetDenseLink(h,tag_private_markers[thread]));
-    return (mem[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;
+	MarkerType pos = n >> MarkerShift;
+	bulk mask = static_cast<bulk>(n & MarkerMask);
+	bulk mark = mem[pos];
+    return (mark & mask) != 0;
   }
 
   void Mesh::SetPrivateMarker(HandleType h,MarkerType n)  
@@ -2041,6 +2044,7 @@ namespace INMOST
 				ret = (k << MarkerShift) | mask;
 				marker_space[k] |= mask;
 				ret |= MarkerPrivateBit;
+				//std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " ret " << ret << " k " << k << std::endl;
 				return ret;
 			}
 		}
@@ -2113,6 +2117,7 @@ namespace INMOST
 		}
 #endif
 #endif
+		//std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " ret " << n  << std::endl;
 		Storage::RemPrivateMarker(n);
 	}
 	
