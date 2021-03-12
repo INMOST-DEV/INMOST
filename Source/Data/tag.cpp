@@ -343,7 +343,12 @@ namespace INMOST
 		{
 			if( tags[i].GetTagName() == name )
 			{
-				assert( tags[i].GetDataType() == dtype && (size == ENUMUNDEF || size == tags[i].GetSize()) );
+				if( tags[i].GetDataType() != dtype )
+					std::cout << __FILE__ << ":" << __LINE__ << " tag " << name << " exists and have type " << DataTypeName(tags[i].GetDataType()) << " requested " << DataTypeName(dtype) << std::endl;
+				if( !(size == ENUMUNDEF || size == tags[i].GetSize()) )
+					std::cout << __FILE__ << ":" << __LINE__ << " tag " << name << " exists and have size " << tags[i].GetSize() << " requested " << size << std::endl;
+				assert( tags[i].GetDataType() == dtype);
+				assert(size == ENUMUNDEF || size == tags[i].GetSize());
 				//if( tags[i].GetDataType() != dtype || (size != ENUMUNDEF && size != tags[i].GetSize()) )
 				//{
 				//	throw TagExists;
