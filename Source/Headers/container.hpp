@@ -22,7 +22,7 @@
 #include <omp.h>
 #endif
 
-#define PACK_ARRAY
+//#define PACK_ARRAY
 
 //TODO
 // 1. change to uniform size_type instead of size_t, make it INMOST_DATA_ENUM_TYPE
