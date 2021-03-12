@@ -832,6 +832,15 @@ namespace INMOST
 			std::vector<MPI_Request> requests;
 			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+			int max_tag = 32767;
+			int flag = 0;
+			int * p_max_tag;
+#if defined(USE_MPI2)
+			MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#else //USE_MPI2
+			MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#endif //USE_MPI2
+			if( flag ) max_tag = *p_max_tag;
 			if( rank == 0 )
 			{
 				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
@@ -848,7 +857,7 @@ namespace INMOST
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
-						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req);
+						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, (k*1000 + it)%max_tag, GetCommunicator(), &req);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 						requests.push_back(req);
 						shift += chunk;
@@ -868,7 +877,7 @@ namespace INMOST
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
-					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, rank*1000 + it, GetCommunicator(), &req);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, (rank*1000 + it)%max_tag, GetCommunicator(), &req);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 					requests.push_back(req);
 					shift += chunk;
@@ -1195,6 +1204,15 @@ namespace INMOST
 			std::vector<MPI_Request> requests;
 			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
+			int max_tag = 32767;
+			int flag = 0;
+			int * p_max_tag;
+#if defined(USE_MPI2)
+			MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#else //USE_MPI2
+			MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#endif //USE_MPI2
+			if( flag ) max_tag = *p_max_tag;
 			if( rank == 0 )
 			{
 				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
@@ -1211,7 +1229,7 @@ namespace INMOST
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
-						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, k*1000 + it, GetCommunicator(), &req);
+						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, (k*1000 + it)%max_tag, GetCommunicator(), &req);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 						requests.push_back(req);
 						shift += chunk;
@@ -1231,7 +1249,7 @@ namespace INMOST
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
-					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, rank*1000 + it, GetCommunicator(), &req);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, (rank*1000 + it)%max_tag, GetCommunicator(), &req);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 					requests.push_back(req);
 					shift += chunk;

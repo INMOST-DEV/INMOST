@@ -155,6 +155,7 @@ namespace INMOST
 		class Row
 		{
 		public:
+#pragma pack(push,r1,4)
 			/// Entry of the sparse matrix row.
 			typedef struct entry_s
 			{
@@ -166,6 +167,7 @@ namespace INMOST
 				//entry_s(const entry_s& b) : first(b.first), second(b.second) {}
 				entry_s() : first(ENUMUNDEF), second(0.0) {}
 			} entry;
+#pragma pack(pop,r1)
 			/// Assemble an entry of entry_s type.
 			/// @param ind Index.
 			/// @param val Value.
