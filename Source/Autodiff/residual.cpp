@@ -110,9 +110,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	rpMatrix Residual::Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const
+	rMatrix Residual::Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const
 	{
-		rpMatrix ret(rows.Rows(),rows.Cols());
+		rMatrix ret(rows.Rows(),rows.Cols());
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
 				ret(i,j) = residual[rows(i,j)];

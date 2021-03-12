@@ -411,7 +411,7 @@ int main(int argc,char ** argv)
 	else if( test == 22 )  //check memory_pool with large matrix (was shown to fail in hydr_frac problem)
 	{
 #if defined(USE_OMP)
-//#pragma omp parallel
+#pragma omp parallel
 #endif
 		{
 			rMatrix A(224,12), B(224,1);
@@ -421,17 +421,10 @@ int main(int argc,char ** argv)
 					A(k,l) = 2.0*(rand()/(1.*RAND_MAX))-1.0;
 				B(k,0) = 2.0*(rand()/(1.*RAND_MAX))-1.0;
 			}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 			(A.PseudoSolve(B)).Transpose().Print();
-			int thread = 0;
-#if defined(USE_OMP)
-			thread = omp_get_thread_num();
-#pragma omp barrier
-#endif
-			std::cout << "allocations on " << thread << " " << get_pool().allocations() << std::endl;
-#if defined(USE_OMP)
-#pragma omp barrier
-#endif
-			assert(get_pool().allocations() == 0);
 		}
 	}
 #if defined(USE_FP64)

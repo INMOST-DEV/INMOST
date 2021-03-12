@@ -4,7 +4,6 @@ set(SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/xml.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/base64.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/pool.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mem.cpp
     PARENT_SCOPE
 )

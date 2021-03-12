@@ -11,6 +11,7 @@ int main(int argc,char ** argv)
 	
 	if( test == 0 ) //check order of deallocation does not cause problem
 	{
+		/*
 		std::cout << "allocs: " << get_pool().allocations() << " byte " << get_pool().last_byte() << std::endl;
 		pool_array<double> * a = new pool_array<double>(2);
 		std::cout << "allocs: " << get_pool().allocations() << " byte " << get_pool().last_byte() << std::endl;
@@ -24,6 +25,7 @@ int main(int argc,char ** argv)
 		std::cout << "allocs: " << get_pool().allocations() << " byte " << get_pool().last_byte() << std::endl;
 		delete c;
 		std::cout << "allocs: " << get_pool().allocations() << " byte " << get_pool().last_byte() << std::endl;
+		*/
 	}
 	return 0;
 }

@@ -18,19 +18,19 @@ namespace INMOST
 	template<> Demote<variable>::type                 AbstractEntry::Access<variable>                (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	template<> Demote<hessian_variable>::type         AbstractEntry::Access<hessian_variable>        (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
 	template<>
-	Matrix<Demote<INMOST_DATA_REAL_TYPE>::type, pool_array_t<Demote<INMOST_DATA_REAL_TYPE>::type> >
+	Matrix<Demote<INMOST_DATA_REAL_TYPE>::type>
 	AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e) const {return Value(e);}
 	template<>
-	Matrix<Demote<INMOST_DATA_INTEGER_TYPE>::type, pool_array_t<Demote<INMOST_DATA_INTEGER_TYPE>::type> >
+	Matrix<Demote<INMOST_DATA_INTEGER_TYPE>::type>
 	AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e) const {return Index(e);}
 	template<>
-	Matrix<Demote<unknown>::type, pool_array_t<Demote<unknown>::type> >
+	Matrix<Demote<unknown>::type>
 	AbstractEntry::Access<unknown>(const Storage& e) const {return Unknown(e);}
 	template<>
-	Matrix<Demote<variable>::type, pool_array_t<Demote<variable>::type> >
+	Matrix<Demote<variable>::type>
 	AbstractEntry::Access<variable>(const Storage& e) const {return Unknown(e);}
 	template<>
-	Matrix<Demote<hessian_variable>::type,pool_array_t<Demote<hessian_variable>::type> >
+	Matrix<Demote<hessian_variable>::type >
 	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
 	
 	
@@ -423,9 +423,9 @@ namespace INMOST
 		throw Impossible;
 	}
 	
-	rpMatrix MultiEntry::Value(const Storage & e) const
+	rMatrix MultiEntry::Value(const Storage & e) const
 	{
-		rpMatrix ret(MatrixSize(e),1);
+		rMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -436,9 +436,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	ipMatrix MultiEntry::Index(const Storage & e) const
+	iMatrix MultiEntry::Index(const Storage & e) const
 	{
-		ipMatrix ret(MatrixSize(e),1);
+		iMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
@@ -449,9 +449,9 @@ namespace INMOST
 		return ret;
 	}
 	
-	upMatrix MultiEntry::operator [](const Storage & e) const
+	uMatrix MultiEntry::operator [](const Storage & e) const
 	{
-		upMatrix ret(MatrixSize(e),1);
+		uMatrix ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{

@@ -329,7 +329,7 @@ namespace INMOST
 				Element e;
 				for(Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt) if( jt->GetStatus() != Element::Ghost )
 				{
-					rpMatrix err = R.Value(it->second->Index(jt->self()));
+					rMatrix err = R.Value(it->second->Index(jt->self()));
 					double block_err = err.FrobeniusNorm();
 					if( block_err > max_err )
 					{
