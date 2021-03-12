@@ -862,21 +862,21 @@ namespace INMOST
 			//read data
 			{
 				std::string dname[2] = { "PointData", "CellData" };
-				ElementType dtype[2] = { NODE, CELL };
+				ElementType etype[2] = { NODE, CELL };
 				ElementType dsparse[2] = { NONE, NONE };
 				if (have_faces)
 				{
-					dtype[1] |= FACE;
+					etype[1] |= FACE;
 					dsparse[1] |= FACE;
 				}
 				if (have_edges)
 				{
-					dtype[1] |= EDGE;
+					etype[1] |= EDGE;
 					dsparse[1] |= EDGE;
 				}
 				if (have_nodes)
 				{
-					dtype[1] |= NODE;
+					etype[1] |= NODE;
 					dsparse[1] |= NODE;
 				}
 				HandleType * darray[2] = { &newnodes[0], &newcells[0] };
@@ -892,16 +892,49 @@ namespace INMOST
 							if (pd->GetName() == "DataArray")
 							{
 								int ncomps = 1;
+								DataType dtype = DATA_REAL;
 								int nca = pd->FindAttrib("NumberOfComponents");
 								if (nca != pd->NumAttrib()) ncomps = atoi(pd->GetAttrib(nca).value.c_str());
+								int nct = pd->FindAttrib("type");
+								if( nct != pd->NumAttrib())
+								{
+									std::string t = pd->GetAttrib(nct).value;
+									if( t == "UInt8" || t == "Int8" ) dtype = DATA_BULK;
+									else if( t == "UInt16" || t == "Int16" ) dtype = DATA_INTEGER;
+									else if( t == "UInt32" || t == "Int32" ) dtype = DATA_INTEGER;
+									else if( t == "UInt64" || t == "Int64" ) dtype = DATA_INTEGER;
+								}
 								if( !CheckLoadSkip(pd->GetAttrib("Name"),noload,loadonly) )
-								{								
-									TagRealArray t = CreateTag(pd->GetAttrib("Name"), DATA_REAL, dtype[j], dsparse[j], ncomps);
-									std::stringstream inp(pd->GetContents());
-									for (int l = 0; l < dsize[j]; ++l)
+								{
+									if( dtype == DATA_REAL )
 									{
-										for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
-											inp >> t[darray[j][l]][q];
+										TagRealArray t = CreateTag(pd->GetAttrib("Name"), dtype, etype[j], dsparse[j], ncomps);
+										std::stringstream inp(pd->GetContents());
+										for (int l = 0; l < dsize[j]; ++l)
+										{
+											for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
+												inp >> t[darray[j][l]][q];
+										}
+									}
+									else if( dtype == DATA_INTEGER )
+									{
+										TagIntegerArray t = CreateTag(pd->GetAttrib("Name"), dtype, etype[j], dsparse[j], ncomps);
+										std::stringstream inp(pd->GetContents());
+										for (int l = 0; l < dsize[j]; ++l)
+										{
+											for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
+												inp >> t[darray[j][l]][q];
+										}
+									}
+									else if( dtype == DATA_BULK )
+									{
+										TagBulkArray t = CreateTag(pd->GetAttrib("Name"), dtype, etype[j], dsparse[j], ncomps);
+										std::stringstream inp(pd->GetContents());
+										for (int l = 0; l < dsize[j]; ++l)
+										{
+											for (INMOST_DATA_ENUM_TYPE q = 0; q < t.GetSize(); ++q)
+												inp >> t[darray[j][l]][q];
+										}
 									}
 								}
 							}
