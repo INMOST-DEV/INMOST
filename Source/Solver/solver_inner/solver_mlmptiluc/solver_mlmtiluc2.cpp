@@ -50,8 +50,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 //#define DIAGONAL_PERTURBATION
 #define DIAGONAL_PERTURBATION_REL 1.0e-7
 #define DIAGONAL_PERTURBATION_ABS 1.0e-10
-#define ILUC2
-//~ #define ILUC2_SCHUR
+//#define ILUC2
+//#define ILUC2_SCHUR
 
 //#define PIVOT_COND_DEFAULT 0.1/tau
 #define PIVOT_COND_DEFAULT 1.0e+2
@@ -2828,7 +2828,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 					interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> U2beg(cbeg, cend, EOL), L2beg(cbeg, cend, EOL);
 #endif
 #if defined(ILUC2)
-					for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k)
+					for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend+1; ++k)
 					{
 						L2_Address[k].first = L2_Address[k].last = ENUMUNDEF;
 						U2_Address[k].first = U2_Address[k].last = ENUMUNDEF;
@@ -3129,7 +3129,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							NuD = NuD_old;
 							U_Address[k].first = U_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U_Entries.size());
 							L_Address[k].first = L_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L_Entries.size());
-#if defined(ILU2)
+#if defined(ILUC2)
 							U2_Address[k].first = U2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(U2_Entries.size());
 							L2_Address[k].first = L2_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(L2_Entries.size());
 #endif
@@ -3638,7 +3638,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								U_Address[j].last -= cnt;
 							}
 						}
-#if defined(ILU2) && defined(ILUC2_SCHUR)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
 						//now the same for second-order LU
 						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 						{
@@ -3647,41 +3647,47 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							{
 								INMOST_DATA_ENUM_TYPE cnt;
 								//L-part
-								cnt = 0;
-								for (INMOST_DATA_ENUM_TYPE jt = L2_Address[j].first; jt < L2_Address[j].last; ++jt)
+								if( L2_Address[j].Size() )
 								{
-									i = localQ[L2_Entries[jt].first];
-									if( i < cend )
-										L2_Entries[jt].first = i;
-									else
+									cnt = 0;
+									for (INMOST_DATA_ENUM_TYPE jt = L2_Address[j].first; jt < L2_Address[j].last; ++jt)
 									{
-										L2_Entries[jt].first = ENUMUNDEF;
-										L2_Entries[jt].second = 0.0;
-										cnt++;
+										i = localQ[L2_Entries[jt].first];
+										if( i < cend )
+											L2_Entries[jt].first = i;
+										else
+										{
+											L2_Entries[jt].first = ENUMUNDEF;
+											L2_Entries[jt].second = 0.0;
+											cnt++;
+										}
 									}
+									//this will move all undefined to the end
+									std::sort(L2_Entries.begin()+L2_Address[j].first,L2_Entries.begin()+L2_Address[j].last);
+									//this will remove references to undefined
+									L2_Address[j].last -= cnt;
 								}
-								//this will move all undefined to the end
-								std::sort(L2_Entries.begin()+L2_Address[j].first,L2_Entries.begin()+L2_Address[j].last);
-								//this will remove references to undefined
-								L2_Address[j].last -= cnt;
 								//U-part
-								cnt = 0;
-								for (INMOST_DATA_ENUM_TYPE jt = U2_Address[j].first; jt < U2_Address[j].last; ++jt)
+								if( U2_Address[j].Size() )
 								{
-									i = localQ[U2_Entries[jt].first];
-									if( i < cend )
-										U2_Entries[jt].first = i;
-									else
+									cnt = 0;
+									for (INMOST_DATA_ENUM_TYPE jt = U2_Address[j].first; jt < U2_Address[j].last; ++jt)
 									{
-										U2_Entries[jt].first = ENUMUNDEF;
-										U2_Entries[jt].second = 0.0;
-										cnt++;
+										i = localQ[U2_Entries[jt].first];
+										if( i < cend )
+											U2_Entries[jt].first = i;
+										else
+										{
+											U2_Entries[jt].first = ENUMUNDEF;
+											U2_Entries[jt].second = 0.0;
+											cnt++;
+										}
 									}
+									//this will move all undefined to the end
+									std::sort(U2_Entries.begin()+U2_Address[j].first,U2_Entries.begin()+U2_Address[j].last);
+									//this will remove references to undefined
+									U2_Address[j].last -= cnt;
 								}
-								//this will move all undefined to the end
-								std::sort(U2_Entries.begin()+U2_Address[j].first,U2_Entries.begin()+U2_Address[j].last);
-								//this will remove references to undefined
-								U2_Address[j].last -= cnt;
 							}
 						}
 #endif
@@ -3689,8 +3695,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						//first establish intervals in arrays
 						{
 							interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL(wbeg,cend), tmpU(wbeg,cend);
-#if defined(ILU2) && defined(ILUC2_SCHUR)
-							interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL2(wbeg, cend), tmpU2(wbeg, cend)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
+							interval<INMOST_DATA_ENUM_TYPE, Interval> tmpL2(wbeg, cend), tmpU2(wbeg, cend);
 #endif
 							interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> tmpD(wbeg,cend);
 							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
@@ -3698,7 +3704,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								j = invP[k];
 								tmpL[k] = L_Address[j];
 								tmpU[k] = U_Address[j];
-#if defined(ILU2) && defined(ILUC2_SCHUR)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
 								tmpL2[k] = L2_Address[j];
 								tmpU2[k] = U2_Address[j];
 #endif
@@ -3708,7 +3714,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							{
 								L_Address[k] = tmpL[k];
 								U_Address[k] = tmpU[k];
-#if defined(ILU2) && defined(ILUC2_SCHUR)
+#if defined(ILUC2) && defined(ILUC2_SCHUR)
 								L2_Address[k] = tmpL2[k];
 								U2_Address[k] = tmpU2[k];
 #endif
