@@ -7,10 +7,19 @@
 // incident_matrix class should measure for minimal volume,
 // possibly check and update from projects/OctreeCutcell/octgrid.cpp
 #if defined(USE_PARALLEL_WRITE_TIME)
+__INLINE std::string NameSlash(std::string input)
+{
+	for(size_t l = input.size(); l > 0; --l)
+		if( input[l-1] == '/' || input[l-1] == '\\' )
+			return std::string(input.c_str() + l);
+	return input;
+}
 #define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
 #define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
 #define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
 #define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << GetFuncID()++ << "\">" << std::endl; Enter();
+#define EXIT_BLOCK() WriteTab(out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
 #else
@@ -18,6 +27,8 @@
 #define REPORT_STR(x) {}
 #define REPORT_VAL(str,x) {}
 #define ENTER_FUNC() {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
 #define EXIT_FUNC() {}
 #define EXIT_FUNC_DIE()  {}
 #endif
@@ -1539,6 +1550,7 @@ namespace INMOST
 	void Mesh::ApplyModification()
 	{
 		ENTER_FUNC();
+		ENTER_BLOCK();
 		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); ++it)
 		{
 			if( it->GetDataType() == DATA_REFERENCE )
@@ -1573,6 +1585,7 @@ namespace INMOST
 					}
 			}
 		}
+		EXIT_BLOCK();
 		//need to gather the set of deleted elements
 		/*//old approach
 		ElementSet erase = CreateSet("TEMPORARY_ERASE_SET").first;
@@ -1588,6 +1601,7 @@ namespace INMOST
 		erase->BulkDF(SetComparatorTag()) = ElementSet::HANDLE_COMPARATOR;
 		*/
 
+		ENTER_BLOCK();
 		//for(integer jt = 0; jt < LastLocalID(ESET); ++jt) if( isValidElementSet(jt) )
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
@@ -1618,6 +1632,8 @@ namespace INMOST
 			hide_element = temp_hide_element;
 			//it->Subtract(erase); //old approach
 		}
+		EXIT_BLOCK();
+		ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)
 		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
 			for(int i = 0; i < 5; i++)
@@ -1642,6 +1658,7 @@ namespace INMOST
 				it->second[i].resize(k);
 			}
 #endif
+		EXIT_BLOCK();
 		//Destroy(erase);//old approach
 		EXIT_FUNC();
 	}
@@ -1663,12 +1680,13 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " before resolve shared new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
-
+		ENTER_BLOCK();
 		CheckSetLinks(__FILE__,__LINE__);
 		ResolveSets();
 		CheckSetLinks(__FILE__,__LINE__);
 		ResolveShared(true);
 		CheckSetLinks(__FILE__,__LINE__);
+		EXIT_BLOCK();
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		/*
@@ -1684,8 +1702,10 @@ namespace INMOST
 		std::cout << GetProcessorRank() << " before exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
 		//std::cout << "layers " << Integer(GetHandle(),tag_layers) << " bridge " << ElementTypeName(ElementType(Integer(GetHandle(),tag_bridge))) << std::endl;
+		ENTER_BLOCK();
 		if( Integer(GetHandle(),tag_layers) )
 			ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
+		EXIT_BLOCK();
 
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
@@ -1728,6 +1748,7 @@ namespace INMOST
 		}
 		 */
 		MarkerType nm = new_element;
+		ENTER_BLOCK();
 		new_element = 0;
 		for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 		{
@@ -1740,6 +1761,7 @@ namespace INMOST
 			}
 		}
 		new_element = nm;
+		EXIT_BLOCK();
 		/*
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
@@ -1760,11 +1782,13 @@ namespace INMOST
 		new_element = 0;
 		//This should be done in ResolveModification
 		ElementType have_global_id = NONE;
+		ENTER_BLOCK();
 		if( GlobalIDTag().isValid() )
 		{
 			for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 				if( GlobalIDTag().isDefined(etype) ) have_global_id |= etype;
 		}
+		EXIT_BLOCK();
 		if( have_global_id ) AssignGlobalID(have_global_id);
 		EXIT_FUNC();
 	}

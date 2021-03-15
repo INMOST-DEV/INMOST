@@ -833,43 +833,53 @@ namespace INMOST
 				}
 				else if( i == myconn + 3 )
 				{
+					//~ std::vector<HandleType> tmp;
 					MarkerType mrk = mesh->CreatePrivateMarker();
 					adj_type const & hc = mesh->HighConn(GetHandle());
 					for(adj_type::size_type it = 0; it < hc.size(); it++)
 					{
 						adj_type const & ihc = mesh->HighConn(hc[it]);
 						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-						{
-							adj_type const & jhc = mesh->HighConn(ihc[jt]);
-							for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
-								if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
-								{
-									result.push_back(jhc[kt]);
-									mesh->SetPrivateMarker(jhc[kt],mrk);
-								}
-						}
+							//~ if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
+							{
+								//~ mesh->SetPrivateMarker(ihc[jt],mrk);
+								//~ tmp.push_back(ihc[jt]);
+								adj_type const & jhc = mesh->HighConn(ihc[jt]);
+								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+									if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									{
+										result.push_back(jhc[kt]);
+										mesh->SetPrivateMarker(jhc[kt],mrk);
+									}
+							}
 					}
+					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
 				else if( i == myconn - 3 )
 				{
+					//~ std::vector<HandleType> tmp;
 					MarkerType mrk = mesh->CreatePrivateMarker();
 					adj_type const & lc = mesh->LowConn(GetHandle());
 					for(adj_type::size_type it = 0; it < lc.size(); it++)
 					{
 						adj_type const & ilc = mesh->LowConn(lc[it]);
 						for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-						{
-							adj_type const & jlc = mesh->LowConn(ilc[jt]);
-							for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
-								if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
-								{
-									result.push_back(jlc[kt]);
-									mesh->SetPrivateMarker(jlc[kt],mrk);
-								}
-						}
+							//~ if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
+							{
+								//~ mesh->SetPrivateMarker(ilc[jt],mrk);
+								//~ tmp.push_back(ilc[jt]);
+								adj_type const & jlc = mesh->LowConn(ilc[jt]);
+								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+									if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									{
+										result.push_back(jlc[kt]);
+										mesh->SetPrivateMarker(jlc[kt],mrk);
+									}
+							}
 					}
+					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
@@ -934,6 +944,7 @@ namespace INMOST
 				}
 				else if( i == myconn + 3 )
 				{
+					//~ std::vector<HandleType> tmp;
 					MarkerType mrk = mesh->CreatePrivateMarker();
 					adj_type const & hc = mesh->HighConn(GetHandle());
 					for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
@@ -941,22 +952,29 @@ namespace INMOST
 						adj_type const & ihc = mesh->HighConn(hc[it]);
 						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
 						{
-							adj_type const & jhc = mesh->HighConn(ihc[jt]);
-							for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
+							//~ if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
 							{
-								if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
+								//~ mesh->SetPrivateMarker(ihc[jt],mrk);
+								//~ tmp.push_back(ihc[jt]);
+								adj_type const & jhc = mesh->HighConn(ihc[jt]);
+								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
 								{
-									result.push_back(jhc[kt]);
-									mesh->SetPrivateMarker(jhc[kt],mrk);
+									if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									{
+										result.push_back(jhc[kt]);
+										mesh->SetPrivateMarker(jhc[kt],mrk);
+									}
 								}
 							}
 						}
 					}
+					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
 				else if( i == myconn - 3 )
 				{
+					//~ std::vector<HandleType> tmp;
 					MarkerType mrk = mesh->CreatePrivateMarker();
 					adj_type const & lc = mesh->LowConn(GetHandle());
 					for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
@@ -964,17 +982,23 @@ namespace INMOST
 						adj_type const & ilc = mesh->LowConn(lc[it]);
 						for(adj_type::size_type jt = 0; jt != ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
 						{
-							adj_type const & jlc = mesh->LowConn(ilc[jt]);
-							for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+							//~ if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
 							{
-								if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
+								//~ mesh->SetPrivateMarker(ilc[jt],mrk);
+								//~ tmp.push_back(ilc[jt]);
+								adj_type const & jlc = mesh->LowConn(ilc[jt]);
+								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
 								{
-									result.push_back(jlc[kt]);
-									mesh->SetPrivateMarker(jlc[kt],mrk);
+									if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									{
+										result.push_back(jlc[kt]);
+										mesh->SetPrivateMarker(jlc[kt],mrk);
+									}
 								}
 							}
 						}
 					}
+					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
