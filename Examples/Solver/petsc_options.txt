@@ -1,8 +1,0 @@
-#-pc_type ilu
-#-pc_factor_leves 5
--ksp_max_it 2500
--ksp_type bcgsl
--ksp_rtol 1e-13
--ksp_atol 1e-7
--ksp_divtol 1e+100
--ksp_monitor
