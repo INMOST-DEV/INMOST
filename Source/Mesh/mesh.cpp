@@ -295,12 +295,12 @@ namespace INMOST
     {
 #pragma omp single
       {
-		  tag_private_markers = new Tag[GetLocalProcessorNumber()];
+	tag_private_markers = new Tag[GetLocalProcessorNumber()];
       }
-//#pragma omp ordered
+#pragma omp critical
       {
         std::stringstream name;
-		name << "PROTECTED_PRIVATE_MARKERS_" << GetLocalProcessorRank();
+	name << "PROTECTED_PRIVATE_MARKERS_" << GetLocalProcessorRank();
         tag_private_markers[GetLocalProcessorRank()] = CreateTag(name.str(),DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFieldsPrivate);
       }
     }
