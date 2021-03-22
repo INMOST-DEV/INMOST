@@ -194,7 +194,7 @@ namespace INMOST
 		//have_global_id = NONE;
 		checkset = DEFAULT_CHECK;
 		errorset = 0;
-		new_element = hide_element = 0;
+		new_element = hide_element = update_geometry = 0;
 
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
@@ -453,6 +453,7 @@ namespace INMOST
 		errorset = other.errorset;
 		new_element = other.new_element;
 		hide_element = other.hide_element;
+		update_geometry = other.update_geometry;
 		epsilon = other.epsilon;
 		//have_global_id = other.have_global_id;
 		// copy communicator
@@ -582,6 +583,7 @@ namespace INMOST
 		errorset = other.errorset;
 		new_element = other.new_element;
 		hide_element = other.hide_element;
+		update_geometry = other.update_geometry;
 		epsilon = other.epsilon;
 		//have_global_id = other.have_global_id;
 		// copy communicator
@@ -1283,7 +1285,9 @@ namespace INMOST
 			//DEBUG END
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
-			RecomputeGeometricData(he);
+			if (UpdateGeometryMarker())
+				SetMarker(he, UpdateGeometryMarker());
+			else RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 			/*
 			chk |= EndTopologyCheck(he);
@@ -1382,7 +1386,9 @@ namespace INMOST
 			//DEBUG END
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
-			RecomputeGeometricData(he);
+			if (UpdateGeometryMarker())
+				SetMarker(he, UpdateGeometryMarker());
+			else RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 			/*
 			chk |= EndTopologyCheck(he);
@@ -1827,7 +1833,9 @@ namespace INMOST
 			lc.insert(lc.begin(),c_faces.begin(),c_faces.end());
 			ComputeGeometricType(he);		
 			SetMarker(he,NewMarker());
-			RecomputeGeometricData(he);
+			if (UpdateGeometryMarker())
+				SetMarker(he, UpdateGeometryMarker());
+			else RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 		}
 		return std::make_pair(Cell(this,he),true);

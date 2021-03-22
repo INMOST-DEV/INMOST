@@ -486,7 +486,7 @@ namespace INMOST
 		///	  3. Should correctly account for order of edges (may be implemented through CheckEdgeOrder, FixEdgeOrder).
 		void                        Connect                 (const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const; 
 		/// Update geometric data for element, calls RecomputeGeometricData from Mesh.
-		void                        UpdateGeometricData     () const;
+		//void                        UpdateGeometricData     () const;
 		/// Marks element to be sent to remote processors that current processor don't belong to.
 		/// Call Mesh::ExchangeMarked to perform the exchange.
 		void                        SendTo                  (std::set<Storage::integer> & procs) const; 
@@ -3292,7 +3292,7 @@ namespace INMOST
 		void MarkNormalOrientation(MarkerType mrk);
 		//implemented in modify.cpp
 	private:
-		MarkerType hide_element, new_element, temp_hide_element;
+		MarkerType hide_element, new_element, update_geometry, temp_hide_element;
 	public:
 		/// Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.
 		/// In case mesh is modified, on element construction Mesh::TieElements will always place elements 
@@ -3301,6 +3301,7 @@ namespace INMOST
 		bool                              isMeshModified     () const {return new_element != 0;} 
 		MarkerType                        HideMarker         () const {return hide_element;}
 		MarkerType                        NewMarker          () const {return new_element;}
+		MarkerType                        UpdateGeometryMarker() const {return update_geometry;}
 		void                              SwapModification   (bool recompute_geometry); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().
