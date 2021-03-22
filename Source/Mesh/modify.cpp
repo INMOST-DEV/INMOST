@@ -598,7 +598,9 @@ namespace INMOST
 			m->ComputeGeometricType(cells[it]);
 			assert(m->GetGeometricType(cells[it]) != MultiPolygon);
 			//recompute geometric data
-			m->RecomputeGeometricData(cells[it]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(cells[it],m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(cells[it]);
 			m->EndTopologyCheck(cells[it],0);
 		}
 		
@@ -859,7 +861,9 @@ namespace INMOST
 			lc.insert(lc.begin()+insert_pos[k],e->GetHandle());
 			ehc.push_back(faces[k]);
 			m->ComputeGeometricType(faces[k]);
-			m->RecomputeGeometricData(faces[k]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(faces[k],m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(faces[k]);
 			m->EndTopologyCheck(faces[k],0);
 		}
 
@@ -867,7 +871,9 @@ namespace INMOST
 		{
 			m->ComputeGeometricType(cells[it]);
 			//update centroid, volume, orientation, etc
-			m->RecomputeGeometricData(cells[it]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(cells[it],m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(cells[it]);
 			m->EndTopologyCheck(cells[it],0);
 		}
 		return e;
@@ -1221,7 +1227,9 @@ namespace INMOST
 			else
 				lc.insert(lc.begin()+insert_pos[it],ret.rbegin(),ret.rend());
 			m->ComputeGeometricType(faces[it]);
-			m->RecomputeGeometricData(faces[it]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(faces[it], m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(faces[it]);
 			m->EndTopologyCheck(faces[it],0);
 			//Face(m,faces[it]).FixEdgeOrder();
 		}
@@ -1235,7 +1243,9 @@ namespace INMOST
 		for(size_t it = 0; it < cells.size(); ++it)
 		{
 			m->ComputeGeometricType(cells[it]);
-			m->RecomputeGeometricData(cells[it]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(cells[it], m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(cells[it]);
 			m->EndTopologyCheck(cells[it],0);
 		}
 		return ret;
@@ -1420,7 +1430,9 @@ namespace INMOST
 			adj_type & lc = m->LowConn(cells[it]); //cell faces
 			lc.insert(lc.end(),ret.begin(),ret.end());
 			m->ComputeGeometricType(cells[it]);
-			m->RecomputeGeometricData(cells[it]);
+			if (m->UpdateGeometryMarker())
+				m->SetMarker(cells[it], m->UpdateGeometryMarker());
+			else m->RecomputeGeometricData(cells[it]);
 			m->EndTopologyCheck(cells[it],0);
 		}
 
@@ -1514,6 +1526,7 @@ namespace INMOST
 		ENTER_FUNC();
 		hide_element = CreateMarker();
 		new_element = CreateMarker();
+		update_geometry = 0;// CreateMarker();
 		EXIT_FUNC();
 	}
 	
@@ -1529,14 +1542,14 @@ namespace INMOST
 		memcpy(hidden_count,hidden_count_zero,sizeof(integer)*6);
 		memcpy(hidden_count_zero,tmp,sizeof(integer)*6);
 
-		if( recompute_geometry )
+		if( recompute_geometry ) //TODO ????????
 		{
 			for(ElementType etype = EDGE; etype <= CELL; etype = etype << 1)
 			{
 				for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 				{
 					HandleType h = ComposeHandle(etype,it);
-					if( GetMarker(h,new_element) )
+					if( GetMarker(h,NewMarker()) && !GetMarker(h,UpdateGeometryMarker()) ) //element is new and geometry was already recomputed
 					{
 						ComputeGeometricType(h);
 						RecomputeGeometricData(h);
@@ -1658,6 +1671,30 @@ namespace INMOST
 				it->second[i].resize(k);
 			}
 #endif
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		if (UpdateGeometryMarker())
+		{
+			for (ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+			{
+				int updated = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:updated)
+#endif
+				for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+				{
+					Element e = ElementByLocalID(etype, it);
+					if (e.GetMarker(UpdateGeometryMarker()))
+					{
+						updated++;
+						RecomputeGeometricData(e.GetHandle());
+					}
+				}
+				std::cout << "Geometry updated for " << updated << " element type " << ElementTypeName(etype) << std::endl;
+			}
+			ReleaseMarker(UpdateGeometryMarker());
+			update_geometry = 0;
+		}
 		EXIT_BLOCK();
 		//Destroy(erase);//old approach
 		EXIT_FUNC();
@@ -1926,10 +1963,10 @@ namespace INMOST
 		return ret;
 	}
 
-	void Element::UpdateGeometricData() const
-	{
-		GetMeshLink()->RecomputeGeometricData(GetHandle());
-	}
+	//void Element::UpdateGeometricData() const
+	//{
+	//	GetMeshLink()->RecomputeGeometricData(GetHandle());
+	//}
 	
 	void Cell::SwapBackCell() const
 	{
@@ -1953,8 +1990,13 @@ namespace INMOST
 						std::swap(hc[k1],hc[k2]);
 						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
 						//hc.resize(1); //just remove element, we will do this anyway later
-						if( m->HaveGeometricData(ORIENTATION,FACE) ) 
-							Face(m,lc[it])->FixNormalOrientation(false); //restore orientation
+						if (m->HaveGeometricData(ORIENTATION, FACE))
+						{
+							if (!m->UpdateGeometryMarker())
+								Face(m, lc[it])->FixNormalOrientation(false); //restore orientation
+							else
+								m->SetMarker(lc[it], m->UpdateGeometryMarker()); //delay
+						}
 					}
 				}
 				//~ if( !Face(m,lc[it])->CheckNormalOrientation() )
@@ -2089,7 +2131,9 @@ namespace INMOST
 					}
 				}
 				m->ComputeGeometricType(arr[el_num][it]);
-				m->RecomputeGeometricData(arr[el_num][it]);
+				if (m->UpdateGeometryMarker())
+					m->SetMarker(arr[el_num][it],m->UpdateGeometryMarker());
+				else m->RecomputeGeometricData(arr[el_num][it]);
 				m->RemMarker(arr[el_num][it],mod);
 			}
 		}
@@ -2141,7 +2185,9 @@ namespace INMOST
 			}
 		}
 		ComputeGeometricType();
-		UpdateGeometricData();
+		if (m->UpdateGeometryMarker())
+			m->SetMarker(GetHandle(),m->UpdateGeometryMarker());
+		else m->RecomputeGeometricData(GetHandle());
 		//if element placed below on ierarhy was modified, then all upper elements
 		//should be also modified, start from lowest elements in ierarchy and go up
 		for (ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
@@ -2164,7 +2210,9 @@ namespace INMOST
 					}
 				}
 				m->ComputeGeometricType(arr[el_num][it]);
-				m->RecomputeGeometricData(arr[el_num][it]);
+				if (m->UpdateGeometryMarker())
+					m->SetMarker(arr[el_num][it],m->UpdateGeometryMarker());
+				else m->RecomputeGeometricData(arr[el_num][it]);
 				m->RemMarker(arr[el_num][it], mod);
 			}
 		}

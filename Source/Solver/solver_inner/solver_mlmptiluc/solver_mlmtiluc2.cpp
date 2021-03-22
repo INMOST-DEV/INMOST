@@ -3938,12 +3938,17 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								{
 									if (k % 100 == 0)
 									{
-										std::ios save(NULL);
-										save.copyfmt(std::cout);
-										std::cout << "LF " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
-										std::cout << " nnz " << std::setw(10) << LF_Entries.size() << " drops " << std::setw(10) << ndrops_lf;
-										std::cout << "\r" << std::flush;
-										std::cout.copyfmt(save);
+#if defined(USE_OMP_FACT)
+#pragma omp critical
+#endif
+										{
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "LF " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+											std::cout << " nnz " << std::setw(10) << LF_Entries.size() << " drops " << std::setw(10) << ndrops_lf;
+											std::cout << "\r" << std::flush;
+											std::cout.copyfmt(save);
+										}
 									}
 								}
 								// iteration done!
@@ -4194,12 +4199,17 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							{
 								if (k % 100 == 0)
 								{
-									std::ios save(NULL);
-									save.copyfmt(std::cout);
-									std::cout << "EU " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
-									std::cout << " nnz " << std::setw(10) << EU_Entries.size() << " drops " << std::setw(10) << ndrops_eu;
-									std::cout << "\r" << std::flush;
-									std::cout.copyfmt(save);
+#if defined(USE_OMP_FACT)
+#pragma omp critical
+#endif
+									{
+										std::ios save(NULL);
+										save.copyfmt(std::cout);
+										std::cout << "EU " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+										std::cout << " nnz " << std::setw(10) << EU_Entries.size() << " drops " << std::setw(10) << ndrops_eu;
+										std::cout << "\r" << std::flush;
+										std::cout.copyfmt(save);
+									}
 								}
 							}
 						}
@@ -4263,11 +4273,16 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 										{
 											if (k % 100 == 0)
 											{
-												std::ios save(NULL);
-												save.copyfmt(std::cout);
-												std::cout << "Schur column norm " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
-												std::cout << "\t\t\r" << std::flush;
-												std::cout.copyfmt(save);
+#if defined(USE_OMP_FACT)
+#pragma omp critical
+#endif
+												{
+													std::ios save(NULL);
+													save.copyfmt(std::cout);
+													std::cout << "Schur column norm " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+													std::cout << "\t\t\r" << std::flush;
+													std::cout.copyfmt(save);
+												}
 											}
 										}
 									}
@@ -4347,12 +4362,17 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 								{
 									if (k % 100 == 0)
 									{
-										std::ios save(NULL);
-										save.copyfmt(std::cout);
-										std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
-										std::cout << " nnz " << std::setw(10) << S_Entries.size() << " drop S " << ndrops_s;
-										std::cout << "\t\t\r" << std::flush;
-										std::cout.copyfmt(save);
+#if defined(USE_OMP_FACT)
+#pragma omp critical
+#endif
+										{
+											std::ios save(NULL);
+											save.copyfmt(std::cout);
+											std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
+											std::cout << " nnz " << std::setw(10) << S_Entries.size() << " drop S " << ndrops_s;
+											std::cout << "\t\t\r" << std::flush;
+											std::cout.copyfmt(save);
+										}
 									}
 								}
 							}

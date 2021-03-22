@@ -605,6 +605,8 @@ namespace INMOST
 	
 	void Mesh::RecomputeGeometricData(HandleType e)
 	{
+		if (GetMarker(e, UpdateGeometryMarker())) //prevent recursive entry
+			RemMarker(e, UpdateGeometryMarker());
 		//static std::map<Element *, int> numfixes;
 		GeometricData d ;
 		for(d = CENTROID; d <= NORMAL; d++) // first compute centroids and normals 
@@ -1113,6 +1115,7 @@ namespace INMOST
 			case MEASURE:
 			if( HaveGeometricData(MEASURE,etype) )
 			{
+				if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				*ret = static_cast<Storage::real *>(MGetDenseLink(e,measure_tag))[0];
 				//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 			}
@@ -1257,6 +1260,7 @@ namespace INMOST
 							faces.RemPrivateMarker(rev);
 							ReleasePrivateMarker(rev);
 						}
+						assert(vol > 0);
 						*ret = vol;
 						break;
 					}
@@ -1269,6 +1273,7 @@ namespace INMOST
 					memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
 				else if(HaveGeometricData(CENTROID,etype))
 				{
+					if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
 				}
 				else
@@ -1289,6 +1294,7 @@ namespace INMOST
 				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
 			else if(HaveGeometricData(BARYCENTER,etype))
 			{
+				if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
 			}
 			else
@@ -1452,6 +1458,7 @@ namespace INMOST
 			{
 				if( HaveGeometricData(NORMAL,etype) )
 				{
+					if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
 				}
 				else

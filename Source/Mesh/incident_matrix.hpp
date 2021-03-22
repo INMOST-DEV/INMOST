@@ -176,7 +176,7 @@ namespace INMOST
 		Storage::real compute_measure(ElementArray<T> & data)
 		{
 			Storage::real measure = 0, tmp;
-			for(typename ElementArray<T>::size_type k = 1; k < data.size(); ++k)
+			for(typename ElementArray<T>::size_type k = 0; k < data.size(); ++k)
 			{
 				mesh->GetGeometricData(data[k].GetHandle(),MEASURE,&tmp);
 				measure += tmp;
