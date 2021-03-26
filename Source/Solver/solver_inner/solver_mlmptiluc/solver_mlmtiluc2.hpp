@@ -223,6 +223,68 @@ class MLMTILUC_preconditioner : public Method
 						  interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
 						  std::vector<Sparse::Row::entry> & Entries,
 						  interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > & Indices );
+						  
+						  
+	void MaximalTransversal(INMOST_DATA_ENUM_TYPE wbeg,
+							INMOST_DATA_ENUM_TYPE wend,
+							interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+							std::vector<Sparse::Row::entry> & Entries,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & U,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR);
+	
+	void SymmetricGraph(INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+						std::vector<Sparse::Row::entry> & Entries,
+						std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
+						std::vector< INMOST_DATA_ENUM_TYPE > & adjncy);
+						
+	void SymmetricGraphWeights(	INMOST_DATA_ENUM_TYPE wbeg,
+								INMOST_DATA_ENUM_TYPE wend,
+								interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+								std::vector<Sparse::Row::entry> & Entries,
+								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
+								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
+								std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
+								std::vector<INMOST_DATA_REAL_TYPE> & wadj,
+								std::vector< INMOST_DATA_ENUM_TYPE > & adjncy);
+								
+	void ReorderColumns(INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+						std::vector<Sparse::Row::entry> & Entries,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
+						Sparse::Vector & DR0);
+						
+						
+	void WRCMOrdering(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+						std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+						std::vector<INMOST_DATA_REAL_TYPE> & wadj,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
+
+	void RCMOrdering(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+						std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);				
+	void MetisOrdering(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+						std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
+							
 	void DumpGraph(std::string name, interval<INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G);
 
 	int Thread();

@@ -67,10 +67,11 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 #define NNZ_GROWTH_PARAM 1.05
 
-#if defined(REORDER_METIS_ND)
+#if defined(USE_SOLVER_METIS)
 #define METIS_EXPORT
 #include "metis.h"
 #endif
+
 #if defined(REORDER_ZOLTAN_HUND)
 #include <zoltan.h>
 #endif
@@ -1353,6 +1354,664 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 	}
 	bool MLMTILUC_preconditioner::isInitialized() { return init; }
 	bool MLMTILUC_preconditioner::isFinalized() { return !init; }
+	
+	
+	void MLMTILUC_preconditioner::MaximalTransversal(	INMOST_DATA_ENUM_TYPE wbeg,
+														INMOST_DATA_ENUM_TYPE wend,
+														interval<INMOST_DATA_ENUM_TYPE, Interval> & A_Address,
+														std::vector<Sparse::Row::entry> & A_Entries,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & U,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR)
+	{
+		//Sparse::Vector & U = DL;
+		//Sparse::Vector & V = DR;
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Cmax(wbeg,wend,0.0);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Perm = localQ;
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & IPerm = localP;
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnList(wbeg,wend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Parent(wbeg,wend);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnPosition(wbeg,wend,ENUMUNDEF);
+		std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Dist(wbeg, wend + 1, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		
+		BinaryHeap Heap(&Dist[wbeg],wend-wbeg);
+		// arrays U,V,Dist are cleared at the end of schur complement calculation
+		//std::fill(U.begin() + wbeg - mobeg, U.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		//std::fill(V.begin() + wbeg - mobeg, V.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		//std::fill(Cmax.begin() + wbeg - mobeg, Cmax.begin() + wend - mobeg, 0.0);
+		//std::fill(Dist.begin() + wbeg - mobeg, Dist.begin() + wend + 1 - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			Perm[k] = ENUMUNDEF;
+			IPerm[k] = ENUMUNDEF;
+			Parent[k] = ENUMUNDEF;
+			ColumnList[k] = ENUMUNDEF;
+		}
+
+		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+		
+		// Initial LOG transformation to dual problem and initial extreme match 
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
+			{
+				INMOST_DATA_ENUM_TYPE i = A_Entries[it].first;
+				INMOST_DATA_REAL_TYPE u = C_Entries[it] = fabs(A_Entries[it].second);
+				if( u > Cmax[i] ) Cmax[i] = u;
+				//C_Entries.push_back(Sparse::Row::make_entry(i,u));
+			}
+		}
+
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
+			{
+				INMOST_DATA_ENUM_TYPE i = A_Entries[it].first;
+				if( Cmax[i] == 0 || C_Entries[it] == 0 )
+					C_Entries[it] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+				else
+				{
+					C_Entries[it] = log(Cmax[i])-log(C_Entries[it]);
+					if( C_Entries[it] < U[i] ) U[i] = C_Entries[it];
+				}
+			}
+		}
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
+			{
+				INMOST_DATA_REAL_TYPE u = C_Entries[it] - U[A_Entries[it].first];
+				if( u < V[k] ) V[k] = u;
+			}
+		}
+		/// Update cost and match
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
+			{
+				INMOST_DATA_REAL_TYPE u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
+				if( u < 1.0e-30 && Perm[A_Entries[it].first] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
+				{
+					 Perm[A_Entries[it].first] = k;
+					 IPerm[k] = A_Entries[it].first;
+					 ColumnPosition[k] = it;
+				}
+			}
+		}
+		/// 1-step augmentation
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			if( IPerm[k] == ENUMUNDEF ) //unmatched row
+			{
+				for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last && IPerm[k] == ENUMUNDEF; ++it)
+				{
+					INMOST_DATA_REAL_TYPE u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
+					if( u <= 1.0e-30 )
+					{
+						INMOST_DATA_ENUM_TYPE Li = Perm[A_Entries[it].first];
+						assert(Li != ENUMUNDEF);
+						// Search other row in C for 0
+						for (INMOST_DATA_ENUM_TYPE Lit = A_Address[Li].first; Lit < A_Address[Li].last; ++Lit)
+						{
+							u = fabs(C_Entries[Lit]- V[Li] - U[A_Entries[Lit].first]);
+							if( u <= 1.0e-30 && Perm[A_Entries[Lit].first] == ENUMUNDEF )
+							{
+								Perm[A_Entries[it].first] = k;
+								IPerm[k] = A_Entries[it].first;
+								ColumnPosition[k] = it;
+								Perm[A_Entries[Lit].first] = Li;
+								IPerm[Li] = A_Entries[Lit].first;
+								ColumnPosition[Li] = Lit;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		/// Weighted bipartite matching
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			if( IPerm[k] != ENUMUNDEF )
+				continue;
+			INMOST_DATA_ENUM_TYPE Li = k;
+			INMOST_DATA_ENUM_TYPE ColumnBegin = EOL;
+			Parent[Li] = ENUMUNDEF;
+			INMOST_DATA_ENUM_TYPE PathEnd = ENUMUNDEF;
+			INMOST_DATA_ENUM_TYPE Trace = k;
+			INMOST_DATA_REAL_TYPE ShortestPath = 0;
+			INMOST_DATA_REAL_TYPE AugmentPath = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+			while(true)
+			{
+				for (INMOST_DATA_ENUM_TYPE Lit = A_Address[Li].first; Lit < A_Address[Li].last; ++Lit)
+				{
+					INMOST_DATA_ENUM_TYPE Ui = A_Entries[Lit].first;
+					//if( ColumnList[Ui] == k ) continue;
+					if( ColumnList[Ui] != ENUMUNDEF ) continue;
+					INMOST_DATA_REAL_TYPE l = fabs(ShortestPath + C_Entries[Lit] - V[Li] - U[Ui]);
+					//if( l < 0.0 ) printf("row %d col %d negative l %g Augment %lf Shortest %lf C %lf V %lf U %lf\n",k,Ui,l,AugmentPath,ShortestPath,C_Entries[Lit],V[Li],U[Ui]);
+					if( l < 0.0 && l > -1.0e-8 ) l = 0;
+					if( l < 0.0 ) continue;
+					if( l < AugmentPath )
+					{
+						if( Perm[Ui] == ENUMUNDEF )
+						{
+							PathEnd = Ui;
+							Trace = Li;
+							AugmentPath = l;
+							AugmentPosition[Ui] = Lit;
+						}
+						else if( l < Dist[Ui] )
+						{
+							Parent[Perm[Ui]] = Li;
+							AugmentPosition[Ui] = Lit;
+							if( Heap.Contains(Ui-wbeg) )
+								Heap.DecreaseKey(Ui-wbeg,l);
+							else
+								Heap.PushHeap(Ui-wbeg,l);
+						}
+					}
+				}
+
+				INMOST_DATA_ENUM_TYPE pop_heap_pos = Heap.PopHeap();
+				if( pop_heap_pos == ENUMUNDEF ) break;
+			
+				INMOST_DATA_ENUM_TYPE Ui = pop_heap_pos+wbeg;
+				ShortestPath = Dist[Ui];
+
+				if( AugmentPath <= ShortestPath ) 
+				{
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					//Heap.increaseKey(Ui,Dist[Ui]);
+					break;
+				}
+
+
+				ColumnList[Ui] = ColumnBegin;
+				ColumnBegin = Ui;
+
+				Li = Perm[Ui];
+				
+			}
+			if( PathEnd != ENUMUNDEF )
+			{
+				INMOST_DATA_ENUM_TYPE Ui = ColumnBegin;
+				while(Ui != EOL)
+				{
+					U[Ui] += Dist[Ui] - AugmentPath;
+					if( Perm[Ui] != ENUMUNDEF ) V[Perm[Ui]] = C_Entries[ColumnPosition[Perm[Ui]]] - U[Ui];
+					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
+					Li = ColumnList[Ui];
+					ColumnList[Ui] = ENUMUNDEF;
+					Ui = Li;
+				}
+
+				Ui = PathEnd;
+				while(Trace != ENUMUNDEF)
+				{
+					INMOST_DATA_ENUM_TYPE IPermPrev = IPerm[Trace];
+					Perm[Ui] = Trace;
+					IPerm[Trace] = Ui;
+
+					ColumnPosition[Trace] = AugmentPosition[Ui];
+					V[Trace] = C_Entries[ColumnPosition[Trace]] - U[Ui];
+
+					Ui = IPermPrev;
+					Trace = Parent[Trace];
+
+				}
+				Heap.Clear();
+			}
+		}
+#if defined(USE_OMP_FACT)
+#pragma omp parallel for
+#endif
+		for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			INMOST_DATA_REAL_TYPE l = (V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ? 1 : exp(V[k]));
+			INMOST_DATA_REAL_TYPE u = (U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ? 1 : exp(U[k])/Cmax[k]);
+			DL[k] = l;
+			DR[k] = u;
+			
+
+			bool flip_sign = false;
+			for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
+			{
+				INMOST_DATA_ENUM_TYPE i = A_Entries[jt].first;
+				INMOST_DATA_ENUM_TYPE j = Perm[A_Entries[jt].first];
+				
+				if( U[i] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[i] == 0 ) u = 1;
+				else u = exp(U[i])/Cmax[i];
+				
+				if( fabs(l*A_Entries[jt].second*u) > 1 + 1.0e-7 )
+				{
+					std::cout << "element on row " << k << " col " << A_Entries[jt].first << " value " << A_Entries[jt].second << " u " << u << " l " << l << " U " << U[i] << " V " << V[k] << " Cmax " << Cmax[i] << " scaled " << l*A_Entries[jt].second*u << std::endl;
+					exit(-1);
+				}
+				if( static_cast<INMOST_DATA_INTEGER_TYPE>(j) == k )
+				{
+					
+					if( l*A_Entries[jt].second*u < 0.0 ) flip_sign = true;
+				}
+			}
+
+			if( flip_sign ) DL[k] *= -1;
+		}
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
+		
+		{ //check that there are no gaps in Perm
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			{
+				if( Perm[k] != ENUMUNDEF )
+				{
+					assert(localP[Perm[k]] == ENUMUNDEF);
+					localP[Perm[k]] = 0;
+				}
+			}
+			std::vector<INMOST_DATA_ENUM_TYPE> gaps;
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+				if( localP[k] == ENUMUNDEF )
+					gaps.push_back(k);
+			
+			//~ std::cout << "@ gaps: " << gaps.size() << std::endl;
+			
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+				if( Perm[k] == ENUMUNDEF )
+				{
+					Perm[k] = gaps.back();
+					gaps.pop_back();
+				}                        
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
+		}
+	}
+	
+	void MLMTILUC_preconditioner::SymmetricGraphWeights(INMOST_DATA_ENUM_TYPE wbeg,
+														INMOST_DATA_ENUM_TYPE wend,
+														interval<INMOST_DATA_ENUM_TYPE, Interval> & A_Address,
+														std::vector<Sparse::Row::entry> & A_Entries,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
+														interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
+														std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
+														std::vector<INMOST_DATA_REAL_TYPE> & wadj,
+														std::vector< INMOST_DATA_ENUM_TYPE > & adjncy)
+	{
+		xadj.resize(wend-wbeg+1);
+		wadj.resize(wend-wbeg);
+		{//graph assembly
+			interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Apos(wbeg, wend), Anext(wbeg, wend), Afirst(wbeg,wend);
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			{
+				Apos[k] = EOL;
+				Afirst[k] = EOL;
+				Anext[k] = EOL;
+			}
+			for (INMOST_DATA_INTEGER_TYPE k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(wbeg); --k)
+			{
+				if (A_Address[k-1].Size() > 0)
+				{
+					INMOST_DATA_ENUM_TYPE i = A_Entries[A_Address[k-1].first].first;
+					Anext[k-1] = Afirst[i];
+					Afirst[i] = k-1;
+				}
+				Apos[k-1] = A_Address[k-1].first;
+			}
+			xadj[0] = 0;
+			for(INMOST_DATA_ENUM_TYPE i = wbeg; i < wend; ++i)
+			{
+				wadj[i-wbeg] = 0;
+				for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
+				{
+					if( A_Entries[jt].first != i  )//&& fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]) > 0.1*std::min(Acolmax,Arowmax) )
+					{
+						adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
+						wadj[i-wbeg] += fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]);
+					}
+				}
+
+				INMOST_DATA_ENUM_TYPE Li = Afirst[i];
+				while (Li != EOL)
+				{
+					if( Li != i )//&& fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]) > 0.1*std::min(Acolmax,Arowmax) )
+					{
+						adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
+						wadj[i-wbeg] += fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]);
+					}
+					Li = Anext[Li];
+				}
+
+				Li = Afirst[i];
+				while (Li != EOL)
+				{
+					INMOST_DATA_ENUM_TYPE Ui = Anext[Li];
+					Apos[Li]++;
+					if (A_Address[Li].Size() && A_Address[Li].last - Apos[Li] > 0)
+					{
+						INMOST_DATA_ENUM_TYPE k = A_Entries[Apos[Li]].first;
+						Anext[Li] = Afirst[k];
+						Afirst[k] = Li;
+					}
+
+					Li = Ui;
+				}
+
+				std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
+				adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
+
+				xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
+			}
+			
+			//~ if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+		}
+	}
+	
+	void MLMTILUC_preconditioner::SymmetricGraph(INMOST_DATA_ENUM_TYPE wbeg,
+												INMOST_DATA_ENUM_TYPE wend,
+												interval<INMOST_DATA_ENUM_TYPE, Interval> & A_Address,
+												std::vector<Sparse::Row::entry> & A_Entries,
+												std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
+												std::vector< INMOST_DATA_ENUM_TYPE > & adjncy)
+	{
+		xadj.resize(wend-wbeg+1);
+		{//graph assembly
+			interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Apos(wbeg, wend), Anext(wbeg, wend), Afirst(wbeg,wend);
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			{
+				Apos[k] = EOL;
+				Afirst[k] = EOL;
+				Anext[k] = EOL;
+			}
+			for (INMOST_DATA_INTEGER_TYPE k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(wbeg); --k)
+			{
+				if (A_Address[k-1].Size() > 0)
+				{
+					INMOST_DATA_ENUM_TYPE i = A_Entries[A_Address[k-1].first].first;
+					Anext[k-1] = Afirst[i];
+					Afirst[i] = k-1;
+				}
+				Apos[k-1] = A_Address[k-1].first;
+			}
+			xadj[0] = 0;
+			for(INMOST_DATA_ENUM_TYPE i = wbeg; i < wend; ++i)
+			{
+				for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
+				{
+					if( A_Entries[jt].first != i  )//&& fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]) > 0.1*std::min(Acolmax,Arowmax) )
+						adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
+				}
+
+				INMOST_DATA_ENUM_TYPE Li = Afirst[i];
+				while (Li != EOL)
+				{
+					if( Li != i )//&& fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]) > 0.1*std::min(Acolmax,Arowmax) )
+						adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
+					Li = Anext[Li];
+				}
+
+				Li = Afirst[i];
+				while (Li != EOL)
+				{
+					INMOST_DATA_ENUM_TYPE Ui = Anext[Li];
+					Apos[Li]++;
+					if (A_Address[Li].Size() && A_Address[Li].last - Apos[Li] > 0)
+					{
+						INMOST_DATA_ENUM_TYPE k = A_Entries[Apos[Li]].first;
+						Anext[Li] = Afirst[k];
+						Afirst[k] = Li;
+					}
+
+					Li = Ui;
+				}
+
+				std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
+				adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
+
+				xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
+			}
+			
+			//~ if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+		}
+	}
+	
+	void MLMTILUC_preconditioner::ReorderColumns(	INMOST_DATA_ENUM_TYPE wbeg,
+													INMOST_DATA_ENUM_TYPE wend,
+													interval<INMOST_DATA_ENUM_TYPE, Interval> & A_Address,
+													std::vector<Sparse::Row::entry> & A_Entries,
+													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
+													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
+													Sparse::Vector & DR0)
+	{
+		//for debug
+#if !defined(NDEBUG)
+		for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
+#endif
+
+#if defined(USE_OMP_FACT)
+#pragma omp parallel
+#endif
+		{
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif			
+			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = k;
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif
+			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif
+			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) DR[k] = V[k];
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif
+			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif
+			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) DR0[k] = V[k];
+		
+
+#if defined(USE_OMP_FACT)
+#pragma omp for 
+#endif
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			{
+				for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
+					A_Entries[jt].first = localQ[A_Entries[jt].first];
+				std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
+			}
+		}
+	}
+	
+	void MLMTILUC_preconditioner::WRCMOrdering(	INMOST_DATA_ENUM_TYPE wbeg,
+												INMOST_DATA_ENUM_TYPE wend,
+												std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+												std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+												std::vector<INMOST_DATA_REAL_TYPE> & wadj,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ)
+	{
+		interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> order(wbeg,wend,ENUMUNDEF);
+		//find node with the lowest order
+		INMOST_DATA_ENUM_TYPE index = wbeg;
+		INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
+		std::deque<INMOST_DATA_ENUM_TYPE> q;
+		//~ std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> > conns;
+		std::vector< INMOST_DATA_ENUM_TYPE > conns;
+		do
+		{
+			cur = ENUMUNDEF;
+			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend) && cur == ENUMUNDEF; ++k)
+			{
+				if( order[k] == ENUMUNDEF )
+					cur = k;
+			}
+			if( cur == ENUMUNDEF ) break;
+			assert(cur != ENUMUNDEF);
+			for(INMOST_DATA_INTEGER_TYPE k = cur+1; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) if( order[k] == ENUMUNDEF )
+			{
+				if( WRCM_Comparator(wbeg,wadj)(k,cur) )
+					cur = k;
+			}
+			q.push_back(cur);
+			order[cur] = index++;
+			bool finish_block = false;
+			while(!q.empty())
+			{
+				cur = q.front();
+				q.pop_front();
+				if( finish_block )
+				{
+					for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
+						if( order[adjncy[it]] == ENUMUNDEF )
+							order[adjncy[it]] = ENUMUNDEF-1;
+				}
+				else
+				{
+					for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
+						if( order[adjncy[it]] == ENUMUNDEF )
+							conns.push_back(adjncy[it]);
+					std::sort(conns.begin(),conns.end(),WRCM_Comparator(wbeg,wadj));
+					for (INMOST_DATA_INTEGER_TYPE k = 0; k < static_cast<INMOST_DATA_INTEGER_TYPE>(conns.size()); ++k)
+					{
+						order[conns[k]] = index++;
+						q.push_back(conns[k]);
+						//~ if( (index-wbeg)%512==0 ) finish_block = true;
+					}
+					conns.clear();
+				}
+			}
+			
+		}
+		while( index < wend );
+		
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			if( order[k] == ENUMUNDEF-1 ) order[k] = index++;
+
+		//reverse
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+			order[k] = wend-(order[k]-wbeg)-1;
+
+		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
+		{
+			localP[k] = order[k];
+			localQ[k] = order[k];
+		}		
+	}
+	
+	void MLMTILUC_preconditioner::RCMOrdering(INMOST_DATA_ENUM_TYPE wbeg,
+												INMOST_DATA_ENUM_TYPE wend,
+												std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+												std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ)
+	{
+		interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> order(wbeg,wend,ENUMUNDEF);
+		//find node with the lowest order
+		INMOST_DATA_ENUM_TYPE index = wbeg;
+		INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
+		std::deque<INMOST_DATA_ENUM_TYPE> q;
+		std::vector<INMOST_DATA_ENUM_TYPE> conns;
+		do
+		{
+			cur = ENUMUNDEF;
+			for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
+			{
+				if( order[k] == ENUMUNDEF )
+					cur = k;
+			}
+			assert(cur != ENUMUNDEF);
+			for(INMOST_DATA_ENUM_TYPE k = cur+1; k < wend; ++k) if( order[k] == ENUMUNDEF )
+			{
+				if( RCM_Comparator(wbeg,xadj)(k,cur) )
+					cur = k;
+			}
+			q.push_back(cur);
+			order[cur] = index++;
+			while(!q.empty())
+			{
+				cur = q.front();
+				q.pop_front();
+				for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
+					if( order[adjncy[it]] == ENUMUNDEF )
+						conns.push_back(adjncy[it]);
+				std::sort(conns.begin(),conns.end(),RCM_Comparator(wbeg,xadj));
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < static_cast<INMOST_DATA_ENUM_TYPE>(conns.size()); ++k)
+				{
+					order[conns[k]] = index++;
+					q.push_back(conns[k]);
+				}
+				conns.clear();
+			}
+		}
+		while( index < wend );
+		//reverse
+		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+			order[k] = wend-(order[k]-wbeg)-1;
+
+		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+		{
+			localP[k] = order[k];
+			localQ[k] = order[k];
+		}
+	}
+	
+	void MLMTILUC_preconditioner::MetisOrdering(INMOST_DATA_ENUM_TYPE wbeg,
+												INMOST_DATA_ENUM_TYPE wend,
+												std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
+												std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ)
+	{
+#if defined(USE_SOLVER_METIS)
+		if( !adjncy.empty() )
+		{
+			idx_t nvtxs = wend-wbeg;
+			idx_t options[METIS_NOPTIONS];
+			METIS_SetDefaultOptions(options);
+			options[METIS_OPTION_NUMBERING] = 0;
+			std::vector<idx_t> ixadj(xadj.size()), iadjncy(adjncy.size()), perm(nvtxs), iperm(nvtxs);
+			std::copy(xadj.begin(),xadj.end(),ixadj.begin());
+			std::copy(adjncy.begin(),adjncy.end(),iadjncy.begin());
+			
+			//options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME | METIS_DBG_COARSEN | METIS_DBG_CONNINFO | METIS_DBG_CONTIGINFO | METIS_DBG_IPART | METIS_DBG_MEMORY | METIS_DBG_MOVEINFO | METIS_DBG_REFINE | METIS_DBG_SEPINFO;
+			//options[METIS_OPTION_CTYPE] = METIS_CTYPE_RM;
+			//options[METIS_OPTION_RTYPE] = METIS_RTYPE_SEP2SIDED;
+			//options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE;
+			//options[METIS_OPTION_PTYPE] = METIS_PTYPE_RB;
+			//options[METIS_OPTION_NO2HOP] = 0;
+			//options[METIS_OPTION_MINCONN] = 0;
+			//options[METIS_OPTION_NITER] = 4;
+			//METIS_NodeNDP(nvtxs,&xadj[0],&adjncy[0],NULL,4,options,&perm[0],&iperm[0],&sizes[0]);
+			METIS_NodeND(&nvtxs,&ixadj[0],&iadjncy[0],NULL,options,&perm[0],&iperm[0]);
+			
+			
+			for(INMOST_DATA_ENUM_TYPE  k = wbeg; k < wend; ++k)
+			{
+				//localP[k] = iperm[k-wbeg]+wbeg;
+				//localQ[k] = iperm[k-wbeg]+wbeg;
+				localP[perm[k-wbeg]+wbeg] = k;
+				localQ[perm[k-wbeg]+wbeg] = k;
+			}
+		}
+		else
+#endif
+		{
+			for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+			{
+				localP[k] = k;
+				localQ[k] = k;
+			}
+		}
+	}
+	
 	bool MLMTILUC_preconditioner::Initialize()
 	{
 		if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
@@ -1528,273 +2187,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							std::cout << "Reordering with MPT\n";
 
 						ttransversal = Timer();
-						INMOST_DATA_ENUM_TYPE ColumnBegin;
-						INMOST_DATA_ENUM_TYPE pop_heap_pos;
-						INMOST_DATA_REAL_TYPE ShortestPath, AugmentPath;
-						INMOST_DATA_ENUM_TYPE PathEnd, Trace, IPermPrev;
-						//Sparse::Vector & U = DL;
-						//Sparse::Vector & V = DR;
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Cmax(wbeg,wend,0.0);
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & Perm = localQ;
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & IPerm = localP;
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnList(wbeg,wend);
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Parent(wbeg,wend);
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> AugmentPosition(wbeg,wend,ENUMUNDEF);
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> ColumnPosition(wbeg,wend,ENUMUNDEF);
-						std::vector<INMOST_DATA_REAL_TYPE> C_Entries(A_Entries.size());
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> Dist(wbeg, wend + 1, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
 						
-						BinaryHeap Heap(&Dist[wbeg],wend-wbeg);
-						// arrays U,V,Dist are cleared at the end of schur complement calculation
-						//std::fill(U.begin() + wbeg - mobeg, U.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-						//std::fill(V.begin() + wbeg - mobeg, V.begin() + wend - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-						//std::fill(Cmax.begin() + wbeg - mobeg, Cmax.begin() + wend - mobeg, 0.0);
-						//std::fill(Dist.begin() + wbeg - mobeg, Dist.begin() + wend + 1 - mobeg, std::numeric_limits<INMOST_DATA_REAL_TYPE>::max());
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							Perm[k] = ENUMUNDEF;
-							IPerm[k] = ENUMUNDEF;
-							Parent[k] = ENUMUNDEF;
-							ColumnList[k] = ENUMUNDEF;
-						}
-
-						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
-						
-						// Initial LOG transformation to dual problem and initial extreme match 
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
-							{
-								i = A_Entries[it].first;
-								u = C_Entries[it] = fabs(A_Entries[it].second);
-								if( u > Cmax[i] ) Cmax[i] = u;
-								//C_Entries.push_back(Sparse::Row::make_entry(i,u));
-							}
-						}
-
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
-							{
-								i = A_Entries[it].first;
-								if( Cmax[i] == 0 || C_Entries[it] == 0 )
-									C_Entries[it] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
-								else
-								{
-									C_Entries[it] = log(Cmax[i])-log(C_Entries[it]);
-									if( C_Entries[it] < U[i] ) U[i] = C_Entries[it];
-								}
-							}
-						}
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
-							{
-								u = C_Entries[it] - U[A_Entries[it].first];
-								if( u < V[k] ) V[k] = u;
-							}
-						}
-						/// Update cost and match
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last; ++it)
-							{
-								u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
-								if( u < 1.0e-30 && Perm[A_Entries[it].first] == ENUMUNDEF && IPerm[k] == ENUMUNDEF )
-								{
-									 Perm[A_Entries[it].first] = k;
-									 IPerm[k] = A_Entries[it].first;
-									 ColumnPosition[k] = it;
-								}
-							}
-						}
-						/// 1-step augmentation
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							if( IPerm[k] == ENUMUNDEF ) //unmatched row
-							{
-								for (INMOST_DATA_ENUM_TYPE it = A_Address[k].first; it < A_Address[k].last && IPerm[k] == ENUMUNDEF; ++it)
-								{
-									u = fabs(C_Entries[it] - V[k] - U[A_Entries[it].first]);
-									if( u <= 1.0e-30 )
-									{
-										Li = Perm[A_Entries[it].first];
-										assert(Li != ENUMUNDEF);
-										// Search other row in C for 0
-										for (INMOST_DATA_ENUM_TYPE Lit = A_Address[Li].first; Lit < A_Address[Li].last; ++Lit)
-										{
-											u = fabs(C_Entries[Lit]- V[Li] - U[A_Entries[Lit].first]);
-											if( u <= 1.0e-30 && Perm[A_Entries[Lit].first] == ENUMUNDEF )
-											{
-												Perm[A_Entries[it].first] = k;
-												IPerm[k] = A_Entries[it].first;
-												ColumnPosition[k] = it;
-												Perm[A_Entries[Lit].first] = Li;
-												IPerm[Li] = A_Entries[Lit].first;
-												ColumnPosition[Li] = Lit;
-												break;
-											}
-										}
-									}
-								}
-							}
-						}
-						/// Weighted bipartite matching
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							if( IPerm[k] != ENUMUNDEF )
-								continue;
-							Li = k;
-							ColumnBegin = EOL;
-							Parent[Li] = ENUMUNDEF;
-							PathEnd = ENUMUNDEF;
-							Trace = k;
-							ShortestPath = 0;
-							AugmentPath = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
-							while(true)
-							{
-								for (INMOST_DATA_ENUM_TYPE Lit = A_Address[Li].first; Lit < A_Address[Li].last; ++Lit)
-								{
-									Ui = A_Entries[Lit].first;
-									//if( ColumnList[Ui] == k ) continue;
-									if( ColumnList[Ui] != ENUMUNDEF ) continue;
-									l = fabs(ShortestPath + C_Entries[Lit] - V[Li] - U[Ui]);
-									//if( l < 0.0 ) printf("row %d col %d negative l %g Augment %lf Shortest %lf C %lf V %lf U %lf\n",k,Ui,l,AugmentPath,ShortestPath,C_Entries[Lit],V[Li],U[Ui]);
-									if( l < 0.0 && l > -1.0e-8 ) l = 0;
-									if( l < 0.0 ) continue;
-									if( l < AugmentPath )
-									{
-										if( Perm[Ui] == ENUMUNDEF )
-										{
-											PathEnd = Ui;
-											Trace = Li;
-											AugmentPath = l;
-											AugmentPosition[Ui] = Lit;
-										}
-										else if( l < Dist[Ui] )
-										{
-											Parent[Perm[Ui]] = Li;
-											AugmentPosition[Ui] = Lit;
-											if( Heap.Contains(Ui-wbeg) )
-												Heap.DecreaseKey(Ui-wbeg,l);
-											else
-												Heap.PushHeap(Ui-wbeg,l);
-										}
-									}
-								}
-
-								pop_heap_pos = Heap.PopHeap();
-								if( pop_heap_pos == ENUMUNDEF ) break;
-							
-								Ui = pop_heap_pos+wbeg;
-								ShortestPath = Dist[Ui];
-
-								if( AugmentPath <= ShortestPath ) 
-								{
-									Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
-									//Heap.increaseKey(Ui,Dist[Ui]);
-									break;
-								}
-
-
-								ColumnList[Ui] = ColumnBegin;
-								ColumnBegin = Ui;
-
-								Li = Perm[Ui];
-								
-							}
-							if( PathEnd != ENUMUNDEF )
-							{
-								Ui = ColumnBegin;
-								while(Ui != EOL)
-								{
-									U[Ui] += Dist[Ui] - AugmentPath;
-									if( Perm[Ui] != ENUMUNDEF ) V[Perm[Ui]] = C_Entries[ColumnPosition[Perm[Ui]]] - U[Ui];
-									Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
-									Li = ColumnList[Ui];
-									ColumnList[Ui] = ENUMUNDEF;
-									Ui = Li;
-								}
-
-								Ui = PathEnd;
-								while(Trace != ENUMUNDEF)
-								{
-									IPermPrev = IPerm[Trace];
-									Perm[Ui] = Trace;
-									IPerm[Trace] = Ui;
-
-									ColumnPosition[Trace] = AugmentPosition[Ui];
-									V[Trace] = C_Entries[ColumnPosition[Trace]] - U[Ui];
-
-									Ui = IPermPrev;
-									Trace = Parent[Trace];
-
-								}
-								Heap.Clear();
-							}
-						}
-#if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k,l,u,i,j)
-#endif
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-						{
-							if( V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ) l = 1;
-							else l = exp(V[k]);
-							if( U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ) u = 1;
-							else u = exp(U[k])/Cmax[k];
-							DL[k] = l;
-							DR[k] = u;
-							
-
-							bool flip_sign = false;
-							for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-							{
-								i = A_Entries[jt].first;
-								j = Perm[A_Entries[jt].first];
-								
-								if( U[i] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[i] == 0 ) u = 1;
-								else u = exp(U[i])/Cmax[i];
-								
-								if( fabs(l*A_Entries[jt].second*u) > 1 + 1.0e-7 )
-								{
-									std::cout << "element on row " << k << " col " << A_Entries[jt].first << " value " << A_Entries[jt].second << " u " << u << " l " << l << " U " << U[i] << " V " << V[k] << " Cmax " << Cmax[i] << " scaled " << l*A_Entries[jt].second*u << std::endl;
-									exit(-1);
-								}
-								if( static_cast<INMOST_DATA_INTEGER_TYPE>(j) == k )
-								{
-									
-									if( l*A_Entries[jt].second*u < 0.0 ) flip_sign = true;
-								}
-							}
-
-							if( flip_sign ) DL[k] *= -1;
-						}
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
-						
-						{ //check that there are no gaps in Perm
-							for(k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-							{
-								if( Perm[k] != ENUMUNDEF )
-								{
-									assert(localP[Perm[k]] == ENUMUNDEF);
-									localP[Perm[k]] = 0;
-								}
-							}
-							std::vector<INMOST_DATA_ENUM_TYPE> gaps;
-							for(k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-								if( localP[k] == ENUMUNDEF )
-									gaps.push_back(k);
-							
-							//~ std::cout << "@ gaps: " << gaps.size() << std::endl;
-							
-							for(k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
-								if( Perm[k] == ENUMUNDEF )
-								{
-									Perm[k] = gaps.back();
-									gaps.pop_back();
-								}                        
-							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) localP[k] = ENUMUNDEF;
-						}
+						MaximalTransversal(wbeg,wend,A_Address,A_Entries,localP,localQ,U,V,DL,DR);
 						
 						ttransversal = Timer() - ttransversal;
 
@@ -1816,38 +2210,13 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 #if defined(REORDER_METIS_ND)
 					{
 						idx_t nvtxs = wend-wbeg;
-						std::vector<idx_t> xadj(nvtxs+1), adjncy, perm(nvtxs),iperm(nvtxs);
+						std::vector<idx_t> xadj(nvtxs+1), adjncy;
 						//adjncy.reserve(nzA*2);
 						if( verbosity > 1 )
 							std::cout << "Reordering with METIS\n";
-
-						
-						for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
-
-						for (k = cbeg; k < cend; ++k) localP[k] = k;
-						for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < cend; ++k) DR[k] = V[k];
-						
-						for (k = cbeg; k < cend; ++k)
-						{
-							if( !(localQ[k] >= cbeg && localQ[k] < cend) )
-								std::cout << "Bad permutation: " << localQ[k] << " interval [" << cbeg << ":" << cend << "]" << std::endl;
-							V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
-						}
-						for (k = cbeg; k < cend; ++k) DR0[k] = V[k];
-
 						
 						
-						for(k = wbeg; k < wend; ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-							{
-								A_Entries[jt].first = localQ[A_Entries[jt].first];
-								//A_Entries[jt].second *= DL[k]*DR[A_Entries[jt].first];
-								
-							}
-							std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
-						}
+						ReorderColumns(wbeg,wend,A_Address,A_Entries,localP,localQ,V,DR,DR0);
 						ReorderEF(wbeg, wend, donePQ, localP, localQ);
 						inversePQ(wbeg,wend,localP,localQ, invP,invQ);
 						applyPQ(wbeg, wend, localP, localQ, invP, invQ);
@@ -1856,114 +2225,10 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						//       setup indices for transposed traversal of B block
 						tmetisgraph = Timer();
 						
-						{//graph assembly
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Apos(wbeg, wend,EOL), Anext(wbeg, wend,EOL), Afirst(wbeg,wend,EOL);
-
-							for (k = wend; k > wbeg; --k)
-							{
-								//vwgt[k-1] = 1;
-								if (A_Address[k-1].Size() > 0)
-								{
-									i = A_Entries[A_Address[k-1].first].first;
-									Anext[k-1] = Afirst[i];
-									Afirst[i] = k-1;
-								}
-								Apos[k-1] = A_Address[k-1].first;
-							}
-							
-
-							xadj[0] = 0;
-							for(i = wbeg; i < wend; ++i)
-							{
-								for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
-								{
-									if( A_Entries[jt].first != i )
-										adjncy.push_back(static_cast<idx_t>(A_Entries[jt].first-wbeg));
-								}
-								
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									if( Li != i )
-										adjncy.push_back(static_cast<idx_t>(Li-wbeg));
-									Li = Anext[Li];
-								}
-								
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									Ui = Anext[Li];
-									Apos[Li]++;
-									if (A_Address[Li].last - Apos[Li] > 0)
-									{
-										k = A_Entries[Apos[Li]].first;
-										Anext[Li] = Afirst[k];
-										Afirst[k] = Li;
-									}
-
-									Li = Ui;
-								}
-								
-								std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
-								adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
-								
-								xadj[i-wbeg+1] = static_cast<idx_t>(adjncy.size());
-							}
-						}
-
+						SymmetricGraph(wbeg,wend,A_Address,A_Entries,xadj,adjncy);
 						
 						tmetisgraph = Timer() - tmetisgraph;
-						/*
-						{
-							FILE * f = fopen("metis.mtx","w");
-							fprintf(f,"%%MatrixMarket matrix coordinate real general\n");
-							fprintf(f,"%d %d %d\n",nvtxs,nvtxs,adjncy.size());
-							for(i = wbeg; i < wend; ++i)
-							{
-								for(j = xadj[i]; j < xadj[i+1]; ++j)
-									fprintf(f,"%d %d 1\n",i+1,adjncy[j]+1);
-							}
-							fclose(f);
-						}
-						*/
-						//A_Address[0].first = 0;
-						//for(k = wbeg+1; k < wend; ++k)
-						//	A_Address[k].first = A_Address[k-1].last;
-						if( !adjncy.empty() )
-						{
-							idx_t options[METIS_NOPTIONS];
-							METIS_SetDefaultOptions(options);
-							options[METIS_OPTION_NUMBERING] = 0;
-							
-							//options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME | METIS_DBG_COARSEN | METIS_DBG_CONNINFO | METIS_DBG_CONTIGINFO | METIS_DBG_IPART | METIS_DBG_MEMORY | METIS_DBG_MOVEINFO | METIS_DBG_REFINE | METIS_DBG_SEPINFO;
-							//options[METIS_OPTION_CTYPE] = METIS_CTYPE_RM;
-							//options[METIS_OPTION_RTYPE] = METIS_RTYPE_SEP2SIDED;
-							//options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_NODE;
-							//options[METIS_OPTION_PTYPE] = METIS_PTYPE_RB;
-							//options[METIS_OPTION_NO2HOP] = 0;
-							//options[METIS_OPTION_MINCONN] = 0;
-							//options[METIS_OPTION_NITER] = 4;
-							//METIS_NodeNDP(nvtxs,&xadj[0],&adjncy[0],NULL,4,options,&perm[0],&iperm[0],&sizes[0]);
-							tmetisnd = Timer();
-							METIS_NodeND(&nvtxs,&xadj[0],&adjncy[0],NULL,options,&perm[0],&iperm[0]);
-							tmetisnd = Timer()-tmetisnd;
-							
-							for(k = wbeg; k < wend; ++k)
-							{
-								//localP[k] = iperm[k-wbeg]+wbeg;
-								//localQ[k] = iperm[k-wbeg]+wbeg;
-								localP[perm[k-wbeg]+wbeg] = k;
-								localQ[perm[k-wbeg]+wbeg] = k;
-							}
-						}
-						else
-						{
-							for(k = wbeg; k < wend; ++k)
-							{
-								localP[k] = k;
-								localQ[k] = k;
-							}
-						}
+						MetisOrdering(wbeg,wend,xadj,adjncy,localP,localQ);
 						cend = wend;
 						i = wend;
 					}
@@ -1973,160 +2238,26 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							std::cout << "Reordering with RCM\n";
 						//create a symmetric graph of the matrix A + A^T
 						std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1), adjncy;
-						//adjncy.reserve(nzA*2);
-
-						for (k = cbeg; k < cend; ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
-
-						for (k = cbeg; k < cend; ++k) localP[k] = k;
-						for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < cend; ++k) DR[k] = V[k];
 						
-						for (k = cbeg; k < cend; ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < cend; ++k) DR0[k] = V[k];
-
-						for(k = wbeg; k < wend; ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-							{
-								A_Entries[jt].first = localQ[A_Entries[jt].first];
-								//A_Entries[jt].second *= DL[k]*DR[A_Entries[jt].first];
-							}
-							std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
-						}
 						
-						//DumpMatrix(A_Address,A_Entries,cbeg,cend,"A.mtx");
 						
+						ReorderColumns(wbeg,wend,A_Address,A_Entries,localP,localQ,V,DR,DR0);
 						ReorderEF(wbeg, wend, donePQ, localP, localQ);
 						inversePQ(wbeg,wend,localP,localQ, invP,invQ);
 						applyPQ(wbeg, wend, localP, localQ, invP, invQ);
 
 						trcmgraph = Timer();
-						{//graph assembly
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Apos(wbeg, wend,EOL), Anext(wbeg, wend,EOL), Afirst(wbeg,wend,EOL);
-							
-							
-							for (k = wend; k > wbeg; --k)
-							{
-								//vwgt[k-1] = 1;
-								if (A_Address[k-1].Size() > 0)
-								{
-									i = A_Entries[A_Address[k-1].first].first;
-									Anext[k-1] = Afirst[i];
-									Afirst[i] = k-1;
-								}
-								Apos[k-1] = A_Address[k-1].first;
-							}
-							xadj[0] = 0;
-							for(i = wbeg; i < wend; ++i)
-							{
-								/*
-								double Arowmax = 0, Acolmax = 0;
-								
-								for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
-									if( A_Entries[jt].first != i )
-										Arowmax = std::max(Arowmax,fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]));
-									
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									if( Li != i )
-										Acolmax = std::max(Acolmax,DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]);
-									Li = Anext[Li];
-								}
-								*/
-								
-								for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
-								{
-									if( A_Entries[jt].first != i  )//&& fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]) > 0.1*std::min(Acolmax,Arowmax) )
-										adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
-								}
-
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									if( Li != i )//&& fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]) > 0.1*std::min(Acolmax,Arowmax) )
-										adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
-									Li = Anext[Li];
-								}
-
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									Ui = Anext[Li];
-									Apos[Li]++;
-									if (A_Address[Li].Size() && A_Address[Li].last - Apos[Li] > 0)
-									{
-										k = A_Entries[Apos[Li]].first;
-										Anext[Li] = Afirst[k];
-										Afirst[k] = Li;
-									}
-
-									Li = Ui;
-								}
-
-								std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
-								adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
-
-								xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
-							}
-
-						}
+						
+						SymmetricGraph(wbeg,wend,A_Address,A_Entries,xadj,adjncy);
 						
 
 						trcmgraph = Timer()-trcmgraph;
 
 						trcmorder = Timer();
 						
-						{
-							interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> order(wbeg,wend,ENUMUNDEF);
-							//find node with the lowest order
-							INMOST_DATA_ENUM_TYPE index = wbeg;
-							INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
-							std::deque<INMOST_DATA_ENUM_TYPE> q;
-							std::vector<INMOST_DATA_ENUM_TYPE> conns;
-							do
-							{
-								cur = ENUMUNDEF;
-								for(k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
-								{
-									if( order[k] == ENUMUNDEF )
-										cur = k;
-								}
-								assert(cur != ENUMUNDEF);
-								for(k = cur+1; k < wend; ++k) if( order[k] == ENUMUNDEF )
-								{
-									if( RCM_Comparator(wbeg,xadj)(k,cur) )
-										cur = k;
-								}
-								q.push_back(cur);
-								order[cur] = index++;
-								while(!q.empty())
-								{
-									cur = q.front();
-									q.pop_front();
-									for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
-										if( order[adjncy[it]] == ENUMUNDEF )
-											conns.push_back(adjncy[it]);
-									std::sort(conns.begin(),conns.end(),RCM_Comparator(wbeg,xadj));
-									for (k = 0; k < static_cast<INMOST_DATA_ENUM_TYPE>(conns.size()); ++k)
-									{
-										order[conns[k]] = index++;
-										q.push_back(conns[k]);
-									}
-									conns.clear();
-								}
-							}
-							while( index < wend );
-							//reverse
-							for(k = wbeg; k < wend; ++k)
-								order[k] = wend-(order[k]-wbeg)-1;
-
-							for(k = wbeg; k < wend; ++k)
-							{
-								localP[k] = order[k];
-								localQ[k] = order[k];
-							}
-						}
+						RCMOrdering(wbeg,wend,xadj,adjncy,localP,localQ);
+							
+						
 						cend = wend;
 						i = wend;
 
@@ -2139,36 +2270,14 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 							std::cout << "Reordering with WRCM\n";
 						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 						//create a symmetric graph of the matrix A + A^T
-						std::vector<INMOST_DATA_ENUM_TYPE> xadj(wend-wbeg+1);
+						std::vector<INMOST_DATA_ENUM_TYPE> xadj, adjncy;
 						std::vector<INMOST_DATA_REAL_TYPE> wadj(wend-wbeg);
-						//~ std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> > adjncy;
-						std::vector< INMOST_DATA_ENUM_TYPE > adjncy;
-						//adjncy.reserve(nzA*2);
 						
 						trcmgraph = Timer();
-
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
-
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) localP[k] = k;
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) DR[k] = V[k];
 						
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) DR0[k] = V[k];
 						
-
-#if defined(USE_OMP_FACT)
-#pragma omp parallel for private(k)
-#endif
-						for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-								A_Entries[jt].first = localQ[A_Entries[jt].first];
-							std::sort(A_Entries.begin()+A_Address[k].first,A_Entries.begin()+A_Address[k].last);
-						}
 						
-						//DumpMatrix(A_Address,A_Entries,cbeg,cend,"A.mtx");
-						
+						ReorderColumns(wbeg,wend,A_Address,A_Entries,localP,localQ,V,DR,DR0);
 						ReorderEF(wbeg, wend, donePQ, localP, localQ);
 						inversePQ(wbeg,wend,localP,localQ, invP,invQ);
 						applyPQ(wbeg, wend, localP, localQ, invP, invQ);
@@ -2176,144 +2285,13 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 						
 						
-						{//graph assembly
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> Apos(wbeg, wend), Anext(wbeg, wend), Afirst(wbeg,wend);
-							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-							{
-								Apos[k] = EOL;
-								Afirst[k] = EOL;
-								Anext[k] = EOL;
-							}
-							for (k = wend; k > static_cast<INMOST_DATA_INTEGER_TYPE>(wbeg); --k)
-							{
-								if (A_Address[k-1].Size() > 0)
-								{
-									i = A_Entries[A_Address[k-1].first].first;
-									Anext[k-1] = Afirst[i];
-									Afirst[i] = k-1;
-								}
-								Apos[k-1] = A_Address[k-1].first;
-							}
-							xadj[0] = 0;
-							for(i = wbeg; i < wend; ++i)
-							{
-								wadj[i-wbeg] = 0;
-								for (INMOST_DATA_ENUM_TYPE jt = A_Address[i].first; jt < A_Address[i].last; ++jt)
-								{
-									if( A_Entries[jt].first != i  )//&& fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]) > 0.1*std::min(Acolmax,Arowmax) )
-									{
-										adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(A_Entries[jt].first));
-										wadj[i-wbeg] += fabs(DL[i]*A_Entries[jt].second*DR[A_Entries[jt].first]);
-									}
-								}
-
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									if( Li != i )//&& fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]) > 0.1*std::min(Acolmax,Arowmax) )
-									{
-										adjncy.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(Li));
-										wadj[i-wbeg] += fabs(DL[A_Entries[A_Address[Li].first].first]*A_Entries[A_Address[Li].first].second*DR[i]);
-									}
-									Li = Anext[Li];
-								}
-
-								Li = Afirst[i];
-								while (Li != EOL)
-								{
-									Ui = Anext[Li];
-									Apos[Li]++;
-									if (A_Address[Li].Size() && A_Address[Li].last - Apos[Li] > 0)
-									{
-										k = A_Entries[Apos[Li]].first;
-										Anext[Li] = Afirst[k];
-										Afirst[k] = Li;
-									}
-
-									Li = Ui;
-								}
-
-								std::sort(adjncy.begin()+xadj[i-wbeg],adjncy.end());
-								adjncy.resize(std::unique(adjncy.begin()+xadj[i-wbeg],adjncy.end())-adjncy.begin());
-
-								xadj[i-wbeg+1] = static_cast<INMOST_DATA_ENUM_TYPE>(adjncy.size());
-							}
-							
-							if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
-						}
+						SymmetricGraphWeights(wbeg,wend,A_Address,A_Entries,DL,DR,xadj,wadj,adjncy);
 						
 
 						trcmgraph = Timer()-trcmgraph;
 
 						trcmorder = Timer();
-						{
-							interval<INMOST_DATA_ENUM_TYPE,INMOST_DATA_ENUM_TYPE> order(wbeg,wend,ENUMUNDEF);
-							//find node with the lowest order
-							INMOST_DATA_ENUM_TYPE index = wbeg;
-							INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
-							std::deque<INMOST_DATA_ENUM_TYPE> q;
-							//~ std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> > conns;
-							std::vector< INMOST_DATA_ENUM_TYPE > conns;
-							do
-							{
-								cur = ENUMUNDEF;
-								for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend) && cur == ENUMUNDEF; ++k)
-								{
-									if( order[k] == ENUMUNDEF )
-										cur = k;
-								}
-								if( cur == ENUMUNDEF ) break;
-								assert(cur != ENUMUNDEF);
-								for(k = cur+1; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k) if( order[k] == ENUMUNDEF )
-								{
-									if( WRCM_Comparator(wbeg,wadj)(k,cur) )
-										cur = k;
-								}
-								q.push_back(cur);
-								order[cur] = index++;
-								bool finish_block = false;
-								while(!q.empty())
-								{
-									cur = q.front();
-									q.pop_front();
-									if( finish_block )
-									{
-										for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
-											if( order[adjncy[it]] == ENUMUNDEF )
-												order[adjncy[it]] = ENUMUNDEF-1;
-									}
-									else
-									{
-										for (INMOST_DATA_ENUM_TYPE it = xadj[cur-wbeg]; it < xadj[cur-wbeg+1]; ++it)
-											if( order[adjncy[it]] == ENUMUNDEF )
-												conns.push_back(adjncy[it]);
-										std::sort(conns.begin(),conns.end(),WRCM_Comparator(wbeg,wadj));
-										for (k = 0; k < static_cast<INMOST_DATA_INTEGER_TYPE>(conns.size()); ++k)
-										{
-											order[conns[k]] = index++;
-											q.push_back(conns[k]);
-											//~ if( (index-wbeg)%512==0 ) finish_block = true;
-										}
-										conns.clear();
-									}
-								}
-								
-							}
-							while( index < wend );
-							
-							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-								if( order[k] == ENUMUNDEF-1 ) order[k] = index++;
-
-							//reverse
-							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-								order[k] = wend-(order[k]-wbeg)-1;
-
-							for(k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-							{
-								localP[k] = order[k];
-								localQ[k] = order[k];
-							}
-						}
+						WRCMOrdering(wbeg,wend,xadj,adjncy,wadj,localP,localQ);
 						cend = wend;
 						i = wend;
 						if (verbosity > 1) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
@@ -2327,26 +2305,8 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 						
 						trcmgraph = Timer();
 
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) if( localQ[k] == ENUMUNDEF ) std::cout << __FILE__ << ":" << __LINE__ << " No column permutation for row " << k << ". Matrix is structurally singular\n";
-
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) localP[k] = k;
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) V[localQ[k]] = DR[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) DR[k] = V[k];
 						
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) V[localQ[k]] = DR0[k]; //if you expirience a bug here then the matrix is structurally singular
-						for (k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) DR0[k] = V[k];
-
-						for (k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE jt = A_Address[k].first; jt < A_Address[k].last; ++jt)
-							{
-								A_Entries[jt].first = localQ[A_Entries[jt].first];
-								//A_Entries[jt].second *= DL[k]*DR[A_Entries[jt].first];
-							}
-						}
-						
-						//DumpMatrix(A_Address,A_Entries,cbeg,cend,"A.mtx");
-						
+						ReorderColumns(wbeg,wend,A_Address,A_Entries,localP,localQ,V,DR,DR0);
 						ReorderEF(wbeg, wend, donePQ, localP, localQ);
 						inversePQ(wbeg,wend,localP,localQ, invP,invQ);
 						applyPQ(wbeg, wend, localP, localQ, invP, invQ);
@@ -2358,7 +2318,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 						std::vector<Block> blocks;
 
-						 NestedDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,(wend-wbeg)/64);
+						NestedDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,(wend-wbeg)/64);
 						//KwayDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,64);
 
 						cend = wend;
