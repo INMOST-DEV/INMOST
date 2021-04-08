@@ -246,8 +246,13 @@ namespace INMOST
 				}
 				else if( it->GetDataType() == DATA_REAL )
 				{
-					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
-						f << jt->RealArray(*it)[k] << " ";
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+					{
+						INMOST_DATA_REAL_TYPE val = jt->RealArray(*it)[k];
+						if (__isbad(val))
+							f << type_undef[it->GetDataType()] << " ";
+						else f << val << " ";
+					}
 				}
 				else if( it->GetDataType() == DATA_INTEGER )
 				{
@@ -262,8 +267,13 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 				else if( it->GetDataType() == DATA_VARIABLE )
 				{
-					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
-						f << jt->VariableArray(*it)[k].GetValue() << " ";
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
+					{
+						INMOST_DATA_REAL_TYPE val = jt->VariableArray(*it)[k].GetValue();
+						if (__isbad(val))
+							f << type_undef[it->GetDataType()] << " ";
+						else f << val << " ";
+					}
 				}
 #endif
 				f << std::endl;
@@ -298,7 +308,12 @@ namespace INMOST
 				else if( it->GetDataType() == DATA_REAL )
 				{
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
-						f << jt->RealArray(*it)[k] << " ";
+					{
+						INMOST_DATA_REAL_TYPE val = jt->RealArray(*it)[k];
+						if (__isbad(val))
+							f << type_undef[it->GetDataType()] << " ";
+						else f << val << " ";
+					}
 				}
 				else if( it->GetDataType() == DATA_INTEGER )
 				{
@@ -314,7 +329,12 @@ namespace INMOST
 				else if( it->GetDataType() == DATA_VARIABLE )
 				{
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < it->GetSize(); ++k)
-						f << jt->VariableArray(*it)[k].GetValue() << " ";
+					{
+						INMOST_DATA_REAL_TYPE val = jt->VariableArray(*it)[k].GetValue();
+						if (__isbad(val))
+							f << type_undef[it->GetDataType()] << " ";
+						else f << val << " ";
+					}
 				}
 #endif
 				f << std::endl;
