@@ -45,16 +45,18 @@ class MLMTILUC_preconditioner : public Method
 	} Block;
 	typedef struct Interval_t
 	{
-		INMOST_DATA_ENUM_TYPE first, last;
+		INMOST_DATA_ENUM_TYPE first, last, thr;
 		INMOST_DATA_ENUM_TYPE Size() const { return last - first; }
 	} Interval;
 	typedef std::vector<INMOST_DATA_ENUM_TYPE> levels_t;
-	std::vector<Sparse::Row::entry> L_Entries, U_Entries;
+	std::vector< std::vector<Sparse::Row::entry> > L_Entries, U_Entries;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> LU_Diag;
 	interval<INMOST_DATA_ENUM_TYPE, Interval> U_Address, L_Address;
 	std::vector<interval<INMOST_DATA_ENUM_TYPE, Interval> *> F_Address, E_Address;
-	std::vector<Sparse::Row::entry> E_Entries, F_Entries;
+	std::vector< std::vector<Sparse::Row::entry> > E_Entries;
+	std::vector< std::vector<Sparse::Row::entry> > F_Entries;
 	levels_t level_size; //remember size of each level
+	std::vector< std::vector<Block> > level_blocks;
 	std::vector<Interval> level_interval;
 	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> temp; // temporal place for solve phase
 	//reordering information
@@ -69,17 +71,37 @@ class MLMTILUC_preconditioner : public Method
 	Sparse::Matrix * Alink;
 	Solver::OrderInfo * info;
 	bool init;
-	void DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					std::vector<Sparse::Row::entry> & Entries,
+	__INLINE bool check_zero(INMOST_DATA_REAL_TYPE u) { return tau + u == tau; }
+	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return 1 + u == 1; }
+	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return u == 0; }
+	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return fabs(u) < 1.0e-13; }
+	void DumpMatrix(const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
+					const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 					INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
 					std::string file_name);
-	void CheckOrder(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
-					std::vector<Sparse::Row::entry> & Entries,
+	INMOST_DATA_ENUM_TYPE ComputeNonzeroes(const Block& b, 
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries);
+	INMOST_DATA_ENUM_TYPE ComputeNonzeroes(const Block& b,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ);
+	void DumpMatrixBlock( const Block & b, 
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+		std::string file_name);
+	void DumpMatrixBlock(const Block& b, 
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		std::string file_name);
+	void CheckOrder(const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
+					const std::vector< std::vector<Sparse::Row::entry> >& Entries,
 					INMOST_DATA_ENUM_TYPE rbeg, INMOST_DATA_ENUM_TYPE rend);
 	void inversePQ(INMOST_DATA_ENUM_TYPE wbeg,
 				   INMOST_DATA_ENUM_TYPE wend, 
-				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+				   const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+				   const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ);
 
@@ -87,23 +109,23 @@ class MLMTILUC_preconditioner : public Method
 				 INMOST_DATA_ENUM_TYPE wend,
 				 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 				 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
-				 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
-				 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ);
+				 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
+				 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ);
 	void ReorderEF(INMOST_DATA_ENUM_TYPE wbeg,
 				   INMOST_DATA_ENUM_TYPE wend,
 				   interval<INMOST_DATA_ENUM_TYPE, bool> & donePQ,
-				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
+				   const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+				   const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
 	INMOST_DATA_REAL_TYPE AddListOrdered(INMOST_DATA_ENUM_TYPE cbeg,
-										 Interval & Address,
-										 std::vector<Sparse::Row::entry> & Entries,
+										 const Interval & Address,
+										 const std::vector<Sparse::Row::entry> & Entries,
 										 INMOST_DATA_REAL_TYPE coef,
 										 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
 										 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
 										 INMOST_DATA_REAL_TYPE droptol);
 	INMOST_DATA_REAL_TYPE AddListUnordered(INMOST_DATA_ENUM_TYPE & Sbeg,
-										   Interval & Address,
-										   std::vector<Sparse::Row::entry> & Entries,
+										   const Interval & Address,
+										   const std::vector<Sparse::Row::entry> & Entries,
 										   INMOST_DATA_REAL_TYPE coef,
 										   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
 										   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
@@ -116,33 +138,33 @@ class MLMTILUC_preconditioner : public Method
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues);
 	INMOST_DATA_REAL_TYPE Estimator1(INMOST_DATA_ENUM_TYPE k,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Est,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Est,
 									 INMOST_DATA_REAL_TYPE & mu_update);
 	INMOST_DATA_REAL_TYPE Estimator2(INMOST_DATA_ENUM_TYPE k,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
-									 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Est,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
+									 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Est,
 									 INMOST_DATA_REAL_TYPE & mu_update);
 	void EstimatorUpdate(INMOST_DATA_ENUM_TYPE k,
-						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
-						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
+						 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
+						 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues,
 						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Est,
 						 INMOST_DATA_REAL_TYPE & mu_update);
 	void DiagonalUpdate(INMOST_DATA_ENUM_TYPE k,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & Diag,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndecesL,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValuesL,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeceU,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValuesU);
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndecesL,
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValuesL,
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeceU,
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValuesU);
 	void ClearList(INMOST_DATA_ENUM_TYPE beg,
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & LineIndeces,
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues);
 	void PrepareGraph(INMOST_DATA_ENUM_TYPE wbeg,
 					  INMOST_DATA_ENUM_TYPE wend,
 					  const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-					  const std::vector<Sparse::Row::entry> & Entries,
+					  const std::vector< std::vector<Sparse::Row::entry> >& Entries,
 					  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G);
 	// tG should be preallocated by number of columns, that may be wider then wbeg:wend
 	void PrepareGraphTranspose(INMOST_DATA_ENUM_TYPE wbeg,
@@ -176,7 +198,7 @@ class MLMTILUC_preconditioner : public Method
 	void NestedDissection(INMOST_DATA_ENUM_TYPE wbeg, 
 					 	  INMOST_DATA_ENUM_TYPE wend,
 						  const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						  const std::vector<Sparse::Row::entry> & Entries,
+						  const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 				 		  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 						  std::vector<Block> & blocks,
@@ -184,7 +206,7 @@ class MLMTILUC_preconditioner : public Method
 	void KwayDissection(INMOST_DATA_ENUM_TYPE wbeg, 
 					 	INMOST_DATA_ENUM_TYPE wend,
 						const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						const std::vector<Sparse::Row::entry> & Entries,
+						const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 				 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 						std::vector<Block> & blocks,
@@ -202,66 +224,107 @@ class MLMTILUC_preconditioner : public Method
 	void ColumnInterval(INMOST_DATA_ENUM_TYPE wbeg, 
 						 INMOST_DATA_ENUM_TYPE wend,
 						 const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						 const std::vector<Sparse::Row::entry> & Entries,
+						 const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						 INMOST_DATA_ENUM_TYPE & cbeg,
 						 INMOST_DATA_ENUM_TYPE & cend);
 	// column permutations
 	// has to call functions to permute scaling and E,F blocks
 	void ReorderMatrixQ(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						std::vector<Sparse::Row::entry> & Entries,
+						std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
 
 	// rows and columns permutations
 	// has to call functions to permute scaling and E,F blocks
 	void ReorderMatrixPQ(interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						 std::vector<Sparse::Row::entry> & Entries,
+						 std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP);
 	
 	void PrepareTranspose(INMOST_DATA_ENUM_TYPE cbeg,
 						  INMOST_DATA_ENUM_TYPE cend,
-						  interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						  std::vector<Sparse::Row::entry> & Entries,
+						  const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+						  const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						  interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > & Indices );
 						  
 						  
-	void MaximalTransversal(INMOST_DATA_ENUM_TYPE wbeg,
-							INMOST_DATA_ENUM_TYPE wend,
-							interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-							std::vector<Sparse::Row::entry> & Entries,
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+	void MaximalTransversal(INMOST_DATA_ENUM_TYPE rbeg,
+							INMOST_DATA_ENUM_TYPE rend,
+							INMOST_DATA_ENUM_TYPE cbeg,
+							INMOST_DATA_ENUM_TYPE cend,
+							const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+							const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & U,
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
 							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
 							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR);
+	void FillColumnGaps(INMOST_DATA_ENUM_TYPE cbeg,
+						INMOST_DATA_ENUM_TYPE cend,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ);
 	
 	void SymmetricGraph(INMOST_DATA_ENUM_TYPE wbeg,
 						INMOST_DATA_ENUM_TYPE wend,
-						interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						std::vector<Sparse::Row::entry> & Entries,
+						const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
+						const std::vector< std::vector<Sparse::Row::entry> > & Entries,
+						const interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
 						std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
 						std::vector< INMOST_DATA_ENUM_TYPE > & adjncy);
-						
-	void SymmetricGraphWeights(	INMOST_DATA_ENUM_TYPE wbeg,
-								INMOST_DATA_ENUM_TYPE wend,
-								interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-								std::vector<Sparse::Row::entry> & Entries,
-								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DL,
-								interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
-								std::vector<INMOST_DATA_ENUM_TYPE> & xadj,
-								std::vector<INMOST_DATA_REAL_TYPE> & wadj,
-								std::vector< INMOST_DATA_ENUM_TYPE > & adjncy);
-								
+	void GraphWeights(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+						const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+						const interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR,
+						std::vector<INMOST_DATA_REAL_TYPE>& wadj);
+							
 	void ReorderColumns(INMOST_DATA_ENUM_TYPE wbeg,
 						INMOST_DATA_ENUM_TYPE wend,
 						interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						std::vector<Sparse::Row::entry> & Entries,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+						std::vector< std::vector<Sparse::Row::entry> > & Entries,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
-						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & V,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & DR,
 						Sparse::Vector & DR0);
+
+	void ReorderSystem(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+						std::vector< std::vector<Sparse::Row::entry> >& Entries,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localP,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR,
+						Sparse::Vector& DL0,
+						Sparse::Vector& DR0);
+
+	void SinkhornScaling(	INMOST_DATA_ENUM_TYPE wbeg,
+							INMOST_DATA_ENUM_TYPE wend,
+							interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+							std::vector<Sparse::Row::entry>& Entries,
+							interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR,
+							INMOST_DATA_REAL_TYPE p);
+	void IdominanceScaling(	INMOST_DATA_ENUM_TYPE wbeg,
+							INMOST_DATA_ENUM_TYPE wend,
+							const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+							std::vector< std::vector<Sparse::Row::entry> >& Entries,
+							const interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR);
+	
+	void PivotScaling(	INMOST_DATA_ENUM_TYPE wbeg,
+						INMOST_DATA_ENUM_TYPE wend,
+						const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+						std::vector< std::vector<Sparse::Row::entry> >& Entries,
+						const interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+						const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR);
+
+	void EFScaling(	INMOST_DATA_ENUM_TYPE wbeg,
+					INMOST_DATA_ENUM_TYPE wend,
+					INMOST_DATA_ENUM_TYPE mobeg,
+					INMOST_DATA_ENUM_TYPE moend,
+					const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DL,
+					const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& DR);
 						
 						
 	void WRCMOrdering(	INMOST_DATA_ENUM_TYPE wbeg,
@@ -284,13 +347,30 @@ class MLMTILUC_preconditioner : public Method
 						std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 						interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ);
-							
+
+	void Factorize(INMOST_DATA_ENUM_TYPE cbeg,
+					INMOST_DATA_ENUM_TYPE cend,
+					interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address,
+					std::vector< std::vector<Sparse::Row::entry> > & A_Entries,
+					interval<INMOST_DATA_ENUM_TYPE, Interval>& L2_Address,
+					std::vector< std::vector<Sparse::Row::entry> >& L2_Entries,
+					interval<INMOST_DATA_ENUM_TYPE, Interval>& U2_Address,
+					std::vector< std::vector<Sparse::Row::entry> >& U2_Entries,
+					interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
+					bool block_pivot,
+					double & NuLout,
+					double & NuUout,
+					double& testimator);
+
+	void CheckColumnGaps(const Block& b, const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address, const std::vector< std::vector<Sparse::Row::entry> >& A_Entries);
+	
 	void DumpGraph(std::string name, interval<INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G);
 
 	int Thread();
 	int Threads();
 
 	// Sparse::Vector div;
+	INMOST_DATA_ENUM_TYPE progress_all, progress_cur;
 public:
 	INMOST_DATA_ENUM_TYPE & EnumParameter(std::string name);
 	INMOST_DATA_REAL_TYPE & RealParameter(std::string name);
