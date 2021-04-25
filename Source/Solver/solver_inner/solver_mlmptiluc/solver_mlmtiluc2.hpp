@@ -75,6 +75,19 @@ class MLMTILUC_preconditioner : public Method
 	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return 1 + u == 1; }
 	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return u == 0; }
 	//__INLINE static bool check_zero(INMOST_DATA_REAL_TYPE u) { return fabs(u) < 1.0e-13; }
+	void CheckBlock(const Block& b,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+		INMOST_DATA_ENUM_TYPE sepbeg,
+		INMOST_DATA_ENUM_TYPE sepend,
+		std::string file, int line);
+	void CheckBlock(const Block& b,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		INMOST_DATA_ENUM_TYPE sepbeg,
+		INMOST_DATA_ENUM_TYPE sepend,
+		std::string file, int line);
 	void DumpMatrix(const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address, 
 					const std::vector< std::vector<Sparse::Row::entry> > & Entries,
 					INMOST_DATA_ENUM_TYPE wmbeg, INMOST_DATA_ENUM_TYPE wmend,
