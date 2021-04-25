@@ -134,8 +134,10 @@ int main(int argc, char ** argv)
 			s.SetParameter("rescale_iterations", "8");
 			s.SetParameter("adapt_ddpq_tolerance", "0");
 
-			s.SetParameter("drop_tolerance", "0.001");
-			s.SetParameter("reuse_tolerance", "0.00001");
+			s.SetParameter("verbosity", "0");
+			s.SetParameter("drop_tolerance", "0.05");
+			s.SetParameter("reuse_tolerance", "0.0025");
+			s.SetParameter("pivot_condition", "5");
 			s.SetParameter("ddpq_tolerance", "0.7");
 			
 			mat.Save("A.mtx");

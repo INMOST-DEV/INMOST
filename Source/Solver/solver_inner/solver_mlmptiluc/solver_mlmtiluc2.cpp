@@ -782,23 +782,58 @@ const double apert = 1.0e-8;
 												   INMOST_DATA_ENUM_TYPE cend,
 												   const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
 												   const std::vector< std::vector<Sparse::Row::entry> > & Entries,
-												   interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > & Indices )
+												   interval<INMOST_DATA_ENUM_TYPE, Interval> G_Address,
+												   std::vector< std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > G_Entries)
+												   //interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > & Indices )
 	{
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
 #endif
 		{
+			int thr = Thread();
 			INMOST_DATA_ENUM_TYPE tseg = (cend - cbeg) / Threads();
-			INMOST_DATA_ENUM_TYPE tbeg = cbeg + tseg * Thread();
+			INMOST_DATA_ENUM_TYPE tbeg = cbeg + tseg * thr;
 			INMOST_DATA_ENUM_TYPE tend = tbeg + tseg;
-			if (Thread() == Threads() - 1) tend = cend;
+			if (thr == Threads() - 1) tend = cend;
 			if (tend > tbeg)
 			{
+				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+				{
+					G_Address[k].thr = thr;
+					G_Address[k].first = G_Address[k].last = 0;
+				}
 				for (INMOST_DATA_ENUM_TYPE i = cbeg; i < cend; ++i) //row-index
 				{
-					for (INMOST_DATA_ENUM_TYPE j = Address[i].first; j < Address[i].last; ++j) //entry index
-						if (tbeg <= Entries[Address[i].thr][j].first && Entries[Address[i].thr][j].first < tend)
-							Indices[Entries[Address[i].thr][j].first].push_back(std::make_pair(i, j)); // Entries[j].first is column index, record row-index, entry index
+					for (INMOST_DATA_ENUM_TYPE jt = Address[i].first; jt < Address[i].last; ++jt) //entry index
+					{
+						INMOST_DATA_ENUM_TYPE j = Entries[Address[i].thr][jt].first;
+						if (tbeg <= j && j < tend)
+							G_Address[j].last++;
+					}
+				}
+				//Establish the addresses
+				INMOST_DATA_ENUM_TYPE offset = 0;
+				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+				{
+					G_Address[k].first += offset;
+					G_Address[k].last += offset;
+					offset += G_Address[k].Size();
+				}
+				//Allocate size for F storage
+				G_Entries[thr].resize(G_Address[tend - 1].last);
+				//Reset addresses to advance current fill position
+				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+					G_Address[k].last = G_Address[k].first;
+				//Fill data for each thread
+				for (INMOST_DATA_ENUM_TYPE i = cbeg; i < cend; ++i) //row-index
+				{
+					for (INMOST_DATA_ENUM_TYPE jt = Address[i].first; jt < Address[i].last; ++jt) //entry index
+					{
+						INMOST_DATA_ENUM_TYPE j = Entries[Address[i].thr][jt].first;
+						if (tbeg <= j && j < tend)
+							G_Entries[thr][G_Address[j].last++] = std::make_pair(i, jt);
+							//Indices[j].push_back(std::make_pair(i, jt)); // Entries[j].first is column index, record row-index, entry index
+					}
 				}
 			}
 		}
@@ -808,50 +843,84 @@ const double apert = 1.0e-8;
 					  						   INMOST_DATA_ENUM_TYPE wend,
 					  						   const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
 					  						   const std::vector< std::vector<Sparse::Row::entry> >& Entries,
-					  						   interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G)
+											   interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+											   std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries)
+					  						   //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G)
 	{
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for
 #endif
 		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
-			G[k].reserve(Address[k].Size());
-			int Athr = Address[k].thr;
+			//G[k].reserve(Address[k].Size());
+			G_Address[k].thr = Thread();
+			G_Address[k].first = G_Entries[G_Address[k].thr].size();
 			for (INMOST_DATA_ENUM_TYPE it = Address[k].first; it < Address[k].last; ++it) //if( !check_zero(Entries[it].second) )
-				G[k].push_back(Entries[Athr][it].first);
+				G_Entries[G_Address[k].thr].push_back(Entries[Address[k].thr][it].first);
+				//G[k].push_back(Entries[Address[k].thr][it].first);
+			G_Address[k].last = G_Entries[G_Address[k].thr].size();
 		}
 	}
 
 	void MLMTILUC_preconditioner::PrepareGraphTranspose(INMOST_DATA_ENUM_TYPE wbeg,
 							   							INMOST_DATA_ENUM_TYPE wend,
-							   							const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-							   							interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG)
+														const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+														const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries,
+														interval<INMOST_DATA_ENUM_TYPE, Interval>& tG_Address,
+														std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries)
+							   							//const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
+							   							//interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG)
 	{
 		//preallocate tG???
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
 #endif
 		{
-			INMOST_DATA_ENUM_TYPE cbeg = tG.get_interval_beg();
-			INMOST_DATA_ENUM_TYPE cend = tG.get_interval_end();
+			int thr = Thread();
+			INMOST_DATA_ENUM_TYPE cbeg = tG_Address.get_interval_beg();
+			INMOST_DATA_ENUM_TYPE cend = tG_Address.get_interval_end();
 			INMOST_DATA_ENUM_TYPE tseg = (cend - cbeg) / Threads();
-			INMOST_DATA_ENUM_TYPE tbeg = cbeg + tseg * Thread();
+			INMOST_DATA_ENUM_TYPE tbeg = cbeg + tseg * thr;
 			INMOST_DATA_ENUM_TYPE tend = tbeg + tseg;
-			if (Thread() == Threads() - 1) tend = cend;
+			if (thr == Threads() - 1) tend = cend;
 			if (tend > tbeg)
 			{
-				interval< INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE > nnz(tbeg, tend, 0);
-				for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-					for (INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
-						if (tbeg <= G[k][it] && G[k][it] < tend)
-							nnz[G[k][it]]++;
 				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
-					tG[k].reserve(nnz[k]);
-				for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
 				{
-					for (INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
-						if (tbeg <= G[k][it] && G[k][it] < tend)
-							tG[G[k][it]].push_back(k);
+					tG_Address[k].thr = thr;
+					tG_Address[k].first = tG_Address[k].last = 0;
+				}
+				for (INMOST_DATA_ENUM_TYPE i = wbeg; i < wend; ++i) //row-index
+				{
+					for (INMOST_DATA_ENUM_TYPE jt = G_Address[i].first; jt < G_Address[i].last; ++jt) //entry index
+					{
+						INMOST_DATA_ENUM_TYPE j = G_Entries[G_Address[i].thr][jt];
+						if (tbeg <= j && j < tend)
+							tG_Address[j].last++;
+					}
+				}
+				//Establish the addresses
+				INMOST_DATA_ENUM_TYPE offset = 0;
+				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+				{
+					tG_Address[k].first += offset;
+					tG_Address[k].last += offset;
+					offset += tG_Address[k].Size();
+				}
+				//Allocate size for F storage
+				tG_Entries[thr].resize(tG_Address[tend - 1].last);
+				//Reset addresses to advance current fill position
+				for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+					tG_Address[k].last = tG_Address[k].first;
+				//Fill data for each thread
+				for (INMOST_DATA_ENUM_TYPE i = wbeg; i < wend; ++i) //row-index
+				{
+					for (INMOST_DATA_ENUM_TYPE jt = G_Address[i].first; jt < G_Address[i].last; ++jt) //entry index
+					{
+						INMOST_DATA_ENUM_TYPE j = G_Entries[G_Address[i].thr][jt];
+						if (tbeg <= j && j < tend)
+							tG_Entries[thr][tG_Address[j].last++] = i;
+					}
 				}
 			}
 		}
@@ -859,9 +928,15 @@ const double apert = 1.0e-8;
 
 	void MLMTILUC_preconditioner::PrepareGraphProduct(INMOST_DATA_ENUM_TYPE wbeg,
 													  INMOST_DATA_ENUM_TYPE wend,
-							 						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-							 						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG,
-							 						  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG)
+													  const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+													  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries,
+													  const interval<INMOST_DATA_ENUM_TYPE, Interval>& tG_Address,
+													  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries,
+													  interval<INMOST_DATA_ENUM_TYPE, Interval>& pG_Address,
+													  std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& pG_Entries)
+							 						  //const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
+							 						  //const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG,
+							 						  //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG)
 	{
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
@@ -877,12 +952,16 @@ const double apert = 1.0e-8;
 				// go over connection of k-th row
 				List[k] = Beg;
 				Beg = k;
-				for(INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
+				//for(INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
+				for (INMOST_DATA_ENUM_TYPE it = G_Address[k].first; it < G_Address[k].last; ++it)
 				{
-					INMOST_DATA_ENUM_TYPE kt = G[k][it];
-					for(INMOST_DATA_ENUM_TYPE jt = 0; jt < tG[kt].size(); ++jt)
+					//INMOST_DATA_ENUM_TYPE kt = G[k][it];
+					INMOST_DATA_ENUM_TYPE kt = G_Entries[G_Address[k].thr][it];
+					//for(INMOST_DATA_ENUM_TYPE jt = 0; jt < tG[kt].size(); ++jt)
+					for (INMOST_DATA_ENUM_TYPE jt = tG_Address[kt].first; jt < tG_Address[kt].last; ++jt)
 					{
-						INMOST_DATA_ENUM_TYPE lt = tG[kt][jt];
+						//INMOST_DATA_ENUM_TYPE lt = tG[kt][jt];
+						INMOST_DATA_ENUM_TYPE lt = tG_Entries[tG_Address[kt].thr][jt];
 						//insert to linked list
 						if (List[lt] == ENUMUNDEF)
 						{
@@ -893,17 +972,21 @@ const double apert = 1.0e-8;
 					}
 				}
 				// wadj_sep[k-wbeg] = nnz;
-				pG[k].reserve(nnz);
+				int thr = Thread();
+				pG_Address[k].thr = thr;
+				pG_Address[k].first = pG_Entries[thr].size();
+				//pG[k].reserve(nnz);
 				INMOST_DATA_ENUM_TYPE it = Beg, jt;
 				while( it != static_cast<INMOST_DATA_ENUM_TYPE>(k) )
 				{
-					// if( it != k )
-						pG[k].push_back(it);
+					//pG[k].push_back(it);
+					pG_Entries[thr].push_back(it);
 					jt = List[it]; //save next entry
 					List[it] = ENUMUNDEF; //clear list
 					it = jt; //restore next
 				}
 				List[k] = ENUMUNDEF;
+				pG_Address[k].last = pG_Entries[thr].size();
 			}
 		}
 	}
@@ -948,21 +1031,37 @@ const double apert = 1.0e-8;
 	}
 
 	void MLMTILUC_preconditioner::FilterGraph(const Block & b,
-											  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
-				 		  					  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
-											  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_in,
-											  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_out)
+											  const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
+				 		  					  const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
+											  const interval<INMOST_DATA_ENUM_TYPE, Interval>& in_G_Address,
+											  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_G_Entries,
+											  interval<INMOST_DATA_ENUM_TYPE, Interval>& out_G_Address,
+											  std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_G_Entries)
+											  //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_in,
+											  //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_out)
 	{
 		INMOST_DATA_ENUM_TYPE wbeg = b.row_start, wend = b.row_end;
 		INMOST_DATA_ENUM_TYPE cbeg = b.col_start, cend = b.col_end;
-		G_out.set_interval_beg(wbeg);
-		G_out.set_interval_end(wend);
+		out_G_Address.set_interval_beg(wbeg);
+		out_G_Address.set_interval_end(wend);
+		out_G_Entries.clear();
+		out_G_Entries.resize(Threads());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
-			// std::swap(G_out[k],G_in[invP[k]]); //invP is where to get the row
+			int thr = Thread();
+			out_G_Address[k].thr = thr;
+			out_G_Address[k].first = out_G_Entries[thr].size();
+			for (INMOST_DATA_ENUM_TYPE jt = in_G_Address[invP[k]].first; jt < in_G_Address[invP[k]].last; ++jt)
+			{
+				INMOST_DATA_ENUM_TYPE j = localQ[in_G_Entries[in_G_Address[invP[k]].thr][jt]];
+				if (cbeg <= j && j < cend)
+					out_G_Entries[thr].push_back(j);
+			}
+			out_G_Address[k].last = out_G_Entries[thr].size();
+			/*
 			G_out[k] = G_in[invP[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
 			while(it < G_out[k].size())
@@ -971,25 +1070,42 @@ const double apert = 1.0e-8;
 				if( cbeg <= G_out[k][jt] && G_out[k][jt] < cend ) jt++; //column is inside block
 			}
 			G_out[k].resize(jt);
+			*/
 		}
 	}
 
 	void MLMTILUC_preconditioner::FilterGraphTranspose(const Block & b,
-											  		  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-				 		  					  		  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ,
-											  		  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_in,
-											  		  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_out)
+											  		  const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+				 		  					  		  const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ,
+													  const interval<INMOST_DATA_ENUM_TYPE, Interval> & in_tG_Address,
+													  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_tG_Entries,
+													  interval<INMOST_DATA_ENUM_TYPE, Interval> & out_tG_Address,
+													  std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_tG_Entries)
+											  		  //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_in,
+											  		  //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_out)
 	{
 		INMOST_DATA_ENUM_TYPE wbeg = b.row_start, wend = b.row_end;
 		INMOST_DATA_ENUM_TYPE cbeg = b.col_start, cend = b.col_end;
-		tG_out.set_interval_beg(cbeg);
-		tG_out.set_interval_end(cend);
+		out_tG_Address.set_interval_beg(cbeg);
+		out_tG_Address.set_interval_end(cend);
+		out_tG_Entries.clear();
+		out_tG_Entries.resize(Threads());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 		for(INMOST_DATA_INTEGER_TYPE k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k)
 		{
-			// std::swap(tG_out[k],tG_in[invQ[k]]); //invQ is where to get the column
+			int thr = Thread();
+			out_tG_Address[k].thr = thr;
+			out_tG_Address[k].first = out_tG_Entries[thr].size();
+			for (INMOST_DATA_ENUM_TYPE jt = in_tG_Address[invQ[k]].first; jt < in_tG_Address[invQ[k]].last; ++jt)
+			{
+				INMOST_DATA_ENUM_TYPE j = localP[in_tG_Entries[in_tG_Address[invQ[k]].thr][jt]];
+				if (wbeg <= j && j < wend)
+					out_tG_Entries[thr].push_back(j);
+			}
+			out_tG_Address[k].last = out_tG_Entries[thr].size();
+			/*
 			tG_out[k] = tG_in[invQ[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
 			while(it < tG_out[k].size())
@@ -998,24 +1114,41 @@ const double apert = 1.0e-8;
 				if( wbeg <= tG_out[k][jt] && tG_out[k][jt] < wend ) jt++; //row is inside block
 			}
 			tG_out[k].resize(jt);
+			*/
 		}
 	}
 
 	void MLMTILUC_preconditioner::FilterGraphProduct(const Block & b,
-													 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
-				 		  							 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-													 interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_in,
-													 interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_out)
+													 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
+				 		  							 const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+													 const interval<INMOST_DATA_ENUM_TYPE, Interval>& in_pG_Address,
+													 const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_pG_Entries,
+													 interval<INMOST_DATA_ENUM_TYPE, Interval>& out_pG_Address,
+													 std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_pG_Entries)
+													 //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_in,
+													 //interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_out)
 	{
 		INMOST_DATA_ENUM_TYPE wbeg = b.row_start, wend = b.row_end;
-		pG_out.set_interval_beg(wbeg);
-		pG_out.set_interval_end(wend);
+		out_pG_Address.set_interval_beg(wbeg);
+		out_pG_Address.set_interval_end(wend);
+		out_pG_Entries.clear();
+		out_pG_Entries.resize(Threads());
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif	
 		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 		{
-			// std::swap(pG_out[k],pG_in[invP[k]]); //invP is where to get the row
+			int thr = Thread();
+			out_pG_Address[k].thr = thr;
+			out_pG_Address[k].first = out_pG_Entries[thr].size();
+			for (INMOST_DATA_ENUM_TYPE jt = in_pG_Address[invP[k]].first; jt < in_pG_Address[invP[k]].last; ++jt)
+			{
+				INMOST_DATA_ENUM_TYPE j = localP[in_pG_Entries[in_pG_Address[invP[k]].thr][jt]];
+				if (wbeg <= j && j < wend)
+					out_pG_Entries[thr].push_back(j);
+			}
+			out_pG_Address[k].last = out_pG_Entries[thr].size();
+			/*
 			pG_out[k] = pG_in[invP[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
 			while(it < pG_out[k].size())
@@ -1024,23 +1157,27 @@ const double apert = 1.0e-8;
 				if( wbeg <= pG_out[k][jt] && pG_out[k][jt] < wend ) jt++; //row is inside block
 			}
 			pG_out[k].resize(jt);
+			*/
 		}
 	}
 
-	void MLMTILUC_preconditioner::DumpGraph(std::string name, interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G)
+	void MLMTILUC_preconditioner::DumpGraph(std::string name, 
+											const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+											const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G_Entries)
+											//interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G)
 	{
 		INMOST_DATA_ENUM_TYPE wbeg, wend, cbeg, cend, nnz = 0, side;
-		wbeg = G.get_interval_beg();
-		wend = G.get_interval_end();
+		wbeg = G_Address.get_interval_beg();
+		wend = G_Address.get_interval_end();
 		cbeg = ENUMUNDEF;
 		cend = 0;
 		std::cout << __FUNCTION__ << " " << name << std::endl;
 		std::cout << "wbeg " << wbeg << " wend " << wend << std::endl;
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
 		{
-			for(INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
+			for(INMOST_DATA_ENUM_TYPE it = G_Address[k].first; it < G_Address[k].last; ++it)
 			{
-				INMOST_DATA_ENUM_TYPE jt = G[k][it];
+				INMOST_DATA_ENUM_TYPE jt = G_Entries[G_Address[k].thr][it];
 				if( cbeg > jt ) cbeg = jt;
 				if( cend < jt ) cend = jt;
 				nnz++;
@@ -1055,9 +1192,9 @@ const double apert = 1.0e-8;
 		file << side << " " << side << " " << nnz << std::endl;
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
 		{
-			for(INMOST_DATA_ENUM_TYPE it = 0; it < G[k].size(); ++it)
+			for(INMOST_DATA_ENUM_TYPE it = G_Address[k].first; it < G_Address[k].last; ++it)
 			{
-				INMOST_DATA_ENUM_TYPE jt = G[k][it];
+				INMOST_DATA_ENUM_TYPE jt = G_Entries[G_Address[k].thr][it];
 				file << k-wbeg+1 << " " << jt-cbeg+1 << " 1\n";
 			}
 		}
@@ -1078,8 +1215,12 @@ const double apert = 1.0e-8;
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg,wend,Address,Entries,cbeg,cend);
 
-		interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > G(wbeg,wend), tG(cbeg,cend), pG(wbeg,wend), G2, tG2, pG2;
-		interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > * rG = &G, * rtG = &tG, * rpG = &pG;
+		interval< INMOST_DATA_ENUM_TYPE, Interval > G_Address(wbeg,wend), tG_Address(cbeg,cend), pG_Address(wbeg,wend);
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G_Entries(Threads()), tG_Entries(Threads()), pG_Entries(Threads());
+		interval< INMOST_DATA_ENUM_TYPE, Interval > G2_Address, tG2_Address, pG2_Address;
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G2_Entries(Threads()), tG2_Entries(Threads()), pG2_Entries(Threads());
+		interval< INMOST_DATA_ENUM_TYPE, Interval > * rG_Address = &G_Address, * rtG_Address = &tG_Address, * rpG_Address = &pG_Address;
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >* rG_Entries = &G_Entries, * rtG_Entries = &tG_Entries, * rpG_Entries = &pG_Entries;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>  P(wbeg,wend), Q(cbeg,cend), invP(wbeg,wend), invQ(cbeg,cend);
 		std::vector<Block> blocks_new;
 
@@ -1087,8 +1228,8 @@ const double apert = 1.0e-8;
 		
 		//~ timer = Timer();
 
-		PrepareGraph(wbeg,wend,Address,Entries,G);
-		PrepareGraphTranspose(wbeg,wend,G,tG);
+		PrepareGraph(wbeg,wend,Address,Entries,G_Address,G_Entries);
+		PrepareGraphTranspose(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries);
 
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) localP[k] = invP[k] = k;
 		for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k) localQ[k] = invQ[k] = k;
@@ -1097,7 +1238,7 @@ const double apert = 1.0e-8;
 		// if( wgt_sep )
 		{
 			//~ timer = Timer();
-			PrepareGraphProduct(wbeg,wend,G,tG,pG);
+			PrepareGraphProduct(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries);
 			// std::cout << "prepare pG time " << Timer() - timer << std::endl;
 		}
 
@@ -1111,7 +1252,7 @@ const double apert = 1.0e-8;
 		do
 		{
 			// std::cout << "separate block " << cur << " rows " << blocks[cur].RowSize() << " cols " << blocks[cur].ColSize() << std::endl;
-			GreedyDissection(blocks[cur],*rG,*rtG,*rpG,P,Q,blocks_new,kway_parts);//,1,0,0);
+			GreedyDissection(blocks[cur],*rG_Address,*rG_Entries,*rtG_Address,*rtG_Entries,*rpG_Address,*rpG_Entries,P,Q,blocks_new,kway_parts);//,1,0,0);
 			// compute reordering in global P,Q, we need it to compute reordering in vector during solve phase
 			for (INMOST_DATA_ENUM_TYPE k = blocks[cur].row_start; k < blocks[cur].row_end; ++k) localP[invP[k]] = P[k];
 			for (INMOST_DATA_ENUM_TYPE k = blocks[cur].col_start; k < blocks[cur].col_end; ++k) localQ[invQ[k]] = Q[k];
@@ -1141,15 +1282,18 @@ const double apert = 1.0e-8;
 			// }
 			// else
 			{
-				FilterGraph(blocks[cur],invP,localQ,G,G2);
-				FilterGraphTranspose(blocks[cur],localP,invQ,tG,tG2);
-				FilterGraphProduct(blocks[cur],invP,localP,pG,pG2);
+				FilterGraph(blocks[cur],invP,localQ,G_Address,G_Entries,G2_Address,G2_Entries);
+				FilterGraphTranspose(blocks[cur],localP,invQ,tG_Address,tG_Entries,tG2_Address,tG2_Entries);
+				FilterGraphProduct(blocks[cur],invP,localP,pG_Address,pG_Entries,pG2_Address,pG2_Entries);
 			}
 
 
-			rG = &G2;
-			rtG = &tG2;
-			rpG = &pG2;
+			rG_Address = &G2_Address;
+			rG_Entries = &G2_Entries;
+			rtG_Address = &tG2_Address;
+			rtG_Entries = &tG2_Entries;
+			rpG_Address = &pG2_Address;
+			rpG_Entries = &pG2_Entries;
 			// DumpGraph("rG.mtx",G2);
 			// DumpGraph("rtG.mtx",tG2);
 			// DumpGraph("rpG.mtx",pG2);
@@ -1185,21 +1329,24 @@ const double apert = 1.0e-8;
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg,wend,Address,Entries,cbeg,cend);
 
-		interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > G(wbeg,wend), tG(cbeg,cend), pG(wbeg,wend);
+
+		interval< INMOST_DATA_ENUM_TYPE, Interval > G_Address(wbeg, wend), tG_Address(cbeg, cend), pG_Address(wbeg, wend);
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G_Entries(Threads()), tG_Entries(Threads()), pG_Entries(Threads());
+
 		
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 		
 		//~ timer = Timer();
 
-		PrepareGraph(wbeg,wend,Address,Entries,G);
-		PrepareGraphTranspose(wbeg,wend,G,tG);
+		PrepareGraph(wbeg,wend,Address,Entries,G_Address,G_Entries);
+		PrepareGraphTranspose(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries);
 		// std::cout << "prepare tG time " << Timer() - timer << std::endl;
 		
 		//~ timer = Timer();
-		PrepareGraphProduct(wbeg,wend,G,tG,pG);
+		PrepareGraphProduct(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries);
 		// std::cout << "prepare pG time " << Timer() - timer << std::endl;
 		
-		GreedyDissection(Block(wbeg,wend,cbeg,cend),G,tG,pG,localP,localQ,blocks,parts);
+		GreedyDissection(Block(wbeg,wend,cbeg,cend),G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries,localP,localQ,blocks,parts);
 			
 		blks = sep = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
@@ -1226,21 +1373,23 @@ const double apert = 1.0e-8;
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg, wend, Address, Entries, cbeg, cend);
 
-		interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > G(wbeg, wend), tG(cbeg, cend), pG(wbeg, wend);
+		interval< INMOST_DATA_ENUM_TYPE, Interval > G_Address(wbeg, wend), tG_Address(cbeg, cend), pG_Address(wbeg, wend);
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G_Entries(Threads()), tG_Entries(Threads()), pG_Entries(Threads());
+		//interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > G(wbeg, wend), tG(cbeg, cend), pG(wbeg, wend);
 
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 
 		//~ timer = Timer();
 
-		PrepareGraph(wbeg, wend, Address, Entries, G);
-		PrepareGraphTranspose(wbeg, wend, G, tG);
+		PrepareGraph(wbeg, wend, Address, Entries, G_Address,G_Entries);
+		PrepareGraphTranspose(wbeg, wend, G_Address,G_Entries, tG_Address,tG_Entries);
 		// std::cout << "prepare tG time " << Timer() - timer << std::endl;
 
 		//~ timer = Timer();
-		PrepareGraphProduct(wbeg, wend, G, tG, pG);
+		PrepareGraphProduct(wbeg, wend, G_Address,G_Entries, tG_Address,tG_Entries, pG_Address, pG_Entries);
 		// std::cout << "prepare pG time " << Timer() - timer << std::endl;
 
-		GreedyDissection(Block(wbeg, wend, cbeg, cend), G, tG, pG, localP, localQ, blocks, parts);
+		GreedyDissection(Block(wbeg, wend, cbeg, cend), G_Address, G_Entries, tG_Address, tG_Entries, pG_Address, pG_Entries, localP, localQ, blocks, parts);
 
 		blks = sep = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
@@ -1265,9 +1414,12 @@ const double apert = 1.0e-8;
 	}
 
 	void MLMTILUC_preconditioner::GreedyDissection(const Block & b,
-												   const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-						  						   const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG,
-						  						   const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG,
+												   const interval< INMOST_DATA_ENUM_TYPE, Interval > & G_Address,
+												   const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > & G_Entries,
+						  						   const interval< INMOST_DATA_ENUM_TYPE, Interval > & tG_Address,
+												   const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries,
+						  						   const interval< INMOST_DATA_ENUM_TYPE, Interval > & pG_Address,
+												   const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& pG_Entries,
 						 						   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 				 		 						   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 												   std::vector<Block> & blocks, int kway_parts)
@@ -1306,8 +1458,8 @@ const double apert = 1.0e-8;
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) 
 		{
 			localP[k] = ENUMUNDEF;
-			if( wgt_blk ) wadj_blk[k-wbeg] = (int)G[k].size(); //row connection wgt
-			if( wgt_sep ) wadj_sep[k-wbeg] = (int)pG[k].size();
+			if( wgt_blk ) wadj_blk[k-wbeg] = (int)G_Address[k].Size(); //row connection wgt
+			if( wgt_sep ) wadj_sep[k-wbeg] = (int)pG_Address[k].Size();
 		}
 
 		for(INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k) localQ[k] = ENUMUNDEF;
@@ -1358,16 +1510,16 @@ const double apert = 1.0e-8;
 				// go over connection of enumerated row
 				int col_skip = 0;
 				int sep_skip = 0;
-				for(INMOST_DATA_ENUM_TYPE it = 0; it < G[cur].size(); ++it)
+				for(INMOST_DATA_ENUM_TYPE it = G_Address[cur].first; it < G_Address[cur].last; ++it)
 				{
-					INMOST_DATA_ENUM_TYPE kt = G[cur][it]; //column index
+					INMOST_DATA_ENUM_TYPE kt = G_Entries[G_Address[cur].thr][it]; //column index
 					if( localQ[kt] == ENUMUNDEF ) 
 					{
 						localQ[kt] = index_col++;
 						col_size++;
-						for(INMOST_DATA_ENUM_TYPE jt = 0; jt < tG[kt].size(); ++jt)
+						for(INMOST_DATA_ENUM_TYPE jt = tG_Address[kt].first; jt < tG_Address[kt].last; ++jt)
 						{
-							INMOST_DATA_ENUM_TYPE lt = tG[kt][jt]; //row index
+							INMOST_DATA_ENUM_TYPE lt = tG_Entries[tG_Address[kt].thr][jt]; //row index
 							wadj_blk[lt-wbeg]-=upd_blk;
 							// if( wgt_blk && q0.Contains(lt-wbeg) )
 							// 	q0.ChangeKey(lt-wbeg,wgt_sep*wadj_sep[lt-wbeg]+wgt_blk*wadj_blk[lt-wbeg]);
@@ -1398,9 +1550,9 @@ const double apert = 1.0e-8;
 				for(INMOST_DATA_ENUM_TYPE it = 0; it < upd.size(); ++it)
 				{
 					INMOST_DATA_ENUM_TYPE lt = upd[it].first; //row index
-					for(INMOST_DATA_ENUM_TYPE ut = 0; ut < pG[lt].size(); ++ut)
+					for(INMOST_DATA_ENUM_TYPE ut = pG_Address[lt].first; ut < pG_Address[lt].last; ++ut)
 					{
-						INMOST_DATA_ENUM_TYPE qt = pG[lt][ut]; //row index
+						INMOST_DATA_ENUM_TYPE qt = pG_Entries[pG_Address[lt].thr][ut]; //row index
 						if( localP[qt] == ENUMUNDEF )
 						{
 							wadj_sep[qt-wbeg]-=upd_sep;
@@ -1527,14 +1679,14 @@ const double apert = 1.0e-8;
 				//interval< INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE > & List = Lists[0];
 				cur = visits[k];
 				localP[cur] = index_row++;
-				for(INMOST_DATA_ENUM_TYPE it = 0; it < G[cur].size(); ++it)
+				for(INMOST_DATA_ENUM_TYPE it = G_Address[cur].first; it < G_Address[cur].last; ++it)
 				{
-					INMOST_DATA_ENUM_TYPE kt = G[cur][it];
+					INMOST_DATA_ENUM_TYPE kt = G_Entries[G_Address[cur].thr][it];
 					if( localQ[kt] == ENUMUNDEF ) 
 						localQ[kt] = index_col++;
-					for(INMOST_DATA_ENUM_TYPE jt = 0; jt < tG[kt].size(); ++jt)
+					for(INMOST_DATA_ENUM_TYPE jt = tG_Address[kt].first; jt < tG_Address[kt].last; ++jt)
 					{
-						INMOST_DATA_ENUM_TYPE lt = tG[kt][jt];
+						INMOST_DATA_ENUM_TYPE lt = tG_Entries[tG_Address[kt].thr][jt];
 						if (List[lt] == ENUMUNDEF) //new row into separator
 						{
 							List[lt] = Beg;
@@ -1571,9 +1723,9 @@ const double apert = 1.0e-8;
 				cur = visits[k];
 				if( localP[cur] != ENUMUNDEF ) continue;
 				localP[cur] = index_row++;
-				for(INMOST_DATA_ENUM_TYPE it = 0; it < G[cur].size(); ++it)
+				for(INMOST_DATA_ENUM_TYPE it = G_Address[cur].first; it < G_Address[cur].last; ++it)
 				{
-					INMOST_DATA_ENUM_TYPE kt = G[cur][it];
+					INMOST_DATA_ENUM_TYPE kt = G_Entries[G_Address[cur].thr][it];
 					if( localQ[kt] == ENUMUNDEF ) 
 						localQ[kt] = index_col++;
 				}

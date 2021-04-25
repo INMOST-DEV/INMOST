@@ -176,37 +176,49 @@ class MLMTILUC_preconditioner : public Method
 				   interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> & LineValues);
 	void PrepareGraph(INMOST_DATA_ENUM_TYPE wbeg,
 					  INMOST_DATA_ENUM_TYPE wend,
-					  const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-					  const std::vector< std::vector<Sparse::Row::entry> >& Entries,
-					  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G);
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries);
 	// tG should be preallocated by number of columns, that may be wider then wbeg:wend
 	void PrepareGraphTranspose(INMOST_DATA_ENUM_TYPE wbeg,
 							   INMOST_DATA_ENUM_TYPE wend,
-							   const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-							   interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG);
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+		const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries,
+		interval<INMOST_DATA_ENUM_TYPE, Interval>& tG_Address,
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries);
 	// pG should be preallocated by wbeg:wend, tind computed with PrepareGraphTranspose
 	void PrepareGraphProduct(INMOST_DATA_ENUM_TYPE wbeg,
 							 INMOST_DATA_ENUM_TYPE wend,
-							 const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-							 const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG,
-							 interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG);
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+		const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& tG_Address,
+		const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries,
+		interval<INMOST_DATA_ENUM_TYPE, Interval>& pG_Address,
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& pG_Entries);
 	// moves wbeg:wend subset of rows from tG_in to tG_out and filters entries outside wbeg:wend
 	// tG_in is not preserved to save memory
 	void FilterGraphProduct(const Block & b,
-							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
-				 		  	interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-							interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_in,
-							interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG_out);
+							const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& invP,
+							const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localP,
+							const interval<INMOST_DATA_ENUM_TYPE, Interval>& in_pG_Address,
+							const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_pG_Entries,
+							interval<INMOST_DATA_ENUM_TYPE, Interval>& out_pG_Address,
+							std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_pG_Entries);
 	void FilterGraphTranspose(const Block & b,
-							  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
-				 		  	  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invQ,
-							  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_in,
-							  interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG_out);
+							const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localP,
+							const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& invQ,
+							const interval<INMOST_DATA_ENUM_TYPE, Interval>& in_tG_Address,
+							const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_tG_Entries,
+							interval<INMOST_DATA_ENUM_TYPE, Interval>& out_tG_Address,
+							std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_tG_Entries);
 	void FilterGraph(const Block & b,
-					 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & invP,
-				 	 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
-					 interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_in,
-					 interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G_out);
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& invP,
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& in_G_Address,
+		const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > in_G_Entries,
+		interval<INMOST_DATA_ENUM_TYPE, Interval>& out_G_Address,
+		std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > out_G_Entries);
 	// finds permutation that separates matrix into blocks by running GreedyDissection recursively
 	void NestedDissection(INMOST_DATA_ENUM_TYPE wbeg, 
 					 	  INMOST_DATA_ENUM_TYPE wend,
@@ -234,9 +246,12 @@ class MLMTILUC_preconditioner : public Method
 		int parts);
 	// finds permutation that separates matrix into blocks
 	void GreedyDissection(const Block & b,
-						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
-						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & tG,
-						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & pG,
+						  const interval< INMOST_DATA_ENUM_TYPE, Interval >& G_Address,
+						  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& G_Entries,
+						  const interval< INMOST_DATA_ENUM_TYPE, Interval >& tG_Address,
+						  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& tG_Entries,
+						  const interval< INMOST_DATA_ENUM_TYPE, Interval >& pG_Address,
+						  const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> >& pG_Entries,
 						  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 				 		  interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 						  std::vector<Block> & blocks, int kway_parts);
@@ -263,9 +278,10 @@ class MLMTILUC_preconditioner : public Method
 	
 	void PrepareTranspose(INMOST_DATA_ENUM_TYPE cbeg,
 						  INMOST_DATA_ENUM_TYPE cend,
-						  const interval<INMOST_DATA_ENUM_TYPE, Interval> & Address,
-						  const std::vector< std::vector<Sparse::Row::entry> > & Entries,
-						  interval<INMOST_DATA_ENUM_TYPE, std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > & Indices );
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		interval<INMOST_DATA_ENUM_TYPE, Interval> G_Address,
+		std::vector< std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > > G_Entries);
 						  
 						  
 	void MaximalTransversal(INMOST_DATA_ENUM_TYPE rbeg,
@@ -385,7 +401,8 @@ class MLMTILUC_preconditioner : public Method
 
 	void CheckColumnGaps(const Block& b, const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address, const std::vector< std::vector<Sparse::Row::entry> >& A_Entries);
 	
-	void DumpGraph(std::string name, interval<INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G);
+	void DumpGraph(std::string name, const interval<INMOST_DATA_ENUM_TYPE, Interval>& G_Address,
+		const std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > G_Entries);
 
 	int Thread();
 	int Threads();
