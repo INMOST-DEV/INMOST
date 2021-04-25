@@ -32,12 +32,13 @@ using namespace INMOST;
 //#define REORDER_MONDRIAAN
 #endif
 
-static bool run_nd = true;
+static int run_nd = 2; //1 - unsymmetric dissection before mpt, 2 - symmetric dissection after mpt
 static bool run_mpt = true;
 static bool reorder_b = true;
 static bool rescale_b = true;
 static bool allow_pivot = true;
 static bool print_mem = false;
+static bool show_summary = true;
 const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 
@@ -58,9 +59,9 @@ const double apert = 1.0e-8;
 #define PIVOT_DIAG_DEFAULT 1.0e+5
 //#define SCHUR_DROPPING_LF
 //#define SCHUR_DROPPING_EU
-//#define SCHUR_DROPPING_S
-//#define SCHUR_DROPPING_LF_PREMATURE
-//#define SCHUR_DROPPING_EU_PREMATURE
+#define SCHUR_DROPPING_S
+#define SCHUR_DROPPING_LF_PREMATURE
+#define SCHUR_DROPPING_EU_PREMATURE
 // #define SCHUR_DROPPING_S_PREMATURE
 #define CONDITION_PIVOT
 
@@ -1207,6 +1208,55 @@ const double apert = 1.0e-8;
 			else blks++;
 			//std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
 			
+		}
+		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
+
+
+		//std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
+	}
+	void MLMTILUC_preconditioner::KwaySymmetricDissection(INMOST_DATA_ENUM_TYPE wbeg,
+		INMOST_DATA_ENUM_TYPE wend,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localP,
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+		std::vector<Block>& blocks, int parts)
+	{
+		double /*timer = Timer(),*/ total_time = Timer();
+		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
+		ColumnInterval(wbeg, wend, Address, Entries, cbeg, cend);
+
+		interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > G(wbeg, wend), tG(cbeg, cend), pG(wbeg, wend);
+
+		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
+
+		//~ timer = Timer();
+
+		PrepareGraph(wbeg, wend, Address, Entries, G);
+		PrepareGraphTranspose(wbeg, wend, G, tG);
+		// std::cout << "prepare tG time " << Timer() - timer << std::endl;
+
+		//~ timer = Timer();
+		PrepareGraphProduct(wbeg, wend, G, tG, pG);
+		// std::cout << "prepare pG time " << Timer() - timer << std::endl;
+
+		GreedyDissection(Block(wbeg, wend, cbeg, cend), G, tG, pG, localP, localQ, blocks, parts);
+
+		blks = sep = 0;
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
+		{
+			if (blocks[k].separator) sep += blocks[k].RowSize();
+			else blks++;
+			//std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
+
+		}
+
+		for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+			localQ[k] = localP[k];
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k) if( !blocks[k].separator )
+		{
+			blocks[k].col_start = blocks[k].row_start;
+			blocks[k].col_end = blocks[k].row_end;
 		}
 		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
 
@@ -2783,7 +2833,7 @@ const double apert = 1.0e-8;
 			std::cout << " starting factorization " << cbeg << "<->" << cend << " thread " << thr << std::endl;
 		}
 
-		int report_pace = std::max<int>((cend - cbeg) / 500,1);
+		int report_pace = std::max<int>((cend - cbeg) / 100,1);
 
 		if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
@@ -3665,12 +3715,13 @@ const double apert = 1.0e-8;
 				{
 					if (verbosity > 1) std::cout << "Reorder\n";
 					double tlreorder = Timer();
-					if (run_nd && !block_pivot && Threads() && wend-wbeg > 128)
+					if (run_nd == 1 && !block_pivot && Threads() && wend-wbeg > 128)
 					{
 						if (verbosity > 1) std::cout << "Reordering with k-way dissection, threads = " << Threads() << std::endl;
 						tlocal = Timer();
 						//NestedDissection(wbeg, wend, A_Address, A_Entries, localP, localQ, blocks, (wend - wbeg) / Threads());
 						//KwayDissection(wbeg,wend,A_Address,A_Entries,localP,localQ,blocks,Threads());
+						//KwayDissection(wbeg, wend, A_Address, A_Entries, localP, localQ, blocks, Threads());
 						KwayDissection(wbeg, wend, A_Address, A_Entries, localP, localQ, blocks, Threads());
 						//complete matrix ordering
 						tlocal = Timer() - tlocal;
@@ -3682,51 +3733,9 @@ const double apert = 1.0e-8;
 						size_t sep = 0;
 						for (size_t q = 0; q < blocks.size(); ++q)
 							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
-						/*
-						{ //shift separator blocks to the end, change row indices
-							//collect separators
-							std::vector<Block> separators;
-							for (size_t q = blocks.size(); q > 0; --q)
-								if (blocks[q-1].separator)
-									separators.push_back(blocks[q-1]);
-							//erase separators
-							std::vector<Block>::iterator it = blocks.begin();
-							while (it != blocks.end())
-							{
-								if (it->separator)
-									it = blocks.erase(it);
-								else it++;
-							}
-							//shift row indices
-							for (size_t q = 0; q < separators.size(); ++q)
-							{
-								INMOST_DATA_ENUM_TYPE rbeg = separators.back().row_start;
-								INMOST_DATA_ENUM_TYPE rend = separators.back().row_end;
-								for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-									if (localP[k] >= rend) localP[k] -= rend - rbeg;
-								for (size_t m = 0; m < blocks.size(); ++m)
-								{
-									if (blocks[m].row_start >= rend)
-									{
-										blocks[m].row_start -= rend - rbeg;
-										blocks[m].row_end -= rend - rbeg;
-									}
-								}
-
-							}
-							//add separators to the end
-							while (!separators.empty())
-							{
-								blocks.push_back(separators.back());
-								separators.pop_back();
-							}
-						}
-						*/
+						
 						if (3*sep < (wend - wbeg) ) //separator is not too big
-						//if( true )
 						{
-							//run_nd = false; //next levels don't run nd
-							/// REASSAMBLE
 							if (verbosity > 1) std::cout << "Reassemble\n";
 							tlocal = Timer();
 							ReorderSystem(wbeg, wend, A_Address, A_Entries, localP, localQ, DL, DR, DL0, DR0);
@@ -3774,6 +3783,19 @@ const double apert = 1.0e-8;
 
 						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 							CheckBlock(blocks[q], A_Address, A_Entries, wend, wend, __FILE__, __LINE__); //no separator
+
+#if defined(USE_OMP_FACT)
+#pragma omp parallel
+#endif
+						{
+							INMOST_DATA_ENUM_TYPE tseg = (wend - wbeg) / Threads();
+							INMOST_DATA_ENUM_TYPE tbeg = wbeg + tseg * Thread();
+							INMOST_DATA_ENUM_TYPE tend = tbeg + tseg;
+
+							for (INMOST_DATA_ENUM_TYPE k = tbeg; k < tend; ++k)
+								std::sort(A_Entries[A_Address[k].thr].begin() + A_Address[k].first, A_Entries[A_Address[k].thr].begin() + A_Address[k].last, sort_pred());
+						}
+
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for
 #endif
@@ -3793,11 +3815,13 @@ const double apert = 1.0e-8;
 								}
 							}
 
-							//sort so that largest values are encountered first
-							//maximum transversal algorithm may choose less beneficial path if not sorted
-							for (INMOST_DATA_ENUM_TYPE k = blocks[q].row_start; k < blocks[q].row_end; ++k)
-								std::sort(A_Entries[A_Address[k].thr].begin()+A_Address[k].first,A_Entries[A_Address[k].thr].begin()+A_Address[k].last,sort_pred());
-
+							//if (blocks.size() > 1)
+							{
+								//sort so that largest values are encountered first
+								//maximum transversal algorithm may choose less beneficial path if not sorted
+								//for (INMOST_DATA_ENUM_TYPE k = blocks[q].row_start; k < blocks[q].row_end; ++k)
+								//	std::sort(A_Entries[A_Address[k].thr].begin() + A_Address[k].first, A_Entries[A_Address[k].thr].begin() + A_Address[k].last, sort_pred());
+							}
 							//DumpMatrixBlock(blocks[q], A_Address, A_Entries, "block_" + to_string(level_size.size()) + "_" + to_string(q) + ".mtx");
 
 							
@@ -4004,163 +4028,6 @@ const double apert = 1.0e-8;
 								blocks[q].col_start = blocks[q].row_start;
 								blocks[q].col_end = blocks[q].row_end;
 							}
-							
-							//shift columns to row starting positions
-							/*
-							INMOST_DATA_ENUM_TYPE lastp = 0;
-							for (size_t q = 0; q < blocks.size(); ++q) 
-							{
-								INMOST_DATA_ENUM_TYPE rbeg = blocks[q].row_start;
-								INMOST_DATA_ENUM_TYPE rend = blocks[q].row_end;
-								INMOST_DATA_ENUM_TYPE cbeg = blocks[q].col_start;
-								INMOST_DATA_ENUM_TYPE cend = blocks[q].col_end;
-								if (!blocks[q].separator)
-								{
-									INMOST_DATA_ENUM_TYPE first = moend;// , firstc = moend;
-									INMOST_DATA_ENUM_TYPE last = mobeg;// , lastc = mobeg;
-									INMOST_DATA_ENUM_TYPE skip = 0;
-									for (INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k)
-									{
-										if (localQ[k] != ENUMUNDEF)
-										{
-											first = std::min(first, localQ[k]);
-											last = std::max(last, localQ[k]);
-										}
-										else skip++;
-									}
-									if (verbosity > 1)
-									{
-										Block b(blocks[q].row_start, blocks[q].row_end, blocks[q].row_start, blocks[q].row_end, false);
-										std::cout << "Block " << q;
-										std::cout << " rows " << blocks[q].row_start << ":" << blocks[q].row_end;
-										std::cout << " cols " << blocks[q].col_start << ":" << blocks[q].col_end;
-										std::cout << " nnz " << ComputeNonzeroes(b, A_Address, A_Entries,localQ);
-										std::cout << std::endl;
-										std::cout << "column indices " << first << ":" << last << " skip " << skip << std::endl;
-										//std::cout << " shifted " << first << ":" << last << std::endl;
-									}
-									if (first != rbeg) std::cout << " !!!! first column index " << first << " row index " << rbeg << std::endl;
-									if (last + 1 != rend) std::cout << " !!!! last column index " << last + 1 << " row index " << rend << std::endl;
-									if (blocks[q].row_end - blocks[q].row_start > blocks[q].col_end - blocks[q].col_start - skip)
-										std::cout << " @@@@ block " << q << " number of rows: " << blocks[q].row_end - blocks[q].row_start << " assigned columns: " << blocks[q].col_end - blocks[q].col_start - skip << std::endl;
-									//if (first != rbeg || last + 1 != rend)
-									{
-										
-									}
-									//assert(first == rbeg);
-									//assert(last+1 == rend);
-									blocks[q].col_start = first;
-									blocks[q].col_end = last + 1;
-
-									{
-										interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> tmp(blocks[q].row_start, blocks[q].row_end, ENUMUNDEF);
-										for (INMOST_DATA_ENUM_TYPE r = cbeg; r < cend; ++r) if( localQ[r] != ENUMUNDEF )
-											tmp[localQ[r]] = r;
-										for (INMOST_DATA_ENUM_TYPE r = blocks[q].row_start; r < blocks[q].row_end; ++r)
-											if (tmp[r] == ENUMUNDEF) std::cout << "block " << q << " no column for " << r << std::endl;
-									}
-
-									//DumpMatrixBlock(blocks[q], A_Address, A_Entries, localQ, "mpt_block_" + to_string(level_size.size()) + "_" + to_string(q) + ".mtx");
-									//DumpMatrixBlock(Block(blocks[q].row_start,blocks[q].row_end, blocks[q].row_start,wend,false), A_Address, A_Entries, localQ, "mpt_wide_block_" + to_string(level_size.size()) + "_" + to_string(q) + ".mtx");
-
-									lastp = std::max(lastp, last + 1);
-								}
-								
-								else
-								{
-									for (INMOST_DATA_ENUM_TYPE k = rbeg; k < rend; ++k)
-										Pivot[k] = true;
-									
-									
-									INMOST_DATA_ENUM_TYPE gbeg = wend, gend = wbeg, gtot = 0;
-									for (INMOST_DATA_ENUM_TYPE k = cbeg; k < cend; ++k)
-										if (localQ[k] == ENUMUNDEF)
-										{
-											if (!gaps.empty())
-											{
-												for (size_t m = 0; m < blocks.size(); ++m) if (!blocks[m].separator)
-												{
-													if (blocks[m].row_start <= gaps.back() && gaps.back() < blocks[m].row_end)
-													{
-														std::cout << "Gap at " << gaps.back() << " may belong to block " << m;
-														std::cout << " rows " << blocks[m].row_start << ":" << blocks[m].row_end;
-														std::cout << " cols " << blocks[m].col_start << ":" << blocks[m].col_end;
-														std::cout << " going to be assigned to column " << k;
-														std::cout << std::endl;
-													}
-												}
-												localQ[k] = gaps.back();
-												gaps.pop_back();
-												gtot++;
-												gbeg = std::min(gbeg, localQ[k]);
-												gend = std::max(gend, localQ[k]);
-											}
-											//else localQ[k] = last++;
-											else std::cout << __FILE__ << ":" << __LINE__ << " gaps are empty! k = " << k << " interval " << wbeg << ":" << wend << std::endl;
-										}
-									if (verbosity > 1)
-									{
-										{
-											std::cout << "Separator " << q;
-											std::cout << " rows " << blocks[q].row_start << ":" << blocks[q].row_end;
-											std::cout << " cols " << blocks[q].col_start << ":" << blocks[q].col_end;
-											std::cout << std::endl;
-											std::cout << "gaps at " << gbeg << ":" << gend << " total " << gtot << std::endl;
-										}
-
-									}
-									//blocks.push_back(Block(cbeg, cend, gbeg, gend, true));
-								}
-								
-							}
-							*/
-							/*
-							INMOST_DATA_ENUM_TYPE gaps0 = 0;
-							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-								if (localQ[k] == ENUMUNDEF)
-								{
-									if (!gaps.empty())
-									{
-										localQ[k] = gaps.back();
-										gaps.pop_back();
-										gaps0++;
-									}
-									//else localQ[k] = last++;
-									else std::cout << __FILE__ << ":" << __LINE__ << " gaps are empty! k = " << k << " interval " << wbeg << ":" << wend << std::endl;
-								}
-							if( gaps0 ) std::cout << "gaps in blocks: " << gaps0 << std::endl;
-							*/
-							//blocks.push_back(Block(wbeg, wend, lastp, wend, true));
-							/*
-							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-								localP[k] = ENUMUNDEF;
-							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-							{
-								if (localQ[k] != ENUMUNDEF)
-								{
-									assert(localP[localQ[k]] == ENUMUNDEF);
-									localP[localQ[k]] = k;
-								}
-							}
-							std::vector<INMOST_DATA_ENUM_TYPE> gaps;
-							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-								if (localP[k] == ENUMUNDEF)
-									gaps.push_back(k);
-
-							//~ std::cout << "@ gaps: " << gaps.size() << std::endl;
-
-							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
-								if (localQ[k] == ENUMUNDEF)
-								{
-									if (!gaps.empty())
-									{
-										localQ[k] = gaps.back();
-										gaps.pop_back();
-									}
-									//else localQ[k] = last++;
-									else std::cout << __FILE__ << ":" << __LINE__ <<  " gaps are empty! k = " << k << " interval " << wbeg << ":" << wend << std::endl;
-								}
-							*/
 							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
 								localP[k] = k;
 
@@ -4219,6 +4086,75 @@ const double apert = 1.0e-8;
 					}
 					///  END MAXIMUM TRANSVERSE REORDERING
 					cend = wend;
+
+					if (run_nd == 2 && !block_pivot && Threads() && wend - wbeg > 128)
+					{
+						if (verbosity > 1) std::cout << "Reordering with k-way symmetric dissection, threads = " << Threads() << std::endl;
+						tlocal = Timer();
+						blocks.clear();
+						KwaySymmetricDissection(wbeg, wend, A_Address, A_Entries, localP, localQ, blocks, Threads());
+						//complete matrix ordering
+						tlocal = Timer() - tlocal;
+						if (verbosity > 1) std::cout << "Time " << tlocal << "\n";
+						tnd += tlocal;
+						treorder += tlocal;
+
+
+						size_t sep = 0;
+						for (size_t q = 0; q < blocks.size(); ++q)
+							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
+
+						if (3 * sep < (wend - wbeg)) //separator is not too big
+						{
+							if (verbosity > 1) std::cout << "Reassemble\n";
+							tlocal = Timer();
+							ReorderSystem(wbeg, wend, A_Address, A_Entries, localP, localQ, DL, DR, DL0, DR0);
+							tlocal = Timer() - tlocal;
+							treassamble += tlocal;
+							if (verbosity > 1) std::cout << "Time " << tlocal << "\n";
+
+							if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
+
+							if (false)
+							{
+								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_snd" + to_string(level_size.size()) + ".mtx");
+								std::ofstream file("blocks_snd" + to_string(level_size.size()) + ".txt");
+								for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
+									file << blocks[k].row_start - wbeg << " " << blocks[k].row_end - wbeg << " " << blocks[k].col_start - wbeg << " " << blocks[k].col_end - wbeg << std::endl;
+								file.close();
+							}
+
+							if (verbosity > 1)
+							{
+								for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
+								{
+									std::cout << "Block " << q;
+									std::cout << " rows " << blocks[q].row_start << ":" << blocks[q].row_end;
+									std::cout << " cols " << blocks[q].col_start << ":" << blocks[q].col_end;
+									std::cout << " nnz " << ComputeNonzeroes(blocks[q], A_Address, A_Entries);
+									std::cout << std::endl;
+								}
+							}
+
+							for (int q = 0; q < (int)blocks.size(); ++q) if (blocks[q].separator)
+								for (INMOST_DATA_ENUM_TYPE k = blocks[q].row_start; k < blocks[q].row_end; ++k)
+									Pivot[k] = true;
+						}
+						else
+						{
+							if (verbosity > 1) std::cout << "Separator is too big " << sep << " matrix size " << wend - wbeg << "\n";
+							blocks.clear();
+							blocks.push_back(Block(wbeg, wend, wbeg, wend, false));
+							for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
+							{
+								localP[k] = k;
+								localQ[k] = k;
+							}
+						}
+						//exit(-1);
+					}
+					else if (blocks.empty()) blocks.push_back(Block(wbeg, wend, wbeg, wend, false));
+
 
 					if (reorder_b)
 					{
@@ -5833,7 +5769,7 @@ const double apert = 1.0e-8;
 		}
 		/// MULTILEVEL FACTORIZATION COMPLETE
 		ttotal = Timer() - ttotal;
-		if( verbosity > 1 )
+		if( verbosity > 1 || show_summary )
 		{
 			std::cout << "total      " << ttotal       << "\n";
 			std::cout << "reorder    " << treorder     << " ("; fmt(std::cout,100.0*treorder/ttotal    ,6,2) << "%)\n";

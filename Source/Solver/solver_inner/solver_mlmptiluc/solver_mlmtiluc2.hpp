@@ -224,6 +224,14 @@ class MLMTILUC_preconditioner : public Method
 				 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 						std::vector<Block> & blocks,
 						int parts);
+	void KwaySymmetricDissection(INMOST_DATA_ENUM_TYPE wbeg,
+		INMOST_DATA_ENUM_TYPE wend,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>& Address,
+		const std::vector< std::vector<Sparse::Row::entry> >& Entries,
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localP,
+		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
+		std::vector<Block>& blocks,
+		int parts);
 	// finds permutation that separates matrix into blocks
 	void GreedyDissection(const Block & b,
 						  const interval< INMOST_DATA_ENUM_TYPE, std::vector<INMOST_DATA_ENUM_TYPE> > & G,
