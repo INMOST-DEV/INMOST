@@ -2783,6 +2783,7 @@ const double apert = 1.0e-8;
 			std::cout << " starting factorization " << cbeg << "<->" << cend << " thread " << thr << std::endl;
 		}
 
+		int report_pace = std::max<int>((cend - cbeg) / 500,1);
 
 		if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
@@ -2790,14 +2791,14 @@ const double apert = 1.0e-8;
 		{
 			if (!Pivot[k])
 			{
-#if defined(USE_OMP_FACT)
-#pragma omp parallel sections num_threads(2)
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp parallel sections num_threads(2)
+//#endif
 				{
 					// Compute U-part
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						// Prepare linked list for U-part
 						INMOST_DATA_ENUM_TYPE Sbeg, i;
@@ -2868,9 +2869,9 @@ const double apert = 1.0e-8;
 						OrderList(Sbeg, LineIndecesU, indicesU);
 					}
 					// Compute L-part
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						// prepearing linked list for L-part
 						INMOST_DATA_ENUM_TYPE Sbeg, i, j;
@@ -2987,9 +2988,9 @@ const double apert = 1.0e-8;
 				
 				if( false ) if (fabs(LineValuesU[k]) < tau2 || fabs(LineValuesL[k]) < tau2)
 				{
-#if defined(USE_OMP_FACT)
-#pragma omp critical
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp critical
+//#endif
 					{
 						std::cout << "Tiny diagonal " << k << ": U " << LineValuesU[k] << " L " << LineValuesL[k] << std::endl;
 						/*
@@ -3033,14 +3034,14 @@ const double apert = 1.0e-8;
 				// Condition estimator for diagonal D
 				NuD_old = NuD;
 				NuD = std::max<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]), max_diag) / std::min<INMOST_DATA_REAL_TYPE>(fabs(LU_Diag[k]), min_diag);
-#if defined(USE_OMP_FACT)
-#pragma omp parallel sections num_threads(2)
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp parallel sections num_threads(2)
+//#endif
 				{
 					// Compute U-part
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						// Rescale with diagonal
 						ScaleList(1.0 / LU_Diag[k], k, LineIndecesU, LineValuesU);
@@ -3054,9 +3055,9 @@ const double apert = 1.0e-8;
 							testimator += Timer() - tlocal;
 						} //if( estimator )
 					}
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						// Rescale with diagonal
 						ScaleList(1.0 / LU_Diag[k], k, LineIndecesL, LineValuesL);
@@ -3139,14 +3140,14 @@ const double apert = 1.0e-8;
 				}
 				// Update values on the whole diagonal with L and U
 				//DiagonalUpdate(k, LU_Diag, LineIndecesL, LineValuesL, LineIndecesU, LineValuesU);
-#if defined(USE_OMP_FACT)
-#pragma omp parallel sections num_threads(2)
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp parallel sections num_threads(2)
+//#endif
 				{
 					// reconstruct U-part from linked list
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						INMOST_DATA_REAL_TYPE Unorm = 0;
 						INMOST_DATA_ENUM_TYPE Ui = LineIndecesU[k];
@@ -3197,9 +3198,9 @@ const double apert = 1.0e-8;
 						}
 					}
 					// reconstruct L-part from linked list
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 					{
 						INMOST_DATA_REAL_TYPE Lnorm = 0;
 						INMOST_DATA_ENUM_TYPE Li = LineIndecesL[k];
@@ -3252,13 +3253,13 @@ const double apert = 1.0e-8;
 					}
 				}
 			}
-#if defined(USE_OMP_FACT)
-#pragma omp parallel sections num_threads(2)
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp parallel sections num_threads(2)
+//#endif
 			{//clear and advance
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 				{//U-part
 					// Cleanup structures
 					ClearList(k, LineIndecesU, LineValuesU);
@@ -3315,9 +3316,9 @@ const double apert = 1.0e-8;
 					}
 #endif
 				}
-#if defined(USE_OMP_FACT)
-#pragma omp section
-#endif
+//#if defined(USE_OMP_FACT)
+//#pragma omp section
+//#endif
 				{//L-part
 // Cleanup structures
 					ClearList(k, LineIndecesL, LineValuesL);
@@ -3386,7 +3387,7 @@ const double apert = 1.0e-8;
 #pragma omp atomic
 #endif
 				progress_cur++;
-				if (k % 100 == 0)
+				if (k % report_pace == 0)
 				{
 #if defined(USE_OMP_FACT)
 #pragma omp critical
