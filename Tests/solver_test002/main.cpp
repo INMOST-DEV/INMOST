@@ -140,8 +140,8 @@ int main(int argc, char ** argv)
 			s.SetParameter("pivot_condition", "5");
 			s.SetParameter("ddpq_tolerance", "0.7");
 			
-			mat.Save("A.mtx");
-			b.Save("b.mtx");
+			//mat.Save("A.mtx");
+			//b.Save("b.mtx");
 
 			t = Timer();
 			s.SetMatrix(mat); // Compute the preconditioner for the original matrix
@@ -150,7 +150,7 @@ int main(int argc, char ** argv)
 			t = Timer();
 			success = s.Solve(b,x); // Solve the linear system with the previously computted preconditioner
 			
-			x.Save("x.mtx");
+			//x.Save("x.mtx");
 			BARRIER
 			if( !rank ) std::cout << "solver: " << Timer() - t << std::endl;
 			iters = s.Iterations(); // Get the number of iterations performed

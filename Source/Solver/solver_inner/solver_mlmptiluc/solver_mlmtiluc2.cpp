@@ -1325,7 +1325,7 @@ const double apert = 1.0e-8;
 				 		 						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 												 std::vector<Block> & blocks, int parts)
 	{
-		double /*timer = Timer(),*/ total_time = Timer();
+		double timer = Timer(), total_time = Timer();
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg,wend,Address,Entries,cbeg,cend);
 
@@ -1336,18 +1336,18 @@ const double apert = 1.0e-8;
 		
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 		
-		//~ timer = Timer();
-
+		timer = Timer();
 		PrepareGraph(wbeg,wend,Address,Entries,G_Address,G_Entries);
+		std::cout << "prepare G time " << Timer() - timer << std::endl;
+		timer = Timer();
 		PrepareGraphTranspose(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries);
-		// std::cout << "prepare tG time " << Timer() - timer << std::endl;
-		
-		//~ timer = Timer();
+		std::cout << "prepare tG time " << Timer() - timer << std::endl;
+		timer = Timer();
 		PrepareGraphProduct(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries);
-		// std::cout << "prepare pG time " << Timer() - timer << std::endl;
-		
+		std::cout << "prepare pG time " << Timer() - timer << std::endl;
+		timer = Timer();
 		GreedyDissection(Block(wbeg,wend,cbeg,cend),G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries,localP,localQ,blocks,parts);
-			
+		std::cout << "greedy dissection " << Timer() - timer << std::endl;
 		blks = sep = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 		{
@@ -1359,7 +1359,7 @@ const double apert = 1.0e-8;
 		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
 
 
-		//std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
+		std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
 	}
 	void MLMTILUC_preconditioner::KwaySymmetricDissection(INMOST_DATA_ENUM_TYPE wbeg,
 		INMOST_DATA_ENUM_TYPE wend,
@@ -1369,7 +1369,7 @@ const double apert = 1.0e-8;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
 		std::vector<Block>& blocks, int parts)
 	{
-		double /*timer = Timer(),*/ total_time = Timer();
+		double timer = Timer(), total_time = Timer();
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg, wend, Address, Entries, cbeg, cend);
 
@@ -1379,24 +1379,25 @@ const double apert = 1.0e-8;
 
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 
-		//~ timer = Timer();
-
-		PrepareGraph(wbeg, wend, Address, Entries, G_Address,G_Entries);
-		PrepareGraphTranspose(wbeg, wend, G_Address,G_Entries, tG_Address,tG_Entries);
-		// std::cout << "prepare tG time " << Timer() - timer << std::endl;
-
-		//~ timer = Timer();
-		PrepareGraphProduct(wbeg, wend, G_Address,G_Entries, tG_Address,tG_Entries, pG_Address, pG_Entries);
-		// std::cout << "prepare pG time " << Timer() - timer << std::endl;
-
+		timer = Timer();
+		PrepareGraph(wbeg, wend, Address, Entries, G_Address, G_Entries);
+		std::cout << "prepare G time " << Timer() - timer << std::endl;
+		timer = Timer();
+		PrepareGraphTranspose(wbeg, wend, G_Address, G_Entries, tG_Address, tG_Entries);
+		std::cout << "prepare tG time " << Timer() - timer << std::endl;
+		timer = Timer();
+		PrepareGraphProduct(wbeg, wend, G_Address, G_Entries, tG_Address, tG_Entries, pG_Address, pG_Entries);
+		std::cout << "prepare pG time " << Timer() - timer << std::endl;
+		timer = Timer();
 		GreedyDissection(Block(wbeg, wend, cbeg, cend), G_Address, G_Entries, tG_Address, tG_Entries, pG_Address, pG_Entries, localP, localQ, blocks, parts);
+		std::cout << "greedy dissection " << Timer() - timer << std::endl;
 
 		blks = sep = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 		{
 			if (blocks[k].separator) sep += blocks[k].RowSize();
 			else blks++;
-			//std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
+			std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
 
 		}
 
@@ -1410,7 +1411,7 @@ const double apert = 1.0e-8;
 		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
 
 
-		//std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
+		std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
 	}
 
 	void MLMTILUC_preconditioner::GreedyDissection(const Block & b,
@@ -1430,7 +1431,7 @@ const double apert = 1.0e-8;
 		bool kway = (kway_parts > 1);
 		// const int kway_parts = 4;
 		const int upd_sep = 1, upd_blk = 1;
-		const int wgt_sep = 1, wgt_blk = 1;
+		const int wgt_sep = 0, wgt_blk = 1;
 
 		
 		// std::cout << __FUNCTION__ <<  " wgt sep " << wgt_sep << " blk " << wgt_blk << " kway " << kway << std::endl;
@@ -4269,11 +4270,19 @@ const double apert = 1.0e-8;
 
 							if (false)
 							{
+								for (size_t q = 0; q < blocks.size(); ++q) if (blocks[q].separator)
+								{
+									blocks.push_back(Block(blocks[q].col_start, blocks[q].col_end, blocks[q].row_start, blocks[q].row_end, true));
+									break;
+								}
+
 								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_snd" + to_string(level_size.size()) + ".mtx");
 								std::ofstream file("blocks_snd" + to_string(level_size.size()) + ".txt");
 								for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 									file << blocks[k].row_start - wbeg << " " << blocks[k].row_end - wbeg << " " << blocks[k].col_start - wbeg << " " << blocks[k].col_end - wbeg << std::endl;
 								file.close();
+
+								blocks.pop_back();
 							}
 
 							if (verbosity > 1)
