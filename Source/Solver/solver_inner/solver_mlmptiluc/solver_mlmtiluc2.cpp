@@ -3868,7 +3868,7 @@ const double apert = 1.0e-8;
 				{
 					if (verbosity > 1) std::cout << "Reorder\n";
 					double tlreorder = Timer();
-					if (run_nd == 1 && !block_pivot && Threads() && wend-wbeg > 128)
+					if (run_nd == 1 && !block_pivot && Threads() > 1 && wend-wbeg > 128)
 					{
 						if (verbosity > 1) std::cout << "Reordering with k-way dissection, threads = " << Threads() << std::endl;
 						tlocal = Timer();
@@ -4240,7 +4240,7 @@ const double apert = 1.0e-8;
 					///  END MAXIMUM TRANSVERSE REORDERING
 					cend = wend;
 
-					if (run_nd == 2 && !block_pivot && Threads() && wend - wbeg > 128)
+					if (run_nd == 2 && !block_pivot && Threads() > 1 && wend - wbeg > 128)
 					{
 						if (verbosity > 1) std::cout << "Reordering with k-way symmetric dissection, threads = " << Threads() << std::endl;
 						tlocal = Timer();
@@ -5942,7 +5942,11 @@ const double apert = 1.0e-8;
 			std::cout << "factor     " << tfactor      << " ("; fmt(std::cout,100.0*tfactor/ttotal     ,6,2) << "%)\n";
 			std::cout << "   schur   " << tschur       << " ("; fmt(std::cout,100.0*tschur/ttotal       ,6,2) << "%)\n";
 			std::cout << "   cond    " << testimator   << " ("; fmt(std::cout,100.0*testimator/ttotal  ,6,2) << "%)\n";
-			std::cout << "nnz A " << nzA << " LU " << nzLU << " LU2 " << nzLU2tot << " swaps " << totswaps << " levels " << level_size.size() << "\n";
+			std::cout << "nnz A " << nzA << " LU " << nzLU << " LU2 " << nzLU2tot << " swaps " << totswaps << " levels " << level_size.size();
+			std::cout << " blocks: ";
+			for(size_t q = 0; q < level_blocks.size(); ++q)
+				std::cout << " " << level_blocks[q].size();
+			std::cout  << "\n";
 		}
 		if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 		init = true;
