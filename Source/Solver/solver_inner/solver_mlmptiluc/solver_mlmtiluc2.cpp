@@ -1336,18 +1336,18 @@ const double apert = 1.0e-8;
 		
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 		
-		timer = Timer();
+		//timer = Timer();
 		PrepareGraph(wbeg,wend,Address,Entries,G_Address,G_Entries);
-		std::cout << "prepare G time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare G time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		PrepareGraphTranspose(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries);
-		std::cout << "prepare tG time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare tG time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		PrepareGraphProduct(wbeg,wend,G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries);
-		std::cout << "prepare pG time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare pG time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		GreedyDissection(Block(wbeg,wend,cbeg,cend),G_Address,G_Entries,tG_Address,tG_Entries,pG_Address,pG_Entries,localP,localQ,blocks,parts);
-		std::cout << "greedy dissection " << Timer() - timer << std::endl;
+		//std::cout << "greedy dissection " << Timer() - timer << std::endl;
 		blks = sep = 0;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 		{
@@ -1359,7 +1359,7 @@ const double apert = 1.0e-8;
 		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
 
 
-		std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
+		//std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
 	}
 	void MLMTILUC_preconditioner::KwaySymmetricDissection(INMOST_DATA_ENUM_TYPE wbeg,
 		INMOST_DATA_ENUM_TYPE wend,
@@ -1379,18 +1379,18 @@ const double apert = 1.0e-8;
 
 		// std::cout << __FUNCTION__ << " row " << wbeg << ":" << wend << " col " << cbeg << ":" << cend << std::endl;
 
-		timer = Timer();
+		//timer = Timer();
 		PrepareGraph(wbeg, wend, Address, Entries, G_Address, G_Entries);
-		std::cout << "prepare G time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare G time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		PrepareGraphTranspose(wbeg, wend, G_Address, G_Entries, tG_Address, tG_Entries);
-		std::cout << "prepare tG time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare tG time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		PrepareGraphProduct(wbeg, wend, G_Address, G_Entries, tG_Address, tG_Entries, pG_Address, pG_Entries);
-		std::cout << "prepare pG time " << Timer() - timer << std::endl;
-		timer = Timer();
+		//std::cout << "prepare pG time " << Timer() - timer << std::endl;
+		//timer = Timer();
 		GreedyDissection(Block(wbeg, wend, cbeg, cend), G_Address, G_Entries, tG_Address, tG_Entries, pG_Address, pG_Entries, localP, localQ, blocks, parts);
-		std::cout << "greedy dissection " << Timer() - timer << std::endl;
+		//std::cout << "greedy dissection " << Timer() - timer << std::endl;
 
 		blks = sep = 0;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
@@ -1411,7 +1411,7 @@ const double apert = 1.0e-8;
 		//std::cout << "total separator " << sep << " blocks " << blks << std::endl;
 
 
-		std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
+		//std::cout << __FUNCTION__ << " time " << Timer() - total_time << std::endl;
 	}
 
 	void MLMTILUC_preconditioner::GreedyDissection(const Block & b,
@@ -1431,7 +1431,7 @@ const double apert = 1.0e-8;
 		bool kway = (kway_parts > 1);
 		// const int kway_parts = 4;
 		const int upd_sep = 1, upd_blk = 1;
-		const int wgt_sep = 0, wgt_blk = 1;
+		const int wgt_sep = 1, wgt_blk = 0;
 
 		
 		// std::cout << __FUNCTION__ <<  " wgt sep " << wgt_sep << " blk " << wgt_blk << " kway " << kway << std::endl;
@@ -3950,7 +3950,7 @@ const double apert = 1.0e-8;
 						}
 
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 						{
@@ -4056,7 +4056,7 @@ const double apert = 1.0e-8;
 #endif
 							std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > gaps(blocks.size());
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 							for (int q = 0; q < (int)blocks.size(); ++q)
 							{
@@ -4088,7 +4088,7 @@ const double apert = 1.0e-8;
 							}
 							//fill gaps for internal blocks, some columns fill the gaps
 #if defined(USE_OMP)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 							for (int q = 0; q < (int)blocks.size(); ++q) if( !blocks[q].separator )
 							{
@@ -4342,7 +4342,7 @@ const double apert = 1.0e-8;
 								CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
 						}
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 						{
@@ -4446,7 +4446,7 @@ const double apert = 1.0e-8;
 						if( verbosity > 1 ) std::cout << "Rescaling, iters " << sciters << std::endl;
 						tlocal = Timer();
 #if defined(USE_OMP_FACT)
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 						{
@@ -4528,7 +4528,7 @@ const double apert = 1.0e-8;
 #if defined(USE_OMP_FACT)
 				//int nested = omp_get_nested();
 				//omp_set_nested(1);
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
 #endif
 				for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 				{/// FACTORIZATION BEGIN
@@ -6017,7 +6017,7 @@ const double apert = 1.0e-8;
 			for (INMOST_DATA_INTEGER_TYPE k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) temp[k] = inout[k];
 			//Solve with L first
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp for schedule(static,1)
 #endif
 			for (int q = 0; q < (int)level_blocks[level].size(); ++q) if( !level_blocks[level][q].separator )
 			{
@@ -6046,7 +6046,7 @@ const double apert = 1.0e-8;
 			for (INMOST_DATA_INTEGER_TYPE k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) temp[k] /= LU_Diag[k];
 			//Solve with U
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp for schedule(static,1)
 #endif
 			for (int q = 0; q < (int)level_blocks[level].size(); ++q) if (!level_blocks[level][q].separator)
 			{
@@ -6120,7 +6120,7 @@ const double apert = 1.0e-8;
 		//perform solve over calculated vector
 		//Solve with L first
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp for schedule(static,1)
 #endif
 		for (int q = 0; q < (int)level_blocks[level-1].size(); ++q) if (!level_blocks[level-1][q].separator)
 		{
@@ -6149,7 +6149,7 @@ const double apert = 1.0e-8;
 		for (INMOST_DATA_INTEGER_TYPE k = cbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(cend); ++k) inout[k] /= LU_Diag[k];
 		//Solve with U
 #if defined(USE_OMP)
-#pragma omp for
+#pragma omp for schedule(static,1)
 #endif
 		for (int q = 0; q < (int)level_blocks[level-1].size(); ++q) if (!level_blocks[level-1][q].separator)
 		{
