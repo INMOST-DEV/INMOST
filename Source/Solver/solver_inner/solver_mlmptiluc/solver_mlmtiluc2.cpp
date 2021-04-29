@@ -3887,7 +3887,7 @@ const double apert = 1.0e-8;
 						for (size_t q = 0; q < blocks.size(); ++q)
 							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
 						
-						if (3*sep < (wend - wbeg) ) //separator is not too big
+						if (1.5*sep < (wend - wbeg) ) //separator is not too big
 						{
 							if (verbosity > 1) std::cout << "Reassemble\n";
 							tlocal = Timer();
@@ -3898,7 +3898,7 @@ const double apert = 1.0e-8;
 
 							if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
-							if (false)
+							if (true)
 							{
 								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_nd" + to_string(level_size.size()) + ".mtx");
 								std::ofstream file("blocks_nd" + to_string(level_size.size()) + ".txt");
@@ -4217,7 +4217,7 @@ const double apert = 1.0e-8;
 
 						if (verbosity > 1) std::cout << "Time " << tlocal << "\n";
 
-						if( false )
+						if( true )
 						{
 							DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_mt"+to_string(level_size.size())+".mtx");
 							std::ofstream file("blocks_mt" + to_string(level_size.size()) + ".txt");
@@ -4257,7 +4257,9 @@ const double apert = 1.0e-8;
 						for (size_t q = 0; q < blocks.size(); ++q)
 							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
 
-						if (3 * sep < (wend - wbeg)) //separator is not too big
+						std::cout << "separator " << sep << " matrix " << wend - wbeg << std::endl;
+
+						if (1.5 * sep < (wend - wbeg)) //separator is not too big
 						{
 							if (verbosity > 1) std::cout << "Reassemble\n";
 							tlocal = Timer();
@@ -4268,7 +4270,7 @@ const double apert = 1.0e-8;
 
 							if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
-							if (false)
+							if (true)
 							{
 								for (size_t q = 0; q < blocks.size(); ++q) if (blocks[q].separator)
 								{
@@ -4282,7 +4284,7 @@ const double apert = 1.0e-8;
 									file << blocks[k].row_start - wbeg << " " << blocks[k].row_end - wbeg << " " << blocks[k].col_start - wbeg << " " << blocks[k].col_end - wbeg << std::endl;
 								file.close();
 
-								blocks.pop_back();
+								if( blocks.back().separator ) blocks.pop_back();
 							}
 
 							if (verbosity > 1)
@@ -4398,13 +4400,20 @@ const double apert = 1.0e-8;
 						if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 
-						if (false)
+						if (true)
 						{
-							DumpMatrix(A_Address, A_Entries, wbeg, wend, "ordA.mtx");
-							std::ofstream file("blocks_ord.txt");
+							for (size_t q = 0; q < blocks.size(); ++q) if (blocks[q].separator)
+							{
+								blocks.push_back(Block(blocks[q].col_start, blocks[q].col_end, blocks[q].row_start, blocks[q].row_end, true));
+								break;
+							}
+							DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_ord" + to_string(level_size.size()) + ".mtx");
+							std::ofstream file("blocks_ord" + to_string(level_size.size()) + ".txt");
 							for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
-								file << blocks[k].row_start << " " << blocks[k].row_end << " " << blocks[k].col_start << " " << blocks[k].col_end << std::endl;
+								file << blocks[k].row_start-wbeg << " " << blocks[k].row_end-wbeg << " " << blocks[k].col_start-wbeg << " " << blocks[k].col_end-wbeg << std::endl;
 							file.close();
+
+							if (blocks.back().separator) blocks.pop_back();
 						}
 						//exit(-1);
 					}
