@@ -1397,7 +1397,7 @@ const double apert = 1.0e-8;
 		{
 			if (blocks[k].separator) sep += blocks[k].RowSize();
 			else blks++;
-			std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
+			//std::cout << (blocks[k].separator?"separator":"block") << "[" << k << "] rows " << blocks[k].row_start << ":" << blocks[k].row_end << "(" << blocks[k].RowSize() << ") cols " << blocks[k].col_start << ":" << blocks[k].col_end << "(" << blocks[k].ColSize() << ")" << std::endl;
 
 		}
 
@@ -1431,7 +1431,7 @@ const double apert = 1.0e-8;
 		bool kway = (kway_parts > 1);
 		// const int kway_parts = 4;
 		const int upd_sep = 1, upd_blk = 1;
-		const int wgt_sep = 1, wgt_blk = 0;
+		const int wgt_sep = 1, wgt_blk = 1;
 
 		
 		// std::cout << __FUNCTION__ <<  " wgt sep " << wgt_sep << " blk " << wgt_blk << " kway " << kway << std::endl;
@@ -3887,7 +3887,7 @@ const double apert = 1.0e-8;
 						for (size_t q = 0; q < blocks.size(); ++q)
 							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
 						
-						if (1.5*sep < (wend - wbeg) ) //separator is not too big
+						if (2*sep < (wend - wbeg) ) //separator is not too big
 						{
 							if (verbosity > 1) std::cout << "Reassemble\n";
 							tlocal = Timer();
@@ -4257,9 +4257,7 @@ const double apert = 1.0e-8;
 						for (size_t q = 0; q < blocks.size(); ++q)
 							if (blocks[q].separator) sep += blocks[q].row_end - blocks[q].row_start;
 
-						std::cout << "separator " << sep << " matrix " << wend - wbeg << std::endl;
-
-						if (1.5 * sep < (wend - wbeg)) //separator is not too big
+						if (2 * sep < (wend - wbeg)) //separator is not too big
 						{
 							if (verbosity > 1) std::cout << "Reassemble\n";
 							tlocal = Timer();
