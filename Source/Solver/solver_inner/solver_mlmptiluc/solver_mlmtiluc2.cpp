@@ -32,13 +32,13 @@ using namespace INMOST;
 //#define REORDER_MONDRIAAN
 #endif
 
-static int run_nd = 2; //1 - unsymmetric dissection before mpt, 2 - symmetric dissection after mpt
+static int run_nd = 0; //1 - unsymmetric dissection before mpt, 2 - symmetric dissection after mpt
 static bool run_mpt = true;
 static bool reorder_b = true;
 static bool rescale_b = true;
 static bool allow_pivot = true;
 static bool print_mem = false;
-static bool show_summary = true;
+static bool show_summary = false;
 const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 
@@ -3898,7 +3898,7 @@ const double apert = 1.0e-8;
 
 							if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
-							if (true)
+							if (false)
 							{
 								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_nd" + to_string(level_size.size()) + ".mtx");
 								std::ofstream file("blocks_nd" + to_string(level_size.size()) + ".txt");
@@ -4217,7 +4217,7 @@ const double apert = 1.0e-8;
 
 						if (verbosity > 1) std::cout << "Time " << tlocal << "\n";
 
-						if( true )
+						if( false )
 						{
 							DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_mt"+to_string(level_size.size())+".mtx");
 							std::ofstream file("blocks_mt" + to_string(level_size.size()) + ".txt");
@@ -4270,7 +4270,7 @@ const double apert = 1.0e-8;
 
 							if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
-							if (true)
+							if (false)
 							{
 								for (size_t q = 0; q < blocks.size(); ++q) if (blocks[q].separator)
 								{
@@ -4400,7 +4400,7 @@ const double apert = 1.0e-8;
 						if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
 
 
-						if (true)
+						if (false)
 						{
 							for (size_t q = 0; q < blocks.size(); ++q) if (blocks[q].separator)
 							{
