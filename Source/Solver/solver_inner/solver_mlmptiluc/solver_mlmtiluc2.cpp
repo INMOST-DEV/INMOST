@@ -3934,8 +3934,8 @@ const double apert = 1.0e-8;
 						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
 							CheckColumnGaps(blocks[q], A_Address, A_Entries);
 
-						for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
-							CheckBlock(blocks[q], A_Address, A_Entries, wend, wend, __FILE__, __LINE__); //no separator
+						//for (int q = 0; q < (int)blocks.size(); ++q) if (!blocks[q].separator)
+						//	CheckBlock(blocks[q], A_Address, A_Entries, wend, wend, __FILE__, __LINE__); //no separator
 
 #if defined(USE_OMP_FACT)
 #pragma omp parallel
@@ -4192,8 +4192,8 @@ const double apert = 1.0e-8;
 									sepbeg = blocks[q].row_start;
 									sepend = blocks[q].row_end;
 								}
-								for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
-									CheckBlock(blocks[q], A_Address, A_Entries, localQ, sepbeg, sepend, __FILE__, __LINE__); //no separator
+								//for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
+								//	CheckBlock(blocks[q], A_Address, A_Entries, localQ, sepbeg, sepend, __FILE__, __LINE__); //no separator
 							}
 						}
 
@@ -4211,8 +4211,8 @@ const double apert = 1.0e-8;
 								sepbeg = blocks[q].row_start;
 								sepend = blocks[q].row_end;
 							}
-							for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
-								CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
+							//for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
+							//	CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
 						}
 
 						if (verbosity > 1) std::cout << "Time " << tlocal << "\n";
@@ -4338,8 +4338,8 @@ const double apert = 1.0e-8;
 								sepbeg = blocks[q].row_start;
 								sepend = blocks[q].row_end;
 							}
-							for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
-								CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
+							//for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
+							//	CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
 						}
 #if defined(USE_OMP_FACT)
 #pragma omp parallel for schedule(static,1)
@@ -4391,8 +4391,8 @@ const double apert = 1.0e-8;
 								sepbeg = blocks[q].row_start;
 								sepend = blocks[q].row_end;
 							}
-							for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
-								CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
+							//for (size_t q = 0; q < blocks.size(); ++q) if (!blocks[q].separator)
+							//	CheckBlock(blocks[q], A_Address, A_Entries, sepbeg, sepend, __FILE__, __LINE__); //no separator
 						}
 
 						if (verbosity > 1 && print_mem) std::cout << __FILE__ << ":" << __LINE__ << " mem " << getCurrentRSS() << " peak " << getPeakRSS() << std::endl;
@@ -5775,6 +5775,9 @@ const double apert = 1.0e-8;
 									progress_cur++;
 									if (k % 100 == 0)
 									{
+										size_t Snnz = 0;
+										for (size_t q = 0; q < S_Entries.size(); ++q)
+											Snnz += S_Entries[q].size();
 #if defined(USE_OMP_FACT)
 #pragma omp critical
 #endif
@@ -5783,7 +5786,7 @@ const double apert = 1.0e-8;
 											save.copyfmt(std::cout);
 											//std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * (k - cend + 1) / (1.f * (wend - cend));
 											std::cout << "Schur " << std::setw(6) << std::fixed << std::setprecision(2) << 100.f * progress_cur / (1.f * progress_all);
-											std::cout << " nnz " << std::setw(10) << S_Entries.size() << " drop S " << ndrops_s;
+											std::cout << " nnz " << std::setw(10) << Snnz << " drop S " << ndrops_s;
 											std::cout << "\t\t\r" << std::flush;
 											std::cout.copyfmt(save);
 										}
