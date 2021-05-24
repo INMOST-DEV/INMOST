@@ -2461,7 +2461,9 @@ const double apert = 1.0e-8;
 			interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> U(wbeg, wend), V(wbeg, wend);
 			std::vector< std::vector<INMOST_DATA_REAL_TYPE> > C_Entries(A_Entries.size());
 			interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> temp(wbeg, wend, 0);
+#if defined(USE_OMP)
 			bool parallel = !omp_in_parallel();
+#endif
 			for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); k++)
 				if (Pivot[k]) std::cout << "pivot row " << k << " appears in scaling " << std::endl;
 			for (size_t q = 0; q < A_Entries.size(); ++q)
@@ -2565,7 +2567,9 @@ const double apert = 1.0e-8;
 	{
 		/// ROW-COLUMN ALTERNATING SCALING FOR p-NORM BALANCING
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> U(wbeg, wend), V(wbeg, wend);
+#if defined(USE_OMP)
 		bool parallel = !omp_in_parallel();
+#endif
 		for (INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); k++)
 			if (Pivot[k]) std::cout << "pivot row " << k << " appears in scaling " << std::endl;
 #if defined(USE_OMP_FACT)
