@@ -361,7 +361,7 @@ namespace INMOST
 					std::cout << std::setw(30) << it->first << " element type " << ElementTypeName(etype) << " error integral " << std::setw(12) << sqrt(int_err) << " maximal " << std::setw(12) << max_err << std::endl;// " on element " << e.GlobalID() << std::endl;
 					for(int k = 0; k < (int)err_int.size(); ++k)
 					{
-						std::cout << "\t\t" << std::setw(2) << k << " error integral " << std::setw(12) << sqrt(err_int[k]) << " maximal " << std::setw(12) << err_comp[k] << std::endl;
+						std::cout << "\t\t" << std::setw(2) << k << " error integral " << std::setw(12) << sqrt(err_int[k]) << " maximal " << std::setw(12) << err_comp[k] << " tag " << it->second->GetValueTag(k).GetTagName() << std::endl;
 					}
 				}
 			}

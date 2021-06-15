@@ -301,19 +301,55 @@ namespace INMOST
 		HandleType hc = GetHandle();
 		if( !m->HideMarker() )
 		{
-			Element::adj_type & lc = m->LowConn(hc);
-			for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+			if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 			{
-				Element::adj_type & ilc = m->LowConn(lc[i]);
-				for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+				ElementArray<Edge> aret;
+				adj_type const& lc = m->LowConn(GetHandle()); // set of edges
+				assert(lc.size() > 2); // it should be at least triangle
+				aret.reserve(lc.size());
+				HandleType q = lc[0]; //edge 0
+				adj_type const& qlc = m->LowConn(q);
+				assert(qlc.size() == 2);
+				aret.push_back(qlc[0]); //node 0
+				aret.push_back(qlc[1]); //node 1
+				HandleType r = lc[1]; //edge 1
+				adj_type& rlc = m->LowConn(r);
+				assert(rlc.size() == 2);
+				if (aret.data()[0] == rlc[0] || aret.data()[0] == rlc[1])
 				{
-					Element::adj_type & jlc = m->LowConn(ilc[j]);
-					for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+					HandleType temp = aret.data()[0];
+					aret.data()[0] = aret.data()[1];
+					aret.data()[1] = temp;
+				}
+				adj_type::size_type it = 1, iend = lc.size() - 1;
+				while (it < iend) //loop over edges
+				{
+					adj_type const& ilc = m->LowConn(lc[it]);
+					assert(ilc.size() == 2);
+					if (aret.atback() == ilc[0]) aret.push_back(ilc[1]);
+					else aret.push_back(ilc[0]);
+					++it;
+				}
+				ret.reserve(aret.size());
+				for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+					ret.push_back(m->LowConn(*it)[0]);
+			}
+			else
+			{
+				Element::adj_type& lc = m->LowConn(hc);
+				for (Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+				{
+					Element::adj_type& ilc = m->LowConn(lc[i]);
+					for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
 					{
-						if( !m->GetPrivateMarker(jlc[k],mrk) )
+						Element::adj_type& jlc = m->LowConn(ilc[j]);
+						for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
 						{
-							m->SetPrivateMarker(jlc[k],mrk);
-							ret.push_back(jlc[k]);
+							if (!m->GetPrivateMarker(jlc[k], mrk))
+							{
+								m->SetPrivateMarker(jlc[k], mrk);
+								ret.push_back(jlc[k]);
+							}
 						}
 					}
 				}
@@ -322,19 +358,76 @@ namespace INMOST
 		else
 		{
 			MarkerType hm = m->HideMarker();
-			Element::adj_type & lc = m->LowConn(hc);
-			for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+			if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 			{
-				Element::adj_type & ilc = m->LowConn(lc[i]);
-				for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+				ElementArray<Edge> aret;
+				enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
+				adj_type const& lc = m->LowConn(GetHandle());
+				aret.reserve(lc.size());
+				i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+				HandleType q = lc[i]; //edge 0
+				adj_type const& qlc = m->LowConn(q);
+				assert(m->Count(qlc.data(), qlc.size(), hm) == 2);
+				k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+				aret.push_back(qlc[k]); //node 0
+				k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+				aret.push_back(qlc[k]); //node 1
+				i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+				HandleType r = lc[i]; //edge 1
+				adj_type const& rlc = m->LowConn(r);
+				assert(m->Count(rlc.data(), rlc.size(), hm) == 2);
+				k1 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+				k2 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+				if (aret.data()[0] == rlc[k1] || aret.data()[0] == rlc[k2])
 				{
-					Element::adj_type & jlc = m->LowConn(ilc[j]);
-					for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+					HandleType temp = aret.data()[0];
+					aret.data()[0] = aret.data()[1];
+					aret.data()[1] = temp;
+				}
+				adj_type::size_type it = i, iend = lc.size() - 1;
+
+				while (m->GetMarker(lc[iend], hm) && iend > 0) iend--;
+
+				while (it != iend)
+				{
+					if (!m->GetMarker(lc[it], hm)) //loop over edges
 					{
-						if( !m->GetPrivateMarker(jlc[k], mrk) )
+						adj_type const& ilc = m->LowConn(lc[it]);
+						assert(m->Count(ilc.data(), ilc.size(), hm) == 2);
+						k1 = ENUMUNDEF;
+						k1 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						k2 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						if (aret.atback() == ilc[k1])
+							aret.push_back(ilc[k2]);
+						else
+							aret.push_back(ilc[k1]);
+					}
+					++it;
+				}
+				ret.reserve(aret.size());
+				for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+				{
+					Element::adj_type adj = m->LowConn(*it);
+					assert(m->Count(adj.data(), static_cast<enumerator>(adj.size()),hm) == 1);
+					ret.push_back(adj[m->getNext(adj.data(), static_cast<enumerator>(adj.size()),ENUMUNDEF,hm)]);
+				}
+			}
+			else
+			{
+				Element::adj_type& lc = m->LowConn(hc);
+				for (Element::adj_type::size_type i = 0; i < lc.size(); i++) if (!m->GetMarker(lc[i], hm))  //iterate over faces
+				{
+					Element::adj_type& ilc = m->LowConn(lc[i]);
+					for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) if (!m->GetMarker(ilc[j], hm)) //iterate over face edges
+					{
+						Element::adj_type& jlc = m->LowConn(ilc[j]);
+						for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) if (!m->GetMarker(jlc[k], hm)) //iterator over edge nodes
 						{
-							m->SetPrivateMarker(jlc[k],mrk);
-							ret.push_back(jlc[k]);
+							if (!m->GetPrivateMarker(jlc[k], mrk))
+							{
+								m->SetPrivateMarker(jlc[k], mrk);
+								ret.push_back(jlc[k]);
+							}
 						}
 					}
 				}
@@ -357,19 +450,66 @@ namespace INMOST
 		{
 			if( !m->HideMarker() )
 			{
-				Element::adj_type & lc = m->LowConn(hc);
-				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					Element::adj_type & ilc = m->LowConn(lc[i]);
-					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+					ElementArray<Edge> aret;
+					adj_type const& lc = m->LowConn(GetHandle());
+					aret.reserve(lc.size());
+					HandleType q = lc[0];
+					adj_type const& qlc = m->LowConn(q);
+					HandleType first = qlc[0], last = qlc[1]; //edge 0
+					if (invert ^ m->GetPrivateMarker(qlc[0], mask)) aret.push_back(qlc[0]); //node 0
+					if (invert ^ m->GetPrivateMarker(qlc[1], mask)) aret.push_back(qlc[1]); //node 1
+					HandleType r = lc[1]; //edge 1
+					adj_type const& rlc = m->LowConn(r);
+					if (first == rlc[0] || first == rlc[1])
 					{
-						Element::adj_type & jlc = m->LowConn(ilc[j]);
-						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+						last = first;
+						if (aret.size() > 1)
 						{
-							if( (invert ^ m->GetPrivateMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k],mrk) )
+							HandleType temp = aret.data()[0];
+							aret.data()[0] = aret.data()[1];
+							aret.data()[1] = temp;
+						}
+					}
+					adj_type::size_type it = 1, iend = lc.size() - 1;
+					while (it < iend) //loop over edges
+					{
+						adj_type const& ilc = m->LowConn(lc[it]);
+						if (last == ilc[0])
+						{
+							if (invert ^ m->GetPrivateMarker(ilc[1], mask))
+								aret.push_back(ilc[1]);
+							last = ilc[1];
+						}
+						else
+						{
+							if (invert ^ m->GetPrivateMarker(ilc[0], mask))
+								aret.push_back(ilc[0]);
+							last = ilc[0];
+						}
+						++it;
+					}
+					ret.reserve(aret.size());
+					for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+						ret.push_back(m->LowConn(*it)[0]);
+				}
+				else
+				{
+					Element::adj_type& lc = m->LowConn(hc);
+					for (Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+					{
+						Element::adj_type& ilc = m->LowConn(lc[i]);
+						for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+						{
+							Element::adj_type& jlc = m->LowConn(ilc[j]);
+							for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
 							{
-								m->SetPrivateMarker(jlc[k],mrk);
-								ret.push_back(jlc[k]);
+								if ((invert ^ m->GetPrivateMarker(jlc[k], mask)) && !m->GetPrivateMarker(jlc[k], mrk))
+								{
+									m->SetPrivateMarker(jlc[k], mrk);
+									ret.push_back(jlc[k]);
+								}
 							}
 						}
 					}
@@ -378,19 +518,82 @@ namespace INMOST
 			else
 			{
 				MarkerType hm = m->HideMarker();
-				Element::adj_type & lc = m->LowConn(hc);
-				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					Element::adj_type & ilc = m->LowConn(lc[i]);
-					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+					ElementArray<Edge> aret;
+					enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
+					adj_type const& lc = m->LowConn(GetHandle());
+					aret.reserve(lc.size());
+					i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+					HandleType q = lc[i], first, last; //edge 0
+					adj_type const& qlc = m->LowConn(q);
+					k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+					if (invert ^ m->GetPrivateMarker(qlc[k], mask)) aret.push_back(qlc[k]); //node 0
+					first = qlc[k];
+					k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+					if (invert ^ m->GetPrivateMarker(qlc[k], mask)) aret.push_back(qlc[k]); //node 1
+					last = qlc[k];
+					i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+					HandleType r = lc[i]; //edge 1
+					adj_type const& rlc = m->LowConn(r);
+					k1 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+					k2 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+					if (first == rlc[k1] || first == rlc[k2])
 					{
-						Element::adj_type & jlc = m->LowConn(ilc[j]);
-						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+						last = first;
+						if (aret.size() > 1)
 						{
-							if( (invert ^ m->GetPrivateMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k], mrk) )
+							HandleType temp = aret.data()[0];
+							aret.data()[0] = aret.data()[1];
+							aret.data()[1] = temp;
+						}
+					}
+					adj_type::size_type it = 1, iend = lc.size() - 1;
+					while (it < iend) if (!m->GetMarker(lc[it], hm)) //loop over edges
+					{
+						adj_type const& ilc = m->LowConn(lc[it]);
+						k1 = ENUMUNDEF;
+						k1 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						k2 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						if (last == ilc[k1])
+						{
+							if (invert ^ m->GetPrivateMarker(ilc[k2], mask))
+								aret.push_back(ilc[k2]);
+							last = ilc[k2];
+						}
+						else
+						{
+							if (invert ^ m->GetPrivateMarker(ilc[k1], mask))
+								aret.push_back(ilc[k1]);
+							last = ilc[k1];
+						}
+						++it;
+					}
+					else ++it;
+					ret.reserve(aret.size());
+					for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+					{
+						Element::adj_type adj = m->LowConn(*it);
+						assert(m->Count(adj.data(), static_cast<enumerator>(adj.size()), hm) == 1);
+						ret.push_back(adj[m->getNext(adj.data(), static_cast<enumerator>(adj.size()), ENUMUNDEF, hm)]);
+					}
+				}
+				else
+				{
+					Element::adj_type& lc = m->LowConn(hc);
+					for (Element::adj_type::size_type i = 0; i < lc.size(); i++) if (!m->GetMarker(lc[i], hm))  //iterate over faces
+					{
+						Element::adj_type& ilc = m->LowConn(lc[i]);
+						for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) if (!m->GetMarker(ilc[j], hm)) //iterate over face edges
+						{
+							Element::adj_type& jlc = m->LowConn(ilc[j]);
+							for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) if (!m->GetMarker(jlc[k], hm)) //iterator over edge nodes
 							{
-								m->SetPrivateMarker(jlc[k],mrk);
-								ret.push_back(jlc[k]);
+								if ((invert ^ m->GetPrivateMarker(jlc[k], mask)) && !m->GetPrivateMarker(jlc[k], mrk))
+								{
+									m->SetPrivateMarker(jlc[k], mrk);
+									ret.push_back(jlc[k]);
+								}
 							}
 						}
 					}
@@ -401,19 +604,66 @@ namespace INMOST
 		{
 			if( !m->HideMarker() )
 			{
-				Element::adj_type & lc = m->LowConn(hc);
-				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					Element::adj_type & ilc = m->LowConn(lc[i]);
-					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+					ElementArray<Edge> aret;
+					adj_type const& lc = m->LowConn(GetHandle());
+					aret.reserve(lc.size());
+					HandleType q = lc[0];
+					adj_type const& qlc = m->LowConn(q);
+					HandleType first = qlc[0], last = qlc[1]; //edge 0
+					if (invert ^ m->GetMarker(qlc[0], mask)) aret.push_back(qlc[0]); //node 0
+					if (invert ^ m->GetMarker(qlc[1], mask)) aret.push_back(qlc[1]); //node 1
+					HandleType r = lc[1]; //edge 1
+					adj_type const& rlc = m->LowConn(r);
+					if (first == rlc[0] || first == rlc[1])
 					{
-						Element::adj_type & jlc = m->LowConn(ilc[j]);
-						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
+						last = first;
+						if (aret.size() > 1)
 						{
-							if( (invert ^ m->GetMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k],mrk) )
+							HandleType temp = aret.data()[0];
+							aret.data()[0] = aret.data()[1];
+							aret.data()[1] = temp;
+						}
+					}
+					adj_type::size_type it = 1, iend = lc.size() - 1;
+					while (it < iend) //loop over edges
+					{
+						adj_type const& ilc = m->LowConn(lc[it]);
+						if (last == ilc[0])
+						{
+							if (invert ^ m->GetMarker(ilc[1], mask))
+								aret.push_back(ilc[1]);
+							last = ilc[1];
+						}
+						else
+						{
+							if (invert ^ m->GetMarker(ilc[0], mask))
+								aret.push_back(ilc[0]);
+							last = ilc[0];
+						}
+						++it;
+					}
+					ret.reserve(aret.size());
+					for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+						ret.push_back(m->LowConn(*it)[0]);
+				}
+				else
+				{
+					Element::adj_type& lc = m->LowConn(hc);
+					for (Element::adj_type::size_type i = 0; i < lc.size(); i++) //iterate over faces
+					{
+						Element::adj_type& ilc = m->LowConn(lc[i]);
+						for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) //iterate over face edges
+						{
+							Element::adj_type& jlc = m->LowConn(ilc[j]);
+							for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) //iterator over edge nodes
 							{
-								m->SetPrivateMarker(jlc[k],mrk);
-								ret.push_back(jlc[k]);
+								if ((invert ^ m->GetMarker(jlc[k], mask)) && !m->GetPrivateMarker(jlc[k], mrk))
+								{
+									m->SetPrivateMarker(jlc[k], mrk);
+									ret.push_back(jlc[k]);
+								}
 							}
 						}
 					}
@@ -422,19 +672,85 @@ namespace INMOST
 			else
 			{
 				MarkerType hm = m->HideMarker();
-				Element::adj_type & lc = m->LowConn(hc);
-				for(Element::adj_type::size_type i = 0; i < lc.size(); i++) if( !m->GetMarker(lc[i],hm) )  //iterate over faces
+				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					Element::adj_type & ilc = m->LowConn(lc[i]);
-					for(Element::adj_type::size_type j = 0; j < ilc.size(); j++) if( !m->GetMarker(ilc[j],hm) ) //iterate over face edges
+					ElementArray<Edge> aret;
+					enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
+					adj_type const& lc = m->LowConn(GetHandle());
+					aret.reserve(lc.size());
+					i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+					HandleType q = lc[i], first, last; //edge 0
+					adj_type const& qlc = m->LowConn(q);
+					k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+					if (invert ^ m->GetMarker(qlc[k], mask)) aret.push_back(qlc[k]); //node 0
+					first = qlc[k];
+					k = m->getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+					if (invert ^ m->GetMarker(qlc[k], mask)) aret.push_back(qlc[k]); //node 1
+					last = qlc[k];
+					i = m->getNext(lc.data(), static_cast<enumerator>(lc.size()), i, hm);
+					HandleType r = lc[i]; //edge 1
+					adj_type const& rlc = m->LowConn(r);
+					k1 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+					k2 = m->getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+					if (first == rlc[k1] || first == rlc[k2])
 					{
-						Element::adj_type & jlc = m->LowConn(ilc[j]);
-						for(Element::adj_type::size_type k = 0; k < jlc.size(); k++) if( !m->GetMarker(jlc[k],hm) ) //iterator over edge nodes
+						last = first;
+						if (aret.size() > 1)
 						{
-							if( (invert ^ m->GetMarker(jlc[k],mask)) && !m->GetPrivateMarker(jlc[k], mrk) )
+							HandleType temp = aret.data()[0];
+							aret.data()[0] = aret.data()[1];
+							aret.data()[1] = temp;
+						}
+					}
+					adj_type::size_type it = 1, iend = lc.size() - 1;
+					while (m->GetMarker(lc[iend], hm) && iend > 0) iend--;
+					while (it < iend)
+					{
+						if (!m->GetMarker(lc[it], hm)) //loop over edges
+						{
+							adj_type const& ilc = m->LowConn(lc[it]);
+							k1 = ENUMUNDEF;
+							k1 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+							k2 = m->getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+							if (last == ilc[k1])
 							{
-								m->SetPrivateMarker(jlc[k],mrk);
-								ret.push_back(jlc[k]);
+								if (invert ^ m->GetMarker(ilc[k2], mask))
+									aret.push_back(ilc[k2]);
+								last = ilc[k2];
+							}
+							else
+							{
+								if (invert ^ m->GetMarker(ilc[k1], mask))
+									aret.push_back(ilc[k1]);
+								last = ilc[k1];
+							}
+						}
+						++it;
+					}
+					ret.reserve(aret.size());
+					for (ElementArray<Edge>::iterator it = aret.begin(); it != aret.end(); ++it)
+					{
+						Element::adj_type adj = m->LowConn(*it);
+						assert(m->Count(adj.data(), static_cast<enumerator>(adj.size()), hm) == 1);
+						ret.push_back(adj[m->getNext(adj.data(), static_cast<enumerator>(adj.size()), ENUMUNDEF, hm)]);
+					}
+				}
+				else
+				{
+					Element::adj_type& lc = m->LowConn(hc);
+					for (Element::adj_type::size_type i = 0; i < lc.size(); i++) if (!m->GetMarker(lc[i], hm))  //iterate over faces
+					{
+						Element::adj_type& ilc = m->LowConn(lc[i]);
+						for (Element::adj_type::size_type j = 0; j < ilc.size(); j++) if (!m->GetMarker(ilc[j], hm)) //iterate over face edges
+						{
+							Element::adj_type& jlc = m->LowConn(ilc[j]);
+							for (Element::adj_type::size_type k = 0; k < jlc.size(); k++) if (!m->GetMarker(jlc[k], hm)) //iterator over edge nodes
+							{
+								if ((invert ^ m->GetMarker(jlc[k], mask)) && !m->GetPrivateMarker(jlc[k], mrk))
+								{
+									m->SetPrivateMarker(jlc[k], mrk);
+									ret.push_back(jlc[k]);
+								}
 							}
 						}
 					}
