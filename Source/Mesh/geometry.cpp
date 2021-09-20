@@ -1188,8 +1188,8 @@ namespace INMOST
 //redo:
 						Cell me = Cell(this,e);
 						ElementArray<Face> faces = me->getFaces();
-						//bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
-						bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+						bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
+						//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
 						//bool ornt = !CheckConvexity(faces);
 						MarkerType rev = 0;
 						if( ornt )
@@ -1364,9 +1364,9 @@ namespace INMOST
 				{
 					Cell me = Cell(this,e);
 					ElementArray<Face> faces = me->getFaces();
-					//bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
+					bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
 					//bool ornt = !CheckConvexity(faces);
-					bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+					//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
 					MarkerType rev = 0;
 					if( ornt )
 					{

@@ -217,6 +217,26 @@ namespace INMOST
 					if( check_nans_infs((*this)(i,j)) ) return true;
 			return false;
 		}
+		/// Matrix determinant
+		Var Det() const
+		{
+			assert(Rows() == Cols());
+			const double eps = 1.0e-13;
+			const enumerator n = Rows();
+			Matrix<Var> A(*this);
+			for (enumerator d = 0; d < n; ++d)
+				for (enumerator i = d + 1; i < n; ++i)
+				{
+					if (std::fabs(get_value(A(d, d))) < eps)
+						A(d, d) = eps;
+					for (enumerator j = 0; j < n; ++j)
+						A(i, j) = A(i, j) - A(i, d) * A(d, j) / A(d, d);
+				}
+			Var ret = 1.0;
+			for (enumerator d = 0; d < n; ++d)
+				ret *= A(d, d);
+			return ret;
+		}
 		/// Maximum product transversal.
 		/// Computes unsymmetric reordering that maximizes product on diagonal.
 		/// Returns reordering matrix P and scaling matrix S that transforms matrix into I-dominant matrix.
