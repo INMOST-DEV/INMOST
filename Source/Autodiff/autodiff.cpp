@@ -423,15 +423,28 @@ namespace INMOST
 		throw Impossible;
 	}
 	
-	rMatrix MultiEntry::Value(const Storage & e) const
+	Matrix<value_reference> MultiEntry::Value(const Storage & e) 
 	{
-		rMatrix ret(MatrixSize(e),1);
+		Matrix<value_reference> ret(MatrixSize(e),1);
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			t = entries[k]->MatrixSize(e);
 			for(r = 0; r < t; ++r)
-				ret(l++,0) = entries[k]->Value(e,r);
+				new (&ret(l++,0)) value_reference(entries[k]->Value(e,r));
+		}
+		return ret;
+	}
+
+	rMatrix MultiEntry::Value(const Storage& e) const
+	{
+		rMatrix ret(MatrixSize(e), 1);
+		unsigned l = 0, r, t;
+		for (unsigned k = 0; k < entries.size(); ++k) if (entries[k]->isValid(e))
+		{
+			t = entries[k]->MatrixSize(e);
+			for (r = 0; r < t; ++r)
+				ret(l++, 0) = entries[k]->Value(e, r);
 		}
 		return ret;
 	}

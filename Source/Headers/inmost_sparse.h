@@ -101,6 +101,8 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE   operator [](INMOST_DATA_ENUM_TYPE i) const {return data[i];}
 			/// Return a block of elements.
 			INMOST::Matrix<INMOST_DATA_REAL_TYPE> operator [](const INMOST::AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const;
+			/// Return a block of elements.
+			INMOST::Matrix<value_reference> operator [](const INMOST::AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows);
 			/// Return the global size of the vector.
 			INMOST_DATA_ENUM_TYPE  Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			/// Iterator pointing to the first value of the vector.

@@ -29,12 +29,14 @@ namespace INMOST
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_variable>  {typedef hessian_variable type;};
 	//For INMOST_DATA_REAL_TYPE
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
@@ -44,22 +46,34 @@ namespace INMOST
 	template<> struct Promote<unknown, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<unknown, unknown>  {typedef variable type;};
 	template<> struct Promote<unknown, variable>  {typedef variable type;};
+	template<> struct Promote<unknown, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
+	//for value_reference
+	template<> struct Promote<value_reference, INMOST_DATA_INTEGER_TYPE>  {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, unknown> { typedef variable type; };
+	template<> struct Promote<value_reference, variable> { typedef variable type; };
+	template<> struct Promote<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, multivar_expression_reference> { typedef variable type; };
+	template<> struct Promote<value_reference, hessian_multivar_expression_reference> { typedef hessian_variable type; };
+	template<> struct Promote<value_reference, hessian_variable> { typedef hessian_variable type; };
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, unknown> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, variable> {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, value_reference> { typedef variable type; };
 	template<> struct Promote<multivar_expression_reference, multivar_expression_reference> {typedef variable type;};
-	template<> struct Promote<multivar_expression_reference, hessian_multivar_expression_reference> {typedef variable type;};
-	template<> struct Promote<multivar_expression_reference, hessian_variable> {typedef variable type;};
+	template<> struct Promote<multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
+	template<> struct Promote<multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
 	//For variable
 	template<> struct Promote<variable, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<variable, unknown> {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
+	template<> struct Promote<variable, value_reference> { typedef variable type; };
 	template<> struct Promote<variable, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<variable, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
@@ -68,6 +82,7 @@ namespace INMOST
 	template<> struct Promote<hessian_multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_multivar_expression_reference, value_reference> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_multivar_expression_reference, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
@@ -76,18 +91,21 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, INMOST_DATA_REAL_TYPE>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
+	template<> struct Promote<hessian_variable, value_reference> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #if defined(USE_FP64)
 	template<> struct Promote<unknown, float>  {typedef variable type;};
-	template<> struct Promote<multivar_expression_reference, float>  {typedef variable type;};
+	template<> struct Promote<value_reference, float>  {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<multivar_expression_reference, float> { typedef variable type; };
 	template<> struct Promote<variable, float>  {typedef variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, float>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, float>  {typedef hessian_variable type;};
 #else
 	template<> struct Promote<unknown, double>  {typedef variable type;};
-	template<> struct Promote<multivar_expression_reference, double>  {typedef variable type;};
+	template<> struct Promote<value_reference, double>  {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<multivar_expression_reference, double> { typedef variable type; };
 	template<> struct Promote<variable, double>  {typedef variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, double>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, double>  {typedef hessian_variable type;};
@@ -2675,7 +2693,7 @@ namespace INMOST
 		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				ret(i,j) = (*this)(i,j)*coef;
+				assign(ret(i,j),(*this)(i,j)*coef);
 		return ret;
 	}
 	
@@ -2698,7 +2716,7 @@ namespace INMOST
 		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				ret(i,j) = (*this)(i,j)/coef;
+				assign(ret(i,j),(*this)(i,j)/coef);
 		return ret;
 	}
 	
@@ -2727,7 +2745,7 @@ namespace INMOST
 				{
 					for(enumerator l = 0; l < other.Cols(); ++l)
 					{
-						ret(i*other.Rows()+j,k*other.Cols()+l) = other(j,l)*(*this)(i,k);
+						assign(ret(i*other.Rows()+j,k*other.Cols()+l),other(j,l)*(*this)(i,k));
 					}
 				}
 			}

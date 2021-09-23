@@ -120,7 +120,7 @@ namespace INMOST
 	static const TopologyCheck            GRID_CONFORMITY        = NEED_TEST_CLOSURE 
                                                                | PROHIBIT_MULTILINE 
                                                                | PROHIBIT_MULTIPOLYGON  
-                                                               | INTERLEAVED_FACES 
+    //                                                           | INTERLEAVED_FACES 
                                                                | TRIPLE_SHARED_FACE;
 	///Default set of options.
 	static const TopologyCheck            DEFAULT_CHECK          = THROW_EXCEPTION 

@@ -917,6 +917,15 @@ namespace INMOST
 			return ret;
 		}
 
+		INMOST::Matrix<value_reference> Vector::operator [](const INMOST::AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows)
+		{
+			INMOST::Matrix<value_reference> ret(rows.Rows(), rows.Cols());
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
+				for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
+					new (&ret(i, j)) value_reference(data[rows(i, j)]);
+			return ret;
+		}
+
 ////////class Matrix
 		void Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
 		{

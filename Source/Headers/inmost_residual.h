@@ -54,6 +54,10 @@ namespace INMOST
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
 		__INLINE double Value(INMOST_DATA_ENUM_TYPE row) const {return residual[row];}
+		/// Retrive a residual value corresponding to certain equation.
+		/// @param row Equation number.
+		/// @return A structure that can be used in or assigned an automatic differentiation expression.
+		__INLINE double & Value(INMOST_DATA_ENUM_TYPE row) { return residual[row]; }
 		/// Retrive a vector of entries in residual, corresponding to a set of equations.
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
@@ -62,6 +66,10 @@ namespace INMOST
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
 		rMatrix Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const;
+		/// Retrive a vector of entries in residual, corresponding to a set of equations.
+		/// @param rows A row-vector of equation numbers.
+		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
+		Matrix<value_reference> Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows);
 		/// Retrive hessian matrix. Use in nonlinear solver.
 		Sparse::HessianMatrix & GetHessian() {return hessian;}
 		/// Retrive hessian matrix without right of modificaiton.

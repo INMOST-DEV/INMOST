@@ -335,6 +335,9 @@ namespace INMOST
 	
 	template<typename Var, typename Storage = std::vector<Var> >
 	class SymmetricMatrix;
+
+
+	class value_reference;
 }
 
 #include <cfloat>

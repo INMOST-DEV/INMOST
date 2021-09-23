@@ -65,6 +65,8 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		/// @param pos Position for which to extract the unknown, should be no larger then MatrixSize.
 		virtual unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const = 0;
+		/// Return vector filled with references to values of unknowns of the block.
+		virtual Matrix<value_reference> Value(const Storage& e) = 0;
 		/// Return vector filled with values of unknowns of the block.
 		virtual rMatrix Value(const Storage & e) const = 0;
 		/// Return vector filled with indices of unknowns of the block.
@@ -138,7 +140,9 @@ namespace INMOST
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return unknown(Value(e,pos),Index(e,pos));}
 		/// Return vector filled with values of unknowns of the block.
-		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
+		rMatrix Value(const Storage& e) const { rMatrix ret(MatrixSize(e), 1); for (unsigned k = 0; k < Size(); ++k) ret(k, 0) = Value(e, k); return ret; }
+		/// Return vector filled with references to values of unknowns of the block.
+		Matrix<value_reference> Value(const Storage & e) {Matrix<value_reference> ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) new (&ret(k,0)) value_reference(Value(e,k)); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
 		iMatrix Index(const Storage & e) const {iMatrix ret(MatrixSize(e),1); for(unsigned k = 0; k < Size(); ++k) ret(k,0) = Index(e,k); return ret; }
 		/// Return vector filled with unknowns of the block with their derivatives.
@@ -186,6 +190,8 @@ namespace INMOST
         INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {(void)pos; assert(pos==0); return isValid(e) ? GetOffsetTag()[e] : ENUMUNDEF;}
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos==0); return unknown(Value(e,pos),Index(e,pos));}
+		/// Return vector filled with references to values of unknowns of the block.
+		Matrix<value_reference> Value(const Storage& e) { Matrix<value_reference> ret(1, 1); new (&ret(0, 0)) value_reference(Value(e, 0)); return ret; }
 		/// Return vector filled with values of unknowns of the block.
 		rMatrix Value(const Storage & e) const { rMatrix ret(1,1); ret(0,0) = Value(e,0); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
@@ -228,6 +234,8 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos<unknown_tag[e].size()); return isValid(e) ? GetOffsetTag()[e]+pos : ENUMUNDEF;}
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {assert(pos<unknown_tag[e].size()); return unknown(Value(e,pos),Index(e,pos));}
+		/// Return vector filled with references to values of unknowns of the block.
+		Matrix<value_reference> Value(const Storage& e) { Matrix<value_reference> ret(MatrixSize(e), 1); for (int k = 0; k < (int)unknown_tag[e].size(); ++k) new (&ret(k, 0)) value_reference(Value(e, k)); return ret; }
 		/// Return vector filled with values of unknowns of the block.
 		rMatrix Value(const Storage & e) const { rMatrix ret(MatrixSize(e),1); for(int k = 0; k < (int)unknown_tag[e].size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
@@ -284,6 +292,8 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return isValid(e) && status_tbl[status_tag[e]][pos] ? GetOffsetTag()[e]+pos : ENUMUNDEF;}
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const {return unknown(Value(e,pos),Index(e,pos));}
+		/// Return vector filled with references to values of unknowns of the block.
+		Matrix<value_reference> Value(const Storage& e) { Matrix<value_reference> ret(MatrixSize(e), 1); for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) new (&ret(k, 0)) value_reference(Value(e, k)); return ret; }
 		/// Return vector filled with values of unknowns of the block.
 		rMatrix Value(const Storage & e) const {rMatrix ret(MatrixSize(e),1); for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) ret(k,0) = Value(e,k); return ret; }
 		/// Return vector filled with indices of unknowns of the block.
@@ -337,6 +347,8 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Index(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const;
 		/// Return unknown in vector of variables of the block at certain position.
 		unknown Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE pos) const;
+		/// Return vector filled with references to values of unknowns of the block.
+		Matrix<value_reference> Value(const Storage& e);
 		/// Return vector filled with values of unknowns of the block.
 		rMatrix Value(const Storage & e) const;
 		/// Return vector filled with indices of unknowns of the block.
