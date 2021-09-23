@@ -75,11 +75,11 @@ namespace INMOST
 		/// Called once before nonlinear iterations.
 		virtual bool PrepareIterations() { return true; }
 		/// Update time step.
-		virtual bool UpdateTimeStep() {}
+		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) {}
+		virtual bool SetTimeStep(double dt) { return true; }
 		/// Roll back to previous step.
-		virtual bool RestoreTimeStep() {}
+		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this model. Can simply return 1.
 		virtual double UpdateMultiplier(const Sparse::Vector& sol) const { (void)sol; return 1; }
 		/// Calculate time step for this model. Can simply return dt.
@@ -106,11 +106,11 @@ namespace INMOST
 		/// Called once before nonlinear iterations.
 		virtual bool PrepareIterations() { return true; }
 		/// Update time step.
-		virtual bool UpdateTimeStep() {}
+		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) {}
+		virtual bool SetTimeStep(double dt) { return true; }
 		/// Roll back to previous step.
-		virtual bool RestoreTimeStep() {}
+		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.
 		virtual double UpdateMultiplier(const Sparse::Vector& sol) const { (void)sol; return 1; }
 		/// Calculate time step for this model. Can simply return dt.
@@ -137,11 +137,11 @@ namespace INMOST
 		/// Called once before nonlinear iterations.
 		virtual bool PrepareIterations() { return true; }
 		/// Update time step.
-		virtual bool UpdateTimeStep() {}
+		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) {}
+		virtual bool SetTimeStep(double dt) { return true; }
 		/// Roll back to previous step.
-		virtual bool RestoreTimeStep() {}
+		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.
 		virtual double UpdateMultiplier(const Sparse::Vector& sol) const { (void)sol; return 1; }
 		/// Calculate time step for this model. Can simply return dt.
