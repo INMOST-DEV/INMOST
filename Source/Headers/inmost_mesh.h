@@ -3156,7 +3156,7 @@ namespace INMOST
 		///                        considered conformal. Default: "FALSE".
 		///   "ECL_PARALLEL_READ"- If "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
 		///                        Otherwise if "FALSE" then each processor loads entire mesh. Default: "TRUE".
-		///   "Tag:TAGNAME"      - Set comman-separated rules for tag with the name TAGNAME, the rules list is:
+		///   "Tag:TAGNAME"      - Set comma-separated rules for tag with the name TAGNAME, the rules list is:
 		///                        nosave - do not save the tag data into files;
 		///                        noload - do not load the tag data from files;
 		///                        noderivatives - do not save/load the derivatives for data with type DATA_VARIABLE (for .xml and .pmf);
