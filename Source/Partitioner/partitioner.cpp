@@ -1385,7 +1385,7 @@ namespace INMOST
 			}
 			
 			real vmax = std::numeric_limits<real>::max();
-			real vmin = std::numeric_limits<real>::lowest();
+			real vmin =-std::numeric_limits<real>::max();
 			real pmax[3] = {vmin,vmin,vmin};
 			real pmin[3] = {vmax,vmax,vmax};
 			

@@ -13,7 +13,6 @@
 #include <sstream>
 #include <string>
 #include <queue>
-
 //using namespace std;
 
 #if defined(USE_PARALLEL_STORAGE)
@@ -76,6 +75,13 @@ __INLINE std::string NameSlash(std::string input)
 #define SEND_AS MPI_BYTE
 #endif
 
+#ifndef SIZE_MAX
+# ifdef __SIZE_MAX__
+#  define SIZE_MAX __SIZE_MAX__
+# else
+#  define SIZE_MAX (static_cast<size_t>(-1))
+# endif
+#endif
 
 #if SIZE_MAX == UCHAR_MAX
 #define MPI_SIZE_T MPI_UNSIGNED_CHAR

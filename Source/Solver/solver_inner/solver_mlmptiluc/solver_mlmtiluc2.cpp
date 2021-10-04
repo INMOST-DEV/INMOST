@@ -2104,7 +2104,9 @@ const double apert = 1.0e-8;
 				INMOST_DATA_ENUM_TYPE j = Perm[i];				
 				if( fabs(DL[k]*A_Entries[Athr][jt].second*DR[i]) > 1 + 1.0e-7 )
 				{
+#if defined(USE_OMP_FACT)
 #pragma omp critical
+#endif
 					std::cout << "element on row " << k << " col " << A_Entries[Athr][jt].first << " value " << A_Entries[Athr][jt].second << " u " << DR[i] << " l " << DL[k] << " U " << U[i] << " V " << V[k] << " Cmax " << Cmax[i] << " scaled " << DL[k]*A_Entries[Athr][jt].second*DR[i] << std::endl;
 					err++;
 					//exit(-1);
@@ -3905,7 +3907,7 @@ const double apert = 1.0e-8;
 							if (false)
 							{
 								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_nd" + to_string(level_size.size()) + ".mtx");
-								std::ofstream file("blocks_nd" + to_string(level_size.size()) + ".txt");
+								std::ofstream file(("blocks_nd" + to_string(level_size.size()) + ".txt").c_str());
 								for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 									file << blocks[k].row_start - wbeg << " " << blocks[k].row_end - wbeg << " " << blocks[k].col_start - wbeg << " " << blocks[k].col_end - wbeg << std::endl;
 								file.close();
@@ -4224,7 +4226,7 @@ const double apert = 1.0e-8;
 						if( false )
 						{
 							DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_mt"+to_string(level_size.size())+".mtx");
-							std::ofstream file("blocks_mt" + to_string(level_size.size()) + ".txt");
+							std::ofstream file(("blocks_mt" + to_string(level_size.size()) + ".txt").c_str());
 							for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 								file << blocks[k].row_start-wbeg << " " << blocks[k].row_end-wbeg << " " << blocks[k].col_start-wbeg << " " << blocks[k].col_end-wbeg << std::endl;
 							file.close();
@@ -4281,7 +4283,7 @@ const double apert = 1.0e-8;
 								}
 
 								DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_snd" + to_string(level_size.size()) + ".mtx");
-								std::ofstream file("blocks_snd" + to_string(level_size.size()) + ".txt");
+								std::ofstream file(("blocks_snd" + to_string(level_size.size()) + ".txt").c_str());
 								for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 									file << blocks[k].row_start - wbeg << " " << blocks[k].row_end - wbeg << " " << blocks[k].col_start - wbeg << " " << blocks[k].col_end - wbeg << std::endl;
 								file.close();
@@ -4410,7 +4412,7 @@ const double apert = 1.0e-8;
 								break;
 							}
 							DumpMatrix(A_Address, A_Entries, wbeg, wend, "A_ord" + to_string(level_size.size()) + ".mtx");
-							std::ofstream file("blocks_ord" + to_string(level_size.size()) + ".txt");
+							std::ofstream file(("blocks_ord" + to_string(level_size.size()) + ".txt").c_str());
 							for (INMOST_DATA_ENUM_TYPE k = 0; k < blocks.size(); ++k)
 								file << blocks[k].row_start-wbeg << " " << blocks[k].row_end-wbeg << " " << blocks[k].col_start-wbeg << " " << blocks[k].col_end-wbeg << std::endl;
 							file.close();
