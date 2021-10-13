@@ -3,6 +3,7 @@
 #include "inmost_common.h"
 #include "inmost_expression.h"
 #include <iomanip>
+#include <stdarg.h>
 
 
 namespace INMOST
@@ -953,6 +954,24 @@ namespace INMOST
 		/// @param pm Number of columns.
 		/// \warning The matrix does not necessery have zero entries.
 		SymmetricMatrix(enumerator pn) : space(pn*(pn+1)/2), n(pn) {}
+		/// Constract a matrix with provided elements.
+		/// The elements are ordered row-wise starting from the diagonal element.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		static SymmetricMatrix Make(enumerator pn, ...)
+		{
+			SymmetricMatrix A(pn):
+			va_list argptr;
+			va_start(argptr, pn);
+			for (enumerator j = 0; j < pn; ++j)
+				for (enumerator i = j; i < pn; ++i)
+				{
+					Var val = va_arg(argptr, Var);
+					A(i, j) = val;
+				}
+			va_end(argptr);
+			return A;
+		}
 		/// Construct a matrix with provided sizes and fills with value.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -1413,6 +1432,24 @@ namespace INMOST
 		/// @param pm Number of columns.
 		/// @param c Value to fill the matrix.
 		Matrix(enumerator pn, enumerator pm, const Var & c) : space(pn*pm,c), n(pn), m(pm) {}
+		/// Constract a matrix with provided elements.
+		/// The elements are ordered row-wise.
+		/// @param pn Number of rows.
+		/// @param pm Number of columns.
+		static Matrix Make(enumerator pn, enumerator pm, ...)
+		{
+			Matrix A(pn, pm);
+			va_list argptr;
+			va_start(argptr, pm);
+			for (enumerator i = 0; i < pn; ++i)
+				for (enumerator j = 0; j < pm; ++j)
+				{
+					Var val = va_arg(argptr, Var);
+					A(i, j) = val;
+				}
+			va_end(argptr);
+			return A;
+		}
 		/// Copy matrix.
 		/// @param other Another matrix of the same type.
 		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
