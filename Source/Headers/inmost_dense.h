@@ -960,7 +960,7 @@ namespace INMOST
 		/// @param pm Number of columns.
 		static SymmetricMatrix Make(enumerator pn, ...)
 		{
-			SymmetricMatrix A(pn):
+			SymmetricMatrix A(pn);
 			va_list argptr;
 			va_start(argptr, pn);
 			for (enumerator j = 0; j < pn; ++j)
