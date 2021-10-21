@@ -3079,7 +3079,7 @@ namespace INMOST
 		array_data_send.reserve(4096);
 		array_size_send.reserve(4096);
 		INMOST_DATA_ENUM_TYPE size = tag.GetSize();
-		for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
+		for(int i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 		{
 			pack_types[0] |= ElementTypeFromDim(i);
 			REPORT_VAL("select marker",select);
@@ -3088,6 +3088,7 @@ namespace INMOST
 			int total_packed = 0;
 			if( tag.isSparseByDim(i) )
 			{
+				REPORT_VAL("sparse for type", ElementTypeName(ElementTypeFromDim(i)));
 				pack_types[1] |= ElementTypeFromDim(i);
 				INMOST_DATA_ENUM_TYPE count = (INMOST_DATA_ENUM_TYPE)array_size_send.size();
 				array_size_send.push_back(0);
@@ -3095,7 +3096,7 @@ namespace INMOST
 				{
 					if( (!select || GetMarker(*eit,select)) && HaveData(*eit,tag) )
 					{
-						//REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
+						REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
@@ -3121,11 +3122,12 @@ namespace INMOST
 						++total_packed;
 					}
 				}
-				REPORT_VAL("count",array_size_send[count]);
 				REPORT_VAL("index", count);
+				REPORT_VAL("count",array_size_send[count]);
 			}
 			else
 			{
+				REPORT_VAL("dense for type", ElementTypeName(ElementTypeFromDim(i)));
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
 				{
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
@@ -3152,6 +3154,7 @@ namespace INMOST
 				}
 			}
 			REPORT_VAL("total packed records",total_packed);
+			REPORT_VAL("Buffer size after pack for type", buffer.size());
 		}
 		REPORT_VAL("tag defined on",static_cast<int>(pack_types[0]));
 		REPORT_VAL("tag sparse on",static_cast<int>(pack_types[1]));
@@ -3238,7 +3241,7 @@ namespace INMOST
 			REPORT_VAL("size of size array",array_size_recv.size());
 			REPORT_VAL("size of data array",array_data_recv.size());
 			REPORT_VAL("Position after unpack",buffer_position);
-			for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (recv_mask[0] & ElementTypeFromDim(i)) )
+			for(int i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( (recv_mask[0] & ElementTypeFromDim(i)) )
 			{
 				REPORT_VAL("unpack for type",ElementTypeName(ElementTypeFromDim(i)));
 				REPORT_VAL("number of elements",elements[i].size());
@@ -3248,6 +3251,7 @@ namespace INMOST
 				}
 				int total_unpacked = 0;
 				int total_skipped = 0;
+				INMOST_DATA_ENUM_TYPE array_size;
 				if( tag.isSparseByDim(i) )
 				{
 					REPORT_VAL("sparse for type",ElementTypeName(ElementTypeFromDim(i)));
@@ -3255,186 +3259,85 @@ namespace INMOST
 					REPORT_VAL("count", array_size_recv[k]);
 					REPORT_VAL("pos",pos);
 					INMOST_DATA_ENUM_TYPE count = array_size_recv[k++];
-					if( size == ENUMUNDEF )
+					for(INMOST_DATA_ENUM_TYPE j = 0; j < count; j++)
 					{
-						REPORT_STR("variable size");
-						for(INMOST_DATA_ENUM_TYPE j = 0; j < count; j++)
+						assert( k < array_size_recv.size() );
+						assert( array_size_recv[k] < elements[i].size() );
+						REPORT_VAL("element index", array_size_recv[k]);
+						eit = elements[i].begin() + array_size_recv[k++];
+						assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
+						array_size = size;
+						if (array_size == ENUMUNDEF)
 						{
-							assert( k < array_size_recv.size() );
-							assert( array_size_recv[k] < elements[i].size() );
-							eit = elements[i].begin() + array_size_recv[k++];
-							//if( select && !GetMarker(*eit,select) )
-							//{
-							//	std::cout << __FILE__ << ":" << __LINE__ << " unpack " << tag.GetTagName() << " from " << source;
-							//	std::cout << " element " << ElementTypeName(GetHandleElementType(*eit)) << ":" << GetHandleID(*eit);
-							//	std::cout << " no marker" << std::endl;
-							//}
-							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							if( tag.GetDataType() == DATA_REFERENCE ) //change received content with actual reference to element
-							{
-								for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
-								{
-									INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
-									INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
-									HandleType * data = (HandleType*)(&array_data_recv[spos]);
-									if( *data != InvalidHandle() ) 
-									{
-										dpos = GetHandleID(*data);
-										*data = unpack_elements[GetHandleElementNum(*data)][dpos];
-									}
-									//REPORT_STR("element " << ElementTypeName(GetHandleElementType(*eit)) << " " << GetHandleID(*eit) );
-									//REPORT_VAL("unpack type ",ElementTypeName(GetHandleElementType(*data)));
-									//REPORT_VAL("unpack id   ",GetHandleID(*data));
-									//REPORT_VAL("unpack pos  ",pos);
-									//if( GetHandleElementType(*data) == ESET ) REPORT_VAL("unpack name ", ElementSet(this,*data).GetName());
-								}
-							}
 							assert(k < array_size_recv.size());
-							if (array_size_recv[k])
-							{
-								INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], array_size_recv[k], tag);
-								assert(pos + data_size <= array_data_recv.size());
-								op(tag, Element(this, *eit), &array_data_recv[pos], array_size_recv[k]);
-								pos += data_size;
-							}
-							++k;
-							++total_unpacked;
+							array_size = array_size_recv[k++];
 						}
-					}
-					else
-					{
-						REPORT_STR("fixed size");
-						for(INMOST_DATA_ENUM_TYPE j = 0; j < count; j++)
+						if( tag.GetDataType() == DATA_REFERENCE ) //change received content with actual reference to element
 						{
-							//REPORT_VAL("element index",array_size_recv[k]);
-							///p//REPORT_VAL("pos",pos);
-							assert( k < array_size_recv.size() );
-							assert( array_size_recv[k] < elements[i].size() );
-							eit = elements[i].begin() + array_size_recv[k++];
-							if( select && !GetMarker(*eit,select) )
+							for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size; i++)
 							{
-								std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank();
-								std::cout << " unpack " << tag.GetTagName() << " from " << source;
-								std::cout << " offset " << array_size_recv[k-1];
-								std::cout << " element " << ElementTypeName(GetHandleElementType(*eit)) << ":" << GetHandleID(*eit);
-								if( GetHandleElementType(*eit) == ESET ) std::cout << " " << ElementSet(this,*eit).GetName();
-								std::cout << " no marker" << std::endl;
-							}
-							assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
-							if( tag.GetDataType() == DATA_REFERENCE ) //change received content with actual reference to element
-							{
-								for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
+								INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
+								INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
+								HandleType * data = (HandleType*)(&array_data_recv[spos]);
+								if( *data != InvalidHandle() ) 
 								{
-									INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
-									INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
-									HandleType * data = (HandleType*)(&array_data_recv[spos]);
-									if( *data != InvalidHandle() ) 
-									{
-										dpos = GetHandleID(*data);
-										*data = unpack_elements[GetHandleElementNum(*data)][dpos];
-									}
-									//REPORT_STR("element " << ElementTypeName(GetHandleElementType(*eit)) << " " << GetHandleID(*eit) );
-									//REPORT_VAL("unpack type ",ElementTypeName(GetHandleElementType(*data)));
-									//REPORT_VAL("unpack id   ",GetHandleID(*data));
-									//REPORT_VAL("unpack pos  ",pos);
-									//if( GetHandleElementType(*data) == ESET ) REPORT_VAL("unpack name ", ElementSet(this,*data).GetName());
+									dpos = GetHandleID(*data);
+									*data = unpack_elements[GetHandleElementNum(*data)][dpos];
 								}
 							}
-							INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], size, tag);
-							assert(pos + data_size <= array_data_recv.size());
-							op(tag, Element(this, *eit), &array_data_recv[pos], size);
-							pos += data_size;
-							++total_unpacked;
 						}
+						if (array_size)
+						{
+							INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], array_size, tag);
+							assert(pos + data_size <= array_data_recv.size());
+							op(tag, Element(this, *eit), &array_data_recv[pos], array_size);
+							pos += data_size;
+						}
+						++total_unpacked;
 					}
 				}
 				else
 				{
 					REPORT_VAL("dense for type",ElementTypeName(ElementTypeFromDim(i)));
-					if( size == ENUMUNDEF )
+					for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 					{
-						REPORT_STR("variable size");
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
+						if( !select || GetMarker(*eit,select) )
 						{
-							if( !select || GetMarker(*eit,select) )
+							array_size = size;
+							if (array_size == ENUMUNDEF)
 							{
-								if (tag.GetDataType() == DATA_REFERENCE) //convert input offsets into real handles
-								{
-									for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size_recv[k]; i++)
-									{
-										INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
-										INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
-										HandleType * data = (HandleType*)(&array_data_recv[spos]);
-										if( *data != InvalidHandle() ) 
-										{
-											dpos = GetHandleID(*data);
-											*data = unpack_elements[GetHandleElementNum(*data)][dpos];
-										}
-										//REPORT_STR("element " << ElementTypeName(GetHandleElementType(*eit)) << " " << GetHandleID(*eit) );
-										//REPORT_VAL("unpack type ",ElementTypeName(GetHandleElementType(*data)));
-										//REPORT_VAL("unpack id   ",GetHandleID(*data));
-										//REPORT_VAL("unpack pos  ",pos);
-										//if( GetHandleElementType(*data) == ESET ) REPORT_VAL("unpack name ", ElementSet(this,*data).GetName());
-									}
-								}
 								assert(k < array_size_recv.size());
-								if (array_size_recv[k])
-								{
-									INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], array_size_recv[k], tag);
-									assert(pos + data_size <= array_data_recv.size());
-									op(tag, Element(this, *eit), &array_data_recv[pos], array_size_recv[k]);
-									pos += data_size;
-								}
-								++k;
-								++total_unpacked;
-							} 
-							else ++total_skipped;
-						}
-					}
-					else
-					{
-						REPORT_STR("fixed size");
-						for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
-						{
-							if( !select || GetMarker(*eit,select) )
+								array_size = array_size_recv[k++];
+							}
+							if (tag.GetDataType() == DATA_REFERENCE) //convert input offsets into real handles
 							{
-								if( tag.GetDataType() == DATA_REFERENCE ) //change received content with actual reference to element
+								for (INMOST_DATA_ENUM_TYPE i = 0; i < array_size; i++)
 								{
-									for (INMOST_DATA_ENUM_TYPE i = 0; i < size; i++)
+									INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
+									INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
+									HandleType * data = (HandleType*)(&array_data_recv[spos]);
+									if( *data != InvalidHandle() ) 
 									{
-										INMOST_DATA_ENUM_TYPE spos = pos + i * tag.GetBytesSize();
-										INMOST_DATA_ENUM_TYPE dpos = ENUMUNDEF;
-										HandleType * data = (HandleType*)(&array_data_recv[spos]);
-										if( *data != InvalidHandle() ) 
-										{
-											dpos = GetHandleID(*data);
-											*data = unpack_elements[GetHandleElementNum(*data)][dpos];
-										}
-										//REPORT_STR("element " << ElementTypeName(GetHandleElementType(*eit)) << " " << GetHandleID(*eit) );
-										//REPORT_VAL("unpack type ",ElementTypeName(GetHandleElementType(*data)));
-										//REPORT_VAL("unpack id   ",GetHandleID(*data));
-										//REPORT_VAL("unpack pos  ",pos);
-										//if( GetHandleElementType(*data) == ESET ) REPORT_VAL("unpack name ", ElementSet(this,*data).GetName());
+										dpos = GetHandleID(*data);
+										*data = unpack_elements[GetHandleElementNum(*data)][dpos];
 									}
 								}
-								INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], size, tag);
-								if ((size_t)pos + data_size > array_data_recv.size())
-								{
-									std::cout << "element " << ElementTypeName(GetHandleElementType(*eit)) << " id " << GetHandleID(*eit);
-									std::cout << " data type " << DataTypeName(tag.GetDataType()) << " size " << size << " bytes " << tag.GetBytesSize();
-									std::cout << " pos " << pos << " data_size " << data_size << " recv " << array_data_recv.size() << std::endl;
-								}
-								assert(pos + data_size <= array_data_recv.size());
-								op(tag, Element(this, *eit), &array_data_recv[pos], size);
-								pos += data_size;
-								++total_unpacked;
 							}
-							else total_skipped++;
-						}
+							if (array_size)
+							{
+								INMOST_DATA_ENUM_TYPE data_size = GetDataCapacity(&array_data_recv[pos], array_size, tag);
+								assert(pos + data_size <= array_data_recv.size());
+								op(tag, Element(this, *eit), &array_data_recv[pos], array_size);
+								pos += data_size;
+							}
+							++total_unpacked;
+						} 
+						else ++total_skipped;
 					}
 				}
 				REPORT_VAL("total skipped",total_skipped);
 				REPORT_VAL("total unpacked records",total_unpacked);
+				REPORT_VAL("Position after unpack for type", buffer_position);
 			}
 		}
 		REPORT_VAL("Position after unpack",buffer_position);
@@ -4737,6 +4640,9 @@ namespace INMOST
 		//ReleaseMarker(busy);
 		
         /////////////////////////////////////////
+		SetMarker(GetHandle(), pack_tags_mrk);
+		selems[5].push_back(GetHandle()); //data on mesh
+		
 		//DeleteTag(arr_position);
 		//for(int i = 3; i >= 0; --i)
 		//	all.insert(all.end(),selems[i].begin(),selems[i].end());
@@ -4792,14 +4698,14 @@ namespace INMOST
 			EXIT_BLOCK();
 			//TODO 46 old
 			//PackTagData(GetTag(tag_list[i]),pack_tags,NODE | EDGE | FACE | CELL | ESET,0,buffer);
-			PackTagData(tag,selems,destination,NODE | EDGE | FACE | CELL | ESET,pack_tags_mrk,buffer,arr_position);
+			PackTagData(tag,selems,destination,NODE | EDGE | FACE | CELL | ESET | MESH,pack_tags_mrk,buffer,arr_position);
 			//PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			//std::cout << mpirank << " After pack_tag_data\n" << std::endl;
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
 		
-		for(integer i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( !selems[i].empty() )
+		for(integer i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( !selems[i].empty() )
 			RemMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
 		ReleaseMarker(pack_tags_mrk);
 
@@ -5497,7 +5403,8 @@ namespace INMOST
 		EXIT_BLOCK();
 		ReleaseMarker(mrk_chld);
         /////////////////////////////////////////////////////////////
-		
+		SetMarker(GetHandle(), unpack_tags_mrk);
+		selems[5].push_back(GetHandle()); //data on mesh
 		
 		//all.reserve(selems[0].size()+selems[1].size()+selems[2].size()+selems[3].size());
 		//for(int i = 3; i >= 0; --i)
@@ -5543,13 +5450,13 @@ namespace INMOST
 				EXIT_BLOCK();
 				//TODO 46 old
 				//UnpackTagData(tag,unpack_tags,0,NODE | EDGE | FACE | CELL | ESET, buffer,position,DefaultUnpack);
-				UnpackTagData(tag,selems,source,NODE | EDGE | FACE | CELL | ESET,unpack_tags_mrk, buffer,buffer_position,DefaultUnpack,selems);
+				UnpackTagData(tag,selems,source,NODE | EDGE | FACE | CELL | ESET | MESH,unpack_tags_mrk, buffer,buffer_position,DefaultUnpack,selems);
 				//UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0, buffer,position,DefaultUnpack);
 				REPORT_VAL("buffer position",buffer_position);
 			}
 			
 		}
-		for(integer k = ElementNum(NODE); k <= ElementNum(ESET); ++k)
+		for(integer k = ElementNum(NODE); k <= ElementNum(MESH); ++k)
 			if( !selems[k].empty() ) RemMarkerArray(&selems[k][0],static_cast<enumerator>(selems[k].size()),unpack_tags_mrk);
 		ReleaseMarker(unpack_tags_mrk);
 //		if( swap_normal )
@@ -7239,12 +7146,11 @@ namespace INMOST
 			}
 		}*/
 
+		
 		ENTER_BLOCK();
 		REPORT_STR("Migrate elements");
 		ExchangeMarked(AMigrate);
 		EXIT_BLOCK();
-		
-		
 		
 		ENTER_BLOCK();
 		REPORT_STR("Delete auxilarry tags");

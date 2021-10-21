@@ -821,22 +821,22 @@ namespace INMOST
 
 	__INLINE bool Tag::operator <(const Tag & other) const 
 	{
-		return mem < other.mem;
+		return mem->tagname < other.mem->tagname;
 	}
 
 	__INLINE bool Tag::operator >(const Tag & other) const 
 	{
-		return mem > other.mem;
+		return mem->tagname > other.mem->tagname;
 	}
 
 	__INLINE bool Tag::operator ==(const Tag & other) const 
 	{
-		return mem == other.mem;
+		return mem->tagname == other.mem->tagname;
 	}
 
 	__INLINE bool Tag::operator !=(const Tag & other) const 
 	{
-		return mem != other.mem;
+		return mem->tagname != other.mem->tagname;
 	}
 
 	__INLINE Tag & Tag::operator =(Tag const & other) 

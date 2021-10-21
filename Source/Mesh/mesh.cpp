@@ -742,8 +742,6 @@ namespace INMOST
 	}
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)
 	{
-		ENTER_FUNC();
-		REPORT_VAL("for ", tag.GetTagName());
 		//std::cout << "Delete tag " << tag.GetTagName() << " type " << DataTypeName(tag.GetDataType()) << " on ";
 		//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( (etype & type_mask) && tag.isDefined(etype) ) std::cout << ElementTypeName(etype) << " ";
 		//std::cout << std::endl;
@@ -754,8 +752,6 @@ namespace INMOST
 			{
 				if( tag.isSparse(etype) )
 				{
-					ENTER_BLOCK();
-					REPORT_STR("Deallocate sparse on " << ElementTypeName(etype));
 					integer total = 0;
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:total)
@@ -765,33 +761,24 @@ namespace INMOST
 						{
 							if( DelSparseData(ComposeHandle(etype,lid),tag) ) total++;
 						}
-					REPORT_VAL("total deallocated ",total);
-					EXIT_BLOCK();
 				}
 				else if( tag.GetSize() == ENUMUNDEF )
 				{
-					ENTER_BLOCK();
-					REPORT_STR("Deallocate variable length " << ElementTypeName(etype));
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 					for(integer lid = 0; lid < LastLocalID(etype); ++lid) 
 						if( isValidElement(etype,lid) )
 							DelDenseData(ComposeHandle(etype,lid),tag);
-					EXIT_BLOCK();
 				}
 			}
 		}
-		ENTER_BLOCK();
-		REPORT_STR("Call delete tag in tag manager");
 #if defined(USE_OMP)
 #pragma omp critical (change_tags)
 #endif
 		{
 			tag = TagManager::DeleteTag(tag,type_mask);
 		}
-		EXIT_BLOCK();
-		EXIT_FUNC();
 		return tag;
 	}
 	

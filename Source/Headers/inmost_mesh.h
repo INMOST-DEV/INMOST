@@ -2313,15 +2313,15 @@ namespace INMOST
 		class elements_by_type
 		{
 		private:
-			element_set container[5];
+			element_set container[6];
 		public:
 			elements_by_type() {}
-			elements_by_type(const elements_by_type & other) {for(int i = 0; i < 5; i++) container[i] = other.container[i];}
+			elements_by_type(const elements_by_type & other) {for(int i = 0; i < 6; i++) container[i] = other.container[i];}
 			~elements_by_type(){}
 			element_set & operator [](int i){ return container[i]; }
 			const element_set & operator [](int i) const { return container[i]; }
-			bool empty() {bool ret = true; for(int i = 0; i < 5 && ret; i++) ret &= container[i].empty(); return ret;}
-			unsigned size() {unsigned ret = 0; for(int i = 0; i < 5; ++i) ret += (unsigned)container[i].size(); return ret;}
+			bool empty() {bool ret = true; for(int i = 0; i < 6 && ret; i++) ret &= container[i].empty(); return ret;}
+			unsigned size() {unsigned ret = 0; for(int i = 0; i < 6; ++i) ret += (unsigned)container[i].size(); return ret;}
 		};
 		typedef std::map<int, elements_by_type > parallel_storage;
 	

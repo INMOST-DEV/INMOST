@@ -365,6 +365,7 @@ namespace INMOST
 #endif
 			{
 				tags.push_back(new_tag);
+				std::sort(tags.begin(), tags.end());
 			}
 		}
 		for(ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask)) if(mask & etype)
