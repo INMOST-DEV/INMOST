@@ -2729,7 +2729,8 @@ namespace INMOST
 		enumerator n = A.Rows();
 		enumerator l = B.Cols();
 		Matrix<typename Promote<Var,typeB>::type> ret(B);
-		SymmetricMatrix<Var> L(A);
+		static thread_private< SymmetricMatrix<Var> > L;// (A);
+		*L = A;
 		
 		//SAXPY
 		/*
@@ -2761,24 +2762,24 @@ namespace INMOST
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
-			if( L(k,k) < 0.0 )
+			if( (*L)(k,k) < 0.0 )
 			{
 				if( ierr )
 				{
-					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
+					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value((*L)(k,k)) << " row " << k << std::endl;
 					*ierr = k+1;
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
 			
-			L(k,k) = sqrt(L(k,k));
+			(*L)(k,k) = sqrt((*L)(k,k));
 			
-			if( fabs(L(k,k)) < 1.0e-24 )
+			if( fabs((*L)(k,k)) < 1.0e-24 )
 			{
 				if( ierr )
 				{
-					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
+					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value((*L)(k,k)) << " row " << k << std::endl;
 					*ierr = k+1;
 				}
 				else throw MatrixCholeskySolveFail;
@@ -2786,12 +2787,12 @@ namespace INMOST
 			}
 			
 			for(enumerator i = k+1; i < n; ++i)
-				L(i,k) /= L(k,k);
+				(*L)(i,k) /= (*L)(k,k);
 			
 			for(enumerator j = k+1; j < n; ++j)
 			{
 				for(enumerator i = j; i < n; ++i)
-					L(i,j) -= L(i,k)*L(j,k);
+					(*L)(i,j) -= (*L)(i,k)*(*L)(j,k);
 			}
 		}
 		// LY=B
@@ -2801,8 +2802,8 @@ namespace INMOST
 			for(enumerator k = 0; k < l; ++k)
 			{
 				for(enumerator j = 0; j < i; ++j)
-					Y(i,k) -= Y(j,k)*L(j,i);
-				Y(i,k) /= L(i,i);
+					Y(i,k) -= Y(j,k)*(*L)(j,i);
+				Y(i,k) /= (*L)(i,i);
 			}
 		}
 		// L^TX = Y
@@ -2815,9 +2816,9 @@ namespace INMOST
 				for(enumerator jt = n; jt > it; --jt)
 				{
 					enumerator j = jt-1;
-					X(i,k) -= X(j,k)*L(i,j);
+					X(i,k) -= X(j,k)*(*L)(i,j);
 				}
-				X(i,k) /= L(i,i);
+				X(i,k) /= (*L)(i,i);
 			}
 		}
 		if( ierr ) *ierr = 0;
