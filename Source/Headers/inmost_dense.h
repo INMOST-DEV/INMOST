@@ -520,6 +520,8 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
+		using AbstractMatrixReadOnly<Var>::Rows;
+		using AbstractMatrixReadOnly<Var>::Cols;
 		typedef unsigned enumerator;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
@@ -547,7 +549,7 @@ namespace INMOST
 		/// Assign matrix of the same type.
 		/// @param other Another matrix of the same type.
 		/// @return Reference to matrix.
-		AbstractMatrix & operator =(AbstractMatrixReadOnly const & other)
+		AbstractMatrix & operator =(AbstractMatrix const & other)
 		{
 			Resize(other.Rows(),other.Cols());
 			for(enumerator i = 0; i < other.Rows(); ++i)
@@ -1590,7 +1592,7 @@ namespace INMOST
 		{
 			enumerator N = Rows();
 			enumerator M = Cols() / Rows();
-			Matrix<Var> V(UnitMatrix<Var>(m));
+			Matrix<Var> V(MatrixUnit<Var>(m));
 			Matrix<Var> R(2,M);
 			Matrix<Var> G(2,2);
 			Matrix & A = *this;
@@ -2008,7 +2010,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		enumerator n;
 	public:
@@ -2028,7 +2030,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		enumerator n;
 		Var* diag;
@@ -2049,7 +2051,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type >::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
@@ -2089,7 +2091,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
@@ -2129,7 +2131,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<Var>* A;
 	public:
@@ -2164,7 +2166,7 @@ namespace INMOST
 	{
 	public:
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
-		typedef AbstractMatrixReadOnly::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
