@@ -316,7 +316,16 @@ namespace INMOST
 namespace INMOST
 {
 	template<typename Var>
+	class AbstractMatrixReadOnly;
+
+	template<typename Var>
 	class AbstractMatrix;
+
+	template<typename Var>
+	class MatrixUnit;
+
+	template<typename Var>
+	class MatrixDiag;
 	
 	template<typename Var>
 	class SubMatrix;
@@ -329,13 +338,24 @@ namespace INMOST
 	
 	template<typename Var>
 	class ConstBlockOfMatrix;
+
+	template<typename VarA, typename VarB>
+	class MatrixSum;
+
+	template<typename VarA, typename VarB>
+	class MatrixDifference;
+
+	template<typename Var>
+	class MatrixTranspose;
+
+	template<typename VarA, typename VarB>
+	class KroneckerProduct;
 	
 	template<typename Var, typename Storage = std::vector<Var> >
 	class Matrix;
 	
 	template<typename Var, typename Storage = std::vector<Var> >
 	class SymmetricMatrix;
-
 
 	class value_reference;
 }

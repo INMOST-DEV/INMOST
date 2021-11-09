@@ -2362,7 +2362,7 @@ template<class A>          __INLINE                                           vo
 #if defined(USE_FP64)
                            __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      float Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg,                         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
-						   __INLINE                                           void    assign(float& Arg,                                          float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+						   __INLINE                                           void    assign(float& Arg,                                          float Val) {Arg = (float)Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg,                   float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
