@@ -350,6 +350,21 @@ namespace INMOST
 
 	template<typename VarA, typename VarB>
 	class KroneckerProduct;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMulCoef;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixDivCoef;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMulShellCoef;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixDivShellCoef;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMul;
 	
 	template<typename Var, typename Storage = std::vector<Var> >
 	class Matrix;

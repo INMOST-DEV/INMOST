@@ -260,7 +260,8 @@ namespace INMOST
 		/// @param other Matrix to be multiplied from right.
 		/// @return Matrix multipled by another matrix.
 		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
+		//Matrix<typename Promote<Var, typeB>::type>
+		MatrixMul<Var,typeB, typename Promote<Var,typeB>::type>
 			operator*(const AbstractMatrixReadOnly<typeB>& other) const;
 		/// Unary minus. Change sign of each element of the matrix.
 		Matrix<Var> operator-() const;
@@ -471,29 +472,33 @@ namespace INMOST
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			operator*(typeB coef) const;
+		//Matrix<typename Promote<Var, typeB>::type>
+		MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>
+			operator*(const typeB& coef) const;
 #if defined(USE_AUTODIFF)
 		/// Multiply the matrix by a coefficient.
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<class A>
-		Matrix<typename Promote<Var, variable>::type>
-			operator*(shell_expression<A> const& coef) const { return operator*(variable(coef)); }
+		//Matrix<typename Promote<Var, variable>::type>
+		MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
+			operator*(shell_expression<A> const& coef) const;// { return operator*(variable(coef)); }
 #endif //USE_AUTODIFF
 		/// Divide the matrix by a coefficient of a different type.
 		/// @param coef Coefficient.
 		/// @return Matrix divided by the coefficient.
 		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			operator/(typeB coef) const;
+		//Matrix<typename Promote<Var, typeB>::type>
+		MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
+			operator/(const typeB & coef) const;
 #if defined(USE_AUTODIFF)
 		/// Divide the matrix by a coefficient of a different type.
 		/// @param coef Coefficient.
 		/// @return Matrix divided by the coefficient.
 		template<class A>
-		Matrix<typename Promote<Var, variable>::type>
-			operator/(shell_expression<A> const& coef) const { return operator/(variable(coef)); }
+		//Matrix<typename Promote<Var, variable>::type>
+		MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
+			operator/(shell_expression<A> const& coef) const;// { return operator/(variable(coef)); }
 #endif //USE_AUTODIFF
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
 		/// Throws exception if matrix is not invertable. See Mesh::PseudoSolve for
@@ -2161,6 +2166,216 @@ namespace INMOST
 		}
 	};
 
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMul : public AbstractMatrixReadOnly< VarR >
+	{
+	public:
+		using AbstractMatrixReadOnly< VarR >::operator();
+		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		Matrix<VarR> M;
+	public:
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return M.Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMul(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		{
+			assert(rA.Cols() == rB.Rows());
+			const AbstractMatrix<VarA>* pA = dynamic_cast<const AbstractMatrix<VarA> *>(&rA);
+			const AbstractMatrix<VarB>* pB = dynamic_cast<const AbstractMatrix<VarB> *>(&rB);
+			if (pA == NULL)
+			{
+				static thread_private< Matrix<VarA> > tmpA;
+				*tmpA = rA;
+				pA = &(*tmpA);
+			}
+			if (pB == NULL)
+			{
+				static thread_private< Matrix<VarB> > tmpB;
+				*tmpB = rB;
+				pB = &(*tmpB);
+			}
+			M.Resize(rA.Rows(), rB.Cols());
+			M.Zero();
+			for (enumerator i = 0; i < pA->Rows(); ++i) 
+			{
+				for (enumerator  k = 0; k < pB->Cols(); ++k) 
+					M(i, k) = (*pA)(i, 0) * (*pB)(0, k);
+				for (enumerator j = 1; j < pA->Cols(); ++j) 
+					for (enumerator k = 0; k < pB->Cols(); ++k)
+						M(i, k) += (*pA)(i, j) * (*pB)(j, k);
+			}
+		}
+		MatrixMul(const MatrixMul& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return M(i, j);
+		}
+	};
+
+	//template<typename VarA, typename VarB, typename VarR>
+	//thread_private< Matrix<VarR> > MatrixMul<VarA, VarB, VarR>::M;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMulCoef : public AbstractMatrixReadOnly< VarR >
+	{
+	public:
+		using AbstractMatrixReadOnly< VarR >::operator();
+		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const VarB* coef;
+	public:
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMulCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+			: A(&rA), coef(&rcoef) {}
+		MatrixMulCoef(const MatrixMulCoef& b) : A(b.A), coef(b.coef) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return (*A)(i, j) * (*coef);
+		}
+	};
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixDivCoef : public AbstractMatrixReadOnly< VarR >
+	{
+	public:
+		using AbstractMatrixReadOnly< VarR >::operator();
+		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const VarB* coef;
+	public:
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixDivCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+			: A(&rA), coef(&rcoef) {}
+		MatrixDivCoef(const MatrixDivCoef& b)
+			: A(b.A), coef(b.coef) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return (*A)(i, j) / (*coef);
+		}
+	};
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixMulShellCoef : public AbstractMatrixReadOnly< VarR >
+	{
+	public:
+		using AbstractMatrixReadOnly< VarR >::operator();
+		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const variable coef;
+	public:
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMulShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+			: A(&rA), coef(rcoef) {}
+		MatrixMulShellCoef(const MatrixMulShellCoef& b) : A(b.A), coef(b.coef) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return (*A)(i, j) * (*coef);
+		}
+	};
+
+	template<typename VarA, typename VarB, typename VarR>
+	class MatrixDivShellCoef : public AbstractMatrixReadOnly< VarR >
+	{
+	public:
+		using AbstractMatrixReadOnly< VarR >::operator();
+		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const variable coef;
+	public:
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixDivShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+			: A(&rA), coef(rcoef) {}
+		MatrixDivShellCoef(const MatrixDivShellCoef& b)
+			: A(b.A), coef(b.coef) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return (*A)(i, j) / coef;
+		}
+	};
+
 	template<typename VarA, typename VarB>
 	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
 	{
@@ -2196,6 +2411,8 @@ namespace INMOST
 			return (*A)(i / B->Rows(), j / B->Cols()) * (*B)(i % B->Rows(), j % B->Cols());
 		}
 	};
+
+	
 	
 	template<typename Var>
 	//Matrix<Var>
@@ -2350,6 +2567,7 @@ namespace INMOST
 		return *this;
 	}
 
+	/*
 #if defined(USE_AUTODIFF)
 	template<>
 	template<>
@@ -2464,11 +2682,15 @@ namespace INMOST
 		return ret;
 	}
 #endif //USE_AUTODIFF
+	*/
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
+	//Matrix<typename Promote<Var,typeB>::type>
+	MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>
 	AbstractMatrixReadOnly<Var>::operator*(const AbstractMatrixReadOnly<typeB> & other) const
 	{
+		return MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>(*this, other);
+		/*
 		assert(Cols() == other.Rows());
 		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),other.Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i) //loop rows
@@ -2482,6 +2704,7 @@ namespace INMOST
 			}
 		}
 		return ret;
+		*/
 	}
 	
 #if defined(USE_AUTODIFF)
@@ -2629,14 +2852,26 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::operator*(typeB coef) const
+	//Matrix<typename Promote<Var,typeB>::type>
+	MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>
+	AbstractMatrixReadOnly<Var>::operator*(const typeB& coef) const
 	{
+		return MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
+		/*
 		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				assign(ret(i,j),(*this)(i,j)*coef);
 		return ret;
+		*/
+	}
+
+	template<typename Var>
+	template<typename A>
+	MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
+		AbstractMatrixReadOnly<Var>::operator*(shell_expression<A> const & coef) const
+	{
+		return MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
 	}
 	
 	template<typename Var>
@@ -2651,15 +2886,27 @@ namespace INMOST
 	}
 	
 	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::operator/(typeB coef) const
+	template<typename A>
+	MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
+	AbstractMatrixReadOnly<Var>::operator/(shell_expression<A> const & coef) const
 	{
+		return MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
+	}
+
+	template<typename Var>
+	template<typename typeB>
+	//Matrix<typename Promote<Var,typeB>::type>
+	MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
+		AbstractMatrixReadOnly<Var>::operator/(const typeB& coef) const
+	{
+		return MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
+		/*
 		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
 				assign(ret(i,j),(*this)(i,j)/coef);
 		return ret;
+		*/
 	}
 	
 	template<typename Var>
@@ -4179,9 +4426,11 @@ namespace INMOST
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type>
-operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrixReadOnly<typeB> & other)
-{return other*coef;}
+//INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type>
+INMOST::MatrixMulCoef<typeB, INMOST_DATA_REAL_TYPE, typename INMOST::Promote<INMOST_DATA_REAL_TYPE, typeB>::type>
+operator *(const INMOST_DATA_REAL_TYPE& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
+//{return other*coef;}
+{return INMOST::MatrixMulCoef<typeB, INMOST_DATA_REAL_TYPE, typename INMOST::Promote<INMOST_DATA_REAL_TYPE, typeB>::type>(other, coef);}
 #if defined(USE_AUTODIFF)
 /// Multiplication of matrix by a unknown from left.
 /// Takes account for derivatives of variable.
@@ -4189,18 +4438,22 @@ operator *(INMOST_DATA_REAL_TYPE coef, const INMOST::AbstractMatrixReadOnly<type
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type>
-operator *(const INMOST::unknown & coef, const INMOST::AbstractMatrixReadOnly<typeB> & other)
-{return other*coef;}
+//INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type>
+INMOST::MatrixMulCoef<typeB, INMOST::unknown, typename INMOST::Promote<INMOST::unknown, typeB>::type>
+operator *(const INMOST::unknown& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
+//{return other*coef;}
+{return INMOST::MatrixMulCoef<typeB, INMOST::unknown, typename INMOST::Promote<INMOST::unknown, typeB>::type>(other, coef);}
 /// Multiplication of matrix by a variable from left.
 /// Takes account for derivatives of variable.
 /// @param coef Variable coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
-operator *(const INMOST::variable & coef, const INMOST::AbstractMatrixReadOnly<typeB> & other)
-{return other*coef;}
+//INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
+INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>
+operator *(const INMOST::variable& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
+//{return other*coef;}
+{return INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, coef);}
 /// Multiplication of matrix by a variable with first and
 /// second order derivatives from left.
 /// Takes account for first and second order derivatives of variable.
@@ -4208,17 +4461,21 @@ operator *(const INMOST::variable & coef, const INMOST::AbstractMatrixReadOnly<t
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type>
-operator *(const INMOST::hessian_variable & coef, const INMOST::AbstractMatrixReadOnly<typeB> & other)
-{return other*coef;}
+//INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type>
+INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>
+operator *(const INMOST::hessian_variable& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
+//{return other*coef;}
+{return INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>(other, coef);}
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
 template<class A, typename typeB>
-INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
-operator *(INMOST::shell_expression<A> const & coef, const INMOST::AbstractMatrixReadOnly<typeB> & other)
-{return other*INMOST::variable(coef);}
+//INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
+INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>
+operator *(INMOST::shell_expression<A> const& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
+//{return other*INMOST::variable(coef);}
+{return INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, INMOST::variable(coef));}
 #endif
 
 template<typename T>
