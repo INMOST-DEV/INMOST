@@ -517,16 +517,29 @@ namespace INMOST
 		/// Destructor
 		virtual ~AbstractMatrixReadOnly() {};
 	};
-	/// Abstract class for a matrix,
-	/// used to abstract away all the data storage and access
-	/// and provide common implementation of the algorithms.
+	/// Abstract class for a matrix that does not require calculations
+	/// for accessing the element. Used to determine if the matrix
+	/// should be calculated before matrix multiplication.
 	template<typename Var>
-	class AbstractMatrix : public AbstractMatrixReadOnly<Var>
+	class AbstractMatrixTriviallyAccessible : public AbstractMatrixReadOnly<Var>
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
 		using AbstractMatrixReadOnly<Var>::Rows;
 		using AbstractMatrixReadOnly<Var>::Cols;
+		typedef unsigned enumerator;
+		virtual ~AbstractMatrixTriviallyAccessible() {}
+	};
+	/// Abstract class for a matrix,
+	/// used to abstract away all the data storage and access
+	/// and provide common implementation of the algorithms.
+	template<typename Var>
+	class AbstractMatrix : public AbstractMatrixTriviallyAccessible<Var>
+	{
+	public:
+		using AbstractMatrixTriviallyAccessible<Var>::operator();
+		using AbstractMatrixTriviallyAccessible<Var>::Rows;
+		using AbstractMatrixTriviallyAccessible<Var>::Cols;
 		typedef unsigned enumerator;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
@@ -1788,7 +1801,7 @@ namespace INMOST
 	
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var>
-	class ConstSubMatrix : public AbstractMatrixReadOnly<Var>
+	class ConstSubMatrix : public AbstractMatrixTriviallyAccessible<Var>
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
@@ -1954,7 +1967,7 @@ namespace INMOST
 	
 	/// This class allows to address a matrix as a block of an empty matrix of larger size.
 	template<typename Var>
-	class ConstBlockOfMatrix : public AbstractMatrixReadOnly<Var>
+	class ConstBlockOfMatrix : public AbstractMatrixTriviallyAccessible<Var>
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
@@ -2011,7 +2024,7 @@ namespace INMOST
 	};
 
 	template<typename Var>
-	class MatrixUnit : public AbstractMatrixReadOnly< Var >
+	class MatrixUnit : public AbstractMatrixTriviallyAccessible< Var >
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
@@ -2031,7 +2044,7 @@ namespace INMOST
 	};
 
 	template<typename Var>
-	class MatrixDiag : public AbstractMatrixReadOnly< Var >
+	class MatrixDiag : public AbstractMatrixTriviallyAccessible< Var >
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
@@ -2132,7 +2145,7 @@ namespace INMOST
 	};
 
 	template<typename Var>
-	class MatrixTranspose : public AbstractMatrixReadOnly<Var>
+	class MatrixTranspose : public AbstractMatrixTriviallyAccessible<Var>
 	{
 	public:
 		using AbstractMatrixReadOnly<Var>::operator();
@@ -2190,8 +2203,8 @@ namespace INMOST
 		MatrixMul(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
-			const AbstractMatrix<VarA>* pA = dynamic_cast<const AbstractMatrix<VarA> *>(&rA);
-			const AbstractMatrix<VarB>* pB = dynamic_cast<const AbstractMatrix<VarB> *>(&rB);
+			const AbstractMatrixTriviallyAccessible<VarA>* pA = dynamic_cast<const AbstractMatrixTriviallyAccessible<VarA> *>(&rA);
+			const AbstractMatrixTriviallyAccessible<VarB>* pB = dynamic_cast<const AbstractMatrixTriviallyAccessible<VarB> *>(&rB);
 			if (pA == NULL)
 			{
 				static thread_private< Matrix<VarA> > tmpA;
