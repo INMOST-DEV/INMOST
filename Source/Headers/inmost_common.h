@@ -325,7 +325,19 @@ namespace INMOST
 	class MatrixUnit;
 
 	template<typename Var>
+	class MatrixRow;
+
+	template<typename Var>
+	class MatrixCol;
+
+	template<typename Var>
 	class MatrixDiag;
+
+	template<typename Var>
+	class ConstMatrixRepack;
+
+	template<typename Var>
+	class MatrixRepack;
 	
 	template<typename Var>
 	class SubMatrix;
@@ -339,6 +351,21 @@ namespace INMOST
 	template<typename Var>
 	class ConstBlockOfMatrix;
 
+	template<typename Var>
+	class MatrixConcatRows;
+
+	template<typename Var>
+	class ConstMatrixConcatRows;
+
+	template<typename Var>
+	class MatrixConcatCols;
+
+	template<typename Var>
+	class ConstMatrixConcatCols;
+
+	template<typename Var>
+	class MatrixUnaryMinus;
+
 	template<typename VarA, typename VarB>
 	class MatrixSum;
 
@@ -347,6 +374,9 @@ namespace INMOST
 
 	template<typename Var>
 	class MatrixTranspose;
+
+	template<typename Var>
+	class ConstMatrixTranspose;
 
 	template<typename VarA, typename VarB>
 	class KroneckerProduct;

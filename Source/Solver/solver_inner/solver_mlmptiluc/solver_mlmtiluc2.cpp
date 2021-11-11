@@ -854,11 +854,11 @@ const double apert = 1.0e-8;
 		{
 			//G[k].reserve(Address[k].Size());
 			G_Address[k].thr = Thread();
-			G_Address[k].first = G_Entries[G_Address[k].thr].size();
+			G_Address[k].first = (INMOST_DATA_ENUM_TYPE)G_Entries[G_Address[k].thr].size();
 			for (INMOST_DATA_ENUM_TYPE it = Address[k].first; it < Address[k].last; ++it) //if( !check_zero(Entries[it].second) )
 				G_Entries[G_Address[k].thr].push_back(Entries[Address[k].thr][it].first);
 				//G[k].push_back(Entries[Address[k].thr][it].first);
-			G_Address[k].last = G_Entries[G_Address[k].thr].size();
+			G_Address[k].last = (INMOST_DATA_ENUM_TYPE)G_Entries[G_Address[k].thr].size();
 		}
 	}
 
@@ -974,7 +974,7 @@ const double apert = 1.0e-8;
 				// wadj_sep[k-wbeg] = nnz;
 				int thr = Thread();
 				pG_Address[k].thr = thr;
-				pG_Address[k].first = pG_Entries[thr].size();
+				pG_Address[k].first = (INMOST_DATA_ENUM_TYPE)pG_Entries[thr].size();
 				//pG[k].reserve(nnz);
 				INMOST_DATA_ENUM_TYPE it = Beg, jt;
 				while( it != static_cast<INMOST_DATA_ENUM_TYPE>(k) )
@@ -986,7 +986,7 @@ const double apert = 1.0e-8;
 					it = jt; //restore next
 				}
 				List[k] = ENUMUNDEF;
-				pG_Address[k].last = pG_Entries[thr].size();
+				pG_Address[k].last = (INMOST_DATA_ENUM_TYPE)pG_Entries[thr].size();
 			}
 		}
 	}
@@ -1053,14 +1053,14 @@ const double apert = 1.0e-8;
 		{
 			int thr = Thread();
 			out_G_Address[k].thr = thr;
-			out_G_Address[k].first = out_G_Entries[thr].size();
+			out_G_Address[k].first = (INMOST_DATA_ENUM_TYPE)out_G_Entries[thr].size();
 			for (INMOST_DATA_ENUM_TYPE jt = in_G_Address[invP[k]].first; jt < in_G_Address[invP[k]].last; ++jt)
 			{
 				INMOST_DATA_ENUM_TYPE j = localQ[in_G_Entries[in_G_Address[invP[k]].thr][jt]];
 				if (cbeg <= j && j < cend)
 					out_G_Entries[thr].push_back(j);
 			}
-			out_G_Address[k].last = out_G_Entries[thr].size();
+			out_G_Address[k].last = (INMOST_DATA_ENUM_TYPE)out_G_Entries[thr].size();
 			/*
 			G_out[k] = G_in[invP[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
@@ -1097,14 +1097,14 @@ const double apert = 1.0e-8;
 		{
 			int thr = Thread();
 			out_tG_Address[k].thr = thr;
-			out_tG_Address[k].first = out_tG_Entries[thr].size();
+			out_tG_Address[k].first = (INMOST_DATA_ENUM_TYPE)out_tG_Entries[thr].size();
 			for (INMOST_DATA_ENUM_TYPE jt = in_tG_Address[invQ[k]].first; jt < in_tG_Address[invQ[k]].last; ++jt)
 			{
 				INMOST_DATA_ENUM_TYPE j = localP[in_tG_Entries[in_tG_Address[invQ[k]].thr][jt]];
 				if (wbeg <= j && j < wend)
 					out_tG_Entries[thr].push_back(j);
 			}
-			out_tG_Address[k].last = out_tG_Entries[thr].size();
+			out_tG_Address[k].last = (INMOST_DATA_ENUM_TYPE)out_tG_Entries[thr].size();
 			/*
 			tG_out[k] = tG_in[invQ[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
@@ -1140,14 +1140,14 @@ const double apert = 1.0e-8;
 		{
 			int thr = Thread();
 			out_pG_Address[k].thr = thr;
-			out_pG_Address[k].first = out_pG_Entries[thr].size();
+			out_pG_Address[k].first = (INMOST_DATA_ENUM_TYPE)out_pG_Entries[thr].size();
 			for (INMOST_DATA_ENUM_TYPE jt = in_pG_Address[invP[k]].first; jt < in_pG_Address[invP[k]].last; ++jt)
 			{
 				INMOST_DATA_ENUM_TYPE j = localP[in_pG_Entries[in_pG_Address[invP[k]].thr][jt]];
 				if (wbeg <= j && j < wend)
 					out_pG_Entries[thr].push_back(j);
 			}
-			out_pG_Address[k].last = out_pG_Entries[thr].size();
+			out_pG_Address[k].last = (INMOST_DATA_ENUM_TYPE)out_pG_Entries[thr].size();
 			/*
 			pG_out[k] = pG_in[invP[k]];
 			INMOST_DATA_ENUM_TYPE it = 0, jt = 0;
