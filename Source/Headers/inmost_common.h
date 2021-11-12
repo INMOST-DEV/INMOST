@@ -357,11 +357,17 @@ namespace INMOST
 	template<typename Var>
 	class ConstMatrixConcatRows;
 
+	template<typename VarA, typename VarB, typename VarR>
+	class ConstMatrixConcatRows2;
+
 	template<typename Var>
 	class MatrixConcatCols;
 
 	template<typename Var>
 	class ConstMatrixConcatCols;
+
+	template<typename VarA, typename VarB, typename VarR>
+	class ConstMatrixConcatCols2;
 
 	template<typename Var>
 	class MatrixUnaryMinus;

@@ -527,6 +527,18 @@ namespace INMOST
 		{
 			return ConstMatrixConcatCols<Var>(*this, B);
 		}
+		/// Concatenate B matrix as columns of current matrix.
+		/// Assumes that number of rows of current matrix is
+		/// equal to number of rows of B matrix.
+		/// @param B Matrix to be concatenated to current matrix.
+		/// @return Result of concatenation of current matrix and parameter.
+		/// @see Matrix::ConcatRows
+		template<typename VarB>
+		ConstMatrixConcatCols2<Var, VarB, typename Promote<Var, VarB>::type>
+			ConcatCols(const AbstractMatrixReadOnly<VarB>& B) const
+		{
+			return ConstMatrixConcatCols2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
+		}
 		/*
 		{
 
@@ -552,6 +564,18 @@ namespace INMOST
 		ConstMatrixConcatRows<Var> ConcatRows(const AbstractMatrixReadOnly<Var>& B) const
 		{
 			return ConstMatrixConcatRows<Var>(*this, B);
+		}
+		/// Concatenate B matrix as rows of current matrix.
+		/// Assumes that number of colums of current matrix is
+		/// equal to number of columns of B matrix.
+		/// @param B Matrix to be concatenated to current matrix.
+		/// @return Result of concatenation of current matrix and parameter.
+		/// @see Matrix::ConcatCols
+		template<typename VarB>
+		ConstMatrixConcatRows2<Var,VarB,typename Promote<Var,VarB>::type> 
+			ConcatRows(const AbstractMatrixReadOnly<VarB>& B) const
+		{
+			return ConstMatrixConcatRows2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
 		}
 		/*
 		{
@@ -2404,6 +2428,50 @@ namespace INMOST
 		}
 	};
 
+	template<typename VarA, typename VarB, typename VarR>
+	class ConstMatrixConcatRows2 : public AbstractMatrixReadOnly<VarR>
+	{
+	public:
+		using AbstractMatrixReadOnly<VarR>::operator();
+		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const AbstractMatrixReadOnly<VarB>* B;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return A->TrivialArguments() && B->TrivialArguments(); };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows() + B->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		ConstMatrixConcatRows2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+			: A(&rA), B(&rB) {
+			assert(A->Cols() == B->Cols());
+		}
+		ConstMatrixConcatRows2(const ConstMatrixConcatRows2& b) : A(b.A), B(b.B) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			if (i < A->Rows())
+				return (*A)(i, j);
+			else
+				return (*B)(i - A->Rows(), j);
+		}
+	};
+
 	template<typename Var>
 	class MatrixConcatRows : public AbstractMatrix<Var>
 	{
@@ -2499,6 +2567,50 @@ namespace INMOST
 		__INLINE Var operator()(enumerator i, enumerator j) const
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
+		}
+	};
+
+	template<typename VarA, typename VarB, typename VarR>
+	class ConstMatrixConcatCols2 : public AbstractMatrixReadOnly<VarR>
+	{
+	public:
+		using AbstractMatrixReadOnly<VarR>::operator();
+		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<VarA>* A;
+		const AbstractMatrixReadOnly<VarB>* B;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return A->TrivialArguments() && B->TrivialArguments(); };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		ConstMatrixConcatCols2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+			: A(&rA), B(&rB) {
+			assert(A->Rows() == B->Rows());
+		}
+		ConstMatrixConcatCols2(const ConstMatrixConcatCols2& b) : A(b.A), B(b.B) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			if (j < A->Cols())
+				return (*A)(i, j);
+			else
+				return (*B)(i, j - A->Cols());
 		}
 	};
 
