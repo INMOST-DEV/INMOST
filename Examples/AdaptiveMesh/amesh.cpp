@@ -461,6 +461,7 @@ namespace INMOST
 	{
 		static int fi = 0;
         ENTER_FUNC();
+		if (model) model->PrepareAdaptation(*m);
 		static int call_counter = 0;
 		Storage::integer ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -1267,6 +1268,7 @@ namespace INMOST
 	{
 		std::string file;
 		ENTER_FUNC();
+		if (model) model->PrepareAdaptation(*m);
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells

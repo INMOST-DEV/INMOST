@@ -45,7 +45,31 @@ namespace INMOST
 		assert( GetSubModel(name) == NULL ); // do not overwrite submodel with the same name
 		SubModels.push_back(std::make_pair(name,&submodel));
 	}
-	
+
+	void Model::AddCouplingTerm(std::string submodel, std::string name, AbstractCouplingTerm& term)
+	{
+		assert(!isInitialized()); // do not add new data after initialization
+		assert(GetCouplingTerm(submodel, name) == NULL); //do not overwrite existing coupling term
+		AbstractSubModel* subm = GetSubModel(submodel);
+		if (subm == NULL && submodel.size() != 0)
+			std::cout << "Warning: submodel " << submodel << " corresponding to coupling term " << name << " does not exist!" << std::endl; //TODO: warnings in parallel
+		CouplingTerms[subm].push_back(std::make_pair(name, &term));
+	}
+
+	void Model::AddScalarFunction(std::string name, AbstractScalarFunction& func)
+	{
+		assert(!isInitialized()); // do not add new data after initialization
+		assert(GetScalarFunction(name) == NULL); //do not overwrite existing coupling term
+		ScalarFunctions.push_back(std::make_pair(name, &func));
+	}
+
+	void Model::AddMatrixFunction(std::string name, AbstractMatrixFunction& func)
+	{
+		assert(!isInitialized()); // do not add new data after initialization
+		assert(GetMatrixFunction(name) == NULL); //do not overwrite existing coupling term
+		MatrixFunctions.push_back(std::make_pair(name, &func));
+	}
+		
 	void Model::AddOperator(std::string name, AbstractOperator & op)
 	{
 		assert( !isInitialized() ); // do not add new data after initialization
@@ -124,6 +148,17 @@ namespace INMOST
 				return it->second;
 		return NULL;
 	}
+
+	std::string Model::GetSubModelName(const AbstractSubModel* ref) const
+	{
+		if (ref == NULL) return "";
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			if (it->second == ref)
+				return it->first;
+		std::cout << "Warning: the sub-model with address " << (void*)ref << " was not associated with the model!" << std::endl; //TODO: warnings in parallel
+		return "";
+	}
 	
 	std::vector<std::string> Model::GetSubModelsNames() const
 	{
@@ -134,30 +169,39 @@ namespace INMOST
 		return ret;
 	}
 
-	AbstractCouplingTerm* Model::GetCouplingTerm(std::string name)
+	AbstractCouplingTerm* Model::GetCouplingTerm(std::string submodel, std::string name)
 	{
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator it = CouplingTerms.begin();
-			it != CouplingTerms.end(); ++it)
+		AbstractSubModel* subm = GetSubModel(submodel);
+		std::map< AbstractSubModel*, std::vector< std::pair< std::string, AbstractCouplingTerm*> > >::iterator terms = CouplingTerms.find(subm);
+		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator it = terms->second.begin();
+			it != terms->second.end(); ++it)
 			if (it->first == name)
 				return it->second;
 		return NULL;
 	}
 
-	const AbstractCouplingTerm* Model::GetCouplingTerm(std::string name) const
+	const AbstractCouplingTerm* Model::GetCouplingTerm(std::string submodel, std::string name) const
 	{
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
-			it != CouplingTerms.end(); ++it)
+		const AbstractSubModel* subm = GetSubModel(submodel);
+		std::map< AbstractSubModel*, std::vector< std::pair< std::string, AbstractCouplingTerm*> > >::const_iterator terms = CouplingTerms.find(const_cast<AbstractSubModel*>(subm));
+		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = terms->second.begin();
+			it != terms->second.end(); ++it)
 			if (it->first == name)
 				return it->second;
 		return NULL;
 	}
 
-	std::vector<std::string> Model::GetCouplingTermNames() const
+	std::vector< std::pair< std::string, std::vector<std::string> > > Model::GetCouplingTermNames() const
 	{
-		std::vector<std::string> ret;
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
-			it != CouplingTerms.end(); ++it)
-			ret.push_back(it->first);
+		std::vector< std::pair< std::string, std::vector<std::string> > > ret;
+		std::map< AbstractSubModel*, std::vector< std::pair< std::string, AbstractCouplingTerm*> > >::const_iterator terms;
+		for (terms = CouplingTerms.begin(); terms != CouplingTerms.end(); ++terms)
+		{
+			ret.push_back(std::make_pair(GetSubModelName(terms->first), std::vector<std::string>()));
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = terms->second.begin();
+				it != terms->second.end(); ++it)
+				ret.back().second.push_back(it->first);
+		}	
 		return ret;
 	}
 
@@ -255,11 +299,15 @@ namespace INMOST
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->PrepareEntries(*this);
-		//second initialize operators
-		for(std::vector< std::pair<std::string, AbstractOperator *> >::iterator it = Operators.begin();
-			it != Operators.end(); ++it)
-			success &= it->second->PrepareEntries(*this);
 		return success;
+	}
+
+	void Model::PrepareAdaptation(Mesh &m)
+	{
+		//first initialize submodels
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->PrepareAdaptation(m);
 	}
 	
 	bool Model::Initialize()
@@ -281,9 +329,12 @@ namespace INMOST
 			it->second->SetOffsetTag(aut.GetEntry(it->second->reg_index).GetOffsetTag());
 		}
 		//initialize coupling terms
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			success &= it->second->Initialize(*this);
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->Initialize(*this);
+		}
 		//initialize scalar functions
 		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
@@ -299,23 +350,26 @@ namespace INMOST
 	bool Model::PrepareIterations()
 	{
 		bool success = true;
-		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->PrepareIterations();
 		//for operator
-		for (std::vector< std::pair<std::string, AbstractOperator*> >::const_iterator it = Operators.begin();
+		for (std::vector< std::pair<std::string, AbstractOperator*> >::iterator it = Operators.begin();
 			it != Operators.end(); ++it)
-			success &= it->second->Prepare();
-		//for coupling terms
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
-			it != CouplingTerms.end(); ++it)
 			success &= it->second->PrepareIterations();
+		//for coupling terms
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
+			it != CouplingTerms.end(); ++it)
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->PrepareIterations();
+		}
 		//for scalar functions
-		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
+		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			success &= it->second->PrepareIterations();
 		//for matrix functions
-		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::const_iterator it = MatrixFunctions.begin();
+		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::iterator it = MatrixFunctions.begin();
 			it != MatrixFunctions.end(); ++it)
 			success &= it->second->PrepareIterations();
 		return success;
@@ -335,13 +389,16 @@ namespace INMOST
 			model_time = Timer() - model_time;
 			//~ std::cout << it->first << ":" << model_time << " ";
 		}
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::const_iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
 		{
-			model_time = Timer();
-			success &= it->second->FillResidual(R);
-			model_time = Timer() - model_time;
-			//~ std::cout << it->first << ":" << model_time << " ";
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+			{
+				model_time = Timer();
+				success &= jt->second->FillResidual(R);
+				model_time = Timer() - model_time;
+				//~ std::cout << it->first << ":" << jt->first << ":" << model_time << " ";
+			}
 		}
 		total_time = Timer() - total_time;
 		//~ std::cout << "total:" << total_time << std::endl;
@@ -355,29 +412,25 @@ namespace INMOST
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->UpdateSolution(sol,alpha);
-		for(std::vector< std::pair<std::string, AbstractOperator *> >::const_iterator it = Operators.begin();
-			it != Operators.end(); ++it)
-			success &= it->second->UpdateSolution(sol,alpha);
 		return success;
 	}
 	
 	bool Model::UpdateTimeStep()
 	{
 		bool success = true;
-		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->UpdateTimeStep();
-		for(std::vector< std::pair<std::string, AbstractOperator *> >::const_iterator it = Operators.begin();
-			it != Operators.end(); ++it)
-			success &= it->second->UpdateTimeStep();
-
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			success &= it->second->UpdateTimeStep();
-		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->UpdateTimeStep();
+		}
+		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			success &= it->second->UpdateTimeStep();
-		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::const_iterator it = MatrixFunctions.begin();
+		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::iterator it = MatrixFunctions.begin();
 			it != MatrixFunctions.end(); ++it)
 			success &= it->second->UpdateTimeStep();
 		return success;
@@ -390,9 +443,12 @@ namespace INMOST
 			it != SubModels.end(); ++it)
 			success &= it->second->SetTimeStep(dt);
 
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			success &= it->second->SetTimeStep(dt);
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->SetTimeStep(dt);
+		}
 		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			success &= it->second->SetTimeStep(dt);
@@ -406,13 +462,15 @@ namespace INMOST
 	bool Model::RestoreTimeStep()
 	{
 		bool success = true;
-		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->RestoreTimeStep();
-
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			success &= it->second->RestoreTimeStep();
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->RestoreTimeStep();
+		}
 		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			success &= it->second->RestoreTimeStep();
@@ -429,9 +487,12 @@ namespace INMOST
 			it != SubModels.end(); ++it)
 			alpha = std::min(alpha,it->second->UpdateMultiplier(sol));
 
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::const_iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			alpha = std::min(alpha, it->second->UpdateMultiplier(sol));
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				alpha = std::min(alpha,jt->second->UpdateMultiplier(sol));
+		}
 		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			alpha = std::min(alpha, it->second->UpdateMultiplier(sol));
@@ -453,10 +514,12 @@ namespace INMOST
 			it != SubModels.end(); ++it)
 			ret = std::min(ret,it->second->AdjustTimeStep(dt));
 
-
-		for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator it = CouplingTerms.begin();
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::const_iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
-			ret = std::min(ret, it->second->AdjustTimeStep(dt));
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::const_iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				ret = std::min(ret, jt->second->AdjustTimeStep(dt));
+		}
 		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
 			it != ScalarFunctions.end(); ++it)
 			ret = std::min(ret, it->second->AdjustTimeStep(dt));

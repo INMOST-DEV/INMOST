@@ -44,8 +44,9 @@ namespace INMOST
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// No algorithm by default
 		/// If this submodel depends on provided adapted mesh, it should update it's data
-		virtual void Adaptation(Mesh& m) const { (void)m; };
+		virtual void Adaptation(Mesh& m) const { (void)m; }
 
+		virtual void PrepareAdaptation(Mesh& m) { (void)m; }
 
 		virtual void CellRefinement(Cell& old_cell, ElementArray<Cell>& new_cells) { (void)old_cell; (void)new_cells; }
 		virtual void FaceRefinement(Face& old_face, ElementArray<Face>& new_faces) { (void)old_face; (void)new_faces; }
@@ -154,13 +155,14 @@ namespace INMOST
 		Automatizator & aut; ///< Automatizator that is used to manage all unknowns of the model.
 		//todo: decide later on how it should be stored
 		std::vector< std::pair<std::string, AbstractSubModel *> > SubModels; ///< A set of submodels of the model.
-		std::vector< std::pair< std::string, AbstractEntry *> > Entries; ///< A set of entries for blocks of unknowns of the model.
+		std::vector< std::pair<std::string, AbstractEntry *> > Entries; ///< A set of entries for blocks of unknowns of the model. The naming convention is "SubModelName:EntryName"
 		std::vector< std::pair<std::string, Mesh *> > Meshes; ///< A set of meshes of the model.
-		std::vector< std::pair<std::string, AbstractCouplingTerm*> > CouplingTerms; ///< A set of coupling terms, present in the model
-		std::vector< std::pair< std::string, AbstractScalarFunction*> > ScalarFunctions; ///< A set of scalar functions, present in the model
-		std::vector< std::pair< std::string, AbstractMatrixFunction*> > MatrixFunctions; ///< A set of matrix functions, present in the model
+		std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > > CouplingTerms; ///< A set of coupling terms, tied to each submodel
+		//std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractEntry*> > > SubModelEntries;
+		std::vector< std::pair<std::string, AbstractScalarFunction*> > ScalarFunctions; ///< A set of scalar functions, present in the model
+		std::vector< std::pair<std::string, AbstractMatrixFunction*> > MatrixFunctions; ///< A set of matrix functions, present in the model
 		std::vector< std::pair<std::string, AbstractOperator *> > Operators; ///< A set of operators used by submodels
-		bool initialized; ///< Indicates whether a model was initialized.
+		bool initialized; ///< Indicates whether the model was initialized.
 	public:
 		Model(Automatizator & aut) : aut(aut), initialized(false) {}
 		//todo:
@@ -172,17 +174,17 @@ namespace INMOST
 		/// The model stores a link to the entry and may modify it contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
-		void AddEntry(std::string name, AbstractEntry & entry);
+		void AddEntry(std::string name, AbstractEntry& entry);
 		/// Add an entry of block unknowns to a model after an entry with certain name.
 		/// The model stores a link to the entry and may modify it contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
-		void AddAfterEntry(std::string name, AbstractEntry & entry, std::string after);
+		void AddAfterEntry(std::string name, AbstractEntry& entry, std::string after);
 		/// Add an entry of block unknowns to a model as a first entry.
 		/// The model stores a link to the entry and may modify it contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
-		void AddFirstEntry(std::string name, AbstractEntry & entry);
+		void AddFirstEntry(std::string name, AbstractEntry& entry);
 		/// Add a mesh to a model.
 		/// The model stores a link to the provided mesh, so it should not
 		/// be deallocated. The meshes are provided by the user from outside
@@ -193,14 +195,23 @@ namespace INMOST
 		/// Add a submodel to a model.
 		/// Submodels are added by the user from outside.
 		/// All submodels are initialized on Model::Initialize function.
+		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
 		void AddSubModel(std::string name, AbstractSubModel & submodel);
-		/// Add coupling term to a model.
-		void AddCouplingTerm(std::string name, AbstractCouplingTerm& term);
+		/// Add coupling term to a submodel.
+		/// An empty submodel name will add a global coupling term.
+		/// Coupling terms linked to submodels are not evaluated for non-active submodels.
+		/// Global coupling terms are always evaluated and should monitor 
+		/// the state of the unknown to avoid writing to respective residual.
+		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
+		void AddCouplingTerm(std::string submodel, std::string name, AbstractCouplingTerm& term);
 		/// Add scalar coupling function to a model.
+		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
 		void AddScalarFunction(std::string name, AbstractScalarFunction& func);
 		/// Add matrix coupling function to a model.
+		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
 		void AddMatrixFunction(std::string name, AbstractMatrixFunction& func);
 		/// Add an operator to a model.
+		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
 		void AddOperator(std::string name, AbstractOperator & op);
 		/// Retrive an automatizator.
 		Automatizator & GetAutomatizator() {return aut;}
@@ -222,14 +233,16 @@ namespace INMOST
 		AbstractSubModel * GetSubModel(std::string name);
 		/// Retrive a submodel of the model by name.
 		const AbstractSubModel * GetSubModel(std::string name) const;
+		/// Retrive the name by submodel address
+		std::string GetSubModelName(const AbstractSubModel* model) const;
 		/// Retrive all names of submodules.
 		std::vector<std::string> GetSubModelsNames() const;
 		/// Retrive a coupling term of the model by name.
-		AbstractCouplingTerm* GetCouplingTerm(std::string name);
+		AbstractCouplingTerm* GetCouplingTerm(std::string submodel, std::string name);
 		/// Retrive a coupling term of the model by name.
-		const AbstractCouplingTerm* GetCouplingTerm(std::string name) const;
+		const AbstractCouplingTerm* GetCouplingTerm(std::string submodel, std::string name) const;
 		/// Retrive all names of coupling terms.
-		std::vector<std::string> GetCouplingTermNames() const;
+		std::vector< std::pair< std::string, std::vector<std::string> > > GetCouplingTermNames() const;
 		/// Retrive a scalar function of the model by name.
 		AbstractScalarFunction* GetScalarFunction(std::string name);
 		/// Retrive a scalar function of the model by name.
@@ -279,16 +292,17 @@ namespace INMOST
 		double AdjustTimeStep(double dt) const;
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// Those model that use the adapted mesh should update their data
-		virtual void Adaptation(Mesh & m) const;
+		void Adaptation(Mesh & m) const;
 		
+		void PrepareAdaptation(Mesh& m);
 		
-		virtual void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells);
-		virtual void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces);
-		virtual void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges);
+		void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells);
+		void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces);
+		void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges);
 		
-		virtual void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell);
-		virtual void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face);
-		virtual void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge);
+		void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell);
+		void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face);
+		void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge);
 		
 		void ReportErrors(const Residual & R) const;
 	};
