@@ -744,7 +744,7 @@ namespace INMOST
 		/// Useful to change representation from matrix into vector and back.
 		/// Replaces original number of columns and rows with a new one.
 		/// @return Matrix with same entries and provided number of rows and columns.
-		MatrixRepack<Var> Repack(enumerator rows, enumerator cols) { return MatrixRepack(*this, rows, cols); }
+		MatrixRepack<Var> Repack(enumerator rows, enumerator cols) { return MatrixRepack<Var>(*this, rows, cols); }
 		/// Concatenate B matrix as columns of current matrix.
 		/// Assumes that number of rows of current matrix is
 		/// equal to number of rows of B matrix.
