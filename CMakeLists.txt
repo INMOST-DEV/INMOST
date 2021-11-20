@@ -267,6 +267,7 @@ if(USE_SOLVER_SUPERLU)
 	find_package(LAPACK)
 	if( NOT LAPACK_FOUND )
 		message("-- Download LAPACK")
+		include(ExternalProject)
 		ExternalProject_Add(LAPACK
 							URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
 							UPDATE_DISCONNECTED 1
@@ -358,6 +359,7 @@ if(USE_SOLVER_SUPERLU)
 			
 			if( USE_SOLVER_SUPERLU_DOWNLOAD )
 				if( USE_MPI AND USE_PARTITIONER_PARMETIS )
+					include(ExternalProject)
 					message("-- Download SuperLU_DIST")
 					set(C_STANDARD_FLAG "-std=c99")
 					string (REPLACE ";" "|" PASS_PARMETIS_LIBRARIES "${PARMETIS_LIBRARIES}")
