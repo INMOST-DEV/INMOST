@@ -310,6 +310,8 @@ namespace INMOST
 		set_id        = m->DeleteTag(set_id);
 		level         = m->DeleteTag(level);
 		hanging_nodes = m->DeleteTag(hanging_nodes);
+		if(tri_hanging_edges.isValid())
+			tri_hanging_edges = m->DeleteTag(tri_hanging_edges);
 		parent_set    = m->DeleteTag(parent_set);
 		root.DeleteSetTree();
 	}
@@ -337,7 +339,7 @@ namespace INMOST
 		//m->ResolveSets();
 	}
 	
-	AdaptiveMesh::AdaptiveMesh(Mesh & _m) : m(&_m)
+	AdaptiveMesh::AdaptiveMesh(Mesh & _m, bool skip_tri) : m(&_m), skip_tri(skip_tri)
 	{
 #if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 		model = NULL;
@@ -350,6 +352,8 @@ namespace INMOST
 		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
 		hanging_nodes = m->CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
+		if (skip_tri)
+			tri_hanging_edges = m->CreateTag("TRI_HANGING_EDGES", DATA_REFERENCE, CELL, CELL);
 		//create a tag that stores links to sets
 		parent_set = m->CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
 	    size = m->GetProcessorsNumber();
@@ -585,6 +589,8 @@ namespace INMOST
 		//EXIT_BLOCK();
 		
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		if (tri_hanging_edges.isValid())
+			m->ExchangeData(tri_hanging_edges, CELL, 0);
 		
 		//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
 		//m->CheckCentroids(__FILE__,__LINE__);
@@ -719,36 +725,54 @@ namespace INMOST
 						//and new hanging edges
 						ElementArray<Cell> face_cells = f.getCells();
 						t2 = Timer(), tadj += t2 - t1, t1 = t2;
-						//create node at face center
-						//f->Centroid(xyz);
-						for(int d = 0; d < 3; ++d) xyz[d] = 0.0;
 						//connect face center to hanging nodes of the face
 						Storage::reference_array face_hanging_nodes = hanging_nodes[f];
-						for(Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
-							for(int d = 0; d < 3; ++d) xyz[d] += face_hanging_nodes[kt].getAsNode().Coords()[d];
-						for(int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)face_hanging_nodes.size();
-						//todo: request transformation of node location according to geometrical model
-						//create middle node
-						Node n = m->CreateNode(xyz);
-						new_nodes++;
-						//set increased level for the new node
-						level[n] = level[f]+1;
-						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
-						//for each cell provide link to new hanging node
-						for(ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
-							hanging_nodes[face_cells[kt]].push_back(n);
-						ElementArray<Node> edge_nodes(m,2); //to create new edges
-						ElementArray<Edge> hanging_edges(m,face_hanging_nodes.size());
-						edge_nodes[0] = n;
-						for(Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
+						ElementArray<Node> edge_nodes(m, 2); //to create new edges
+						ElementArray<Edge> hanging_edges(m);
+						//skip triangle
+						if (skip_tri && f.GetGeometricType() == Element::Tri)
 						{
-							edge_nodes[1] = face_hanging_nodes[kt].getAsNode();
-							hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
-							new_edges++;
-							//set increased level for new edges
-							level[hanging_edges[kt]] = level[f]+1;
+							hanging_edges.resize(3);
+							for (Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
+							{
+								edge_nodes[0] = face_hanging_nodes[kt].getAsNode();
+								edge_nodes[1] = face_hanging_nodes[(kt+1)% face_hanging_nodes.size()].getAsNode();
+								hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
+								for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
+									tri_hanging_edges[face_cells[kt]].push_back(hanging_edges[kt]);
+							}
+							t2 = Timer(), thanging += t2 - t1, t1 = t2;
 						}
-						t2 = Timer(), thanging += t2 - t1, t1 = t2;
+						else
+						{
+							//create node at face center
+							//f->Centroid(xyz);
+							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
+							for (Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
+								for (int d = 0; d < 3; ++d) xyz[d] += face_hanging_nodes[kt].getAsNode().Coords()[d];
+							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)face_hanging_nodes.size();
+							//todo: request transformation of node location according to geometrical model
+							//create middle node
+							Node n = m->CreateNode(xyz);
+							new_nodes++;
+							//set increased level for the new node
+							level[n] = level[f] + 1;
+							t2 = Timer(), tcreate += t2 - t1, t1 = t2;
+							//for each cell provide link to new hanging node
+							for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
+								hanging_nodes[face_cells[kt]].push_back(n);
+							edge_nodes[0] = n;
+							hanging_edges.resize(face_hanging_nodes.size());
+							for (Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
+							{
+								edge_nodes[1] = face_hanging_nodes[kt].getAsNode();
+								hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
+								new_edges++;
+								//set increased level for new edges
+								level[hanging_edges[kt]] = level[f] + 1;
+							}
+							t2 = Timer(), thanging += t2 - t1, t1 = t2;
+						}
 						//split the face by these edges
 						ElementArray<Face> new_faces = Face::SplitFace(f,hanging_edges,0);
 						splits++;
@@ -800,96 +824,126 @@ namespace INMOST
 					if( !c.Hidden() && indicator[c] == schedule_counter )
 					{
 						t1 = Timer();
+						Node n;
 						Storage::reference_array cell_hanging_nodes = hanging_nodes[c]; //nodes to be connected
-						//create node at cell center
-						for(int d = 0; d < 3; ++d) xyz[d] = 0.0;
-						for(Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
-							for(int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
-						for(int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)cell_hanging_nodes.size();
-						//c->Centroid(xyz);
-						//todo: request transformation of node location according to geometrical model
-						//create middle node
-						Node n = m->CreateNode(xyz);
-						new_nodes++;
-						//set increased level for the new node
-						level[n] = level[c]+1;
-						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
-						//retrive all edges of current face to mark them
-						ElementArray<Edge> cell_edges = c.getEdges();
-#if !defined(NDEBUG)
-						for(ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt) assert(level[*jt] == level[c]+1);
-						ElementArray<Face> cell_faces = c.getFaces();
-						for(ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] == level[c]+1);
-#endif //NDEBUG
-						t2 = Timer(), tadj += t2 - t1, t1 = t2;
-						//mark all edges so that we can retive them later
-						cell_edges.SetMarker(mark_cell_edges);
-						//connect face center to centers of faces by edges
-						ElementArray<Node> edge_nodes(m,2);
-						ElementArray<Edge> edges_to_faces(m,cell_hanging_nodes.size());
-						edge_nodes[0] = n;
-						for(Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+						if (!skip_tri || cell_hanging_nodes.size() > 3)
 						{
-							assert(cell_hanging_nodes[kt].isValid());
-							//todo: unmark hanging node on edge if no more cells depend on it
-							edge_nodes[1] = cell_hanging_nodes[kt].getAsNode();
-							edges_to_faces[kt] = m->CreateEdge(edge_nodes).first;
-							new_edges++;
-							//set increased level for new edges
-							level[edges_to_faces[kt]] = level[c]+1;
-							//for each node other then the hanging node of the face
-							//(this is hanging node on the edge)
-							//we record a pair of edges to reconstruct internal faces
-							ElementArray<Edge> hanging_edges = cell_hanging_nodes[kt].getEdges(mark_cell_edges,0);
-							for(ElementArray<Edge>::size_type lt = 0; lt < hanging_edges.size(); ++lt)
+							//create node at cell center
+							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
+							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+								for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
+							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)cell_hanging_nodes.size();
+							//c->Centroid(xyz);
+							//todo: request transformation of node location according to geometrical model
+							//create middle node
+							n = m->CreateNode(xyz);
+							new_nodes++;
+							//set increased level for the new node
+							level[n] = level[c] + 1;
+						}
+						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
+						ElementArray<Face> internal_faces(m);
+						if (n.isValid())
+						{
+							//retrive all edges of current face to mark them
+							ElementArray<Edge> cell_edges = c.getEdges();
+#if !defined(NDEBUG)
+							for (ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt) assert(level[*jt] == level[c] + 1);
+							ElementArray<Face> cell_faces = c.getFaces();
+							for (ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] == level[c] + 1);
+#endif //NDEBUG
+							t2 = Timer(), tadj += t2 - t1, t1 = t2;
+							//mark all edges so that we can retive them later
+							cell_edges.SetMarker(mark_cell_edges);
+							//connect face center to centers of faces by edges
+							ElementArray<Node> edge_nodes(m, 2);
+							ElementArray<Edge> edges_to_faces(m, cell_hanging_nodes.size());
+							edge_nodes[0] = n;
+							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
 							{
-								//get hanging node on the edge
-								assert(hanging_edges[lt].getBeg() == cell_hanging_nodes[kt] || hanging_edges[lt].getEnd() == cell_hanging_nodes[kt]);
-								Node v = hanging_edges[lt].getBeg() == cell_hanging_nodes[kt]? hanging_edges[lt].getEnd() : hanging_edges[lt].getBeg();
-								//mark so that we can collect all of them
-								v.SetMarker(mark_hanging_nodes);
-								//fill the edges
-								Storage::reference_array face_edges = internal_face_edges[v];
-								//fill first two in forward order
-								//this way we make a closed loop
-								assert(face_edges[0] == InvalidElement() || face_edges[2] == InvalidElement());
-								if( face_edges[0] == InvalidElement() )
+								assert(cell_hanging_nodes[kt].isValid());
+								//todo: unmark hanging node on edge if no more cells depend on it
+								edge_nodes[1] = cell_hanging_nodes[kt].getAsNode();
+								edges_to_faces[kt] = m->CreateEdge(edge_nodes).first;
+								new_edges++;
+								//set increased level for new edges
+								level[edges_to_faces[kt]] = level[c] + 1;
+								//for each node other then the hanging node of the face
+								//(this is hanging node on the edge)
+								//we record a pair of edges to reconstruct internal faces
+								ElementArray<Edge> hanging_edges = cell_hanging_nodes[kt].getEdges(mark_cell_edges, 0);
+								for (ElementArray<Edge>::size_type lt = 0; lt < hanging_edges.size(); ++lt)
 								{
-									face_edges[0] = edges_to_faces[kt];
-									face_edges[1] = hanging_edges[lt];
-								}
-								else //last two in reverse
-								{
-									assert(face_edges[2] ==InvalidElement());
-									face_edges[2] = hanging_edges[lt];
-									face_edges[3] = edges_to_faces[kt];
+									//get hanging node on the edge
+									assert(hanging_edges[lt].getBeg() == cell_hanging_nodes[kt] || hanging_edges[lt].getEnd() == cell_hanging_nodes[kt]);
+									Node v = hanging_edges[lt].getBeg() == cell_hanging_nodes[kt] ? hanging_edges[lt].getEnd() : hanging_edges[lt].getBeg();
+									//mark so that we can collect all of them
+									v.SetMarker(mark_hanging_nodes);
+									//fill the edges
+									Storage::reference_array face_edges = internal_face_edges[v];
+									//fill first two in forward order
+									//this way we make a closed loop
+									assert(face_edges[0] == InvalidElement() || face_edges[2] == InvalidElement());
+									if (face_edges[0] == InvalidElement())
+									{
+										face_edges[0] = edges_to_faces[kt];
+										face_edges[1] = hanging_edges[lt];
+									}
+									else //last two in reverse
+									{
+										assert(face_edges[2] == InvalidElement());
+										face_edges[2] = hanging_edges[lt];
+										face_edges[3] = edges_to_faces[kt];
+									}
 								}
 							}
+							//remove marker from cell edges
+							cell_edges.RemMarker(mark_cell_edges);
+							t2 = Timer(), thanging1 += t2 - t1, t1 = t2;
+							//now we have to create internal faces
+							ElementArray<Node> edge_hanging_nodes = c.getNodes(mark_hanging_nodes, 0);
+							internal_faces.resize(edge_hanging_nodes.size());
+							//unmark hanging nodes on edges
+							edge_hanging_nodes.RemMarker(mark_hanging_nodes);
+							for (ElementArray<Node>::size_type kt = 0; kt < edge_hanging_nodes.size(); ++kt)
+							{
+								//create a face based on collected edges
+								Storage::reference_array face_edges = internal_face_edges[edge_hanging_nodes[kt]];
+								int valid = 0;
+								for (int q = 0; q < 4; ++q)
+									valid += face_edges[q].isValid() ? 1 : 0;
+								assert(valid == 2 || valid == 4);
+								if (valid == 4) //create a quadrilateral
+									internal_faces[kt] = m->CreateFace(ElementArray<Edge>(m, face_edges.begin(), face_edges.end())).first;
+								else if (valid == 2) //create a triangle (the neighbouring face was a triangle)
+								{
+									edge_nodes[1] = edge_hanging_nodes[kt].getAsNode();
+									ElementArray<Edge> tri_edges(m, 3);
+									tri_edges[0] = face_edges[0].getAsEdge();
+									tri_edges[1] = face_edges[1].getAsEdge();
+									tri_edges[2] = m->CreateEdge(edge_nodes).first;
+									internal_faces[kt] = m->CreateFace(tri_edges).first;
+								}
+								new_faces++;
+								//set increased level
+								level[internal_faces[kt]] = level[c] + 1;
+								//clean up structure, so that other cells can use it
+								edge_hanging_nodes[kt].DelData(internal_face_edges);
+							}
+							if (skip_tri)
+							{
+								ElementArray<Node> tri_nodes(m, 3);
+								Storage::reference_array cell_tri_hanging_edges = tri_hanging_edges[c]; //edges to be connected
+								tri_nodes[0] = n;
+								for (Storage::reference_array::size_type kt = 0; kt < cell_tri_hanging_edges.size(); ++kt)
+								{
+									tri_nodes[1] = cell_tri_hanging_edges[kt].getAsEdge().getBeg();
+									tri_nodes[2] = cell_tri_hanging_edges[kt].getAsEdge().getEnd();
+									internal_faces.push_back(m->CreateFace(tri_nodes).first);
+								}
+							}
+							t2 = Timer(), thanging2 += t2 - t1, t1 = t2;
 						}
-						//remove marker from cell edges
-						cell_edges.RemMarker(mark_cell_edges);
-						t2 = Timer(), thanging1 += t2 - t1, t1 = t2;
-						//now we have to create internal faces
-						ElementArray<Node> edge_hanging_nodes = c.getNodes(mark_hanging_nodes,0);
-						ElementArray<Face> internal_faces(m,edge_hanging_nodes.size());
-						//unmark hanging nodes on edges
-						edge_hanging_nodes.RemMarker(mark_hanging_nodes);
-						for(ElementArray<Node>::size_type kt = 0; kt < edge_hanging_nodes.size(); ++kt)
-						{
-							//create a face based on collected edges
-							Storage::reference_array face_edges = internal_face_edges[edge_hanging_nodes[kt]];
-							assert(face_edges[0].isValid());
-							assert(face_edges[1].isValid());
-							assert(face_edges[2].isValid());
-							assert(face_edges[3].isValid());
-							internal_faces[kt] = m->CreateFace(ElementArray<Edge>(m,face_edges.begin(),face_edges.end())).first;
-							new_faces++;
-							//set increased level
-							level[internal_faces[kt]] = level[c]+1;
-							//clean up structure, so that other cells can use it
-							edge_hanging_nodes[kt].DelData(internal_face_edges);
-						}
-						t2 = Timer(), thanging2 += t2 - t1, t1 = t2;
 						//if( c.GlobalID() == 228 )
 						//{
 						//	double cnt[3];
@@ -1150,7 +1204,8 @@ namespace INMOST
 		//keep links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
-
+		if( tri_hanging_edges.isValid())
+			m->ExchangeData(tri_hanging_edges, CELL, 0);
 		/*
 		ENTER_BLOCK();
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
@@ -1586,6 +1641,8 @@ namespace INMOST
 
 		m->ExchangeData(parent_set,CELL,0);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		if(tri_hanging_edges.isValid())
+			m->ExchangeData(tri_hanging_edges, CELL, 0);
 		//m->ResolveSets();
 
 		/*
@@ -2018,6 +2075,8 @@ namespace INMOST
 		//restore links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
 		m->ExchangeData(hanging_nodes,CELL | FACE,0);
+		if (tri_hanging_edges.isValid())
+			m->ExchangeData(tri_hanging_edges, CELL, 0);
 		
 		/*
 		ENTER_BLOCK();
