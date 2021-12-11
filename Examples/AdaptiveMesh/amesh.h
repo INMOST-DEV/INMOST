@@ -22,15 +22,17 @@ namespace INMOST
 		void CheckClosure(std::string file, int line);
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         //void SynchronizeIndicated(TagInteger& indicator);
+		bool skip_tri;
 	public:
 		void ReportSets(std::fstream & fout);
 		void CheckParentSet(std::string file, int line);//, TagInteger indicator);
 		TagReference parent_set; //<Link to the set that contains an element.
 		TagReferenceArray hanging_nodes; //< Link to current hanging nodes of the cell.
+		TagReferenceArray tri_hanging_edges; //< Link of the cell to hanging edges of triangles.
 		TagInteger level; //< Refinement level of the cell
 		//TagReferenceArray ref_tag; //<Link to the set that contains an element.
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
-        AdaptiveMesh(Mesh & m);
+        AdaptiveMesh(Mesh & m, bool skip_tri = false);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
