@@ -368,10 +368,10 @@ namespace INMOST
 		{
 			return 1 + v[0].first;
 		}
-		void Print(double eps = -1) const
+		void Print(double eps = -1, std::ostream & sout = std::cout) const
 		{
-			std::cout << value << std::endl;
-			entries.Print(eps);
+			sout << value << " ";// std::endl;
+			entries.Print(eps, sout);
 		}
 		void swap(multivar_expression & b)
 		{
