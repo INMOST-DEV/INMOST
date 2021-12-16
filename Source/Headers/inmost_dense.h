@@ -435,7 +435,7 @@ namespace INMOST
 		///         then the matrix was inverted successfully.
 		template<typename typeB>
 		Matrix<typename Promote<Var, typeB>::type>
-			PseudoSolve(const AbstractMatrix<typeB>& B, INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
+			PseudoSolve(const AbstractMatrixReadOnly<typeB>& B, INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
 		/// Extract submatrix of a matrix.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -511,7 +511,7 @@ namespace INMOST
 		/// @see Matrix::PseudoInvert.
 		template<typename typeB>
 		Matrix<typename Promote<Var, typeB>::type>
-			operator/(const AbstractMatrix<typeB>& other) const
+			operator/(const AbstractMatrixReadOnly<typeB>& other) const
 		{
 			Matrix<typename Promote<Var, typeB>::type> ret(other.Cols(), Cols());
 			ret = other.Solve(*this);
@@ -2746,13 +2746,23 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return A->data()[i * m + j]; }
+		__INLINE Var operator()(enumerator i, enumerator j) const 
+		{ 
+			enumerator p = i * m + j;
+			return (*A)(p / A->Cols(), p % A->Cols());
+			//return A->data()[i * m + j]; 
+		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var & operator()(enumerator i, enumerator j) { return A->data()[i * m + j]; }
+		__INLINE Var & operator()(enumerator i, enumerator j) 
+		{ 
+			enumerator p = i * m + j;
+			return (*A)(p / A->Cols(), p % A->Cols());
+			//return A->data()[i * m + j]; 
+		}
 		/// This is a stub function to fulfill abstract
 		/// inheritance. BlockOfMatrix cannot change it's size,
 		/// since it just points to a part of the larger empty matrix.
@@ -4305,7 +4315,7 @@ namespace INMOST
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::PseudoSolve(const AbstractMatrix<typeB> & B, INMOST_DATA_REAL_TYPE tol, int * ierr) const
+	AbstractMatrixReadOnly<Var>::PseudoSolve(const AbstractMatrixReadOnly<typeB> & B, INMOST_DATA_REAL_TYPE tol, int * ierr) const
 	{
 		Matrix<typename Promote<Var,typeB>::type> ret(Cols(),B.Cols());
 		Matrix<Var> U,S,V;
