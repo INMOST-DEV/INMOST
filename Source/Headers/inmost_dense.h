@@ -332,23 +332,23 @@ namespace INMOST
 		/// Output matrix to screen.
 		/// Does not output derivatices.
 		/// @param threshold Elements smaller then the number are considered to be zero.
-		void Print(INMOST_DATA_REAL_TYPE threshold = 1.0e-10) const
+		void Print(INMOST_DATA_REAL_TYPE threshold = 1.0e-10, std::ostream & sout = std::cout) const
 		{
 			for (enumerator k = 0; k < Rows(); ++k)
 			{
 				for (enumerator l = 0; l < Cols(); ++l)
 				{
 					if (__isinf__(get_value((*this)(k, l))))
-						std::cout << std::setw(12) << "inf";
+						sout << std::setw(12) << "inf";
 					else if (std::isnan(get_value((*this)(k, l))))
-						std::cout << std::setw(12) << "nan";
+						sout << std::setw(12) << "nan";
 					else if (fabs(get_value((*this)(k, l))) > threshold)
-						std::cout << std::setw(12) << get_value((*this)(k, l));
+						sout << std::setw(12) << get_value((*this)(k, l));
 					else
-						std::cout << std::setw(12) << 0;
-					std::cout << " ";
+						sout << std::setw(12) << 0;
+					sout << " ";
 				}
-				std::cout << std::endl;
+				sout << std::endl;
 			}
 		}
 		/// Check if the matrix is symmetric.
@@ -2697,7 +2697,7 @@ namespace INMOST
 		/// @param first_row Offset for row index in the larger matrix.
 		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixRepack(const AbstractMatrixReadOnly<Var>& rA, enumerator n, enumerator m)
-			: A(&rA) { assert(A->Rows() * A->Cols() == n * m); }
+			: A(&rA), n(n), m(m) { assert(A->Rows() * A->Cols() == n * m); }
 		ConstMatrixRepack(const ConstMatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -2737,7 +2737,7 @@ namespace INMOST
 		/// @param first_row Offset for row index in the larger matrix.
 		/// @param first_column Offset for column index in the larger matrix.
 		MatrixRepack(AbstractMatrix<Var>& rA, enumerator n, enumerator m)
-			: A(&rA) {
+			: A(&rA), n(n), m(m) {
 			assert(A->Rows() * A->Cols() == n * m);
 		}
 		MatrixRepack(const MatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
