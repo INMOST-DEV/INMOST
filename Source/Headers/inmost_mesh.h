@@ -3603,20 +3603,23 @@ namespace INMOST
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
 		SearchKDTree() : set(NULL), m(NULL), size(0), bbox(), children(NULL) {}
 		
-		Cell SubSearchCell(const Storage::real p[3], bool print);
+		Cell SubSearchCell(const Storage::real p[3], bool print) const;
 		void clear_children();
-		
-		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]);
-		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]);
-		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]);
-		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]);
-		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]);
+
+		inline int ray_bbox(double pos[3], double ray[3], double closest) const;
+
+		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const;
+		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]) const;
 	public:
 		SearchKDTree(Mesh * m);
 		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
 		~SearchKDTree();
-		Cell SearchCell(const Storage::real * point, bool print = false);
-		void IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3]);
+		Cell SearchCell(const Storage::real * point, bool print = false) const;
+		void IntersectSegment(ElementArray<Cell>& cells, const Storage::real p1[3], const Storage::real p2[3]) const;
+		void IntersectSegment(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3]) const;
 	};
 	
 

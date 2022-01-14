@@ -141,19 +141,40 @@ namespace INMOST
 				//Element::adj_type & nodes = m->HighConn(set[0].e); 
 				std::vector<HandleType> nodes;
 				MarkerType mrk = m->CreatePrivateMarker();
-				Element::adj_type & faces = m->LowConn(set[0].e);
-				for(unsigned k = 0; k < faces.size(); ++k)
+				if (GetHandleElementType(set[0].e) == CELL)
 				{
-					Element::adj_type & fedges = m->LowConn(faces[k]);
-					for(unsigned q = 0; q < fedges.size(); ++q)
+					Element::adj_type& faces = m->LowConn(set[0].e);
+					for (unsigned k = 0; k < faces.size(); ++k)
 					{
-						Element::adj_type & enodes = m->LowConn(fedges[q]);
-						for(unsigned l = 0; l < enodes.size(); ++l) if( !m->GetPrivateMarker(enodes[l],mrk) )
+						Element::adj_type& fedges = m->LowConn(faces[k]);
+						for (unsigned q = 0; q < fedges.size(); ++q)
 						{
-							nodes.push_back(enodes[l]);
-							m->SetPrivateMarker(enodes[l],mrk);
+							Element::adj_type& enodes = m->LowConn(fedges[q]);
+							for (unsigned l = 0; l < enodes.size(); ++l) if (!m->GetPrivateMarker(enodes[l], mrk))
+							{
+								nodes.push_back(enodes[l]);
+								m->SetPrivateMarker(enodes[l], mrk);
+							}
 						}
 					}
+				}
+				else if (GetHandleElementType(set[0].e) == FACE)
+				{
+					Element::adj_type& fedges = m->LowConn(set[0].e);
+					for (unsigned q = 0; q < fedges.size(); ++q)
+					{
+						Element::adj_type& enodes = m->LowConn(fedges[q]);
+						for (unsigned l = 0; l < enodes.size(); ++l) if (!m->GetPrivateMarker(enodes[l], mrk))
+						{
+							nodes.push_back(enodes[l]);
+							m->SetPrivateMarker(enodes[l], mrk);
+						}
+					}
+				}
+				else
+				{
+					std::cout << "Unsupported element type in kd-tree" << std::endl;
+					throw Impossible;
 				}
 				if( !nodes.empty() ) m->RemPrivateMarkerArray(&nodes[0],(Storage::enumerator)nodes.size(),mrk);
 				m->ReleasePrivateMarker(mrk);
@@ -193,7 +214,7 @@ namespace INMOST
 		}
 	}
 	
-	Cell SearchKDTree::SubSearchCell(const Storage::real p[3], bool print)
+	Cell SearchKDTree::SubSearchCell(const Storage::real p[3], bool print) const
 	{
 		Cell ret = InvalidCell();
 		if( size == 1 )
@@ -322,7 +343,7 @@ namespace INMOST
 		else set = NULL;
 	}
 	
-	inline int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3])
+	inline int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		const Storage::real eps = 1.0e-7;
 		Storage::real a[3],b[3],c[3],n[3], ray[3], d, k, m, l;
@@ -370,7 +391,7 @@ namespace INMOST
 		return 0;
 	}
 	
-	inline int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3])
+	inline int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		Storage::real tnear = -1.0e20, tfar = 1.0e20;
 		Storage::real t1,t2,c;
@@ -400,8 +421,33 @@ namespace INMOST
 		}
 		return 1;
 	}
+
+	inline int SearchKDTree::ray_bbox(double pos[3], double ray[3], double closest) const
+	{
+		double tnear = -1.0e20, tfar = 1.0e20, t1, t2, c;
+		for (int i = 0; i < 3; i++)
+		{
+			if (fabs(ray[i]) < 1.0e-15)
+			{
+				if (pos[i] < bbox[i * 2] || pos[i] > bbox[i * 2 + 1])
+					return 0;
+			}
+			else
+			{
+				t1 = (bbox[i * 2 + 0] - pos[i]) / ray[i];
+				t2 = (bbox[i * 2 + 1] - pos[i]) / ray[i];
+				if (t1 > t2) { c = t1; t1 = t2; t2 = c; }
+				if (t1 > tnear) tnear = t1;
+				if (t2 < tfar) tfar = t2;
+				if (tnear > closest) return 0;
+				if (tnear > tfar) return 0;
+				if (tfar < 0) return 0;
+			}
+		}
+		return 1;
+	}
 	
-	inline bool SearchKDTree::segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3])
+	inline bool SearchKDTree::segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		Mesh * m = f->GetMeshLink();
 		Storage::real tri[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
@@ -418,7 +464,7 @@ namespace INMOST
 		return false;
 	}
 	
-	inline bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3])
+	inline bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		ElementArray<Face> faces = c->getFaces();
 		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
@@ -426,18 +472,18 @@ namespace INMOST
 		return false;
 	}
 	
-	void SearchKDTree::IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3])
+	void SearchKDTree::IntersectSegment(ElementArray<Cell> & cells, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		ElementArray<Element> temp(m);
-		MarkerType mrk = m->CreateMarker();
+		MarkerType mrk = m->CreatePrivateMarker();
 		sub_intersect_segment(temp, mrk, p1, p2);
-		m->RemMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
 		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
 		{
 			if (it->GetElementType() == CELL && !it->GetMarker(mrk))
 			{
 				cells.push_back(it->getAsCell());
-				it->SetMarker(mrk);
+				it->SetPrivateMarker(mrk);
 			}
 			else if (it->GetElementType() == FACE)
 			{
@@ -445,20 +491,46 @@ namespace INMOST
 				for (ElementArray<Cell>::iterator kt = f_cells.begin(); kt != f_cells.end(); ++kt) if (!kt->GetMarker(mrk))
 				{
 					cells.push_back(kt->self());
-					kt->SetMarker(mrk);
+					kt->SetPrivateMarker(mrk);
 				}
 			}
 		}
-		m->RemMarkerArray(cells.data(), static_cast<Storage::enumerator>(cells.size()), mrk);
-		m->ReleaseMarker(mrk);
+		m->RemPrivateMarkerArray(cells.data(), static_cast<Storage::enumerator>(cells.size()), mrk);
+		m->ReleasePrivateMarker(mrk);
 	}
 	
+	void SearchKDTree::IntersectSegment(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3]) const
+	{
+		ElementArray<Element> temp(m);
+		MarkerType mrk = m->CreatePrivateMarker();
+		sub_intersect_segment(temp, mrk, p1, p2);
+		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
+		{
+			if (it->GetElementType() == CELL)
+			{
+				ElementArray<Face> f = it->getFaces();
+				for (ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt) if( !jt->GetMarker(mrk) )
+				{
+					faces.push_back(*jt);
+					jt->SetPrivateMarker(mrk);
+				}
+			}
+			else if (it->GetElementType() == FACE)
+			{
+				faces.push_back(it->getAsFace());
+				it->SetPrivateMarker(mrk);
+			}
+		}
+		m->RemPrivateMarkerArray(faces.data(), static_cast<Storage::enumerator>(faces.size()), mrk);
+		m->ReleasePrivateMarker(mrk);
+	}
 	
-	void SearchKDTree::sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3])
+	void SearchKDTree::sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		if( size == 1 )
 		{
-			if( !m->GetMarker(set[0].e,mrk) )
+			if( !m->GetPrivateMarker(set[0].e,mrk) )
 			{
 				Storage::integer edim = Element::GetGeometricDimension(m->GetGeometricType(set[0].e));
 				if( edim == 2 )
@@ -466,7 +538,7 @@ namespace INMOST
 					if( segment_face(Element(m,set[0].e),p1,p2) )
 					{
 						hits.push_back(set[0].e);
-						m->SetMarker(set[0].e,mrk);
+						m->SetPrivateMarker(set[0].e,mrk);
 					}
 				}
 				else if( edim == 3 )
@@ -474,7 +546,7 @@ namespace INMOST
 					if( segment_cell(Element(m,set[0].e),p1,p2) )
 					{
 						hits.push_back(set[0].e);
-						m->SetMarker(set[0].e,mrk);
+						m->SetPrivateMarker(set[0].e,mrk);
 					}
 				}
 				else
@@ -504,7 +576,7 @@ namespace INMOST
 		}
 	}
 	
-	Cell SearchKDTree::SearchCell(const Storage::real * point, bool print)
+	Cell SearchKDTree::SearchCell(const Storage::real * point, bool print) const
 	{
 		return SubSearchCell(point, print);
 	}
