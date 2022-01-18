@@ -158,7 +158,7 @@ namespace INMOST
 
 		RowMerger::~RowMerger() {}
 
-		
+		/*
 		INMOST_DATA_ENUM_TYPE RowMerger::MapIndex(INMOST_DATA_ENUM_TYPE pos) const
 		{
 			if( pos < IntervalBeg || pos >= IntervalEnd )
@@ -170,6 +170,7 @@ namespace INMOST
 		{
 			return pos;
 		}
+		*/
 
 
 		void RowMerger::Clear()

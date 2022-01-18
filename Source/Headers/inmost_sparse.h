@@ -659,11 +659,11 @@ namespace INMOST
 			/// This function converts global index into local index.
 			/// @param pos Global index.
 			/// @return Local index.
-			INMOST_DATA_ENUM_TYPE MapIndex(INMOST_DATA_ENUM_TYPE pos) const;
+			__INLINE INMOST_DATA_ENUM_TYPE MapIndex(INMOST_DATA_ENUM_TYPE pos) const { return (pos < IntervalBeg || pos >= IntervalEnd ? ENUMUNDEF : pos); }
 			/// This function converts local index into global index.
 			/// @param pos Local index.
 			/// @return Global index.
-			INMOST_DATA_ENUM_TYPE UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const;
+			__INLINE INMOST_DATA_ENUM_TYPE UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const { return pos; }
 			/// Default constructor without size specified.
 			RowMerger();
 			/// Constructor with size specified.

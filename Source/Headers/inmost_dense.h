@@ -1152,6 +1152,8 @@ namespace INMOST
 		enumerator n; //< Number of rows.
 		enumerator m; //< Number of columns.
 	public:
+		Var& operator [](enumerator k) { return space[k]; }
+		const Var& operator[](enumerator k) const { return space[k]; }
 		/// Erase single row.
 		/// @param row Position of row, should be from 0 to Matrix::Rows()-1.
 		void RemoveRow(enumerator row)
@@ -2816,7 +2818,6 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			M.Zero();
 			for (enumerator i = 0; i < pA->Rows(); ++i) 
 			{
 				for (enumerator  k = 0; k < pB->Cols(); ++k) 
@@ -2833,6 +2834,262 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE VarR operator()(enumerator i, enumerator j) const
+		{
+			return M(i, j);
+		}
+	};
+
+	template<>
+	class MatrixMul<INMOST_DATA_REAL_TYPE, variable, Promote<INMOST_DATA_REAL_TYPE,variable>::type > : public AbstractMatrixReadOnly< Promote<INMOST_DATA_REAL_TYPE, variable>::type >
+	{
+	public:
+		using AbstractMatrixReadOnly< Promote<INMOST_DATA_REAL_TYPE, variable>::type >::operator();
+		typedef typename AbstractMatrixReadOnly< Promote<INMOST_DATA_REAL_TYPE, variable>::type >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		Matrix<Promote<INMOST_DATA_REAL_TYPE, variable>::type> M;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return true; };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return M.Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMul(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rA, const AbstractMatrixReadOnly<variable>& rB)
+		{
+			assert(rA.Cols() == rB.Rows());
+			const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>* pA = &rA;
+			const AbstractMatrixReadOnly<variable>* pB = &rB;
+			if (!pA->TrivialArguments())
+			{
+				static thread_private< Matrix<INMOST_DATA_REAL_TYPE> > tmpA;
+				*tmpA = rA;
+				pA = &(*tmpA);
+			}
+			if (!pB->TrivialArguments())
+			{
+				static thread_private< Matrix<variable> > tmpB;
+				*tmpB = rB;
+				pB = &(*tmpB);
+			}
+			M.Resize(rA.Rows(), rB.Cols());
+			if (CheckCurrentAutomatizator())
+			{
+				Sparse::RowMerger& merger = GetCurrentMerger();
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						for (enumerator k = 0; k < Cols(); ++k)
+						{
+							value += (*pA)(i, k) * (*pB)(k, j).GetValue();
+							merger.AddRow((*pA)(i, k), (*pB)(k, j).GetRow());
+						}
+						M(i, j).SetValue(value);
+						merger.RetriveRow(M(i, j).GetRow());
+						merger.Clear();
+					}
+				}
+			}
+			else
+			{
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator k = 0; k < pB->Cols(); ++k)
+						M(i, k) = (*pA)(i, 0) * (*pB)(0, k);
+					for (enumerator j = 1; j < pA->Cols(); ++j)
+						for (enumerator k = 0; k < pB->Cols(); ++k)
+							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
+				}
+			}
+		}
+		MatrixMul(const MatrixMul& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE Promote<INMOST_DATA_REAL_TYPE, variable>::type operator()(enumerator i, enumerator j) const
+		{
+			return M(i, j);
+		}
+	};
+
+	template<>
+	class MatrixMul<variable, INMOST_DATA_REAL_TYPE, Promote<variable, INMOST_DATA_REAL_TYPE>::type > : public AbstractMatrixReadOnly< Promote<variable, INMOST_DATA_REAL_TYPE>::type >
+	{
+	public:
+		using AbstractMatrixReadOnly< Promote<variable, INMOST_DATA_REAL_TYPE>::type >::operator();
+		typedef typename AbstractMatrixReadOnly< Promote<variable, INMOST_DATA_REAL_TYPE>::type >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		Matrix<Promote<variable, INMOST_DATA_REAL_TYPE>::type> M;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return true; };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return M.Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rB)
+		{
+			assert(rA.Cols() == rB.Rows());
+			const AbstractMatrixReadOnly<variable>* pA = &rA;
+			const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>* pB = &rB;
+			if (!pA->TrivialArguments())
+			{
+				static thread_private< Matrix<variable> > tmpA;
+				*tmpA = rA;
+				pA = &(*tmpA);
+			}
+			if (!pB->TrivialArguments())
+			{
+				static thread_private< Matrix<INMOST_DATA_REAL_TYPE> > tmpB;
+				*tmpB = rB;
+				pB = &(*tmpB);
+			}
+			M.Resize(rA.Rows(), rB.Cols());
+			if (CheckCurrentAutomatizator())
+			{
+				Sparse::RowMerger& merger = GetCurrentMerger();
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						for (enumerator k = 0; k < Cols(); ++k)
+						{
+							value += (*pA)(i, k).GetValue() * (*pB)(k, j);
+							merger.AddRow((*pB)(k, j), (*pA)(i, k).GetRow());
+						}
+						M(i, j).SetValue(value);
+						merger.RetriveRow(M(i, j).GetRow());
+						merger.Clear();
+					}
+				}
+			}
+			else
+			{
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator k = 0; k < pB->Cols(); ++k)
+						M(i, k) = (*pA)(i, 0) * (*pB)(0, k);
+					for (enumerator j = 1; j < pA->Cols(); ++j)
+						for (enumerator k = 0; k < pB->Cols(); ++k)
+							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
+				}
+			}
+		}
+		MatrixMul(const MatrixMul& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE Promote<variable, INMOST_DATA_REAL_TYPE>::type operator()(enumerator i, enumerator j) const
+		{
+			return M(i, j);
+		}
+	};
+
+	template<>
+	class MatrixMul<variable, variable, Promote<variable, variable>::type > : public AbstractMatrixReadOnly< Promote<variable, variable>::type >
+	{
+	public:
+		using AbstractMatrixReadOnly< Promote<variable, variable>::type >::operator();
+		typedef typename AbstractMatrixReadOnly< Promote<variable, variable>::type >::enumerator enumerator; //< Integer type for indexes.
+	private:
+		Matrix<Promote<variable, variable>::type> M;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return true; };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return M.Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param num_rows Number of rows in the larger matrix.
+		/// @param num_cols Number of columns in the larger matrix.
+		/// @param first_row Offset for row index in the larger matrix.
+		/// @param first_column Offset for column index in the larger matrix.
+		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<variable>& rB)
+		{
+			assert(rA.Cols() == rB.Rows());
+			const AbstractMatrixReadOnly<variable>* pA = &rA;
+			const AbstractMatrixReadOnly<variable>* pB = &rB;
+			if (!pA->TrivialArguments())
+			{
+				static thread_private< Matrix<variable> > tmpA;
+				*tmpA = rA;
+				pA = &(*tmpA);
+			}
+			if (!pB->TrivialArguments())
+			{
+				static thread_private< Matrix<variable> > tmpB;
+				*tmpB = rB;
+				pB = &(*tmpB);
+			}
+			M.Resize(rA.Rows(), rB.Cols());
+			if (CheckCurrentAutomatizator())
+			{
+				Sparse::RowMerger& merger = GetCurrentMerger();
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						for (enumerator k = 0; k < Cols(); ++k)
+						{
+							value += (*pA)(i, k).GetValue() * (*pB)(k, j).GetValue();
+							merger.AddRow((*pA)(i, k).GetValue(), (*pB)(k, j).GetRow());
+							merger.AddRow((*pB)(k, j).GetValue(), (*pA)(i, k).GetRow());
+						}
+						M(i, j).SetValue(value);
+						merger.RetriveRow(M(i, j).GetRow());
+						merger.Clear();
+					}
+				}
+			}
+			else
+			{
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator k = 0; k < pB->Cols(); ++k)
+						M(i, k) = (*pA)(i, 0) * (*pB)(0, k);
+					for (enumerator j = 1; j < pA->Cols(); ++j)
+						for (enumerator k = 0; k < pB->Cols(); ++k)
+							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
+				}
+			}
+		}
+		MatrixMul(const MatrixMul& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE Promote<variable, variable>::type operator()(enumerator i, enumerator j) const
 		{
 			return M(i, j);
 		}
