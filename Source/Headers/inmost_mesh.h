@@ -277,6 +277,14 @@ namespace INMOST
 		ElementArray<Etype>       Convert() {return ElementArray<Etype>(m_link,container);}
 	};
 	
+	// Abstract function for calculation of mean value on element
+	struct MeanFunc { virtual Storage::real func(Storage::real* x, Storage::real t) const = 0; };
+	struct MeanFuncRaw : public MeanFunc
+	{ 
+		Storage::real(*pfunc)(Storage::real* x, Storage::real t);
+		MeanFuncRaw(Storage::real(*pfunc)(Storage::real* x, Storage::real t)) : pfunc(pfunc) {}
+		Storage::real func(Storage::real* x, Storage::real t) const { return pfunc(x, t); }
+	};
 			
 	class Element : public Storage //implemented in element.cpp
 	{
@@ -437,7 +445,8 @@ namespace INMOST
 		void                        ComputeGeometricType    () const;
 		void                        Centroid                (real * cnt) const;
 		void                        Barycenter              (real * cnt) const;
-		Storage::real               Mean                    (real (*func)(real* x,real t),real time) const;
+		Storage::real               Mean                    (const MeanFunc & f, real time) const;
+		Storage::real               Mean                    (real(*func)(real* x, real t), real time) const { return Mean(MeanFuncRaw(func), time); }
 		/// Determine that the element is on the boundary.
 		/// \warning This function does not involve communication
 		/// for distributed mesh and works only for local partition

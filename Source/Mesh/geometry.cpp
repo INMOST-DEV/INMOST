@@ -1776,7 +1776,7 @@ namespace INMOST
 		return false;
 	}
 
-	Storage::real meantri(Storage::real * v0, Storage::real * v1, Storage::real * v2, Storage::integer dim, Storage::real (*func)(Storage::real* x,Storage::real), Storage::real time)
+	Storage::real meantri(Storage::real * v0, Storage::real * v1, Storage::real * v2, Storage::integer dim, const MeanFunc & f, Storage::real time)
 	{
 		Storage::real value = 0;
 		static const Storage::real w[4] =   { -0.149570044467670, 0.175615257433204, 0.053347235608839 , 0.077113760890257};
@@ -1790,18 +1790,18 @@ namespace INMOST
 		Storage::real XYG[13][3];
 		for (Storage::integer i = 0 ; i < dim; i++)
 			XYG[0][i] = 0.33333333333333333333*(v0[i]+v1[i]+v2[i]);
-		 value += w[0] * func(XYG[0],time);
+		 value += w[0] * f.func(XYG[0],time);
 		for (int i = 0 ; i < 3 ; i++ )
 		{
 			for (Storage::integer j = 0 ; j < dim; j++)
 				XYG[1+i][j] = v0[j] + (v1[j] - v0[j]) * a[1][i] + (v2[j] - v0[j])*a[1][(i+1)%3];
-			value += w[1] * func(XYG[1+i],time);
+			value += w[1] * f.func(XYG[1+i],time);
 		}
 		for (int i = 0 ; i < 3 ; i++ )
 		{
 			for (Storage::integer j = 0 ; j < dim; j++)
 				XYG[4+i][j] = v0[j] + (v1[j] - v0[j]) * a[2][i] + (v2[j] - v0[j])*a[2][(i+1)%3];
-			value += w[2] * func(XYG[4+i],time);
+			value += w[2] * f.func(XYG[4+i],time);
 		}
 		for (int i = 0 ; i < 3 ; i++ )
 		{
@@ -1810,13 +1810,13 @@ namespace INMOST
 				XYG[7+2*i][j] = v0[j] + (v1[j] - v0[j]) * a[3][i] + (v2[j] - v0[j])*a[3][(i+1)%3];
 				XYG[8+2*i][j] = v0[j] + (v1[j] - v0[j]) * a[3][(i+1)%3] + (v2[j] - v0[j])*a[3][i];
 			}
-			value += w[3] * func(XYG[7+2*i],time);
-			value += w[3] * func(XYG[8+2*i],time);
+			value += w[3] * f.func(XYG[7+2*i],time);
+			value += w[3] * f.func(XYG[8+2*i],time);
 		}
 		return value;
 	}
 
-	Storage::real meantet(Storage::real * v0, Storage::real * v1, Storage::real * v2, Storage::real * v3, Storage::real (*func)(Storage::real* x,Storage::real),Storage::real time)
+	Storage::real meantet(Storage::real* v0, Storage::real* v1, Storage::real* v2, Storage::real* v3, const MeanFunc & f, Storage::real time)
 	{
 		Storage::real value;
 		static const Storage::real T5A = 0.25, W5A = 0.11851851851852;
@@ -1825,20 +1825,20 @@ namespace INMOST
 		static const Storage::real W5C = 0.06906820722627;
 		static const Storage::real T5F = 0.05635083268963, T5G = 0.44364916731037;
 		static const Storage::real W5D = 0.05291005291005;
-		static const Storage::real w[15] = {W5A,W5B,W5B,W5B,W5B,W5C,W5C,W5C,W5C,W5D,W5D,W5D,W5D,W5D,W5D};
+		static const Storage::real w[15] = { W5A,W5B,W5B,W5B,W5B,W5C,W5C,W5C,W5C,W5D,W5D,W5D,W5D,W5D,W5D };
 		Storage::real XYG[15][3];
-		for (int i = 0; i < 3 ;i++)
+		for (int i = 0; i < 3; i++)
 		{
 			XYG[0][i] = T5A * (v0[i] + v1[i] + v2[i] + v3[i]);
-			XYG[1][i] = T5C * v0[i] + T5B * (v1[i]+v2[i]+v3[i]);
-			XYG[2][i] = T5C * v1[i] + T5B * (v0[i]+v2[i]+v3[i]);
-			XYG[3][i] = T5C * v2[i] + T5B * (v0[i]+v1[i]+v3[i]);
-			XYG[4][i] = T5C * v3[i] + T5B * (v0[i]+v1[i]+v2[i]);
+			XYG[1][i] = T5C * v0[i] + T5B * (v1[i] + v2[i] + v3[i]);
+			XYG[2][i] = T5C * v1[i] + T5B * (v0[i] + v2[i] + v3[i]);
+			XYG[3][i] = T5C * v2[i] + T5B * (v0[i] + v1[i] + v3[i]);
+			XYG[4][i] = T5C * v3[i] + T5B * (v0[i] + v1[i] + v2[i]);
 
-			XYG[5][i] = T5E * v0[i] + T5D * (v1[i]+v2[i]+v3[i]);
-			XYG[6][i] = T5E * v1[i] + T5D * (v0[i]+v2[i]+v3[i]);
-			XYG[7][i] = T5E * v2[i] + T5D * (v0[i]+v1[i]+v3[i]);
-			XYG[8][i] = T5E * v3[i] + T5D * (v0[i]+v1[i]+v2[i]);
+			XYG[5][i] = T5E * v0[i] + T5D * (v1[i] + v2[i] + v3[i]);
+			XYG[6][i] = T5E * v1[i] + T5D * (v0[i] + v2[i] + v3[i]);
+			XYG[7][i] = T5E * v2[i] + T5D * (v0[i] + v1[i] + v3[i]);
+			XYG[8][i] = T5E * v3[i] + T5D * (v0[i] + v1[i] + v2[i]);
 
 			XYG[9][i] = T5F * (v0[i] + v1[i]) + T5G * (v2[i] + v3[i]);
 			XYG[10][i] = T5G * (v0[i] + v1[i]) + T5F * (v2[i] + v3[i]);
@@ -1848,12 +1848,12 @@ namespace INMOST
 			XYG[14][i] = T5G * (v0[i] + v2[i]) + T5F * (v1[i] + v3[i]);
 		}
 		value = 0;
-		for (int i = 0 ; i < 15 ; i++)
-			value += w[i] * func(XYG[i],time);
+		for (int i = 0; i < 15; i++)
+			value += w[i] * f.func(XYG[i], time);
 		return value;
 	}
 
-	Storage::real Element::Mean(Storage::real (*func)(Storage::real* x,Storage::real),Storage::real time) const
+	Storage::real Element::Mean(const MeanFunc & f,Storage::real time) const
 	{
 		Mesh * m = GetMeshLink();
 		if( GetElementDimension() == 2 )
@@ -1869,7 +1869,7 @@ namespace INMOST
 				if( it == nodes.end() ) break;
 				real_array av1 = jt->Coords();
 				real_array av2 = it->Coords();
-				tval = meantri(av0.data(),av1.data(),av2.data(),dim,func,time);
+				tval = meantri(av0.data(),av1.data(),av2.data(),dim,f,time);
 				vec_diff(av1.data(),av0.data(),v1,dim);
 				vec_diff(av2.data(),av0.data(),v2,dim);
 				vec_cross_product(v1,v2,product);
@@ -1934,7 +1934,7 @@ namespace INMOST
 					vec_diff(&v[(j+k+1)*3],x,vv2,3);
 					vec_cross_product(vv1,vv2,prod);
 					tvol = vec_dot_product(vv0,prod,3)/6.0 * (rfaces[static_cast<ElementArray<Element>::size_type>(i)]->getAsFace()->FaceOrientedOutside(getAsCell())?1:-1);
-					tval = meantet(x,&v[j*3],&v[(j+k)*3],&v[(j+k+1)*3],func,time);
+					tval = meantet(x,&v[j*3],&v[(j+k)*3],&v[(j+k+1)*3],f,time);
 					val += tval * tvol;
 					vol += tvol;
 				}
@@ -1951,7 +1951,7 @@ namespace INMOST
 			real middle[3];
 			for (integer i = 0 ; i < dim ; i++) middle[i] = (x1[i]+x2[i])*0.5;
 			//Simpson formula
-			return (func(x1.data(),time) + 4*func(middle,time) + func(x2.data(),time))/6.0;
+			return (f.func(x1.data(),time) + 4*f.func(middle,time) + f.func(x2.data(),time))/6.0;
 		}
 		return 0;
 	}
