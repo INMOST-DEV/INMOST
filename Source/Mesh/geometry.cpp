@@ -108,7 +108,7 @@ namespace INMOST
 		l13 = vec_len(v13,3);
 		l23 = vec_len(v23,3);
 		halfperim = 0.5*(l12+l13+l23);
-		return sqrt(halfperim*(halfperim-l12)*(halfperim-l13)*(halfperim-l23));
+		return sqrt(std::max(0.0, halfperim * (halfperim - l12) * (halfperim - l13) * (halfperim - l23)));
 	}
 	
 	
@@ -320,6 +320,7 @@ namespace INMOST
 					c = -1.0;
 				else
 					c = 1.0;
+				d /= data[f].Area();
 				if(c*d > eps)
 					vp++;
 				else if(c*d < -eps)
@@ -1201,7 +1202,6 @@ namespace INMOST
 						real x[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
 						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
 						real nt[3] = {0,0,0};
-						real vc[3] = {0,0,0};
 						//me.Centroid(cx);
 						//if( print ) std::cout << "cx: " << cx[0] << " " << cx[1] << " " << cx[2] << std::endl;
 						for(unsigned j = 0; j < faces.size(); j++)
@@ -1214,7 +1214,6 @@ namespace INMOST
 								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 							x[0] = x[1] = x[2] = 0;
 							n0[0] = n0[1] = n0[2] = 0;
-							vc[0] = vc[1] = vc[2] = 0;
 							a = 0;
 							real_array v0 = nodes[0].Coords(), v1, v2;
 							for(int i = 1; i < (int)nodes.size()-1; i++)
@@ -1375,10 +1374,9 @@ namespace INMOST
 					}
 					real vol = 0, a, at, volp;
 					real x[3] = {0,0,0}, nt[3] = {0,0,0}, s;
-					real c[3] = {0,0,0};
-					real n0[3] = {0,0,0}, ss;
+					real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
+					real n0[3] = { 0,0,0 }, ss;// , xc[3] = { 0,0,0 };
 					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-					real vc[3] = {0,0,0};
 					for(unsigned j = 0; j < faces.size(); j++)
 					{
 						//compute normal to face
@@ -1389,7 +1387,6 @@ namespace INMOST
 							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 						n0[0] = n0[1] = n0[2] = 0;
 						x[0] = x[1] = x[2] = 0;
-						vc[0] = vc[1] = vc[2] = 0;
 						a = 0;
 						real_array v0 = nodes[0].Coords(), v1, v2;
 						for(int i = 1; i < (int)nodes.size()-1; i++)
@@ -1428,10 +1425,12 @@ namespace INMOST
 							for(int q = 0; q < 3; ++q) 
 								x[q] = x[q]/a;
 						} else faces[j].Centroid(x);
-						volp = vec_dot_product(x,n0,3) / 3.0;
-						//~ for(int q = 0; q < 3; ++q)
-							//~ c[q] += 0.75*(x[q]-cx[q])*s*volp; // x - base barycenter, cx - apex
-						vol += s*volp;
+						//vec_diff(xc, x, l1, mdim);
+						//volp = s * vec_dot_product(l1, n0, 3) / 3.0;
+						volp = s * vec_dot_product(x, n0, 3) / 3.0;
+						//for(int q = 0; q < 3; ++q)
+						//	c[q] += 0.75 * x[q] * volp;
+						vol += volp;
 					}
 					if( ornt )
 					{
@@ -1446,8 +1445,16 @@ namespace INMOST
 					}
 					if( vol ) 
 					{
-						for(int q = 0; q < mdim; ++q)
-							ret[q] = c[q]/vol;// + cx[q];
+						for (int q = 0; q < mdim; ++q)
+							c[q] = c[q] / vol;// +xc[q];
+						//for (int q = 0; q < mdim; ++q)
+						//	c2[q] /= vol;
+						//real c3[3] = { 0,0,0 };
+						for (int q = 0; q < mdim; ++q)
+							ret[q] = c[q];
+						//me.Centroid(c3);
+//#pragma omp critical
+//						std::cout << "c1 " << c[0] << " " << c[1] << " " << c[2] << " c2 " << c2[0] << " " << c2[1] << " " << c2[2] << " c3 " << c3[0] << " " << c3[1] << " " << c3[2] << std::endl;
 					}
 					else me.Centroid(ret);//for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
@@ -2182,7 +2189,7 @@ namespace INMOST
 	{
 		ElementArray<Node> nodes = f.getNodes();
 		int n = (int)nodes.size();
-		INMOST_DATA_REAL_TYPE xprev[3], xthis[3], xnext[3], dx[3];
+		INMOST_DATA_REAL_TYPE dx[3];
 		INMOST_DATA_REAL_TYPE weight_sum = 0.0;
 		INMOST_DATA_REAL_TYPE areaface = f.Area();
 		bool edge_interpolation = false;
@@ -2190,19 +2197,19 @@ namespace INMOST
 		for(int i = 0; i < n && !edge_interpolation; i++)
 		{
 			int prev = (i+n-1)%n, next = (i+1)%n;
-			nodes[i].Centroid(xthis);
-			vec_diff(x,xthis,dx,3);
-			nodes[prev].Centroid(xprev);
-			nodes[next].Centroid(xnext);
-			INMOST_DATA_REAL_TYPE area1 = triarea3d(x,xprev,xthis);
-			edge_interpolation = area1 < 1e-8 * areaface;
+			real_array xthis = nodes[i].Coords();
+			vec_diff(x,xthis.data(),dx,3);
+			real_array xprev = nodes[prev].Coords();
+			real_array xnext = nodes[next].Coords();
+			INMOST_DATA_REAL_TYPE area1 = triarea3d(x,xprev.data(),xthis.data());
+			edge_interpolation = area1 < GetEpsilon() * areaface;
 			if( !edge_interpolation )
 			{
-				INMOST_DATA_REAL_TYPE area2 = triarea3d(x,xthis,xnext);
-				edge_interpolation = area2 < 1e-8 * areaface;
+				INMOST_DATA_REAL_TYPE area2 = triarea3d(x,xthis.data(),xnext.data());
+				edge_interpolation = area2 < GetEpsilon() * areaface;
 				if( !edge_interpolation )
 				{
-					INMOST_DATA_REAL_TYPE area = triarea3d(xthis,xprev,xnext);
+					INMOST_DATA_REAL_TYPE area = triarea3d(xthis.data(),xprev.data(),xnext.data());
 					INMOST_DATA_REAL_TYPE weight = area / (area1 * area2);
 					weight_sum += weight;
 					nodes_stencil[nodes[i].GetHandle()] = weight;
@@ -2222,15 +2229,15 @@ namespace INMOST
 		if( edge_interpolation )
 		{
 			if( !nodes_stencil.empty() )	nodes_stencil.clear();
-			INMOST_DATA_REAL_TYPE x1[3],x2[3], v12[3], v[3], alpha;
-			nodes[edgenode1].Centroid(x1);
-			nodes[edgenode2].Centroid(x2);
-			vec_diff(x2,x1,v12,3);
-			vec_diff(x,x1,v,3);
+			INMOST_DATA_REAL_TYPE v12[3], v[3], alpha;
+			real_array x1 = nodes[edgenode1].Coords();
+			real_array x2 = nodes[edgenode2].Coords();
+			vec_diff(x2.data(),x1.data(),v12,3);
+			vec_diff(x,x1.data(),v,3);
 			alpha = vec_dot_product(v12,v,3) / vec_dot_product(v12,v12,3);
 
-			nodes_stencil[nodes[edgenode1].GetHandle()] = alpha;
-			nodes_stencil[nodes[edgenode2].GetHandle()] = 1.0-alpha;
+			nodes_stencil[nodes[edgenode1].GetHandle()] = 1.0 - alpha;
+			nodes_stencil[nodes[edgenode2].GetHandle()] = alpha;
 		}
 		else if( weight_sum )
 			for(std::map<HandleType,real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
@@ -2245,6 +2252,9 @@ namespace INMOST
 		Face swp;
 
 		INMOST_DATA_REAL_TYPE weight_sum = 0;
+		INMOST_DATA_REAL_TYPE* nrm = new INMOST_DATA_REAL_TYPE[cfaces.size() * 4];	// oriented unit normal to face
+		INMOST_DATA_REAL_TYPE* h = nrm + 3 * cfaces.size();
+
 		for(int i = 0; i < n; i++)
 		{
 			INMOST_DATA_REAL_TYPE xthis[3], v[3];
@@ -2254,8 +2264,6 @@ namespace INMOST
 			faces.Intersect(nodes[i].getFaces());
 			int nf = (int)faces.size();
 			INMOST_DATA_REAL_TYPE nrm_mean[3] = {0,0,0}, cross[3];
-			INMOST_DATA_REAL_TYPE * nrm = new INMOST_DATA_REAL_TYPE[nf*3];	// oriented unit normal to face
-			INMOST_DATA_REAL_TYPE * h = new INMOST_DATA_REAL_TYPE[nf];		// distance to face
 			for(int j = 0; j < nf; j++)
 			{
 				faces[j].OrientedUnitNormal(c,nrm+3*j);
@@ -2285,12 +2293,13 @@ namespace INMOST
 			for(int j = 0; j < nf; j++)
 			{
 				h[j] = vec_dot_product(nrm+3*j,v,3);
-				if( h[j] < -1e-8 )
-				{
+				//if( h[j] < -1e-8 )
+				//{
 					//std::cerr << __FILE__ << ":" << __LINE__ << " point is outside of cell" << std::endl;
-					h[j] = fabs(h[j]);
-				}
-				else if(h[j] < 1e-8) // point on the face plane
+					//h[j] = fabs(h[j]);
+				//}
+				//else 
+				if(fabs(h[j]) < GetEpsilon()) // point on the face plane
 				{
 					INMOST_DATA_REAL_TYPE xf[3];
 					for(int k = 0; k < 3; k++)	xf[k] = x[k] + h[j]*nrm[3*j+k];
@@ -2309,9 +2318,10 @@ namespace INMOST
 			nodes_stencil[nodes[i].GetHandle()] = weight;
 			weight_sum += weight;
 			
-			delete [] h;
-			delete [] nrm;
 		}
+		//delete[] h;
+		delete[] nrm;
+
 
 		if( weight_sum )
 			for(std::map<HandleType,real>::iterator it = nodes_stencil.begin(); it != nodes_stencil.end(); ++it)
