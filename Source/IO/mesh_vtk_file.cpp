@@ -494,15 +494,19 @@ safe_output:
 			for(unsigned int i = 0; i < tag_names.size(); i++)
 			{
 				Tag t = GetTag(tag_names[i]);
-				if( t.isDefined(NODE) && /*!t.isSparse(NODE) &&*/
-				    t.GetDataType() != DATA_BULK &&
-				    t.GetDataType() != DATA_REFERENCE &&
-				    t.GetDataType() != DATA_REMOTE_REFERENCE &&
+				if (t.isDefined(NODE) && /*!t.isSparse(NODE) &&*/
+					t.GetDataType() != DATA_BULK &&
+					t.GetDataType() != DATA_REFERENCE &&
+					t.GetDataType() != DATA_REMOTE_REFERENCE &&
 					t != CoordsTag() &&
-				    t != SharedTag() &&
-				    t != SendtoTag() &&
-				    t != ProcessorsTag())
-					tags.push_back(t);
+					t != SharedTag() &&
+					t != SendtoTag() &&
+					t != ProcessorsTag())
+				{
+					bool skip = CheckSaveSkip(tag_names[i], nosave, saveonly);
+					if (!skip)
+						tags.push_back(t);
+				}
 			}
 				
 			if( !tags.empty() ) f << "POINT_DATA " << NumberOfNodes() << "\n";

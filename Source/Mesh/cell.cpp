@@ -297,6 +297,7 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Node> ret(m);
+		ret.reserve(32);
 		MarkerType mrk = m->CreatePrivateMarker();
 		HandleType hc = GetHandle();
 		if( !m->HideMarker() )
@@ -444,6 +445,7 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Node> ret(m);
+		ret.reserve(32);
 		MarkerType mrk = m->CreatePrivateMarker();
 		HandleType hc = GetHandle();
 		if( isPrivate(mask) )
@@ -767,6 +769,7 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Edge> aret(m);
+		aret.reserve(32);
 		if( !m->HideMarker() )
 		{
 			if( Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2 ) // This cell is 2d face
@@ -896,6 +899,7 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Edge> aret(m);
+		aret.reserve(32);
 		if( isPrivate(mask) )
 		{
 			if( !m->HideMarker() )
@@ -1166,6 +1170,7 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			ElementArray<Face> aret(m);
+			aret.reserve(32);
 			adj_type & lc = m->LowConn(GetHandle());
 			for(adj_type::size_type it = 0; it < lc.size(); ++it)
 				if( !m->GetMarker(lc[it],hm) ) aret.push_back(lc[it]);
@@ -1179,6 +1184,7 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==CELL);
 		Mesh * m = GetMeshLink();
 		ElementArray<Face> aret(m);
+		aret.reserve(32);
 		if( !m->HideMarker() )
 		{
 			adj_type const & lc = m->LowConn(GetHandle());
