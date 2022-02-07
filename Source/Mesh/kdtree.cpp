@@ -19,24 +19,122 @@ namespace INMOST
 		return vecin1[0]*vecin2[0]+vecin1[1]*vecin2[1]+vecin1[2]*vecin2[2];
 	}
 	template<typename bbox_type>
-	inline int SearchKDTree::bbox_point(const Storage::real p[3], const bbox_type bbox[6], bool print)
+	inline int SearchKDTree::bbox_point(const Storage::real p[3], const bbox_type bbox[6])
 	{
 		for(int i = 0; i < 3; i++)
 		{
 			if( p[i] < bbox[i*2]-1.0e-3 || p[i] > bbox[i*2+1]+1.0e-3 )
+				return 0;
+		}
+		return 1;
+	}
+
+	template<typename bbox_type>
+	inline int SearchKDTree::bbox_point_print(const Storage::real p[3], const bbox_type bbox[6])
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			if (p[i] < bbox[i * 2] - 1.0e-3 || p[i] > bbox[i * 2 + 1] + 1.0e-3)
 			{
-				if( print ) 
-				{
-					std::cout << "fail on " << i << " ";
-					if( p[i] < bbox[i*2]-1.0e-3 ) std::cout << p[i] << " is less then " << bbox[i*2]-1.0e-3 << "(" << bbox[i*2] << ")";
-					if( p[i] > bbox[i*2+1]+1.0e-3 ) std::cout << p[i] << " is greater then " << bbox[i*2+1]+1.0e-3 << "(" << bbox[i*2+1] << ")";
-					std::cout << std::endl;
-				}	
+				std::cout << "fail on " << i << " ";
+				if (p[i] < bbox[i * 2] - 1.0e-3) std::cout << p[i] << " is less then " << bbox[i * 2] - 1.0e-3 << "(" << bbox[i * 2] << ")";
+				if (p[i] > bbox[i * 2 + 1] + 1.0e-3) std::cout << p[i] << " is greater then " << bbox[i * 2 + 1] + 1.0e-3 << "(" << bbox[i * 2 + 1] << ")";
+				std::cout << std::endl;
 				return 0;
 			}
 		}
-		if( print ) std::cout << "all ok!" << std::endl;
+		std::cout << "all ok!" << std::endl;
 		return 1;
+	}
+
+
+	template<typename bbox_type>
+	inline void SearchKDTree::bbox_closest_point(const Storage::real p[3], const bbox_type bbox[6], Storage::real pout[3])
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			if (p[i] < bbox[i * 2] )
+				pout[i] = bbox[i * 2];
+			else if (p[i] > bbox[i * 2 + 1])
+				pout[i] = bbox[i * 2 + 1];
+			else
+				pout[i] = p[i];
+		}
+		return;
+	}
+
+	template<typename bbox_type>
+	inline int SearchKDTree::bbox_sphere(const Storage::real p[3], Storage::real r, const bbox_type bbox[6])
+	{
+		Storage::real pb[3], d;
+		bbox_closest_point(p, bbox, pb);
+		d = sqrt((pb[0] - p[0]) * (pb[0] - p[0]) + (pb[1] - p[1]) * (pb[1] - p[1]) + (pb[2] - p[2]) * (pb[2] - p[2]));
+		return d <= r ? 1 : 0;
+	}
+
+	inline Storage::real SearchKDTree::segment_distance(const Storage::real a[3], const Storage::real b[3], const Storage::real p[3])
+	{
+		Storage::real pout[3];
+		Storage::real v[3] = { b[0] - a[0],b[1] - a[1],b[2] - a[2] };
+		Storage::real d = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+		Storage::real t = (v[0] * (p[0] - a[0]) + v[1] * (p[1] - a[1]) + v[2] * (p[2] - a[2])) / d;
+		if (t >= 0.0 && t <= 1.0)
+		{
+			pout[0] = a[0] + t * v[0];
+			pout[1] = a[1] + t * v[1];
+			pout[2] = a[2] + t * v[2];
+		}
+		else if (t < 0.0)
+		{
+			pout[0] = a[0];
+			pout[1] = a[1];
+			pout[2] = a[2];
+		}
+		else
+		{
+			pout[0] = b[0];
+			pout[1] = b[1];
+			pout[2] = b[2];
+		}
+		return sqrt((pout[0] - p[0]) * (pout[0] - p[0]) + (pout[1] - p[1]) * (pout[1] - p[1]) + (pout[2] - p[2]) * (pout[2] - p[2]));
+	}
+
+	inline Storage::real SearchKDTree::triangle_distance(const Storage::real a[3], const Storage::real b[3], const Storage::real c[3], const Storage::real p[3])
+	{
+		Storage::real pout[3];
+		Storage::real n[3], d, t, q1[3], q2[3], q3[3], q12, q23, q13;
+		n[0] = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
+		n[1] = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+		n[2] = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+		d = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+		if (d)
+		{
+			n[0] /= d;
+			n[1] /= d;
+			n[2] /= d;
+		}
+		t = (a[0] - p[0]) * n[0] + (a[1] - p[1]) * n[1] + (a[2] - p[2]) * n[2];
+		pout[0] = p[0] + t * n[0];
+		pout[1] = p[1] + t * n[1];
+		pout[2] = p[2] + t * n[2];
+		q1[0] = (pout[1] - a[1]) * (pout[2] - b[2]) - (pout[1] - b[1]) * (pout[2] - a[2]);
+		q1[1] = (pout[2] - a[2]) * (pout[0] - b[0]) - (pout[2] - b[2]) * (pout[0] - a[0]);
+		q1[2] = (pout[0] - a[0]) * (pout[1] - b[1]) - (pout[0] - b[0]) * (pout[1] - a[1]);
+		q2[0] = (pout[1] - b[1]) * (pout[2] - c[2]) - (pout[1] - c[1]) * (pout[2] - b[2]);
+		q2[1] = (pout[2] - b[2]) * (pout[0] - c[0]) - (pout[2] - c[2]) * (pout[0] - b[0]);
+		q2[2] = (pout[0] - b[0]) * (pout[1] - c[1]) - (pout[0] - c[0]) * (pout[1] - b[1]);
+		q3[0] = (pout[1] - c[1]) * (pout[2] - a[2]) - (pout[1] - a[1]) * (pout[2] - c[2]);
+		q3[1] = (pout[2] - c[2]) * (pout[0] - a[0]) - (pout[2] - a[2]) * (pout[0] - c[0]);
+		q3[2] = (pout[0] - c[0]) * (pout[1] - a[1]) - (pout[0] - a[0]) * (pout[1] - c[1]);
+		q12 = q1[0] * q2[0] + q1[1] * q2[1] + q1[2] * q2[2];
+		q23 = q2[0] * q3[0] + q2[1] * q3[1] + q2[2] * q3[2];
+		q13 = q1[0] * q3[0] + q1[1] * q3[1] + q1[2] * q3[2];
+		if (q12 >= 0 && q23 >= 0 && q13 >= 0)
+			return fabs(t);
+		Storage::real dmin = segment_distance(a, b, p);
+		dmin = std::min(dmin, segment_distance(b, c, p));
+		dmin = std::min(dmin, segment_distance(c, a, p));
+		return dmin;
 	}
 	
 	int SearchKDTree::cmpElements0(const void * a,const void * b)
@@ -263,7 +361,7 @@ namespace INMOST
 				std::cout << " y " << bbox[2] << ":" << bbox[3];
 				std::cout << " z " << bbox[4] << ":" << bbox[5];
 				std::cout << std::endl;
-				bbox_point(p,bbox,true);
+				bbox_point_print(p,bbox);
 			}
 		}
 		return ret;
@@ -341,6 +439,11 @@ namespace INMOST
 			}
 		}
 		else set = NULL;
+	}
+
+	inline int SearchKDTree::sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const
+	{
+		return triangle_distance(tri[0], tri[1], tri[2], p) <= r ? 1 : 0;
 	}
 	
 	inline int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const
@@ -422,6 +525,11 @@ namespace INMOST
 		return 1;
 	}
 
+	inline int SearchKDTree::sphere_bbox(const Storage::real p[3], Storage::real r) const
+	{
+		return bbox_sphere(p, r, bbox);
+	}
+
 	inline int SearchKDTree::ray_bbox(double pos[3], double ray[3], double closest) const
 	{
 		double tnear = -1.0e20, tfar = 1.0e20, t1, t2, c;
@@ -463,12 +571,37 @@ namespace INMOST
 		}
 		return false;
 	}
-	
+
+	inline bool SearchKDTree::sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const
+	{
+		Mesh* m = f->GetMeshLink();
+		Storage::real tri[3][3] = { {0,0,0},{0,0,0},{0,0,0} };
+		m->GetGeometricData(f->GetHandle(), CENTROID, tri[2]);
+		ElementArray<Node> nodes = f->getNodes();
+		m->GetGeometricData(nodes[0]->GetHandle(), CENTROID, tri[1]);
+		for (ElementArray<Node>::size_type k = 0; k < nodes.size(); ++k)
+		{
+			memcpy(tri[0], tri[1], sizeof(Storage::real) * 3);
+			//m->GetGeometricData(nodes[k]->GetHandle(),CENTROID,tri[0]);
+			m->GetGeometricData(nodes[(k + 1) % nodes.size()]->GetHandle(), CENTROID, tri[1]);
+			if (sphere_tri(tri, p, r)) return true;
+		}
+		return false;
+	}
+
 	inline bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		ElementArray<Face> faces = c->getFaces();
 		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
 			if( segment_face(it->self(),p1,p2) ) return true;
+		return false;
+	}
+
+	inline bool SearchKDTree::sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const
+	{
+		ElementArray<Face> faces = c->getFaces();
+		for (ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+			if (sphere_face(it->self(), p, r)) return true;
 		return false;
 	}
 	
@@ -480,7 +613,7 @@ namespace INMOST
 		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
 		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
 		{
-			if (it->GetElementType() == CELL && !it->GetMarker(mrk))
+			if (it->GetElementType() == CELL && !it->GetPrivateMarker(mrk))
 			{
 				cells.push_back(it->getAsCell());
 				it->SetPrivateMarker(mrk);
@@ -488,7 +621,7 @@ namespace INMOST
 			else if (it->GetElementType() == FACE)
 			{
 				ElementArray<Cell> f_cells = it->getCells();
-				for (ElementArray<Cell>::iterator kt = f_cells.begin(); kt != f_cells.end(); ++kt) if (!kt->GetMarker(mrk))
+				for (ElementArray<Cell>::iterator kt = f_cells.begin(); kt != f_cells.end(); ++kt) if (!kt->GetPrivateMarker(mrk))
 				{
 					cells.push_back(kt->self());
 					kt->SetPrivateMarker(mrk);
@@ -510,7 +643,61 @@ namespace INMOST
 			if (it->GetElementType() == CELL)
 			{
 				ElementArray<Face> f = it->getFaces();
-				for (ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt) if( !jt->GetMarker(mrk) )
+				for (ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt) if( !jt->GetPrivateMarker(mrk) )
+				{
+					faces.push_back(*jt);
+					jt->SetPrivateMarker(mrk);
+				}
+			}
+			else if (it->GetElementType() == FACE)
+			{
+				faces.push_back(it->getAsFace());
+				it->SetPrivateMarker(mrk);
+			}
+		}
+		m->RemPrivateMarkerArray(faces.data(), static_cast<Storage::enumerator>(faces.size()), mrk);
+		m->ReleasePrivateMarker(mrk);
+	}
+
+	void SearchKDTree::IntersectSphere(ElementArray<Cell>& cells, const Storage::real p[3], Storage::real r) const
+	{
+		ElementArray<Element> temp(m);
+		MarkerType mrk = m->CreatePrivateMarker();
+		sub_intersect_sphere(temp, mrk, p, r);
+		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
+		{
+			if (it->GetElementType() == CELL && !it->GetPrivateMarker(mrk))
+			{
+				cells.push_back(it->getAsCell());
+				it->SetPrivateMarker(mrk);
+			}
+			else if (it->GetElementType() == FACE)
+			{
+				ElementArray<Cell> f_cells = it->getCells();
+				for (ElementArray<Cell>::iterator kt = f_cells.begin(); kt != f_cells.end(); ++kt) if (!kt->GetPrivateMarker(mrk))
+				{
+					cells.push_back(kt->self());
+					kt->SetPrivateMarker(mrk);
+				}
+			}
+		}
+		m->RemPrivateMarkerArray(cells.data(), static_cast<Storage::enumerator>(cells.size()), mrk);
+		m->ReleasePrivateMarker(mrk);
+	}
+
+	void SearchKDTree::IntersectSphere(ElementArray<Face>& faces, const Storage::real p[3], Storage::real r) const
+	{
+		ElementArray<Element> temp(m);
+		MarkerType mrk = m->CreatePrivateMarker();
+		sub_intersect_sphere(temp, mrk, p, r);
+		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
+		{
+			if (it->GetElementType() == CELL)
+			{
+				ElementArray<Face> f = it->getFaces();
+				for (ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt) if (!jt->GetPrivateMarker(mrk))
 				{
 					faces.push_back(*jt);
 					jt->SetPrivateMarker(mrk);
@@ -551,7 +738,7 @@ namespace INMOST
 				}
 				else
 				{
-					std::cout << __FILE__ << ":" << __LINE__ << " kd-tree structure is not suitable to intersect edges with segments" << std::endl;
+					std::cout << __FILE__ << ":" << __LINE__ << " kd-tree structure is not implemented to intersect edges with segments" << std::endl;
 					exit(-1);
 				}
 			}
@@ -563,6 +750,47 @@ namespace INMOST
 			{
 				children[0].sub_intersect_segment(hits,mrk,p1,p2);
 				children[1].sub_intersect_segment(hits,mrk,p1,p2);
+			}
+		}
+	}
+
+	void SearchKDTree::sub_intersect_sphere(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p[3], Storage::real r) const
+	{
+		if (size == 1)
+		{
+			if (!m->GetPrivateMarker(set[0].e, mrk))
+			{
+				Storage::integer edim = Element::GetGeometricDimension(m->GetGeometricType(set[0].e));
+				if (edim == 2)
+				{
+					if (sphere_face(Element(m, set[0].e), p, r))
+					{
+						hits.push_back(set[0].e);
+						m->SetPrivateMarker(set[0].e, mrk);
+					}
+				}
+				else if (edim == 3)
+				{
+					if (sphere_cell(Element(m, set[0].e), p, r))
+					{
+						hits.push_back(set[0].e);
+						m->SetPrivateMarker(set[0].e, mrk);
+					}
+				}
+				else
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " kd-tree structure is not implemented to intersect edges with spheres" << std::endl;
+					exit(-1);
+				}
+			}
+		}
+		else
+		{
+			assert(size > 1);
+			if (sphere_bbox(p, r))
+			{
+				children[0].sub_intersect_sphere(hits, mrk, p, r);
+				children[1].sub_intersect_sphere(hits, mrk, p, r);
 			}
 		}
 	}

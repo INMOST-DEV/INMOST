@@ -3585,7 +3585,15 @@ namespace INMOST
 		
 		inline static bool cell_point(const Cell & c, const Storage::real p[3]) {return c.Inside(p);}
 		template<typename bbox_type>
-		inline static int bbox_point(const Storage::real p[3], const bbox_type bbox[6], bool print = false);
+		inline static int bbox_point(const Storage::real p[3], const bbox_type bbox[6]);
+		template<typename bbox_type>
+		inline static int bbox_point_print(const Storage::real p[3], const bbox_type bbox[6]);
+		template<typename bbox_type>
+		inline static void bbox_closest_point(const Storage::real p[3], const bbox_type bbox[6], Storage::real pout[3]);
+		template<typename bbox_type>
+		inline static int bbox_sphere(const Storage::real p[3], Storage::real r, const bbox_type bbox[6]);
+		inline static Storage::real segment_distance(const Storage::real x1[3], const Storage::real x2[3], const Storage::real p[3]);
+		inline static Storage::real triangle_distance(const Storage::real x1[3], const Storage::real x2[3], const Storage::real x3[3], const Storage::real p[3]);
 	private:
 		struct entry
 		{
@@ -3616,17 +3624,23 @@ namespace INMOST
 		void clear_children();
 
 		inline int ray_bbox(double pos[3], double ray[3], double closest) const;
-
+		inline int  sphere_bbox(const Storage::real p[3], Storage::real r) const;
 		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;
 		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const;
 		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const;
 		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline int  sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const;
+		inline bool sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const;
+		inline bool sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const;
 		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]) const;
+		void sub_intersect_sphere(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p[3], Storage::real r) const;
 	public:
 		SearchKDTree(Mesh * m);
 		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
 		~SearchKDTree();
 		Cell SearchCell(const Storage::real * point, bool print = false) const;
+		void IntersectSphere(ElementArray<Cell>& cells, const Storage::real p[3], Storage::real r) const;
+		void IntersectSphere(ElementArray<Face>& faces, const Storage::real p[3], Storage::real r) const;
 		void IntersectSegment(ElementArray<Cell>& cells, const Storage::real p1[3], const Storage::real p2[3]) const;
 		void IntersectSegment(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3]) const;
 	};
