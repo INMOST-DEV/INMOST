@@ -110,6 +110,56 @@ namespace INMOST
 		halfperim = 0.5*(l12+l13+l23);
 		return sqrt(std::max(0.0, halfperim * (halfperim - l12) * (halfperim - l13) * (halfperim - l23)));
 	}
+
+	__INLINE static bool inside_tet(const Storage::real p1[3], const Storage::real p2[3], const Storage::real p3[3], const Storage::real p4[3], const Storage::real p[3], Storage::real eps)
+	{
+		Storage::real T[9], b[3], det, coef[4];
+		T[0] = p2[0] - p1[0];
+		T[1] = p3[0] - p1[0];
+		T[2] = p4[0] - p1[0];
+		T[3] = p2[1] - p1[1];
+		T[4] = p3[1] - p1[1];
+		T[5] = p4[1] - p1[1];
+		T[6] = p2[2] - p1[2];
+		T[7] = p3[2] - p1[2];
+		T[8] = p4[2] - p1[2];
+		b[0] = p[0] - p1[0];
+		b[1] = p[1] - p1[1];
+		b[2] = p[2] - p1[2];
+		det = T[0] * (T[4] * T[8] - T[5] * T[7]) + T[1] * (T[5] * T[6] - T[3] * T[8]) + T[2] * (T[3] * T[7] - T[4] * T[6]);
+		coef[1] = ((T[4] * T[8] - T[5] * T[7]) * b[0] + (T[2] * T[7] - T[1] * T[8]) * b[1] + (T[1] * T[5] - T[2] * T[4]) * b[2]) / det;
+		coef[2] = ((T[5] * T[6] - T[3] * T[8]) * b[0] + (T[0] * T[8] - T[2] * T[6]) * b[1] + (T[2] * T[3] - T[0] * T[5]) * b[2]) / det;
+		coef[3] = ((T[3] * T[7] - T[4] * T[6]) * b[0] + (T[1] * T[6] - T[0] * T[7]) * b[1] + (T[0] * T[4] - T[1] * T[3]) * b[2]) / det;
+		coef[0] = 1.0 - coef[1] - coef[2] - coef[3];
+		return coef[0] >= -eps && coef[1] >= -eps && coef[2] >= -eps && coef[3] >= -eps;
+	}
+
+	__INLINE static bool inside_tet_print(const Storage::real p1[3], const Storage::real p2[3], const Storage::real p3[3], const Storage::real p4[3], const Storage::real p[3], Storage::real eps, std::ostream & sout)
+	{
+		Storage::real T[9], b[3], det, coef[4];
+		T[0] = p2[0] - p1[0];
+		T[1] = p3[0] - p1[0];
+		T[2] = p4[0] - p1[0];
+		T[3] = p2[1] - p1[1];
+		T[4] = p3[1] - p1[1];
+		T[5] = p4[1] - p1[1];
+		T[6] = p2[2] - p1[2];
+		T[7] = p3[2] - p1[2];
+		T[8] = p4[2] - p1[2];
+		b[0] = p[0] - p1[0];
+		b[1] = p[1] - p1[1];
+		b[2] = p[2] - p1[2];
+		det = T[0] * (T[4] * T[8] - T[5] * T[7]) + T[1] * (T[5] * T[6] - T[3] * T[8]) + T[2] * (T[3] * T[7] - T[4] * T[6]);
+		coef[1] = ((T[4] * T[8] - T[5] * T[7]) * b[0] + (T[2] * T[7] - T[1] * T[8]) * b[1] + (T[1] * T[5] - T[2] * T[4]) * b[2]) / det;
+		coef[2] = ((T[5] * T[6] - T[3] * T[8]) * b[0] + (T[0] * T[8] - T[2] * T[6]) * b[1] + (T[2] * T[3] - T[0] * T[5]) * b[2]) / det;
+		coef[3] = ((T[3] * T[7] - T[4] * T[6]) * b[0] + (T[1] * T[6] - T[0] * T[7]) * b[1] + (T[0] * T[4] - T[1] * T[3]) * b[2]) / det;
+		coef[0] = 1.0 - coef[1] - coef[2] - coef[3];
+		sout << coef[0] << " " << coef[1] << " " << coef[2] << " " << coef[3];
+		bool test = coef[0] >= -eps && coef[1] >= -eps && coef[2] >= -eps && coef[3] >= -eps;
+		if (test)
+			sout << " hit!";
+		return test;
+	}
 	
 	
 	ElementArray<Cell> Cell::NeighbouringCells() const
@@ -197,7 +247,7 @@ namespace INMOST
 		integer dim = GetElementDimension();
 		if( dim == 3 )
 		{
-			/*
+#if 0
 			std::map<HandleType,real,16> hits;
 			real ray[3];
 			ray[0] = rand()/(real)RAND_MAX;
@@ -206,14 +256,14 @@ namespace INMOST
 			CastRay(point,ray,hits);
 			if( hits.size()%2 == 0 ) return false;
 			return true;
-			 */
+#elif 1
 			assert(mesh->GetDimensions() == 3);
 			integer vp = 0;
 			integer vm = 0;
 			integer vz = 0;
 			real eps = mesh->GetEpsilon();
-			real c,d;
-			real_array v0,v1,v2;
+			real c, d, v0[3];
+			real_array v1,v2;
 			//ElementArray<Face> data = getFaces();
 			Element::adj_type const& data = mesh->LowConn(GetHandle());
 			MarkerType rev = 0, mrk;
@@ -271,14 +321,6 @@ namespace INMOST
 								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
 							}
 						}
-						/*
-						assert(adjacent.size() <= 1);
-						if (!adjacent.empty() && adjacent[0].GetPrivateMarker(mrk))
-						{
-							adjacent.RemPrivateMarker(mrk);
-							stack.push_back(orient_face(ej, reverse ? n2 : n1, adjacent[0]));
-						}
-						*/
 						//update edge nodes
 						n1 = n2; //current end is new begin
 						enb = en.getBeg();
@@ -350,19 +392,20 @@ namespace INMOST
 				Face f(mesh, data[k]);
 				d = 0.0;
 				ElementArray<Node> nodes = f.getNodes();
-				v0 = nodes[0].Coords();
-				v1 = nodes[1].Coords();
-				for (ElementArray<Node>::size_type i=1; i<nodes.size()-1; i++)
+				f.Centroid(v0);
+				v1 = nodes.back().Coords();
+				for (ElementArray<Node>::size_type i = 0; i<nodes.size(); i++)
 				{
-					v2 = nodes[i+1].Coords();
-					d += c = det4v(point, v0.data(), v1.data(), v2.data());
+					v2 = nodes[i].Coords();
+					d += c = det4v(point, v0, v1.data(), v2.data());
 					v1.swap(v2);
 				}
 				if (rev)
 					c = f.GetPrivateMarker(rev) ? -1.0 : 1.0;
 				else
 					c = f.FaceOrientedOutside(self()) ? 1.0 : -1.0;
-				d /= f.Area();
+				//af = f.Area();
+				//d /= af;
 				if(c*d > eps)
 					vp++;
 				else if(c*d < -eps)
@@ -380,6 +423,26 @@ namespace INMOST
 			if(vp*vm > 0) return false;
 			else if( vz == 0 ) return true;
 			else return true;
+#else
+			Element::adj_type const& data = mesh->LowConn(GetHandle());
+			Storage::real p1[3], eps = mesh->GetEpsilon();
+			Centroid(p1);
+			for (unsigned k = 0; k < data.size(); k++)
+			{
+				Face f(mesh, data[k]);
+				ElementArray<Node> nodes = f.getNodes();
+				Storage::real_array p2 = nodes[0].Coords();
+				Storage::real_array p3 = nodes[1].Coords();
+				for (ElementArray<Node>::size_type i = 1; i < nodes.size() - 1; i++)
+				{
+					Storage::real_array p4 = nodes[i + 1].Coords();
+					if (inside_tet(p1, p2.data(), p3.data(), p4.data(), point, eps))
+						return true;
+					p3.swap(p4);
+				}
+			}
+			return false;
+#endif
 		}
 		else
 		{
@@ -407,6 +470,251 @@ namespace INMOST
 				if( vec_dot_product(data[6],data[7],mdim) >= 0 &&
 				   vec_dot_product(data[7],data[8],mdim) >= 0 &&
 				   vec_dot_product(data[6],data[8],mdim) >= 0 )
+					return true; //inside one of the triangles
+			}
+			return false;
+		}
+	}
+
+
+	bool Cell::InsidePrint(const Storage::real* point, std::ostream& sout) const//check for 2d case
+	{
+		Mesh* mesh = GetMeshLink();
+		integer dim = GetElementDimension();
+		if (dim == 3)
+		{
+#if 0
+			std::map<HandleType, real, 16> hits;
+			real ray[3];
+			ray[0] = rand() / (real)RAND_MAX;
+			ray[1] = rand() / (real)RAND_MAX;
+			ray[2] = rand() / (real)RAND_MAX;
+			CastRay(point, ray, hits);
+			if (hits.size() % 2 == 0) return false;
+			return true;
+#elif 1
+			assert(mesh->GetDimensions() == 3);
+			integer vp = 0;
+			integer vm = 0;
+			integer vz = 0;
+			real eps = mesh->GetEpsilon();
+			real c, d, af, v0[3], x0[3];
+			real_array v1, v2;
+			//ElementArray<Face> data = getFaces();
+			Element::adj_type const& data = mesh->LowConn(GetHandle());
+			MarkerType rev = 0, mrk;
+			//for non-orientable meshes this check is not good
+			if (!mesh->HaveGeometricData(ORIENTATION, FACE))
+			{
+				Edge e0, e1, ej, en;
+				Node e0b, e0e, e1b, e1e, ene, enb;
+				Face cur(mesh, data[0]);
+				mrk = mesh->CreatePrivateMarker();
+				rev = mesh->CreatePrivateMarker(); //reverse orientation
+				//data.SetPrivateMarker(mrk); //0-th face orientation is default
+				for (unsigned k = 0; k < data.size(); ++k)
+					mesh->SetPrivateMarker(data[k], mrk);
+				cur->RemPrivateMarker(mrk);
+				Node n1, n2; //to retrive edge
+				bool reverse = false; //reverse orientation in considered face
+				std::deque< orient_face > stack; //edge and first node and face for visiting
+				//todo: can do faster by retriving edges and going over their nodes
+				//should not use FindSharedAdjacency
+				Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
+				//ElementArray<Edge> edges = cur->getEdges();
+				do
+				{
+					e0 = Edge(mesh, cur_edges[0]);
+					e1 = Edge(mesh, cur_edges[1]);
+					e0b = e0.getBeg();
+					e0e = e0.getEnd();
+					e1b = e1.getBeg();
+					e1e = e1.getEnd();
+					//figure out starting node order
+					if (e0b == e1b || e0b == e1e)
+					{
+						n1 = e0e;
+						n2 = e0b;
+					}
+					else
+					{
+						n1 = e0b;
+						n2 = e0e;
+					}
+					//schedule unvisited adjacent faces
+					for (unsigned j = 0; j < cur_edges.size(); j++)
+					{
+						//schedule face adjacent to considered edge
+						ej = Edge(mesh, cur_edges[j]);
+						en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
+						//ElementArray<Face> adjacent = ej->getFaces(mrk);
+						Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
+						for (unsigned q = 0; q < adjacent.size(); ++q)
+						{
+							if (mesh->GetPrivateMarker(adjacent[q], mrk))
+							{
+								mesh->RemPrivateMarker(adjacent[q], mrk);
+								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
+							}
+						}
+						//update edge nodes
+						n1 = n2; //current end is new begin
+						enb = en.getBeg();
+						ene = en.getEnd();
+						//find new end
+						if (n2 == enb)
+							n2 = ene;
+						else
+							n2 = enb;
+					}
+					if (stack.empty()) break;
+					//get entry from stack
+					orient_face r = stack.front();
+					//remove face from stack
+					stack.pop_front();
+					//retrive edges for new face
+					//edges = r.face->getEdges();
+					Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
+					e0 = Edge(mesh, redges[0]);
+					e1 = Edge(mesh, redges[1]);
+					e0b = e0.getBeg();
+					e0e = e0.getEnd();
+					e1b = e1.getBeg();
+					e1e = e1.getEnd();
+					reverse = false;
+					//figure out starting node order
+					if (e0b == e1b || e0b == e1e)
+					{
+						n1 = e0e;
+						n2 = e0b;
+					}
+					else
+					{
+						n1 = e0b;
+						n2 = e0e;
+					}
+					//find out common edge orientation
+					for (unsigned j = 0; j < redges.size(); j++)
+					{
+						ej = Edge(mesh, redges[j]);
+						en = Edge(mesh, redges[(j + 1) % redges.size()]);
+						if (ej == r.bridge) //found the edge
+						{
+							//reverse ordering on this face
+							if (r.first == n1)
+							{
+								r.face->SetPrivateMarker(rev);
+								reverse = true;
+							}
+							break;
+						}
+						//update edge nodes
+						n1 = n2; //current end is new begin
+						//find new end
+						enb = en.getBeg();
+						ene = en.getEnd();
+						if (n2 == enb)
+							n2 = ene;
+						else
+							n2 = enb;
+					}
+				} while (true);
+				for (unsigned k = 0; k < data.size(); ++k)
+					mesh->RemPrivateMarker(data[k], mrk);
+				mesh->ReleasePrivateMarker(mrk);
+			}
+			Centroid(x0);
+			for (unsigned k = 0; k < data.size(); k++)
+			{
+				Face f(mesh, data[k]);
+				d = 0.0;
+				ElementArray<Node> nodes = f.getNodes();
+				f.Centroid(v0);
+				v1 = nodes.back().Coords();
+				for (ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
+				{
+					v2 = nodes[i].Coords();
+					d += c = det4v(point, v0, v1.data(), v2.data());
+					sout << "tet " << i;
+					inside_tet_print(x0, v0, v1.data(), v2.data(), point, eps, sout);
+					sout << std::endl;
+					v1.swap(v2);
+				}
+				if (rev)
+					c = f.GetPrivateMarker(rev) ? -1.0 : 1.0;
+				else
+					c = f.FaceOrientedOutside(self()) ? 1.0 : -1.0;
+				af = f.Area();
+				sout << "FACE:" << f.LocalID() << " nodes " << nodes.size() << " flat " << (f.Planarity() ? "true" : "false");
+				sout << " area " << af << " ornt " << c << " d " << d << " d/a " << d / af << " eps " << eps;
+				sout << " test " << (c * d > eps ? "p" : (c * d < -eps ? "n" : "z"));
+				sout << std::endl;
+				//d /= af;
+				if (c * d > eps)
+					vp++;
+				else if (c * d < -eps)
+					vm++;
+				else
+					vz++;
+			}
+			if (rev)
+			{
+				//data.RemPrivateMarker(rev);
+				for (unsigned k = 0; k < data.size(); ++k)
+					mesh->RemPrivateMarker(data[k], rev);
+				mesh->ReleasePrivateMarker(rev);
+			}
+			sout << "p " << vp << " n " << vm << " z " << vz << std::endl;
+			if (vp * vm > 0) return false; //no hit
+			else if (vz == 0) return true; //hit at boundary
+			else return true; //hit inside cell
+#else
+			Element::adj_type const& data = mesh->LowConn(GetHandle());
+			Storage::real p1[3], eps = mesh->GetEpsilon();
+			Centroid(p1);
+			for (unsigned k = 0; k < data.size(); k++)
+			{
+				Face f(mesh, data[k]);
+				ElementArray<Node> nodes = f.getNodes();
+				Storage::real_array p2 = nodes[0].Coords();
+				Storage::real_array p3 = nodes[1].Coords();
+				for (ElementArray<Node>::size_type i = 1; i < nodes.size() - 1; i++)
+				{
+					Storage::real_array p4 = nodes[i + 1].Coords();
+					if (inside_tet(p1, p2.data(), p3.data(), p4.data(), point, eps))
+						return true;
+					p3.swap(p4);
+				}
+			}
+			return false;
+#endif
+		}
+		else
+		{
+			int mdim = mesh->GetDimensions();
+			assert(mdim <= 3);
+			Storage::real data[9][3];
+			if (mdim < 3)
+			{
+				memset(data, 0, sizeof(Storage::real) * 9 * 3);
+			}
+			Centroid(data[0]);
+			ElementArray<Node> nodes = getNodes();
+			for (int i = 0; i < static_cast<int>(nodes.size()); i++)
+			{
+				int j = (i + 1) % nodes.size();
+				nodes[i].Centroid(data[1]);
+				nodes[j].Centroid(data[2]);
+				vec_diff(point, data[0], data[3], mdim);
+				vec_diff(point, data[1], data[4], mdim);
+				vec_diff(point, data[2], data[5], mdim);
+				vec_cross_product(data[3], data[4], data[6]);
+				vec_cross_product(data[4], data[5], data[7]);
+				vec_cross_product(data[5], data[3], data[8]);
+
+				if (vec_dot_product(data[6], data[7], mdim) >= 0 &&
+					vec_dot_product(data[7], data[8], mdim) >= 0 &&
+					vec_dot_product(data[6], data[8], mdim) >= 0)
 					return true; //inside one of the triangles
 			}
 			return false;

@@ -341,9 +341,9 @@ namespace INMOST
 	
 	AdaptiveMesh::AdaptiveMesh(Mesh & _m, bool skip_tri) : m(&_m), skip_tri(skip_tri)
 	{
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-		model = NULL;
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//		model = NULL;
+//#endif
 		//create a tag that stores maximal refinement level of each element
 		level = m->CreateTag("REFINEMENT_LEVEL",DATA_INTEGER,CELL|FACE|EDGE|NODE|ESET,NONE,1);
 		//tag_status = m->CreateTag("TAG_STATUS",DATA_INTEGER,CELL|FACE|EDGE|NODE,NONE,1);
@@ -465,7 +465,11 @@ namespace INMOST
 	{
 		static int fi = 0;
         ENTER_FUNC();
-		if (model) model->PrepareAdaptation(*m);
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//		if (model) model->PrepareAdaptation(*m);
+//#endif
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->PrepareAdaptation(*m);
 		static int call_counter = 0;
 		Storage::integer ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -635,6 +639,11 @@ namespace INMOST
 						new_nodes++;
 						//set increased level for new node
 						level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//						if (model) model->NewNode(e, n);
+//#endif
+						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+							(*it)->NewNode(e,n);
 						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
 						//for each face provide link to a new hanging node
 						for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
@@ -648,9 +657,11 @@ namespace INMOST
 						t2 = Timer(), tsplit += t2 - t1, t1 = t2;
 						//set increased level for new edges
 						level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-						if( model ) model->EdgeRefinement(e,new_edges);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//						if( model ) model->EdgeRefinement(e,new_edges);
+//#endif
+						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+							(*it)->EdgeRefinement(e, new_edges);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
 						//for(int q = 0; q < 2; ++q)
 						//{
@@ -738,6 +749,12 @@ namespace INMOST
 								edge_nodes[0] = face_hanging_nodes[kt].getAsNode();
 								edge_nodes[1] = face_hanging_nodes[(kt+1)% face_hanging_nodes.size()].getAsNode();
 								hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
+								level[hanging_edges[kt]] = level[f] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if (model) model->NewEdge(f, hanging_edges[kt]);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewEdge(f, hanging_edges[kt]);
 								for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
 									tri_hanging_edges[face_cells[kt]].push_back(hanging_edges[kt]);
 							}
@@ -757,6 +774,11 @@ namespace INMOST
 							new_nodes++;
 							//set increased level for the new node
 							level[n] = level[f] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//							if (model) model->NewNode(f, n, face_hanging_nodes);
+//#endif
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->NewNode(f, n, face_hanging_nodes);
 							t2 = Timer(), tcreate += t2 - t1, t1 = t2;
 							//for each cell provide link to new hanging node
 							for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
@@ -770,6 +792,11 @@ namespace INMOST
 								new_edges++;
 								//set increased level for new edges
 								level[hanging_edges[kt]] = level[f] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if (model) model->NewEdge(f, hanging_edges[kt]);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewEdge(f, hanging_edges[kt]);
 							}
 							t2 = Timer(), thanging += t2 - t1, t1 = t2;
 						}
@@ -780,9 +807,11 @@ namespace INMOST
 						//set increased level to new faces
 						for(ElementArray<Face>::size_type kt = 0; kt < new_faces.size(); ++kt)
 							level[new_faces[kt]] = level[f]+1;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-						if( model ) model->FaceRefinement(f,new_faces);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//						if( model ) model->FaceRefinement(f,new_faces);
+//#endif
+						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+							(*it)->FaceRefinement(f, new_faces);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
 					}
 				}
@@ -840,6 +869,11 @@ namespace INMOST
 							new_nodes++;
 							//set increased level for the new node
 							level[n] = level[c] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//							if (model) model->NewNode(c, n, cell_hanging_nodes);
+//#endif
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->NewNode(c, n, cell_hanging_nodes);
 						}
 						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
 						ElementArray<Face> internal_faces(m);
@@ -868,6 +902,11 @@ namespace INMOST
 								new_edges++;
 								//set increased level for new edges
 								level[edges_to_faces[kt]] = level[c] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if (model) model->NewEdge(c, edges_to_faces[kt]);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewEdge(c, edges_to_faces[kt]);
 								//for each node other then the hanging node of the face
 								//(this is hanging node on the edge)
 								//we record a pair of edges to reconstruct internal faces
@@ -922,11 +961,23 @@ namespace INMOST
 									tri_edges[0] = face_edges[0].getAsEdge();
 									tri_edges[1] = face_edges[1].getAsEdge();
 									tri_edges[2] = m->CreateEdge(edge_nodes).first;
+									//double check, is this really a new edge???
+									level[tri_edges[2]] = level[c] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//									if (model) model->NewEdge(c, tri_edges[2]);
+//#endif
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewEdge(c, tri_edges[2]);
 									internal_faces[kt] = m->CreateFace(tri_edges).first;
 								}
 								new_faces++;
 								//set increased level
 								level[internal_faces[kt]] = level[c] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if (model) model->NewFace(c, internal_faces[kt]);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces[kt]);
 								//clean up structure, so that other cells can use it
 								edge_hanging_nodes[kt].DelData(internal_face_edges);
 							}
@@ -940,6 +991,12 @@ namespace INMOST
 									tri_nodes[1] = cell_tri_hanging_edges[kt].getAsEdge().getBeg();
 									tri_nodes[2] = cell_tri_hanging_edges[kt].getAsEdge().getEnd();
 									internal_faces.push_back(m->CreateFace(tri_nodes).first);
+									level[internal_faces.back()] = level[c] + 1;
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//									if (model) model->NewFace(c, internal_faces.back());
+//#endif
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewFace(c, internal_faces.back());
 								}
 							}
 							t2 = Timer(), thanging2 += t2 - t1, t1 = t2;
@@ -1024,9 +1081,11 @@ namespace INMOST
 						//if( !cell_set->HaveParent() )
 						parent.AddChild(cell_set);
 						t2 = Timer(), tpconn += t2 - t1, t1 = t2;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-						if( model ) model->CellRefinement(c,new_cells);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//						if (model) model->CellRefinement(c, new_cells, cell_set);
+//#endif
+						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+							(*it)->CellRefinement(c, new_cells, cell_set);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
 						//else assert(cell_set->GetParent() == parent);
 						//increment number of refined cells
@@ -1149,9 +1208,11 @@ namespace INMOST
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New( cells
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-		if( model ) model->Adaptation(*m);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//		if( model ) model->Adaptation(*m);
+//#endif
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->Adaptation(*m);
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
@@ -1323,7 +1384,11 @@ namespace INMOST
 	{
 		std::string file;
 		ENTER_FUNC();
-		if (model) model->PrepareAdaptation(*m);
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//		if (model) model->PrepareAdaptation(*m);
+//#endif
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->PrepareAdaptation(*m);
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells
@@ -1808,9 +1873,11 @@ namespace INMOST
 						t2 = Timer(), tparent += t2 - t1, t1 = t2;
 						//set level for new cell
 						level[v] = level[c]-1;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-						if( model ) model->CellCoarsening(unite_cells,v);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//						if( model ) model->CellCoarsening(unite_cells,v,parent);
+//#endif
+						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+							(*it)->CellCoarsening(unite_cells,v,parent);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
 						//~ v.Centroid(x);
 						//fout << v.GlobalID() << " lid " << v.LocalID();
@@ -1904,9 +1971,11 @@ namespace INMOST
 								level[v] = level[f]-1;
 								visited = true;
 								numcoarsened++;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-								if( model ) model->FaceCoarsening(unite_faces,v);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if( model ) model->FaceCoarsening(unite_faces,v);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->FaceCoarsening(unite_faces,v);
 								t2 = Timer(), tdata += t2 - t1, t1 = t2;
 								break; //no need to visit the other cell
 							}
@@ -1972,9 +2041,11 @@ namespace INMOST
 								//set level for new edge
 								level[v] = level[e]-1;
 								visited = true;
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-								if( model ) model->EdgeCoarsening(unite_edges,v);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//								if( model ) model->EdgeCoarsening(unite_edges,v);
+//#endif
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->EdgeCoarsening(unite_edges,v);
 								t2 = Timer(), tdata += t2 - t1;
 								break; //no need to visit any other face
 							}
@@ -2058,9 +2129,11 @@ namespace INMOST
 		m->ResolveModification();
 		//todo:
 		//let the user update their data
-#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-		if( model ) model->Adaptation(*m);
-#endif
+//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+//		if( model ) model->Adaptation(*m);
+//#endif
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->Adaptation(*m);
 		m->ApplyModification();
 
 		

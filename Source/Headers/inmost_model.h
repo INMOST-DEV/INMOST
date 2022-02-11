@@ -41,6 +41,7 @@ namespace INMOST
 		virtual double UpdateMultiplier(const Sparse::Vector& sol) const { (void)sol; return 1; }
 		/// Calculate time step for this model. Can simply return dt.
 		virtual double AdjustTimeStep(double dt) const { return dt; }
+		/*
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// No algorithm by default
 		/// If this submodel depends on provided adapted mesh, it should update it's data
@@ -48,13 +49,24 @@ namespace INMOST
 
 		virtual void PrepareAdaptation(Mesh& m) { (void)m; }
 
-		virtual void CellRefinement(Cell& old_cell, ElementArray<Cell>& new_cells) { (void)old_cell; (void)new_cells; }
+		//new hanging node was introduced, no connectivity at function call
+		virtual void NewNode(Cell& c, Node& n, Storage::reference_array cell_hanging_nodes) { (void)c; (void)n; (void)cell_hanging_nodes; }
+		virtual void NewNode(Face& f, Node& n, Storage::reference_array face_hanging_nodes) { (void)f; (void)n; (void)face_hanging_nodes; }
+		virtual void NewNode(Edge& e, Node& n) { (void)e; (void)n; }
+		//new hanging edge was introduced, no connectivity at function call
+		virtual void NewEdge(Cell& c, Edge& e) { (void)c; (void)e; }
+		virtual void NewEdge(Face& f, Edge& e) { (void)f; (void)e; }
+		//new hanging face was introduced, no connectivity at function call
+		virtual void NewFace(Cell& c, Face& f) { (void)c; (void)f; }
+		//element was refined into new elements
+		virtual void CellRefinement(Cell& old_cell, ElementArray<Cell>& new_cells, ElementSet& new_cell_set) { (void)old_cell; (void)new_cells; (void)new_cell_set; }
 		virtual void FaceRefinement(Face& old_face, ElementArray<Face>& new_faces) { (void)old_face; (void)new_faces; }
 		virtual void EdgeRefinement(Edge& old_edge, ElementArray<Edge>& new_edges) { (void)old_edge; (void)new_edges; }
-
-		virtual void CellCoarsening(ElementArray<Cell>& old_cells, Cell& new_cell) { (void)old_cells; (void)new_cell; }
+		//old elements were connected into an old element
+		virtual void CellCoarsening(ElementArray<Cell>& old_cells, Cell& new_cell, ElementSet& old_cells_set) { (void)old_cells; (void)new_cell; (void)old_cells_set; }
 		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) { (void)old_faces; (void)new_face; }
 		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) { (void)old_edges; (void)new_edge; }
+		*/
 	};
 
 	/// A class to manage residual fill-in of the coupling between models.
@@ -290,20 +302,30 @@ namespace INMOST
 		double UpdateMultiplier(const Sparse::Vector & sol) const;
 		/// Calculate optimal time step for submodels.
 		double AdjustTimeStep(double dt) const;
+		/*
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// Those model that use the adapted mesh should update their data
 		void Adaptation(Mesh & m) const;
 		
 		void PrepareAdaptation(Mesh& m);
+
+		void NewNode(Cell& c, Node& n, Storage::reference_array cell_hanging_nodes);
+		void NewNode(Face& f, Node& n, Storage::reference_array face_hanging_nodes);
+		void NewNode(Edge& e, Node& n);
+
+		void NewEdge(Cell& c, Edge& e);
+		void NewEdge(Face& f, Edge& e);
+
+		void NewFace(Cell& c, Face& f);
 		
-		void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells);
+		void CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells, ElementSet & new_cell_set);
 		void FaceRefinement(Face & old_face, ElementArray<Face> & new_faces);
 		void EdgeRefinement(Edge & old_edge, ElementArray<Edge> & new_edges);
 		
-		void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell);
+		void CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell, ElementSet & old_cells_set);
 		void FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face);
 		void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge);
-		
+		*/
 		void ReportErrors(const Residual & R) const;
 	};
 }

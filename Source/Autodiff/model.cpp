@@ -302,14 +302,6 @@ namespace INMOST
 		return success;
 	}
 
-	void Model::PrepareAdaptation(Mesh &m)
-	{
-		//first initialize submodels
-		for (std::vector< std::pair<std::string, AbstractSubModel*> >::iterator it = SubModels.begin();
-			it != SubModels.end(); ++it)
-			it->second->PrepareAdaptation(m);
-	}
-	
 	bool Model::Initialize()
 	{
 		bool success = true;
@@ -533,20 +525,6 @@ namespace INMOST
 		return ret;
 	}
 	
-	void Model::Adaptation(Mesh & m) const
-	{
-		//~ array<HandleType> old_cells;
-		//~ for(int k = 0; k < m.CellLastLocalID(); ++k) if( m.isValidCell(k) )
-		//~ {
-			//~ Cell c = m.CellByLocalID(k);
-			//~ if( c.Hidden() ) old_cells.push_back(c.GetHandle());
-		//~ }
-		//std::cout << "old cells: " << old_cells.size() << std::endl;
-		//~ SearchKDTree tree(&m,old_cells.data(),old_cells.size());
-		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
-			it != SubModels.end(); ++it)
-			it->second->Adaptation(m);
-	}
 	
 	void Model::ReportErrors(const Residual & R) const
 	{
@@ -605,12 +583,77 @@ namespace INMOST
 			}
 		}
 	}
+
+
+	/*
 	
-	void Model::CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells)
+	void Model::PrepareAdaptation(Mesh &m)
+	{
+		//first initialize submodels
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->PrepareAdaptation(m);
+	}
+	
+	
+	void Model::Adaptation(Mesh & m) const
+	{
+		//~ array<HandleType> old_cells;
+		//~ for(int k = 0; k < m.CellLastLocalID(); ++k) if( m.isValidCell(k) )
+		//~ {
+			//~ Cell c = m.CellByLocalID(k);
+			//~ if( c.Hidden() ) old_cells.push_back(c.GetHandle());
+		//~ }
+		//std::cout << "old cells: " << old_cells.size() << std::endl;
+		//~ SearchKDTree tree(&m,old_cells.data(),old_cells.size());
+		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->Adaptation(m);
+	}
+
+	void Model::NewNode(Cell& c, Node &n, Storage::reference_array cell_hanging_nodes)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewNode(c, n, cell_hanging_nodes);
+	}
+	void Model::NewNode(Face& f, Node& n, Storage::reference_array face_hanging_nodes)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewNode(f, n, face_hanging_nodes);
+	}
+	void Model::NewNode(Edge& e, Node& n)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewNode(e, n);
+	}
+
+	void Model::NewEdge(Cell& c, Edge& e)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewEdge(c, e);
+	}
+	void Model::NewEdge(Face& f, Edge& e)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewEdge(f, e);
+	}
+	void Model::NewFace(Cell& c, Face& f)
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->NewFace(c, f);
+	}
+	
+	void Model::CellRefinement(Cell & old_cell, ElementArray<Cell> & new_cells, ElementSet & new_cell_set)
 	{
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
-			it->second->CellRefinement(old_cell,new_cells);
+			it->second->CellRefinement(old_cell,new_cells,new_cell_set);
 	}
 	void Model::FaceRefinement(Face & old_face, ElementArray<Face> & new_faces)
 	{
@@ -626,11 +669,11 @@ namespace INMOST
 	}
 
 	
-	void Model::CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell)
+	void Model::CellCoarsening(ElementArray<Cell> & old_cells, Cell & new_cell, ElementSet & old_cells_set)
 	{
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
-			it->second->CellCoarsening(old_cells,new_cell);
+			it->second->CellCoarsening(old_cells,new_cell,old_cells_set);
 	}
 	void Model::FaceCoarsening(ElementArray<Face> & old_faces, Face & new_face)
 	{
@@ -644,5 +687,6 @@ namespace INMOST
 			it != SubModels.end(); ++it)
 			it->second->EdgeCoarsening(old_edges,new_edge);
 	}
+	*/
 }
 #endif

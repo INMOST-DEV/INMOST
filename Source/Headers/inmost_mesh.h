@@ -933,6 +933,7 @@ namespace INMOST
 		/// \todo
 		///   1. Should be checked or extended for 2d cells. (done, testing)
 		bool                        Inside                  (const real * point) const; //is point inside cell, check for 2d case
+		bool                        InsidePrint             (const real * point, std::ostream & sout = std::cout) const; //is point inside cell, check for 2d case
 		/// \brief Return volume of the cell.
 		///
 		/// Note that currently the volume for non-convex cells may be calculated incorrectly.
@@ -2374,6 +2375,7 @@ namespace INMOST
 		void                              ReportParallelStorage();
 		void                              GatherParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask);
 		void                              InformElementsOwners(proc_elements_by_type & send_elements, exchange_data & storage);
+		void                              RemoveLinksToDeletedElements(MarkerType mrk);
 	public:
 		HandleType                        FindSharedGhost(ElementType etype, Storage::integer global_id, int source_proc, int owner_proc);
 #if defined(USE_PARALLEL_WRITE_TIME)	
@@ -3584,10 +3586,11 @@ namespace INMOST
 	public:
 		
 		inline static bool cell_point(const Cell & c, const Storage::real p[3]) {return c.Inside(p);}
+		inline static bool cell_point_print(const Cell& c, const Storage::real p[3], std::ostream & sout) { return c.InsidePrint(p,sout); }
 		template<typename bbox_type>
 		inline static int bbox_point(const Storage::real p[3], const bbox_type bbox[6]);
 		template<typename bbox_type>
-		inline static int bbox_point_print(const Storage::real p[3], const bbox_type bbox[6]);
+		inline static int bbox_point_print(const Storage::real p[3], const bbox_type bbox[6], std::ostream& sout = std::cout);
 		template<typename bbox_type>
 		inline static void bbox_closest_point(const Storage::real p[3], const bbox_type bbox[6], Storage::real pout[3]);
 		template<typename bbox_type>
@@ -3620,29 +3623,35 @@ namespace INMOST
 		void kdtree_build(int dim, int & done, int total, struct entry * temp);
 		SearchKDTree() : set(NULL), m(NULL), size(0), bbox(), children(NULL) {}
 		
-		Cell SubSearchCell(const Storage::real p[3], bool print) const;
+		Cell SubSearchCell(const Storage::real p[3]) const;
+		Cell SubSearchCellPrint(const Storage::real p[3], std::ostream & sout) const;
 		void clear_children();
 
 		inline int ray_bbox(double pos[3], double ray[3], double closest) const;
 		inline int  sphere_bbox(const Storage::real p[3], Storage::real r) const;
 		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;
 		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline int  segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const;
 		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const;
+		inline bool segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const;
 		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const;
 		inline int  sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const;
 		inline bool sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const;
 		inline bool sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const;
 		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]) const;
+		void sub_intersect_segment_print(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const;
 		void sub_intersect_sphere(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p[3], Storage::real r) const;
 	public:
 		SearchKDTree(Mesh * m);
 		SearchKDTree(Mesh * m, HandleType * _set, unsigned set_size);
 		~SearchKDTree();
-		Cell SearchCell(const Storage::real * point, bool print = false) const;
+		Cell SearchCell(const Storage::real * point) const;
+		Cell SearchCellPrint(const Storage::real* point, std::ostream & sout = std::cout) const;
 		void IntersectSphere(ElementArray<Cell>& cells, const Storage::real p[3], Storage::real r) const;
 		void IntersectSphere(ElementArray<Face>& faces, const Storage::real p[3], Storage::real r) const;
 		void IntersectSegment(ElementArray<Cell>& cells, const Storage::real p1[3], const Storage::real p2[3]) const;
 		void IntersectSegment(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3]) const;
+		void IntersectSegmentPrint(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const;
 	};
 	
 

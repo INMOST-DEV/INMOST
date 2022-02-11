@@ -1559,27 +1559,143 @@ namespace INMOST
 		}
 		//~ EXIT_FUNC();
 	}
+
+	void Mesh::RemoveLinksToDeletedElements(MarkerType mrk)
+	{
+		for (Mesh::iteratorTag it = BeginTag(); it != EndTag(); ++it)
+		{
+			Tag t = *it;
+			if (t.GetDataType() == DATA_REFERENCE)
+			{
+				if (t == HighConnTag() || t == LowConnTag()) continue;
+				for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+					if (t.isDefined(etype))
+					{
+						if (t.isSparse(etype))
+						{
+							if (isPrivate(mrk))
+							{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+								for (integer jt = 0; jt < LastLocalID(etype); ++jt) if (isValidElement(etype, jt))
+								{
+									HandleType h = ComposeHandle(etype, jt);
+									if (HaveData(h, t))
+									{
+										reference_array arr = ReferenceArray(h, t);
+										for (reference_array::size_type qt = 0; qt < arr.size(); ++qt)
+											if (arr.at(qt) != InvalidHandle() && GetPrivateMarker(arr.at(qt), mrk)) arr.at(qt) = InvalidHandle();
+									}
+								}
+							}
+							else
+							{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+
+								for (integer jt = 0; jt < LastLocalID(etype); ++jt) if (isValidElement(etype, jt))
+								{
+									HandleType h = ComposeHandle(etype, jt);
+									if (HaveData(h, t))
+									{
+										reference_array arr = ReferenceArray(h, t);
+										for (reference_array::size_type qt = 0; qt < arr.size(); ++qt)
+											if (arr.at(qt) != InvalidHandle() && GetMarker(arr.at(qt),mrk)) arr.at(qt) = InvalidHandle();
+									}
+								}
+							}
+						}
+						else
+						{
+							if (isPrivate(mrk))
+							{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+
+								for (integer jt = 0; jt < LastLocalID(etype); ++jt) if (isValidElement(etype, jt))
+								{
+									HandleType h = ComposeHandle(etype, jt);
+									reference_array arr = ReferenceArray(h, t);
+									for (reference_array::size_type qt = 0; qt < arr.size(); ++qt)
+										if (arr.at(qt) != InvalidHandle() && GetPrivateMarker(arr.at(qt), mrk)) arr.at(qt) = InvalidHandle();
+								}
+							}
+							else
+							{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+
+								for (integer jt = 0; jt < LastLocalID(etype); ++jt) if (isValidElement(etype, jt))
+								{
+									HandleType h = ComposeHandle(etype, jt);
+									reference_array arr = ReferenceArray(h, t);
+									for (reference_array::size_type qt = 0; qt < arr.size(); ++qt)
+										if (arr.at(qt) != InvalidHandle() && GetMarker(arr.at(qt),mrk)) arr.at(qt) = InvalidHandle();
+								}
+							}
+						}
+					}
+			}
+		}
+
+		for (Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
+		{
+			//ElementSet it = EsetByLocalID(jt);
+			//std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
+			if (it->HaveParent() && it->GetParent()->GetMarker(mrk))
+				it->GetParent()->RemChild(it->self());
+			while (it->HaveChild() && it->GetChild()->GetMarker(mrk))
+				it->RemChild(it->GetChild());
+			while (it->HaveSibling() && it->GetSibling()->GetMarker(mrk))
+				it->RemSibling(it->GetSibling());
+			ElementSet::iterator jt = it->Begin();
+			//int q = 0;
+			while (jt != it->End())
+			{
+				//++q;
+				//std::cout << "check element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
+				if (jt->GetMarker(mrk))
+				{
+					//std::cout << "erase element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
+					jt = it->Erase(jt);
+				}
+				else ++jt;
+			}
+			//std::cout << "size " << it->Size() << " traversed " << q << std::endl;
+			//it->Subtract(erase); //old approach
+		}
+	}
 	
 	void Mesh::ApplyModification()
 	{
 		ENTER_FUNC();
 		ENTER_BLOCK();
+		temp_hide_element = hide_element;
+		hide_element = 0;
+		RemoveLinksToDeletedElements(temp_hide_element);
+		hide_element = temp_hide_element;
+		/*
 		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); ++it)
 		{
-			if( it->GetDataType() == DATA_REFERENCE )
+			Tag t = *it;
+			if( t.GetDataType() == DATA_REFERENCE )
 			{
-				if( *it == HighConnTag() || *it  == LowConnTag() ) continue;
+				if( t == HighConnTag() || t  == LowConnTag() ) continue;
 				for(ElementType etype = NODE; etype <= CELL; etype = etype << 1)
-					if( it->isDefined(etype) )
+					if( t.isDefined(etype) )
 					{
-						if( it->isSparse(etype) )
+						if( t.isSparse(etype) )
 						{
 							for(integer jt = 0; jt < LastLocalID(etype); ++jt) if( isValidElement(etype,jt) )
 							{
 								HandleType h = ComposeHandle(etype,jt);
-								if( HaveData(h,*it) )
+								if( HaveData(h,t) )
 								{
-									reference_array arr = ReferenceArray(h,*it);
+									reference_array arr = ReferenceArray(h,t);
 									for(reference_array::size_type qt = 0; qt < arr.size(); ++qt)
 										if( arr.at(qt) != InvalidHandle() && Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
 								}
@@ -1590,7 +1706,7 @@ namespace INMOST
 							for(integer jt = 0; jt < LastLocalID(etype); ++jt) if( isValidElement(etype,jt) )
 							{
 								HandleType h = ComposeHandle(etype,jt);
-								reference_array arr = ReferenceArray(h,*it);
+								reference_array arr = ReferenceArray(h,t);
 								for(reference_array::size_type qt = 0; qt < arr.size(); ++qt)
 									if( arr.at(qt) != InvalidHandle() && Hidden(arr.at(qt)) ) arr.at(qt) = InvalidHandle();
 							}
@@ -1598,6 +1714,7 @@ namespace INMOST
 					}
 			}
 		}
+		*/
 		EXIT_BLOCK();
 		//need to gather the set of deleted elements
 		/*//old approach
@@ -1616,6 +1733,7 @@ namespace INMOST
 
 		ENTER_BLOCK();
 		//for(integer jt = 0; jt < LastLocalID(ESET); ++jt) if( isValidElementSet(jt) )
+		/*
 		for(Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
 			//ElementSet it = EsetByLocalID(jt);
@@ -1645,6 +1763,7 @@ namespace INMOST
 			hide_element = temp_hide_element;
 			//it->Subtract(erase); //old approach
 		}
+		*/
 		EXIT_BLOCK();
 		ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)

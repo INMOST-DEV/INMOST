@@ -2381,6 +2381,15 @@ namespace INMOST
 		del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
 
+		if( !delete_elements.empty())
+		{
+			MarkerType del = CreateMarker();
+			SetMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+			RemoveLinksToDeletedElements(del);
+			RemMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+			ReleaseMarker(del);
+		}
+
 		//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
 		for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
 		
@@ -2468,6 +2477,16 @@ namespace INMOST
 			}
 			del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
+
+			if (!delete_elements.empty())
+			{
+				MarkerType del = CreateMarker();
+				SetMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+				RemoveLinksToDeletedElements(del);
+				RemMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+				ReleaseMarker(del);
+			}
+
 			//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
 			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
 			delete_elements.clear();
@@ -2605,6 +2624,16 @@ namespace INMOST
 			del_shared.clear();
 #endif //USE_PARALLEL_STORAGE
 			EXIT_BLOCK();
+			if (!delete_elements.empty())
+			{
+				ENTER_BLOCK();
+				MarkerType del = CreateMarker();
+				SetMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+				RemoveLinksToDeletedElements(del);
+				RemMarkerArray(&delete_elements[0], (Storage::enumerator)delete_elements.size(), del);
+				ReleaseMarker(del);
+				EXIT_BLOCK();
+			}
 			ENTER_BLOCK();
 			//for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Destroy(*it);
 			for(element_set::iterator it = delete_elements.begin(); it != delete_elements.end(); it++) Delete(*it);
@@ -5946,6 +5975,8 @@ namespace INMOST
 			EXIT_BLOCK();
 			*/
 			ENTER_BLOCK();
+			/*
+			//This is not needed, we delete links in sets in RemoveLinksToDeletedElements later
 			REPORT_STR("Deleting links to deleted elements from sets");
 			for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
 			{
@@ -5958,8 +5989,10 @@ namespace INMOST
 					else jt++;
 				}
 			}
+			*/
 			REPORT_STR("Deleting not owned elements");
 			//now delete elements that we have not yet deleted
+			MarkerType del = CreateMarker();
 			int count = 0;
 			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype)) if( tag_new_processors.isDefined(etype) )
 			{
@@ -5970,16 +6003,34 @@ namespace INMOST
 					if( procs.empty() ) continue;//don't delete elements without processors
 					if( !std::binary_search(procs.begin(),procs.end(),mpirank) ) 
 					{
+						it->SetMarker(del);
 						//Destroy(*it);
-						if( etype == ESET )
-							ElementSet(this,*it).DeleteSet();
-						else Delete(*it);
+						//if( etype == ESET )
+						//	ElementSet(this,*it).DeleteSet();
+						//else Delete(*it);
 						++ecount;
 					}
 				}
 				REPORT_STR("number of " << ElementTypeName(etype) << " to delete " << ecount);
 				count += ecount;
 			}
+
+			RemoveLinksToDeletedElements(del);
+
+			for (ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
+			{
+				for (iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+				{
+					if (it->GetMarker(del))
+					{
+						if (etype == ESET)
+							ElementSet(this, *it).DeleteSet();
+						else Delete(*it);
+					}
+				}
+			}
+
+			ReleaseMarker(del);
 			REPORT_VAL("number of some other",count);
 			REPORT_STR("Done deleting");
 			EXIT_BLOCK();
@@ -6070,6 +6121,8 @@ namespace INMOST
 			ENTER_BLOCK();
 			REPORT_STR("Second round for elements migration");
 			REPORT_STR("Computing new values");
+			/*
+			//this is not needed (and there is a bug!)
 			if( dely_delete )
 			{
 				for(iteratorSet it = BeginSet(); it != EndSet(); ++it)
@@ -6084,6 +6137,8 @@ namespace INMOST
 					}
 				}
 			}
+			*/
+			MarkerType del = CreateMarker();
 			for(ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
 			{
 				if( tag_new_owner.isDefined(etype) && tag_new_processors.isDefined(etype) )
@@ -6106,13 +6161,31 @@ namespace INMOST
 						else SetStatus(*it,Element::Ghost);
 						if( dely_delete && !std::binary_search(old_procs.begin(),old_procs.end(),mpirank) )
 						{
-							if( etype == ESET )
-								ElementSet(this,*it).DeleteSet();
-							else Delete(*it);
+							//if( etype == ESET )
+							//	ElementSet(this,*it).DeleteSet();
+							//else Delete(*it);
+							it->SetMarker(del);
 						}
 					}
 				}
 			}
+
+			RemoveLinksToDeletedElements(del);
+
+			for (ElementType etype = ESET; etype >= NODE; etype = PrevElementType(etype))
+			{
+				for (iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+				{
+					if (it->GetMarker(del))
+					{
+						if (etype == ESET)
+							ElementSet(this, *it).DeleteSet();
+						else Delete(*it);
+					}
+				}
+			}
+
+			ReleaseMarker(del);
 			EXIT_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
 		}

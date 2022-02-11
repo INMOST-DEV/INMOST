@@ -30,20 +30,20 @@ namespace INMOST
 	}
 
 	template<typename bbox_type>
-	inline int SearchKDTree::bbox_point_print(const Storage::real p[3], const bbox_type bbox[6])
+	inline int SearchKDTree::bbox_point_print(const Storage::real p[3], const bbox_type bbox[6], std::ostream & sout)
 	{
 		for (int i = 0; i < 3; i++)
 		{
 			if (p[i] < bbox[i * 2] - 1.0e-3 || p[i] > bbox[i * 2 + 1] + 1.0e-3)
 			{
-				std::cout << "fail on " << i << " ";
-				if (p[i] < bbox[i * 2] - 1.0e-3) std::cout << p[i] << " is less then " << bbox[i * 2] - 1.0e-3 << "(" << bbox[i * 2] << ")";
-				if (p[i] > bbox[i * 2 + 1] + 1.0e-3) std::cout << p[i] << " is greater then " << bbox[i * 2 + 1] + 1.0e-3 << "(" << bbox[i * 2 + 1] << ")";
-				std::cout << std::endl;
+				sout << "fail on " << i << " ";
+				if (p[i] < bbox[i * 2] - 1.0e-3) sout << p[i] << " is less then " << bbox[i * 2] - 1.0e-3 << "(" << bbox[i * 2] << ")";
+				if (p[i] > bbox[i * 2 + 1] + 1.0e-3) sout << p[i] << " is greater then " << bbox[i * 2 + 1] + 1.0e-3 << "(" << bbox[i * 2 + 1] << ")";
+				sout << std::endl;
 				return 0;
 			}
 		}
-		std::cout << "all ok!" << std::endl;
+		sout << "all ok!" << std::endl;
 		return 1;
 	}
 
@@ -312,12 +312,11 @@ namespace INMOST
 		}
 	}
 	
-	Cell SearchKDTree::SubSearchCell(const Storage::real p[3], bool print) const
+	Cell SearchKDTree::SubSearchCell(const Storage::real p[3]) const
 	{
 		Cell ret = InvalidCell();
 		if( size == 1 )
 		{
-			if( print ) std::cout << "test cell " << GetHandleID(set[0].e) << std::endl;
 			if( m->HideMarker() && m->GetMarker(set[0].e,m->HideMarker()) ) 
 			{
 				m->SwapModification(false);
@@ -336,32 +335,109 @@ namespace INMOST
 			assert(size > 1);
 			if( bbox_point(p,bbox) )
 			{
-				if( print )
-				{
-					std::cout << "point " << p[0] << " " << p[1] << " " << p[2] << " is in bbox ";
-					std::cout << " x " << bbox[0] << ":" << bbox[1];
-					std::cout << " y " << bbox[2] << ":" << bbox[3];
-					std::cout << " z " << bbox[4] << ":" << bbox[5];
-					std::cout << std::endl;
-				}
-				if( print ) std::cout << "try left child" << std::endl;
-				ret = children[0].SubSearchCell(p,print);
-				if( print ) std::cout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
+				ret = children[0].SubSearchCell(p);
 				if( !ret.isValid() )
+					ret = children[1].SubSearchCell(p);
+			}
+		}
+		return ret;
+	}
+
+	void PrintElement(Element c, std::ostream& sout)
+	{
+		sout << ElementTypeName(c.GetElementType()) << ":" << c.LocalID();
+		sout << " " << Element::GeometricTypeName(c.GetGeometricType()) << std::endl;
+		sout << " faces: " << c.nbAdjElements(FACE) << " edges: " << c.nbAdjElements(EDGE) << " nodes: " << c.nbAdjElements(NODE) << std::endl;
+		if (c.GetElementType() == CELL)
+		{
+			Storage::real xc[3];
+			c.Centroid(xc);
+			sout << " closure: " << (c.getAsCell().Closure() ? "true" : "false");
+			sout << " volume: " << c.getAsCell().Volume();
+			sout << " x " << xc[0] << " " << xc[1] << " " << xc[2];
+			sout << std::endl;
+
+			ElementArray<Face> faces = c.getFaces();
+			for (ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+			{
+				Storage::real x[3], n[3];
+				it->Centroid(x);
+				it->UnitNormal(n);
+				sout << "FACE:" << it->LocalID() << " nodes " << it->nbAdjElements(NODE);
+				sout << " closure: " << (it->Closure() ? "true" : "false");
+				sout << " flat: " << (it->Planarity() ? "true" : "false");
+				sout << " bnd " << (it->Boundary() ? "true" : "false");
+				sout << " ornt " << (it->CheckNormalOrientation() ? "true" : "false");
+				sout << " x " << x[0] << " " << x[1] << " " << x[2] << " n " << n[0] << " " << n[1] << " " << n[2] << " " << " area " << it->Area() << std::endl;
+			}
+		}
+		else if (c.GetElementType() == FACE)
+		{
+			Face it = c.getAsFace();
+			Storage::real x[3], n[3];
+			it->Centroid(x);
+			it->UnitNormal(n);
+			sout << " closure: " << (it->Closure() ? "true" : "false");
+			sout << " flat: " << (it->Planarity() ? "true" : "false");
+			sout << " bnd " << (it->Boundary() ? "true" : "false");
+			sout << " ornt " << (it->CheckNormalOrientation() ? "true" : "false");
+			sout << " x " << x[0] << " " << x[1] << " " << x[2] << " n " << n[0] << " " << n[1] << " " << n[2] << " " << " area " << it->Area() << std::endl;
+		}
+		ElementArray<Node> nodes = c.getNodes();
+		for (ElementArray<Node>::iterator it = nodes.begin(); it != nodes.end(); ++it)
+			sout << "NODE:" << it->LocalID() << " x " << it->Coords()[0] << " " << it->Coords()[1] << " " << it->Coords()[2] << std::endl;
+	}
+
+	Cell SearchKDTree::SubSearchCellPrint(const Storage::real p[3], std::ostream & sout) const
+	{
+		Cell ret = InvalidCell();
+		if (size == 1)
+		{
+			sout << "test cell " << GetHandleID(set[0].e) << std::endl;
+			PrintElement(Cell(m, set[0].e), sout);
+			if (m->HideMarker() && m->GetMarker(set[0].e, m->HideMarker()))
+			{
+				m->SwapModification(false);
+				if (cell_point_print(Cell(m, set[0].e), p,sout))
+					ret = Cell(m, set[0].e);
+				m->SwapModification(false);
+			}
+			else
+			{
+				if (cell_point_print(Cell(m, set[0].e), p,sout))
+					ret = Cell(m, set[0].e);
+			}
+		}
+		else
+		{
+			assert(size > 1);
+			if (bbox_point(p, bbox))
+			{
 				{
-					if( print ) std::cout << "try right child" << std::endl;
-					ret = children[1].SubSearchCell(p,print);
-					if( print ) std::cout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
+					sout << "point " << p[0] << " " << p[1] << " " << p[2] << " is in bbox ";
+					sout << " x " << bbox[0] << ":" << bbox[1];
+					sout << " y " << bbox[2] << ":" << bbox[3];
+					sout << " z " << bbox[4] << ":" << bbox[5];
+					sout << std::endl;
+				}
+				sout << "try left child" << std::endl;
+				ret = children[0].SubSearchCellPrint(p, sout);
+				sout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
+				if (!ret.isValid())
+				{
+					sout << "try right child" << std::endl;
+					ret = children[1].SubSearchCellPrint(p, sout);
+					sout << "ret " << (ret.isValid() ? ret.LocalID() : -1) << std::endl;
 				}
 			}
-			else if( print ) 
+			else 
 			{
-				std::cout << "point " << p[0] << " " << p[1] << " " << p[2] << " is not in bbox ";
-				std::cout << " x " << bbox[0] << ":" << bbox[1];
-				std::cout << " y " << bbox[2] << ":" << bbox[3];
-				std::cout << " z " << bbox[4] << ":" << bbox[5];
-				std::cout << std::endl;
-				bbox_point_print(p,bbox);
+				sout << "point " << p[0] << " " << p[1] << " " << p[2] << " is not in bbox ";
+				sout << " x " << bbox[0] << ":" << bbox[1];
+				sout << " y " << bbox[2] << ":" << bbox[3];
+				sout << " z " << bbox[4] << ":" << bbox[5];
+				sout << std::endl;
+				bbox_point_print(p, bbox, sout);
 			}
 		}
 		return ret;
@@ -454,10 +530,15 @@ namespace INMOST
 		ray[0] = p2[0]-p1[0];
 		ray[1] = p2[1]-p1[1];
 		ray[2] = p2[2]-p1[2];
+		/*
 		l = sqrt(dotproduct(ray,ray));
-		ray[0] /= l;
-		ray[1] /= l;
-		ray[2] /= l;
+		if (l)
+		{
+			ray[0] /= l;
+			ray[1] /= l;
+			ray[2] /= l;
+		}
+		*/
 		a[0] = tri[0][0] - tri[2][0];
 		a[1] = tri[0][1] - tri[2][1];
 		a[2] = tri[0][2] - tri[2][2];
@@ -465,14 +546,19 @@ namespace INMOST
 		b[1] = tri[1][1] - tri[2][1];
 		b[2] = tri[1][2] - tri[2][2];
 		crossproduct(a,b,n);
-		d = -dotproduct(n,tri[0]);
+		l = sqrt(dotproduct(n, n));
+		if (l)
+		{
+			n[0] /= l;
+			n[1] /= l;
+			n[2] /= l;
+		}
+		d = -dotproduct(n,tri[2]);
 		m =  dotproduct(n,ray);
 		if( fabs(m) < 1.0e-25 )
 			return 0;
 		k = -(d + dotproduct(n,p1))/m;
-		if( k < 0 )
-			return 0;
-		if( k > l )
+		if (k < -1.0e-10 || k > 1.0 + 1.0e-10)
 			return 0;
 		c[0] = p1[0] + k*ray[0] - tri[2][0];
 		c[1] = p1[1] + k*ray[1] - tri[2][1];
@@ -493,6 +579,83 @@ namespace INMOST
 			return 1;
 		return 0;
 	}
+
+	inline int SearchKDTree::segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const
+	{
+		const Storage::real eps = 1.0e-7;
+		Storage::real a[3], b[3], c[3], n[3], ray[3], d, k, m, l;
+		Storage::real dot00, dot01, dot02, dot11, dot12, invdenom, uq, vq;
+		ray[0] = p2[0] - p1[0];
+		ray[1] = p2[1] - p1[1];
+		ray[2] = p2[2] - p1[2];
+		/*
+		l = sqrt(dotproduct(ray,ray));
+		if (l)
+		{
+			ray[0] /= l;
+			ray[1] /= l;
+			ray[2] /= l;
+		}
+		*/
+		a[0] = tri[0][0] - tri[2][0];
+		a[1] = tri[0][1] - tri[2][1];
+		a[2] = tri[0][2] - tri[2][2];
+		b[0] = tri[1][0] - tri[2][0];
+		b[1] = tri[1][1] - tri[2][1];
+		b[2] = tri[1][2] - tri[2][2];
+		crossproduct(a, b, n);
+		l = sqrt(dotproduct(n, n));
+		if (l)
+		{
+			n[0] /= l;
+			n[1] /= l;
+			n[2] /= l;
+		}
+		sout << "n " << n[0] << " " << n[1] << " " << n[2];
+		d = -dotproduct(n, tri[2]);
+		m = dotproduct(n, ray);
+		sout << " d " << d << " m " << m;
+		if (fabs(m) < 1.0e-25)
+		{
+			sout << std::endl;
+			return 0;
+		}
+		k = -(d + dotproduct(n, p1)) / m;
+		sout << " k " << k;
+		if (k < -1.0e-10 || k > 1.0 + 1.0e-10)
+		{
+			sout << std::endl;
+			return 0;
+		}
+		c[0] = p1[0] + k * ray[0] - tri[2][0];
+		c[1] = p1[1] + k * ray[1] - tri[2][1];
+		c[2] = p1[2] + k * ray[2] - tri[2][2];
+		sout  << " c " << c[0] << " " << c[1] << " " << c[2];
+		dot00 = dotproduct(a, a);
+		dot01 = dotproduct(a, b);
+		dot02 = dotproduct(a, c);
+		dot11 = dotproduct(b, b);
+		dot12 = dotproduct(b, c);
+		invdenom = (dot00 * dot11 - dot01 * dot01);
+		uq = (dot11 * dot02 - dot01 * dot12);
+		vq = (dot00 * dot12 - dot01 * dot02);
+		sout << " invdenom " << invdenom << " uq " << uq << " vq " << vq;
+		if (fabs(invdenom) < 1.0e-25 && fabs(uq) > 0.0 && fabs(vq) > 0.0)
+		{
+			sout << std::endl;
+			return 0;
+		}
+		uq = uq / invdenom;
+		vq = vq / invdenom;
+		sout << " coefs " << 1 - uq - vq << " " << uq << " " << vq;
+		if (uq >= -eps && vq >= -eps && 1.0 - (uq + vq) >= -eps)
+		{
+			sout << " hit!" << std::endl;
+			return 1;
+		}
+		sout << std::endl;
+		return 0;
+	}
 	
 	inline int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const
 	{
@@ -502,13 +665,13 @@ namespace INMOST
 		{
 			if( fabs(p2[i]-p1[i]) < 1.0e-15 )
 			{
-				if( p1[i] < bbox[i*2] || p1[i] > bbox[i*2+1] )
+				if( p1[i] < bbox[i*2]-1.0e-3 || p1[i] > bbox[i*2+1]+1.0e-3 )
 					return 0;
 			}
 			else
 			{
-				t1 = (bbox[i*2+0] - p1[i])/(p2[i]-p1[i]);
-				t2 = (bbox[i*2+1] - p1[i])/(p2[i]-p1[i]);
+				t1 = (bbox[i*2+0]-1.0e-3 - p1[i])/(p2[i]-p1[i]);
+				t2 = (bbox[i*2+1]+1.0e-3 - p1[i])/(p2[i]-p1[i]);
 				if( t1 > t2 )
 				{
 					c = t1;
@@ -568,6 +731,31 @@ namespace INMOST
 			//m->GetGeometricData(nodes[k]->GetHandle(),CENTROID,tri[0]);
 			m->GetGeometricData(nodes[(k+1)%nodes.size()]->GetHandle(),CENTROID,tri[1]);
 			if( segment_tri(tri,p1,p2) ) return true;
+		}
+		return false;
+	}
+
+	inline bool SearchKDTree::segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const
+	{
+		Mesh* m = f->GetMeshLink();
+		Storage::real tri[3][3] = { {0,0,0},{0,0,0},{0,0,0} }, nrm[3];
+		f.getAsFace().UnitNormal(nrm);
+		m->GetGeometricData(f->GetHandle(), CENTROID, tri[2]);
+		sout << "segment_face FACE:" << f.LocalID();
+		sout << " x " << tri[2][0] << " " << tri[2][1] << " " << tri[2][2];
+		sout << " n " << nrm[0] << " " << nrm[1] << " " << nrm[2];
+		sout << " bnd " << (f.getAsFace().Boundary() ? "true" : "false");
+		sout << " ornt " << (f.getAsFace().CheckNormalOrientation() ? "true" : "false");
+		sout << " nodes " << f.nbAdjElements(NODE);
+		sout << std::endl;
+		ElementArray<Node> nodes = f->getNodes();
+		m->GetGeometricData(nodes[0]->GetHandle(), CENTROID, tri[1]);
+		for (ElementArray<Node>::size_type k = 0; k < nodes.size(); ++k)
+		{
+			memcpy(tri[0], tri[1], sizeof(Storage::real) * 3);
+			//m->GetGeometricData(nodes[k]->GetHandle(),CENTROID,tri[0]);
+			m->GetGeometricData(nodes[(k + 1) % nodes.size()]->GetHandle(), CENTROID, tri[1]);
+			if (segment_tri_print(tri, p1, p2,sout)) return true;
 		}
 		return false;
 	}
@@ -655,6 +843,40 @@ namespace INMOST
 				it->SetPrivateMarker(mrk);
 			}
 		}
+		m->RemPrivateMarkerArray(faces.data(), static_cast<Storage::enumerator>(faces.size()), mrk);
+		m->ReleasePrivateMarker(mrk);
+	}
+
+	void SearchKDTree::IntersectSegmentPrint(ElementArray<Face>& faces, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const
+	{
+		ElementArray<Element> temp(m);
+		MarkerType mrk = m->CreatePrivateMarker();
+		sub_intersect_segment_print(temp, mrk, p1, p2, sout);
+		sout << "found elements: " << temp.size() << std::endl;
+		m->RemPrivateMarkerArray(temp.data(), static_cast<Storage::enumerator>(temp.size()), mrk);
+		for (ElementArray<Element>::iterator it = temp.begin(); it != temp.end(); ++it)
+		{
+			sout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " ";
+			if (it->GetElementType() == CELL)
+			{
+				ElementArray<Face> f = it->getFaces();
+				for (ElementArray<Face>::iterator jt = f.begin(); jt != f.end(); ++jt) if (!jt->GetPrivateMarker(mrk))
+				{
+					faces.push_back(*jt);
+					jt->SetPrivateMarker(mrk);
+				}
+			}
+			else if (it->GetElementType() == FACE)
+			{
+				faces.push_back(it->getAsFace());
+				it->SetPrivateMarker(mrk);
+			}
+		}
+		sout << std::endl;
+		sout << "Output faces: " << faces.size() << std::endl;
+		for (ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
+			sout << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " ";
+		sout << std::endl;
 		m->RemPrivateMarkerArray(faces.data(), static_cast<Storage::enumerator>(faces.size()), mrk);
 		m->ReleasePrivateMarker(mrk);
 	}
@@ -754,6 +976,71 @@ namespace INMOST
 		}
 	}
 
+	void SearchKDTree::sub_intersect_segment_print(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const
+	{
+		if (size == 1)
+		{
+			if (!m->GetPrivateMarker(set[0].e, mrk))
+			{
+				Storage::integer edim = Element::GetGeometricDimension(m->GetGeometricType(set[0].e));
+				PrintElement(Cell(m, set[0].e), sout);
+				if (edim == 2)
+				{
+					if (segment_face_print(Element(m, set[0].e), p1, p2, sout))
+					{
+						hits.push_back(set[0].e);
+						m->SetPrivateMarker(set[0].e, mrk);
+					}
+				}
+				else if (edim == 3)
+				{
+					if (segment_cell(Element(m, set[0].e), p1, p2))
+					{
+						hits.push_back(set[0].e);
+						m->SetPrivateMarker(set[0].e, mrk);
+					}
+				}
+				else
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " kd-tree structure is not implemented to intersect edges with segments" << std::endl;
+					exit(-1);
+				}
+			}
+		}
+		else
+		{
+			assert(size > 1);
+			if (segment_bbox(p1, p2))
+			{
+				{
+					sout << "segment ";
+					sout << p1[0] << " " << p1[1] << " " << p1[2];
+					sout << " <-> ";
+					sout << p2[0] << " " << p2[1] << " " << p2[2];
+					sout << " is in bbox ";
+					sout << " x " << bbox[0] << ":" << bbox[1];
+					sout << " y " << bbox[2] << ":" << bbox[3];
+					sout << " z " << bbox[4] << ":" << bbox[5];
+					sout << std::endl;
+				}
+				children[0].sub_intersect_segment_print(hits, mrk, p1, p2, sout);
+				children[1].sub_intersect_segment_print(hits, mrk, p1, p2, sout);
+			}
+			else
+			{
+				sout << "segment ";
+				sout << p1[0] << " " << p1[1] << " " << p1[2];
+				sout << " <-> ";
+				sout << p2[0] << " " << p2[1] << " " << p2[2];
+				sout << " is not in bbox ";
+				sout << " x " << bbox[0] << ":" << bbox[1];
+				sout << " y " << bbox[2] << ":" << bbox[3];
+				sout << " z " << bbox[4] << ":" << bbox[5];
+				sout << std::endl;
+			}
+		}
+	}
+
 	void SearchKDTree::sub_intersect_sphere(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p[3], Storage::real r) const
 	{
 		if (size == 1)
@@ -804,9 +1091,14 @@ namespace INMOST
 		}
 	}
 	
-	Cell SearchKDTree::SearchCell(const Storage::real * point, bool print) const
+	Cell SearchKDTree::SearchCell(const Storage::real * point) const
 	{
-		return SubSearchCell(point, print);
+		return SubSearchCell(point);
+	}
+
+	Cell SearchKDTree::SearchCellPrint(const Storage::real* point, std::ostream & sout) const
+	{
+		return SubSearchCellPrint(point, sout);
 	}
 }
 #endif
