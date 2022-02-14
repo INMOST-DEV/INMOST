@@ -527,6 +527,9 @@ namespace INMOST
 			//2.Propogate indicator down to the faces,edges
 			//  select schedule for them
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -535,8 +538,13 @@ namespace INMOST
 					ElementArray<Element> adj = c.getAdjElements(FACE|EDGE);
 					for(ElementArray<Element>::size_type kt = 0; kt < adj.size(); ++kt)
 					{
-						if( level[adj[kt]] == level[c] ) //do not schedule finer or coarser elements
+						if (level[adj[kt]] == level[c]) //do not schedule finer or coarser elements
+						{
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 							indicator[adj[kt]] = schedule_counter; //refine together with current cell
+						}
 					}
 				}
 			}
@@ -549,6 +557,9 @@ namespace INMOST
 			//  schedule for refinement earlier.
 			scheduled = 0;
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:scheduled)
+#endif
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1458,6 +1469,9 @@ namespace INMOST
 			{
 				//for(Storage::integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 				//	indicator[ElementByLocalID(etype,it)] = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 				for(Storage::integer it = 0; it < m->LastLocalID(etype); ++it) if( m->isValidElement(etype,it) )
 				{
 					Element e = m->ElementByLocalID(etype,it);
@@ -1477,6 +1491,9 @@ namespace INMOST
 			// then this cell should not be coarsened
 			unscheduled = scheduled = 0;
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1505,6 +1522,9 @@ namespace INMOST
 			ENTER_BLOCK();
 			//int v1 = 0, v2 = 0, v3 = 0;
 			//std::fstream fout("set"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 			{
 				ElementSet set = m->EsetByLocalID(it);
@@ -1526,6 +1546,9 @@ namespace INMOST
 			m->ReduceData(coarse_indicator,ESET,0,ReduceMax);
 			m->ExchangeData(indicators,ESET,0);
 			ENTER_BLOCK()
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:unscheduled)
+#endif
 			for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 			{
 				ElementSet set = m->EsetByLocalID(it);
@@ -1630,11 +1653,17 @@ namespace INMOST
 			//   this one should be scheduled to be refined first
 			//a) clean up coarse indicator tag
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
 				coarse_indicator[m->EdgeByLocalID(it)] = 0;
 			EXIT_BLOCK();
 			//b) each cell mark it's finer edges with cell's schedule
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1643,8 +1672,13 @@ namespace INMOST
 					ElementArray<Element> adj = c.getAdjElements(EDGE);
 					for(ElementArray<Element>::size_type kt = 0; kt < adj.size(); ++kt)
 					{
-						if( level[adj[kt]] > level[c] ) //only finer edges
-							coarse_indicator[adj[kt]] = std::max(coarse_indicator[adj[kt]],indicator[c]);
+						if (level[adj[kt]] > level[c]) //only finer edges
+						{
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+							coarse_indicator[adj[kt]] = std::max(coarse_indicator[adj[kt]], indicator[c]);
+						}
 					}
 				}
 			}
@@ -1657,6 +1691,9 @@ namespace INMOST
 			m->ExchangeData(coarse_indicator,EDGE,0);
 			//d) look from cells if any edge is coarsened earlier
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:scheduled)
+#endif
 			for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 			{
 				Cell c = m->CellByLocalID(it);
@@ -1689,8 +1726,11 @@ namespace INMOST
 		EXIT_BLOCK();
 		
 		
-		//Order exchange of elemnets of the sets that are to be coarsened
+		//Order exchange of elements of the sets that are to be coarsened
 		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for //each set has unique set of elements, should be safe
+#endif
 		for(Storage::integer it = 0; it < m->EsetLastLocalID(); ++it) if( m->isValidElementSet(it) )
 		{
 			ElementSet set = m->EsetByLocalID(it);
@@ -2187,6 +2227,9 @@ namespace INMOST
 		//cleanup null links to hanging nodes
 		for(ElementType etype = FACE; etype <= CELL; etype = NextElementType(etype))
 		{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(Storage::integer it = 0; it < m->LastLocalID(etype); ++it) if( m->isValidElement(etype,it) )
 			{
 				Storage::reference_array arr = hanging_nodes[m->ElementByLocalID(etype,it)];
@@ -2297,7 +2340,8 @@ namespace INMOST
 
 	void AdaptiveMesh::CheckClosure(std::string file, int line)
 	{
-		ENTER_BLOCK();
+		ENTER_FUNC();
+#if !defined(NDEBUG)
 		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 		{
 			Cell c = m->CellByLocalID(it);
@@ -2321,7 +2365,8 @@ namespace INMOST
 			}
 			assert(c.Hidden() || c.Closure());
 		}
-		EXIT_BLOCK();
+#endif
+		EXIT_FUNC();
 	}
 	
 }

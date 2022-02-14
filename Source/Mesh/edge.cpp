@@ -85,8 +85,8 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			ElementArray<Node> aret(m);
-			aret.reserve(32);
 			adj_type const & lc = m->LowConn(GetHandle());
+			aret.reserve(lc.size());
 			for(adj_type::size_type it = 0; it < lc.size(); ++it)
 				if( !m->GetMarker(lc[it],hm) ) aret.push_back(lc[it]);
 			return aret;
@@ -98,10 +98,10 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==EDGE);
 		Mesh * m = GetMeshLink();
 		ElementArray<Node> aret(m);
-		aret.reserve(32);
 		if( !m->HideMarker() )
 		{	
 			adj_type const & lc = m->LowConn(GetHandle());
+			aret.reserve(lc.size());
 			if( isPrivate(mask) )
 			{
 				for(adj_type::size_type it = 0; it < lc.size(); ++it)
@@ -117,6 +117,7 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			adj_type const & lc = m->LowConn(GetHandle());
+			aret.reserve(lc.size());
 			if( isPrivate(mask) )
 			{
 				for(adj_type::size_type it = 0; it < lc.size(); ++it)
@@ -144,8 +145,8 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			ElementArray<Face> aret(m);
-			aret.reserve(32);
 			adj_type const & hc = m->HighConn(GetHandle());
+			aret.reserve(hc.size());
 			for(adj_type::size_type it = 0; it < hc.size(); ++it)
 				if( !m->GetMarker(hc[it],hm) ) aret.push_back(hc[it]);
 			return aret;
@@ -158,10 +159,10 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==EDGE);
 		Mesh * m = GetMeshLink();
 		ElementArray<Face> aret(m);
-		aret.reserve(32);
 		if( !m->HideMarker() )
 		{
 			adj_type const & hc = m->HighConn(GetHandle());
+			aret.reserve(hc.size());
 			if( isPrivate(mask) )
 			{
 				for(adj_type::size_type it = 0; it < hc.size(); ++it)
@@ -177,6 +178,7 @@ namespace INMOST
 		{
 			MarkerType hm = GetMeshLink()->HideMarker();
 			adj_type const & hc = m->HighConn(GetHandle());
+			aret.reserve(hc.size());
 			if( isPrivate(mask) )
 			{
 				for(adj_type::size_type it = 0; it < hc.size(); ++it)
@@ -196,11 +198,11 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==EDGE);
 		Mesh * m = GetMeshLink();
 		ElementArray<Cell> aret(m);
-		aret.reserve(32);
 		MarkerType mrk = m->CreatePrivateMarker();
 		if( !m->HideMarker() )
 		{
 			adj_type const & hc = m->HighConn(GetHandle());
+			aret.reserve(hc.size());
 			for(adj_type::size_type it = 0; it < hc.size(); it++) //faces
 			{
 				adj_type const & ihc = m->HighConn(hc[it]);
@@ -216,6 +218,7 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			adj_type const & hc = m->HighConn(GetHandle());
+			aret.reserve(hc.size());
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //faces
 			{
 				adj_type const & ihc = m->HighConn(hc[it]);
@@ -227,8 +230,7 @@ namespace INMOST
 					}
 			}
 		}
-		for(ElementArray<Cell>::size_type it = 0; it < aret.size(); it++) 
-			m->RemPrivateMarker(aret.at(it),mrk);
+		aret.RemPrivateMarker(mrk);
 		m->ReleasePrivateMarker(mrk);
 		return aret;
 	}
@@ -238,13 +240,13 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==EDGE);
 		Mesh * m = GetMeshLink();
 		ElementArray<Cell> aret(m);
-		aret.reserve(32);
 		MarkerType mrk = m->CreatePrivateMarker();
+		adj_type const& hc = m->HighConn(GetHandle());
 		if( isPrivate(mask) )
 		{
 			if( !GetMeshLink()->HideMarker() )
 			{
-				adj_type const & hc = m->HighConn(GetHandle());
+				aret.reserve(hc.size());
 				for(adj_type::size_type it = 0; it < hc.size(); it++) //faces
 				{
 					adj_type const & ihc = m->HighConn(hc[it]);
@@ -259,7 +261,7 @@ namespace INMOST
 			else
 			{
 				MarkerType hm = m->HideMarker();
-				adj_type const & hc = m->HighConn(GetHandle());
+				aret.reserve(hc.size());
 				for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //faces
 				{
 					adj_type const & ihc = m->HighConn(hc[it]);
@@ -276,7 +278,7 @@ namespace INMOST
 		{
 			if( !GetMeshLink()->HideMarker() )
 			{
-				adj_type const & hc = m->HighConn(GetHandle());
+				aret.reserve(hc.size());
 				for(adj_type::size_type it = 0; it < hc.size(); it++) //faces
 				{
 					adj_type const & ihc = m->HighConn(hc[it]);
@@ -291,7 +293,7 @@ namespace INMOST
 			else
 			{
 				MarkerType hm = m->HideMarker();
-				adj_type const & hc = m->HighConn(GetHandle());
+				aret.reserve(hc.size());
 				for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //faces
 				{
 					adj_type const & ihc = m->HighConn(hc[it]);
@@ -304,8 +306,7 @@ namespace INMOST
 				}
 			}
 		}
-		for(ElementArray<Cell>::size_type it = 0; it < aret.size(); it++) 
-			m->RemPrivateMarker(aret.at(it),mrk);
+		aret.RemPrivateMarker(mrk);
 		m->ReleasePrivateMarker(mrk);
 		return aret;
 	}

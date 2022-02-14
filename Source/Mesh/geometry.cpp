@@ -1503,9 +1503,9 @@ namespace INMOST
 		switch(type)
 		{
 			case MEASURE:
-			if( HaveGeometricData(MEASURE,etype) )
+			if( HaveGeometricData(MEASURE,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 			{
-				if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				*ret = static_cast<Storage::real *>(MGetDenseLink(e,measure_tag))[0];
 				//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 			}
@@ -1659,9 +1659,9 @@ namespace INMOST
 			case CENTROID:
 				if(etype == NODE )
 					memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-				else if(HaveGeometricData(CENTROID,etype))
+				else if(HaveGeometricData(CENTROID,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
-					if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
 				}
 				else
@@ -1680,9 +1680,9 @@ namespace INMOST
 			case BARYCENTER:
 			if(etype == NODE )
 				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-			else if(HaveGeometricData(BARYCENTER,etype))
+			else if(HaveGeometricData(BARYCENTER,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 			{
-				if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
 			}
 			else
@@ -1852,9 +1852,9 @@ namespace INMOST
 			break;
 			case NORMAL:
 			{
-				if( HaveGeometricData(NORMAL,etype) )
+				if( HaveGeometricData(NORMAL,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
-					if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
 				}
 				else

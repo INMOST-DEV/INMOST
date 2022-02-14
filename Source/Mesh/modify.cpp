@@ -1526,7 +1526,8 @@ namespace INMOST
 		ENTER_FUNC();
 		hide_element = CreateMarker();
 		new_element = CreateMarker();
-		update_geometry = 0;// CreateMarker();
+		update_geometry = 0;
+		//update_geometry = CreateMarker();
 		EXIT_FUNC();
 	}
 	
@@ -1641,10 +1642,13 @@ namespace INMOST
 					}
 			}
 		}
-
-		for (Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
+//#if defined(USE_OMP)
+//#pragma omp parallel for schedule(dynamic,1)
+//#endif
+		for (integer jt = 0; jt < EsetLastLocalID(); ++jt) if (isValidElementSet(jt))
+		//for (Mesh::iteratorSet it = BeginSet(); it != EndSet(); it++)
 		{
-			//ElementSet it = EsetByLocalID(jt);
+			ElementSet it = EsetByLocalID(jt);
 			//std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
 			if (it->HaveParent() && it->GetParent()->GetMarker(mrk))
 				it->GetParent()->RemChild(it->self());
