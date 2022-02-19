@@ -42,6 +42,7 @@ __INLINE std::string NameSlash(std::string input)
 #define EXIT_FUNC_DIE()  {}
 #endif // USE_PARALLEL_WRITE_TIME
 
+static const bool cell_node_conn = true;
 
 namespace INMOST
 {
@@ -194,15 +195,16 @@ namespace INMOST
 		//have_global_id = NONE;
 		checkset = DEFAULT_CHECK;
 		errorset = 0;
-		new_element = hide_element = update_geometry = 0;
+		new_element = hide_element = 0;
+		//update_geometry = 0
 
 		memset(hidden_count,0,sizeof(integer)*6);
 		memset(hidden_count_zero,0,sizeof(integer)*6);
 
 		memset(remember,0,sizeof(remember));
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|(cell_node_conn?CELL:NONE)|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|(cell_node_conn?NODE:NONE),NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -439,8 +441,8 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|(cell_node_conn?CELL:NONE)|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|(cell_node_conn?NODE:NONE),NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -453,7 +455,7 @@ namespace INMOST
 		errorset = other.errorset;
 		new_element = other.new_element;
 		hide_element = other.hide_element;
-		update_geometry = other.update_geometry;
+		//update_geometry = other.update_geometry;
 		epsilon = other.epsilon;
 		//have_global_id = other.have_global_id;
 		// copy communicator
@@ -569,8 +571,8 @@ namespace INMOST
 		//setup system tags shortcuts
 		dim = other.dim;
 		tag_coords        = CreateTag("PROTECTED_COORD",DATA_REAL, NODE,NONE,dim);
-		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|FACE|EDGE|NODE,NONE);
-		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE,NONE);
+		tag_high_conn     = CreateTag("PROTECTED_HIGH_CONN",DATA_REFERENCE,ESET|(cell_node_conn?CELL:NONE)|FACE|EDGE|NODE,NONE);
+		tag_low_conn      = CreateTag("PROTECTED_LOW_CONN",DATA_REFERENCE,ESET|CELL|FACE|EDGE|(cell_node_conn?NODE:NONE),NONE);
 		tag_markers       = CreateTag("PROTECTED_MARKERS",DATA_BULK,CELL|FACE|EDGE|NODE|ESET|MESH,NONE,MarkerFields);
 		tag_geom_type     = CreateTag("PROTECTED_GEOM_TYPE",DATA_BULK,CELL|FACE|EDGE|NODE,NONE,1);
 		tag_setname       = CreateTag("PROTECTED_SET_NAME",DATA_BULK,ESET,NONE);
@@ -583,7 +585,7 @@ namespace INMOST
 		errorset = other.errorset;
 		new_element = other.new_element;
 		hide_element = other.hide_element;
-		update_geometry = other.update_geometry;
+		//update_geometry = other.update_geometry;
 		epsilon = other.epsilon;
 		//have_global_id = other.have_global_id;
 		// copy communicator
@@ -1272,9 +1274,10 @@ namespace INMOST
 			//DEBUG END
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
-			if (UpdateGeometryMarker())
-				SetMarker(he, UpdateGeometryMarker());
-			else RecomputeGeometricData(he);
+			//if (UpdateGeometryMarker())
+			//	SetMarker(he, UpdateGeometryMarker());
+			//else 
+			RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 			/*
 			chk |= EndTopologyCheck(he);
@@ -1373,9 +1376,10 @@ namespace INMOST
 			//DEBUG END
 			ComputeGeometricType(he);
 			SetMarker(he,NewMarker());
-			if (UpdateGeometryMarker())
-				SetMarker(he, UpdateGeometryMarker());
-			else RecomputeGeometricData(he);
+			//if (UpdateGeometryMarker())
+			//	SetMarker(he, UpdateGeometryMarker());
+			//else 
+			RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 			/*
 			chk |= EndTopologyCheck(he);
@@ -1391,7 +1395,7 @@ namespace INMOST
 	}
 	
 	
-	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_sizes, integer s)//, const ElementArray<Node> & suggest_nodes_order)
+	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_sizes, integer s, const ElementArray<Node> & suggest_nodes)
 	{
 		ElementArray<Face> c_faces(this,s);
 		ElementArray<Node>::size_type j = 0;
@@ -1400,11 +1404,11 @@ namespace INMOST
 			c_faces.at(i) = CreateFace(ElementArray<Node>(this, c_f_nodes.data()+j, c_f_nodes.data()+j + c_f_sizes[i])).first->GetHandle();
 			j += c_f_sizes[i];
 		}
-		return CreateCell(c_faces);//,suggest_nodes_order);
+		return CreateCell(c_faces, suggest_nodes);
 	}
 	
 
-	std::pair<Cell, bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer s)//, const ElementArray<Node> & suggest_nodes_order)
+	std::pair<Cell, bool> Mesh::CreateCell(const ElementArray<Node> & c_f_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer s, const ElementArray<Node> & suggest_nodes)
 	{
 		integer j = 0;
 		ElementArray<Node> temp(this);
@@ -1418,7 +1422,7 @@ namespace INMOST
 			j += c_f_numnodes[i];
 			temp.clear();
 		}
-		return CreateCell(c_faces);//,suggest_nodes_order);
+		return CreateCell(c_faces, suggest_nodes);
 	}
 	
 	
@@ -1790,7 +1794,7 @@ namespace INMOST
 		}
 	}
 	
-	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Face> & c_faces)//, const ElementArray<Node> & c_nodes)
+	std::pair<Cell,bool> Mesh::CreateCell(const ElementArray<Face> & c_faces, const ElementArray<Node> & c_nodes)
 	{
 		HandleType he = InvalidHandle();
 		if( !c_faces.empty() )
@@ -1818,11 +1822,38 @@ namespace INMOST
 			}
 			Element::adj_type & lc = LowConn(he);
 			lc.insert(lc.begin(),c_faces.begin(),c_faces.end());
+			if (HighConnTag().isDefined(CELL) || LowConnTag().isDefined(NODE))
+			{
+				ElementArray<Node> nodes(c_nodes);
+				if (nodes.empty())
+				{
+					nodes.SetMeshLink(this);
+					RestoreCellNodes(he, nodes);
+				}
+				else nodes = c_nodes;
+				if (LowConnTag().isDefined(NODE))
+				{
+					for (ElementArray<Node>::size_type k = 0; k < nodes.size(); k++)
+					{
+						Element::adj_type& lc = LowConn(nodes.at(k));
+#if defined(USE_OMP)
+#pragma omp critical (node_low_conn)
+#endif
+						lc.push_back(he);
+					}
+				}
+				if (HighConnTag().isDefined(CELL))
+				{
+					Element::adj_type& hc = HighConn(he);
+					hc.insert(hc.begin(), nodes.begin(), nodes.end());
+				}
+			}
 			ComputeGeometricType(he);		
 			SetMarker(he,NewMarker());
-			if (UpdateGeometryMarker())
-				SetMarker(he, UpdateGeometryMarker());
-			else RecomputeGeometricData(he);
+			//if (UpdateGeometryMarker())
+			//	SetMarker(he, UpdateGeometryMarker());
+			//else 
+			RecomputeGeometricData(he);
 			EndTopologyCheck(he,chk);
 		}
 		return std::make_pair(Cell(this,he),true);

@@ -179,53 +179,70 @@ namespace INMOST
 	{
 		assert(GetHandleElementType(GetHandle())==NODE);
 		Mesh * m = GetMeshLink();
-		ElementArray<Cell> aret(m);
-		//aret.reserve(16);
-		MarkerType mrk = m->CreatePrivateMarker();
-		if( !m->HideMarker() )
+		if (m->LowConnTag().isDefined(NODE))
 		{
-			adj_type const & edges = m->HighConn(GetHandle()); // all edges
-			for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
+			adj_type const& lc = m->LowConn(GetHandle());
+			if (!m->HideMarker())
+				return ElementArray<Cell>(m, lc.data(), lc.data() + lc.size());
+			else
 			{
-				adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-				for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
-				{
-					adj_type const & cells = m->HighConn(*fit);
-					for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
-					{
-						if( !m->GetPrivateMarker(*cit,mrk) )
-						{
-							aret.push_back(*cit);
-							m->SetPrivateMarker(*cit,mrk);
-						}
-					}
-				}
+				MarkerType hm = m->HideMarker();
+				ElementArray<Cell> aret(m);
+				adj_type const& lc = m->LowConn(GetHandle());
+				for (adj_type::size_type it = 0; it < lc.size(); ++it)
+					if (!m->GetMarker(lc[it], hm)) aret.push_back(lc[it]);
+				return aret;
 			}
 		}
 		else
 		{
-			MarkerType hm = m->HideMarker();
-			adj_type const & edges = m->HighConn(GetHandle()); // all edges
-			for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if( !m->GetMarker(*eit,hm) )
+			ElementArray<Cell> aret(m);
+			MarkerType mrk = m->CreatePrivateMarker();
+			if (!m->HideMarker())
 			{
-				adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-				for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if( !m->GetMarker(*fit,hm) )
+				adj_type const& edges = m->HighConn(GetHandle()); // all edges
+				for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
 				{
-					adj_type const & cells = m->HighConn(*fit);
-					for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if( !m->GetMarker(*cit,hm) )
+					adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+					for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
 					{
-						if( !m->GetPrivateMarker(*cit,mrk) )
+						adj_type const& cells = m->HighConn(*fit);
+						for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
 						{
-							aret.push_back(*cit);
-							m->SetPrivateMarker(*cit,mrk);
+							if (!m->GetPrivateMarker(*cit, mrk))
+							{
+								aret.push_back(*cit);
+								m->SetPrivateMarker(*cit, mrk);
+							}
 						}
 					}
 				}
 			}
+			else
+			{
+				MarkerType hm = m->HideMarker();
+				adj_type const& edges = m->HighConn(GetHandle()); // all edges
+				for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if (!m->GetMarker(*eit, hm))
+				{
+					adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+					for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if (!m->GetMarker(*fit, hm))
+					{
+						adj_type const& cells = m->HighConn(*fit);
+						for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if (!m->GetMarker(*cit, hm))
+						{
+							if (!m->GetPrivateMarker(*cit, mrk))
+							{
+								aret.push_back(*cit);
+								m->SetPrivateMarker(*cit, mrk);
+							}
+						}
+					}
+				}
+			}
+			aret.RemPrivateMarker(mrk);
+			m->ReleasePrivateMarker(mrk);
+			return aret;
 		}
-		aret.RemPrivateMarker(mrk);
-		m->ReleasePrivateMarker(mrk);
-		return aret;
 	}
 
 	ElementArray<Cell> Node::getCells(MarkerType mask, bool invert) const
@@ -233,69 +250,79 @@ namespace INMOST
 		assert(GetHandleElementType(GetHandle())==NODE);
 		Mesh * m = GetMeshLink();
 		ElementArray<Cell> aret(m);
-		//aret.reserve(16);
-		MarkerType mrk = m->CreatePrivateMarker();
-		if( !m->HideMarker() )
+		if (m->LowConnTag().isDefined(NODE))
 		{
-			if( isPrivate(mask) )
+			adj_type const& lc = m->LowConn(GetHandle());
+			if (!m->HideMarker())
 			{
-				adj_type const & edges = m->HighConn(GetHandle()); // all edges
-				for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
+				if (isPrivate(mask))
 				{
-					adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-					for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
-					{
-						adj_type const & cells = m->HighConn(*fit);
-						for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
-						{
-							if( (invert ^ m->GetPrivateMarker(*cit,mask)) && !m->GetPrivateMarker(*cit,mrk) )
-							{
-								aret.push_back(*cit);
-								m->SetPrivateMarker(*cit,mrk);
-							}
-						}
-					}
+					for (adj_type::size_type it = 0; it < lc.size(); ++it)
+						if (invert ^ m->GetPrivateMarker(lc[it], mask)) aret.push_back(lc[it]);
+				}
+				else
+				{
+					for (adj_type::size_type it = 0; it < lc.size(); ++it)
+						if (invert ^ m->GetMarker(lc[it], mask)) aret.push_back(lc[it]);
 				}
 			}
 			else
 			{
-				adj_type const & edges = m->HighConn(GetHandle()); // all edges
-				for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
+				MarkerType hm = m->HideMarker();
+				if (isPrivate(mask))
 				{
-					adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-					for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
-					{
-						adj_type const & cells = m->HighConn(*fit);
-						for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
-						{
-							if( (invert ^ m->GetMarker(*cit,mask)) && !m->GetPrivateMarker(*cit,mrk) )
-							{
-								aret.push_back(*cit);
-								m->SetPrivateMarker(*cit,mrk);
-							}
-						}
-					}
+					for (adj_type::size_type it = 0; it < lc.size(); ++it)
+						if ((invert ^ m->GetPrivateMarker(lc[it], mask)) && !m->GetMarker(lc[it], hm)) aret.push_back(lc[it]);
+				}
+				else
+				{
+					for (adj_type::size_type it = 0; it < lc.size(); ++it)
+						if ((invert ^ m->GetMarker(lc[it], mask)) && !m->GetMarker(lc[it], hm)) aret.push_back(lc[it]);
 				}
 			}
 		}
 		else
 		{
-			MarkerType hm = m->HideMarker();
-			if( isPrivate(mask) )
+			//aret.reserve(16);
+			MarkerType mrk = m->CreatePrivateMarker();
+			if (!m->HideMarker())
 			{
-				adj_type const & edges = m->HighConn(GetHandle()); // all edges
-				for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if( !m->GetMarker(*eit,hm) )
+				if (isPrivate(mask))
 				{
-					adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-					for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if( !m->GetMarker(*fit,hm) )
+					adj_type const& edges = m->HighConn(GetHandle()); // all edges
+					for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
 					{
-						adj_type const & cells = m->HighConn(*fit);
-						for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if( !m->GetMarker(*cit,hm) )
+						adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+						for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
 						{
-							if( (invert ^ m->GetPrivateMarker(*cit,mask)) && !m->GetPrivateMarker(*cit,mrk) )
+							adj_type const& cells = m->HighConn(*fit);
+							for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
 							{
-								aret.push_back(*cit);
-								m->SetPrivateMarker(*cit,mrk);
+								if ((invert ^ m->GetPrivateMarker(*cit, mask)) && !m->GetPrivateMarker(*cit, mrk))
+								{
+									aret.push_back(*cit);
+									m->SetPrivateMarker(*cit, mrk);
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					adj_type const& edges = m->HighConn(GetHandle()); // all edges
+					for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit)
+					{
+						adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+						for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit)
+						{
+							adj_type const& cells = m->HighConn(*fit);
+							for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit)
+							{
+								if ((invert ^ m->GetMarker(*cit, mask)) && !m->GetPrivateMarker(*cit, mrk))
+								{
+									aret.push_back(*cit);
+									m->SetPrivateMarker(*cit, mrk);
+								}
 							}
 						}
 					}
@@ -303,27 +330,51 @@ namespace INMOST
 			}
 			else
 			{
-				adj_type const & edges = m->HighConn(GetHandle()); // all edges
-				for(adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if( !m->GetMarker(*eit,hm) )
+				MarkerType hm = m->HideMarker();
+				if (isPrivate(mask))
 				{
-					adj_type const & faces = m->HighConn(*eit); // all faces of the edge
-					for(adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if( !m->GetMarker(*fit,hm) )
+					adj_type const& edges = m->HighConn(GetHandle()); // all edges
+					for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if (!m->GetMarker(*eit, hm))
 					{
-						adj_type const & cells = m->HighConn(*fit);
-						for(adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if( !m->GetMarker(*cit,hm) )
+						adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+						for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if (!m->GetMarker(*fit, hm))
 						{
-							if( (invert ^ m->GetMarker(*cit,mask)) && !m->GetPrivateMarker(*cit,mrk) )
+							adj_type const& cells = m->HighConn(*fit);
+							for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if (!m->GetMarker(*cit, hm))
 							{
-								aret.push_back(*cit);
-								m->SetPrivateMarker(*cit,mrk);
+								if ((invert ^ m->GetPrivateMarker(*cit, mask)) && !m->GetPrivateMarker(*cit, mrk))
+								{
+									aret.push_back(*cit);
+									m->SetPrivateMarker(*cit, mrk);
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					adj_type const& edges = m->HighConn(GetHandle()); // all edges
+					for (adj_type::const_iterator eit = edges.begin(); eit != edges.end(); ++eit) if (!m->GetMarker(*eit, hm))
+					{
+						adj_type const& faces = m->HighConn(*eit); // all faces of the edge
+						for (adj_type::const_iterator fit = faces.begin(); fit != faces.end(); ++fit) if (!m->GetMarker(*fit, hm))
+						{
+							adj_type const& cells = m->HighConn(*fit);
+							for (adj_type::const_iterator cit = cells.begin(); cit != cells.end(); ++cit) if (!m->GetMarker(*cit, hm))
+							{
+								if ((invert ^ m->GetMarker(*cit, mask)) && !m->GetPrivateMarker(*cit, mrk))
+								{
+									aret.push_back(*cit);
+									m->SetPrivateMarker(*cit, mrk);
+								}
 							}
 						}
 					}
 				}
 			}
+			aret.RemPrivateMarker(mrk);
+			m->ReleasePrivateMarker(mrk);
 		}
-		aret.RemPrivateMarker(mrk);
-		m->ReleasePrivateMarker(mrk);
 		return aret;
 	}
 

@@ -1843,8 +1843,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										//Cell c = CreateCell(c_faces,c_nodes).first;
-										Cell c = CreateCell(c_faces).first;
+										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else
@@ -1883,8 +1883,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										//Cell c = CreateCell(c_faces,c_nodes).first;
-										Cell c = CreateCell(c_faces).first;
+										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else newcells[i] = CreateFace(c_nodes).first->GetHandle();
@@ -1911,8 +1911,8 @@ safe_output:
 											f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 											c_faces.push_back(CreateFace(f_edges).first);
 										}
-										//Cell c = CreateCell(c_faces,c_nodes).first;
-										Cell c = CreateCell(c_faces).first;
+										Cell c = CreateCell(c_faces,c_nodes).first;
+										//Cell c = CreateCell(c_faces).first;
 										newcells[i] = c->GetHandle();
 									}
 									else newcells[i] = CreateFace(c_nodes).first->GetHandle();
@@ -1929,7 +1929,7 @@ safe_output:
 									if( c_nodes.size() != 4 ) throw BadFile;
 									const integer nodesnum[12] = {0,2,1,0,1,3,1,2,3,0,3,2};
 									const integer sizes[4] = {3,3,3,3};
-									Cell c = CreateCell(c_nodes,nodesnum,sizes,4).first;
+									Cell c = CreateCell(c_nodes,nodesnum,sizes,4,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -1954,7 +1954,7 @@ safe_output:
 									//INMOST_DATA_ENUM_TYPE nodesnum[24] = {0,4,6,2,1,3,7,5,2,6,7,3,0,1,5,4,0,2,3,1,4,5,7,6};
 									const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
 									const integer sizes[6] = {4,4,4,4,4,4};
-									Cell c = CreateCell(c_nodes,nodesnum,sizes,6).first;
+									Cell c = CreateCell(c_nodes,nodesnum,sizes,6,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -1970,7 +1970,7 @@ safe_output:
 									if( c_nodes.size() != 8 ) throw BadFile;
 									const integer nodesnum[24] = {0,4,7,3,1,2,6,5,0,1,5,4,3,7,6,2,0,3,2,1,4,5,6,7};
 									const integer sizes[6] = {4,4,4,4,4,4};
-									Cell c = CreateCell(c_nodes,nodesnum,sizes,6).first;
+									Cell c = CreateCell(c_nodes,nodesnum,sizes,6,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -1986,7 +1986,7 @@ safe_output:
 									const integer nodesnum[18] = {0,2,5,3,1,4,5,2,0,3,4,1,3,5,4,0,1,2};
 									//const integer nodesnum[18] = { 0, 3, 5, 2, 0, 1, 4, 3, 1, 4, 5, 2, 3, 4, 5, 0, 2, 1 };
 									const integer sizes[5] = {4,4,4,3,3};
-									Cell c = CreateCell(c_nodes,nodesnum,sizes,5).first;
+									Cell c = CreateCell(c_nodes,nodesnum,sizes,5,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -2001,7 +2001,7 @@ safe_output:
 									if( c_nodes.size() != 5 ) throw BadFile;
 									const integer nodesnum[16] = {0,4,3,0,1,4,1,2,4,3,4,2,0,3,2,1};
 									const integer sizes[5] = {3,3,3,3,4};
-									Cell c = CreateCell(c_nodes,nodesnum,sizes,5).first;
+									Cell c = CreateCell(c_nodes,nodesnum,sizes,5,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -2027,7 +2027,7 @@ safe_output:
 									//5, 6, 7, 8, 9
 									//0, 1, 2, 3, 4
 									const integer sizes[7] = { 4, 4, 4, 4, 4, 5, 5 };
-									Cell c = CreateCell(c_nodes, nodesnum, sizes, 7).first;
+									Cell c = CreateCell(c_nodes, nodesnum, sizes, 7,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -2054,7 +2054,7 @@ safe_output:
 									//6, 7, 8, 9, 10, 11
 									//0, 1, 2, 3, 4, 5
 									const integer sizes[8] = { 4, 4, 4, 4, 4, 4, 6, 6 };
-									Cell c = CreateCell(c_nodes, nodesnum, sizes, 8).first;
+									Cell c = CreateCell(c_nodes, nodesnum, sizes, 8,c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}
@@ -2153,7 +2153,7 @@ safe_output:
 										}
 									}
 									j = k;
-									Cell c = CreateCell(c_nodes,sizes.data(),static_cast<integer>(sizes.size())).first;
+									Cell c = CreateCell(c_nodes,sizes.data(),static_cast<integer>(sizes.size()),c_nodes).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}

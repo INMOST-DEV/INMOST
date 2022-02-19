@@ -699,8 +699,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							//Cell c = CreateCell(c_faces,hnodes).first;
-							Cell c = CreateCell(c_faces).first;
+							Cell c = CreateCell(c_faces,hnodes).first;
+							//Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -729,8 +729,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							//Cell c = CreateCell(c_faces, hnodes).first;
-							Cell c = CreateCell(c_faces).first;
+							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -760,8 +760,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							//Cell c = CreateCell(c_faces, hnodes).first;
-							Cell c = CreateCell(c_faces).first;
+							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -785,8 +785,8 @@ namespace INMOST
 								f_edges.at(1) = CreateEdge(e_nodes).first->GetHandle();
 								c_faces.push_back(CreateFace(f_edges).first);
 							}
-							//Cell c = CreateCell(c_faces, hnodes).first;
-							Cell c = CreateCell(c_faces).first;
+							Cell c = CreateCell(c_faces, hnodes).first;
+							//Cell c = CreateCell(c_faces).first;
 							newcells[q] = c->GetHandle();
 						}
 						else
@@ -800,7 +800,7 @@ namespace INMOST
 						assert(nread == 4);
 						const integer nodesnum[12] = { 0, 2, 1, 0, 1, 3, 1, 2, 3, 0, 3, 2 };
 						const integer sizes[4] = { 3, 3, 3, 3 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 4).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 4, hnodes).first.GetHandle();
 					}
 					else if (ctype == 12 || ctype == 11) // VTK_HEXAHEDRON or VTK_VOXEL
 					{
@@ -817,7 +817,7 @@ namespace INMOST
 						}
 						const integer nodesnum[24] = { 0, 4, 7, 3, 1, 2, 6, 5, 0, 1, 5, 4, 3, 7, 6, 2, 0, 3, 2, 1, 4, 5, 6, 7 };
 						const integer sizes[6] = { 4, 4, 4, 4, 4, 4 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 6).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 6, hnodes).first.GetHandle();
 					}
 					else if (ctype == 13) // VTK_WEDGE
 					{
@@ -825,14 +825,14 @@ namespace INMOST
 						const integer nodesnum[18] = { 0, 2, 5, 3, 1, 4, 5, 2, 0, 3, 4, 1, 3, 5, 4, 0, 1, 2 };
 						//const integer nodesnum[18] = { 0, 3, 5, 2, 0, 1, 4, 3, 1, 4, 5, 2, 3, 4, 5, 0, 2, 1 };
 						const integer sizes[5] = { 4, 4, 4, 3, 3 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 5).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 5, hnodes).first.GetHandle();
 					}
 					else if (ctype == 14) //VTK_PYRAMID
 					{
 						assert(nread == 5);
 						const integer nodesnum[16] = { 0, 4, 3, 0, 1, 4, 1, 2, 4, 3, 4, 2, 0, 3, 2, 1 };
 						const integer sizes[5] = { 3, 3, 3, 3, 4 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 5).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 5, hnodes).first.GetHandle();
 					}
 					else if (ctype == 15) //VTK_PENTAGONAL_PRISM
 					{
@@ -853,7 +853,7 @@ namespace INMOST
 						//9, 8, 7, 6, 5
 						//0, 1, 2, 3, 4
 						const integer sizes[7] = { 4, 4, 4, 4, 4, 5, 5 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 7).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 7, hnodes).first.GetHandle();
 					}
 					else if (ctype == 16) //VTK_HEXAGONAL_PRISM
 					{
@@ -872,7 +872,7 @@ namespace INMOST
 						//6, 7, 8, 9, 10, 11
 						//0, 1, 2, 3, 4, 5
 						const integer sizes[8] = { 4, 4, 4, 4, 4, 4, 6, 6 };
-						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 8).first.GetHandle();
+						newcells[q] = CreateCell(hnodes, nodesnum, sizes, 8, hnodes).first.GetHandle();
 					}
 					else if (ctype == 42) //VTK_POLYHEDRON
 						newcells[q] = newpolyh[npolyh++];

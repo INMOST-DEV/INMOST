@@ -8,6 +8,7 @@ const std::string measure_name = "PROTECTED_GEOM_UTIL_MEASURE";
 const std::string centroid_name = "PROTECTED_GEOM_UTIL_CENTROID";
 const std::string barycenter_name = "PROTECTED_GEOM_UTIL_BARYCENTER";
 
+
 namespace INMOST
 {
 	typedef struct orient_face_t
@@ -174,6 +175,104 @@ namespace INMOST
 		return ret;
 	}
 	
+	bool Edge::SameLine(const ElementArray<Node>& nodes) const
+	{
+		Storage::real eps = GetMeshLink()->GetEpsilon();
+		Storage::real_array va = getBeg().Coords(), vb = getEnd().Coords(), vc;
+		for (ElementArray<Node>::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+		{
+			vc = it->Coords();
+			if (triarea3d(va.data(), vb.data(), vc.data()) > eps)
+				return false;
+		}
+		return true;
+	}
+
+	bool Edge::SameLine(const ElementArray<Edge>& edges)
+	{
+		Storage::real eps = edges.GetMeshLink()->GetEpsilon(), v[3] = { 0,0,0 }, alpha, xa[3] = { 0,0,0 }, xv[3] = { 0,0,0 }, vtv;
+		Storage::integer mdim = edges.GetMeshLink()->GetDimensions();
+		Storage::real_array a = edges[0].getBeg().Coords(), b = edges[0].getEnd().Coords();
+		//first edge start and direction
+		vec_diff(b.data(), a.data(), v, mdim);
+		vtv = vec_dot_product(v, v, mdim);
+		for (ElementArray<Edge>::size_type it = 1; it < edges.size(); ++it)
+		{
+			Element::adj_type const& lc = edges.GetMeshLink()->LowConn(edges[it].GetHandle());
+			for (Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); ++jt)
+			{
+				Storage::real_array xn = Node(edges.GetMeshLink(), *jt).Coords();
+				//project vector to node
+				vec_diff(xn.data(), a.data(), xa, mdim);
+				alpha = vec_dot_product(v, xa, mdim) / vtv;
+				for (Storage::integer k = 0; k < mdim; ++k)
+					xv[k] = a[k] + alpha * v[k];
+				// check positions match
+				vec_diff(xn.data(), xv, xa, mdim);
+				if (vec_len2(xa, mdim) > eps * eps)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	bool Face::SamePlane(const ElementArray<Node>& nodes) const
+	{
+		Storage::real eps = GetMeshLink()->GetEpsilon(), nf[3] = { 0,0,0 }, xf[3] = { 0,0,0 }, d;
+		Storage::integer mdim = GetMeshLink()->GetDimensions();
+		UnitNormal(nf);
+		Centroid(xf);
+		d = vec_dot_product(nf, xf, mdim);
+		for (ElementArray<Node>::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+		{
+			Storage::real_array xn = it->Coords();
+			if (fabs(vec_dot_product(nf, xn.data(), mdim) - d) > eps)
+				return false;
+		}
+		return true;
+	}
+
+	bool Face::SamePlane(const ElementArray<Edge>& edges) const
+	{
+		Storage::real eps = GetMeshLink()->GetEpsilon(), nf[3] = { 0,0,0 }, xf[3] = { 0,0,0 }, d;
+		Storage::integer mdim = GetMeshLink()->GetDimensions();
+		UnitNormal(nf);
+		Centroid(xf);
+		d = vec_dot_product(xf, nf, mdim);
+		for (ElementArray<Edge>::const_iterator it = edges.begin(); it != edges.end(); ++it)
+		{
+			Element::adj_type const& lc = GetMeshLink()->LowConn(*it);
+			for (Element::adj_type::const_iterator jt = lc.begin(); jt != lc.end(); ++jt)
+			{
+				Storage::real_array xn = Node(GetMeshLink(), *jt).Coords();
+				if (fabs(vec_dot_product(nf, xn.data(), mdim) - d) > eps)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	bool Face::SamePlane(const ElementArray<Face>& faces)
+	{
+		Storage::real eps = faces.GetMeshLink()->GetEpsilon(), nf[3] = { 0,0,0 }, xf[3] = { 0,0,0 }, nf2[3] = { 0,0,0 }, xf2[3] = { 0,0,0 }, d;
+		Storage::integer mdim = faces.GetMeshLink()->GetDimensions();
+		faces[0].UnitNormal(nf);
+		faces[0].Centroid(xf);
+		d = vec_dot_product(nf, xf, mdim);
+		for (ElementArray<Face>::size_type it = 1; it < faces.size(); ++it)
+		{
+			faces[it].Centroid(xf2);
+			if (fabs(vec_dot_product(nf, xf2, mdim) - d) > eps)
+				return false;
+			else
+			{
+				faces[it].UnitNormal(nf2);
+				if (fabs(fabs(vec_dot_product(nf, nf2, mdim)) - 1) > eps)
+					return false;
+			}
+		}
+		return true;
+	}
 	
 	Cell Cell::Neighbour(Face f) const
 	{
@@ -958,12 +1057,45 @@ namespace INMOST
 		}
 		else SetGeometricType(h,Element::Vertex);
 	}
+
+	void Mesh::RecomputeGeometricData(HandleType e, GeometricData d)
+	{
+		if (d == ORIENTATION && HaveGeometricData(ORIENTATION, FACE))
+		{
+			if (GetHandleElementType(e) == CELL) //then correct the normal
+			{
+				Element::adj_type& lc = LowConn(e); //faces
+				for (Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
+					if (!GetMarker(*it, HideMarker()))
+					{
+						Element::adj_type & hc = HighConn(*it);
+						if( Mesh::Count(&hc[0],hc.size(),HideMarker()) == 1 ||
+							hc[Mesh::getNext(hc.data(), (enumerator)hc.size(), ENUMUNDEF, HideMarker())] == e)
+							Face(this, *it)->FixNormalOrientation();
+					}
+			}
+			else if (GetHandleElementType(e) == FACE)
+				Face(this, e)->FixNormalOrientation();
+		}
+		else if (HaveGeometricData(d, GetHandleElementType(e))) //compute centroid first
+		{
+			Tag t = GetGeometricTag(d);
+			Storage::real* a = static_cast<Storage::real*>(MGetDenseLink(e, t));
+			HideGeometricData(d, GetHandleElementType(e));
+			GetGeometricData(e, d, a);
+			ShowGeometricData(d, GetHandleElementType(e));
+		}
+	}
 	
 	void Mesh::RecomputeGeometricData(HandleType e)
 	{
-		if (GetMarker(e, UpdateGeometryMarker())) //prevent recursive entry
-			RemMarker(e, UpdateGeometryMarker());
+		RecomputeGeometricData(e, CENTROID);
+		RecomputeGeometricData(e, NORMAL);
+		RecomputeGeometricData(e, ORIENTATION);
+		RecomputeGeometricData(e, MEASURE);
+		RecomputeGeometricData(e, BARYCENTER);
 		//static std::map<Element *, int> numfixes;
+		/*
 		GeometricData d ;
 		for(d = CENTROID; d <= NORMAL; d++) // first compute centroids and normals 
 		{
@@ -1006,11 +1138,8 @@ namespace INMOST
 				ShowGeometricData(d,GetHandleElementType(e));
 			}
 		}
-		
-		if( GetHandleElementType(e) == CELL ) //then correct the normal
-		{
-			
-		}
+		*/
+
 	}
 	
 	
@@ -1503,7 +1632,7 @@ namespace INMOST
 		switch(type)
 		{
 			case MEASURE:
-			if( HaveGeometricData(MEASURE,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+			if( HaveGeometricData(MEASURE,etype) )// && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 			{
 				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				*ret = static_cast<Storage::real *>(MGetDenseLink(e,measure_tag))[0];
@@ -1659,7 +1788,7 @@ namespace INMOST
 			case CENTROID:
 				if(etype == NODE )
 					memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-				else if(HaveGeometricData(CENTROID,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+				else if(HaveGeometricData(CENTROID,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
 					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
@@ -1680,7 +1809,7 @@ namespace INMOST
 			case BARYCENTER:
 			if(etype == NODE )
 				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-			else if(HaveGeometricData(BARYCENTER,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+			else if(HaveGeometricData(BARYCENTER,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 			{
 				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
@@ -1852,7 +1981,7 @@ namespace INMOST
 			break;
 			case NORMAL:
 			{
-				if( HaveGeometricData(NORMAL,etype) && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+				if( HaveGeometricData(NORMAL,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
 					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
 					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);

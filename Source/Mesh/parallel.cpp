@@ -1681,7 +1681,7 @@ namespace INMOST
 
 				
 				Storage::real epsilon = GetEpsilon();
-				/*
+				
 				GeomParam table;
 				
 				//if( !only_new )
@@ -1696,7 +1696,7 @@ namespace INMOST
 					REPORT_STR("Prepare geometric data");
 					EXIT_BLOCK();
 				}
-				*/
+				
 			
 				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
 				ENTER_BLOCK();
@@ -2277,9 +2277,9 @@ namespace INMOST
 				}
 				EXIT_BLOCK();
 				//if( !only_new ) 
-				//ENTER_BLOCK();
-				//RemoveGeometricData(table);	
-				//EXIT_BLOCK();
+				ENTER_BLOCK();
+				RemoveGeometricData(table);	
+				EXIT_BLOCK();
 			}
 		}
 		EXIT_BLOCK();
@@ -3125,7 +3125,7 @@ namespace INMOST
 				{
 					if( (!select || GetMarker(*eit,select)) && HaveData(*eit,tag) )
 					{
-						REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
+						//REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send[count]++;
 						INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
@@ -3292,7 +3292,7 @@ namespace INMOST
 					{
 						assert( k < array_size_recv.size() );
 						assert( array_size_recv[k] < elements[i].size() );
-						REPORT_VAL("element index", array_size_recv[k]);
+						//REPORT_VAL("element index", array_size_recv[k]);
 						eit = elements[i].begin() + array_size_recv[k++];
 						assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 						array_size = size;
@@ -4074,6 +4074,18 @@ namespace INMOST
 							SetMarker(*jt,busy);
 						}
 					}
+					if (etypenum == ElementNum(CELL) && HighConnTag().isDefined(CELL))
+					{
+						Element::adj_type const& adj = HighConn(*it);
+						for (Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
+						{
+							if (!Hidden(*jt) && !GetMarker(*jt, busy))
+							{
+								selems[0].push_back(*jt);
+								SetMarker(*jt, busy);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -4403,10 +4415,14 @@ namespace INMOST
 		//pack cells
 		ENTER_BLOCK();
 		{
+			bool node_conns = HighConnTag().isDefined(CELL);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[3].size());
+			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(node_conns ? selems[3].size() : 0);
 			std::vector<Storage::integer> low_conn_nums;
-			low_conn_nums.reserve(selems[3].size()*6);
-			size_t num = 0, k = 0;
+			std::vector<Storage::integer> high_conn_nums;
+			low_conn_nums.reserve(selems[3].size() * 6);
+			if( node_conns ) high_conn_nums.reserve(selems[3].size() * 8);
+			size_t num = 0, k = 0, num_high = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			for(element_set::iterator it = selems[3].begin(); it != selems[3].end(); it++) 
 			{
@@ -4421,6 +4437,7 @@ namespace INMOST
 				if( pack_gid )
 				{
 					low_conn_size[k] = ENUMUNDEF;
+					if( node_conns ) high_conn_size[k] = 0;
 					low_conn_nums.push_back(Integer(*it,tag_owner));
 					low_conn_nums.push_back(GlobalID(*it));
 					num+=2;
@@ -4446,6 +4463,27 @@ namespace INMOST
 						low_conn_nums.push_back(arr_position[*jt]);
 						low_conn_size[k]++;
 						num++;
+					}
+					if (node_conns)
+					{
+						high_conn_size[k] = 0;
+						Element::adj_type const& hc = HighConn(*it);
+						for (Element::adj_type::const_iterator jt = hc.begin(); jt != hc.end(); jt++) if (!Hidden(*jt))
+						{
+							//TODO 44 old
+							//element_set::iterator find = std::lower_bound(selems[0].begin(),selems[0].end(),(*jt));
+							//assert( find == selems[0].end());
+							//assert((*find) == (*jt) );
+							//high_conn_nums.push_back(static_cast<Storage::integer>(find - selems[0].begin()));
+							//assert( GetMarker(*jt,busy) );
+							assert(HaveData(*jt, arr_position));
+							assert((size_t)arr_position[*jt] < selems[0].size());
+							assert(*jt == selems[0][arr_position[*jt]]);
+							//REPORT_VAL("pack node position",Integer(*jt,arr_position));
+							high_conn_nums.push_back(arr_position[*jt]);
+							high_conn_size[k]++;
+							num_high++;
+						}
 					}
 				}
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
@@ -4473,6 +4511,7 @@ namespace INMOST
 				k++;
 			}
 			REPORT_VAL("number of cell faces",num);
+			REPORT_VAL("number of cell nodes", num_high);
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
 			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
@@ -4480,6 +4519,11 @@ namespace INMOST
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			if (node_conns)
+			{
+				pack_data_vector(buffer, high_conn_size, GetCommunicator());
+				pack_data_vector(buffer, high_conn_nums, GetCommunicator());
+			}
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -5132,20 +5176,28 @@ namespace INMOST
 		time = Timer();
 		//unpack cells
 		{
+			bool node_conns = HighConnTag().isDefined(CELL);
 			ElementArray<Face> c_faces(this);
 			ElementArray<Node> c_nodes(this);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
+			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<Storage::integer> high_conn_nums;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of cells",num);
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			if (node_conns)
+			{
+				unpack_data_vector(buffer, buffer_position, high_conn_size, GetCommunicator());
+				unpack_data_vector(buffer, buffer_position, high_conn_nums, GetCommunicator());
+			}
 			REPORT_VAL("buffer position",buffer_position);
 			selems[3].reserve(num);
 			
-			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0, shift_high = 0;
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_cell = InvalidHandle();
@@ -5172,13 +5224,23 @@ namespace INMOST
 						c_faces.at(j) = selems[2][low_conn_nums[shift+j]];
 					}
 					shift += low_conn_size[i];
-					
+					if (node_conns)
+					{
+						c_nodes.resize(high_conn_size[i]);
+						for (INMOST_DATA_ENUM_TYPE j = 0; j < high_conn_size[i]; j++)
+						{
+							assert((size_t)high_conn_nums[shift_high + j] < selems[0].size());
+							//REPORT_VAL("Unpack node position",high_conn_nums[shift_high+j]);
+							c_nodes.at(j) = selems[0][high_conn_nums[shift_high + j]];
+						}
+						shift_high += high_conn_size[i];
+					}
 					if( !c_faces.empty() )
 						new_cell = FindSharedAdjacency(c_faces.data(),static_cast<enumerator>(c_faces.size()));
 				}
 				if( new_cell == InvalidHandle() )
 				{
-					new_cell = CreateCell(c_faces/*,c_nodes*/).first->GetHandle();
+					new_cell = CreateCell(c_faces,c_nodes).first->GetHandle();
 					assert(GetStatus(new_cell) == Element::Any);
 					SetStatus(new_cell,Element::Ghost);
 					IntegerDF(new_cell,tag_owner) = -1;

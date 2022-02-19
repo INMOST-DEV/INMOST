@@ -255,8 +255,8 @@ namespace INMOST
 		__INLINE void             clear       () {container.clear();}
 		__INLINE void             reserve     (size_type n) {container.reserve(n);}
 		__INLINE size_type        size        () const {return container.size(); }
-		__INLINE HandleType *     data        () {return container.data();}
-		__INLINE const HandleType*data        () const {return container.data();}
+		__INLINE HandleType *     data        () {return container.empty() ? NULL : &container[0];}
+		__INLINE const HandleType*data        () const {return container.empty() ? NULL : &container[0];}
 		__INLINE Mesh *           GetMeshLink () const {assert(m_link); return m_link;}
 		__INLINE void             SetMeshLink (Mesh * m) {m_link = m;}
 		//implemented in mesh_array.cpp
@@ -561,6 +561,8 @@ namespace INMOST
 		static ElementArray<Edge>   SplitEdge               (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect); //provide ordered array of nodes, that lay between former nodes of the edge
 		static bool                 TestSplitEdge           (Edge e, const ElementArray<Node> & nodes, MarkerType del_protect);
 		static Node                 CollapseEdge            (Edge e);
+		bool                        SameLine                (const ElementArray<Node>& nodes) const;
+		static bool                 SameLine                (const ElementArray<Edge>& edges);
 		//implemented in geometry.cpp
 		Storage::real               Length                  () const;
 		///Swap positions of first node and last node
@@ -652,7 +654,11 @@ namespace INMOST
 		void                        OrientedUnitNormal      (Cell c, real * nrm) const;
 		bool                        FixNormalOrientation    (bool allow_swap = true) const;  //returns true if orientation was corrected, otherwise returns false
 		bool                        CheckNormalOrientation  () const; //returns true if orientation is correct, otherwise returns false
-		bool                        Closure                 () const; // test integrity of polygon
+		bool                        Closure                 () const;
+		bool                        SamePlane               (const ElementArray<Edge>& edges) const;
+		bool                        SamePlane               (const ElementArray<Node>& nodes) const;
+		static bool                 SamePlane               (const ElementArray<Face>& faces);
+		// test integrity of polygon
 		bool                        Inside                  (const real * point) const; //is point inside face
 	};
 
@@ -1497,11 +1503,11 @@ namespace INMOST
 		std::pair<Edge,bool>              CreateEdge         (const ElementArray<Node> & nodes);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Edge> & edges);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Node> & nodes);
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Face> & faces);//, const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_f_nodes, const integer * c_f_numnodes, integer num_c_faces);//, 
-		                                                      //const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
-		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces);//, 
-		                                                      //const ElementArray<Node> & suggest_nodes_order = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Face> & faces, const ElementArray<Node> & suggest_nodes = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_f_nodes, const integer * c_f_numnodes, integer num_c_faces, 
+		                                                      const ElementArray<Node> & suggest_nodes = ElementArray<Node>(NULL));
+		std::pair<Cell,bool>              CreateCell         (const ElementArray<Node> & c_nodes, const integer * c_f_nodeinds, const integer * c_f_numnodes, integer num_c_faces, 
+		                                                      const ElementArray<Node> & suggest_nodes = ElementArray<Node>(NULL));
 		std::pair<ElementSet,bool>        CreateSet          (std::string name);
 		/// Same as Mesh::CreateSet without checking existance of the set
 		std::pair<ElementSet,bool>        CreateSetUnique    (std::string name);
@@ -3275,6 +3281,7 @@ namespace INMOST
 		integer                           CountBoundaryFaces ();
 		integer                           CountInteriorFaces ();
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
+		void                              RecomputeGeometricData(HandleType e, GeometricData d);
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);
 		/// Compute node-centered interpolation on 2d face for point.
 		/// Point should be inside face or on its boundary.
@@ -3303,7 +3310,8 @@ namespace INMOST
 		void MarkNormalOrientation(MarkerType mrk);
 		//implemented in modify.cpp
 	private:
-		MarkerType hide_element, new_element, update_geometry, temp_hide_element;
+		MarkerType hide_element, new_element, temp_hide_element;
+		//MarkerType update_geometry;
 	public:
 		/// Check whether code runs between Mesh::BeginModification, Mesh::EndModification scope.
 		/// In case mesh is modified, on element construction Mesh::TieElements will always place elements 
@@ -3312,7 +3320,7 @@ namespace INMOST
 		bool                              isMeshModified     () const {return new_element != 0;} 
 		MarkerType                        HideMarker         () const {return hide_element;}
 		MarkerType                        NewMarker          () const {return new_element;}
-		MarkerType                        UpdateGeometryMarker() const {return update_geometry;}
+		//MarkerType                        UpdateGeometryMarker() const {return update_geometry;}
 		void                              SwapModification   (bool recompute_geometry); // swap hidden and new elements, so that old mesh is recovered
 		void                              BeginModification  ();  //allow elements to be hidden
 		/// After this function any link to deleted element will be replaced by InvalidHandle().

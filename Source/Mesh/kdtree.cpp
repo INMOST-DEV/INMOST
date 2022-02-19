@@ -236,28 +236,38 @@ namespace INMOST
 					checkm = true;
 					if( m->GetMarker(set[0].e,m->HideMarker()) ) invm = true;
 				}
-				//Element::adj_type & nodes = m->HighConn(set[0].e); 
 				std::vector<HandleType> nodes;
-				MarkerType mrk = m->CreatePrivateMarker();
 				if (GetHandleElementType(set[0].e) == CELL)
 				{
-					Element::adj_type& faces = m->LowConn(set[0].e);
-					for (unsigned k = 0; k < faces.size(); ++k)
+					if (m->HighConnTag().isDefined(CELL))
 					{
-						Element::adj_type& fedges = m->LowConn(faces[k]);
-						for (unsigned q = 0; q < fedges.size(); ++q)
+						Element::adj_type& cnodes = m->HighConn(set[0].e);
+						nodes.insert(nodes.end(), cnodes.begin(), cnodes.end());
+					}
+					else
+					{
+						MarkerType mrk = m->CreatePrivateMarker();
+						Element::adj_type& faces = m->LowConn(set[0].e);
+						for (unsigned k = 0; k < faces.size(); ++k)
 						{
-							Element::adj_type& enodes = m->LowConn(fedges[q]);
-							for (unsigned l = 0; l < enodes.size(); ++l) if (!m->GetPrivateMarker(enodes[l], mrk))
+							Element::adj_type& fedges = m->LowConn(faces[k]);
+							for (unsigned q = 0; q < fedges.size(); ++q)
 							{
-								nodes.push_back(enodes[l]);
-								m->SetPrivateMarker(enodes[l], mrk);
+								Element::adj_type& enodes = m->LowConn(fedges[q]);
+								for (unsigned l = 0; l < enodes.size(); ++l) if (!m->GetPrivateMarker(enodes[l], mrk))
+								{
+									nodes.push_back(enodes[l]);
+									m->SetPrivateMarker(enodes[l], mrk);
+								}
 							}
 						}
+						if (!nodes.empty()) m->RemPrivateMarkerArray(&nodes[0], (Storage::enumerator)nodes.size(), mrk);
+						m->ReleasePrivateMarker(mrk);
 					}
 				}
 				else if (GetHandleElementType(set[0].e) == FACE)
 				{
+					MarkerType mrk = m->CreatePrivateMarker();
 					Element::adj_type& fedges = m->LowConn(set[0].e);
 					for (unsigned q = 0; q < fedges.size(); ++q)
 					{
@@ -268,14 +278,14 @@ namespace INMOST
 							m->SetPrivateMarker(enodes[l], mrk);
 						}
 					}
+					if (!nodes.empty()) m->RemPrivateMarkerArray(&nodes[0], (Storage::enumerator)nodes.size(), mrk);
+					m->ReleasePrivateMarker(mrk);
 				}
 				else
 				{
 					std::cout << "Unsupported element type in kd-tree" << std::endl;
 					throw Impossible;
 				}
-				if( !nodes.empty() ) m->RemPrivateMarkerArray(&nodes[0],(Storage::enumerator)nodes.size(),mrk);
-				m->ReleasePrivateMarker(mrk);
 				bbox[0] = bbox[2] = bbox[4] = 1.0e20f;
 				bbox[1] = bbox[3] = bbox[5] = -1.0e20f;
 				if( checkm )

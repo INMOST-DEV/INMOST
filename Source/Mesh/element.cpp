@@ -134,51 +134,61 @@ namespace INMOST
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn + 3 )
+				else if( i == myconn + 3 ) // these are cells of the node
 				{
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); it++)
+					if( mesh->LowConnTag().isDefined(NODE))
+						ret += static_cast<enumerator>(mesh->LowConn(GetHandle()).size());
+					else
 					{
-						adj_type const & ihc = mesh->HighConn(hc[it]);
-						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); it++)
 						{
-							adj_type const & jhc = mesh->HighConn(ihc[jt]);
-							for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
-								if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
-								{
-									result.push_back(jhc[kt]);
-									mesh->SetPrivateMarker(jhc[kt],mrk);
-								}
+							adj_type const& ihc = mesh->HighConn(hc[it]);
+							for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+							{
+								adj_type const& jhc = mesh->HighConn(ihc[jt]);
+								for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+									if (!mesh->GetPrivateMarker(jhc[kt], mrk))
+									{
+										result.push_back(jhc[kt]);
+										mesh->SetPrivateMarker(jhc[kt], mrk);
+									}
+							}
 						}
+						ret += static_cast<enumerator>(result.size());
+						if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
 					}
-					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-					result.clear();
-					mesh->ReleasePrivateMarker(mrk);
 				}					
-				else if( i == myconn - 3 )
+				else if( i == myconn - 3 ) // these are nodes of the cell
 				{
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); it++)
+					if( mesh->HighConnTag().isDefined(CELL))
+						ret += static_cast<enumerator>(mesh->HighConn(GetHandle()).size());
+					else
 					{
-						adj_type const & ilc = mesh->LowConn(lc[it]);
-						for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); it++)
 						{
-							adj_type const & jlc = mesh->LowConn(ilc[jt]);
-							for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
-								if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
-								{
-									result.push_back(jlc[kt]);
-									mesh->SetPrivateMarker(jlc[kt],mrk);
-								}
+							adj_type const& ilc = mesh->LowConn(lc[it]);
+							for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+							{
+								adj_type const& jlc = mesh->LowConn(ilc[jt]);
+								for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+									if (!mesh->GetPrivateMarker(jlc[kt], mrk))
+									{
+										result.push_back(jlc[kt]);
+										mesh->SetPrivateMarker(jlc[kt], mrk);
+									}
+							}
 						}
-					}		
-					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-					result.clear();
-					mesh->ReleasePrivateMarker(mrk);
+						ret += static_cast<enumerator>(result.size());
+						if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
@@ -243,51 +253,69 @@ namespace INMOST
 					result.clear();
 					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn + 3 )
+				else if( i == myconn + 3 ) // these are cells of the node
 				{
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+					if (mesh->LowConnTag().isDefined(NODE))
 					{
-						adj_type const & ihc = mesh->HighConn(hc[it]);
-						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-						{
-							adj_type const & jhc = mesh->HighConn(ihc[jt]);
-							for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
-								if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
-								{
-									result.push_back(jhc[kt]);
-									mesh->SetPrivateMarker(jhc[kt],mrk);
-								}
-						}
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); ++it)
+							if (!mesh->GetMarker(lc[it], hm)) ret++;
 					}
-					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-					result.clear();
-					mesh->ReleasePrivateMarker(mrk);
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
+						{
+							adj_type const& ihc = mesh->HighConn(hc[it]);
+							for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
+							{
+								adj_type const& jhc = mesh->HighConn(ihc[jt]);
+								for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
+									if (!mesh->GetPrivateMarker(jhc[kt], mrk))
+									{
+										result.push_back(jhc[kt]);
+										mesh->SetPrivateMarker(jhc[kt], mrk);
+									}
+							}
+						}
+						ret += static_cast<enumerator>(result.size());
+						if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
-				else if( i == myconn - 3 )
+				else if( i == myconn - 3 ) // these are nodes of the cell
 				{
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+					if (mesh->HighConnTag().isDefined(CELL))
 					{
-						adj_type const & ilc = mesh->LowConn(lc[it]);
-						for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
-						{
-							adj_type const & jlc = mesh->LowConn(ilc[jt]);
-							for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
-								if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
-								{
-									result.push_back(jlc[kt]);
-									mesh->SetPrivateMarker(jlc[kt],mrk);
-								}
-						}
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); ++it)
+							if (!mesh->GetMarker(hc[it], hm)) ret++;
 					}
-					ret += static_cast<enumerator>(result.size());
-					if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-					result.clear();
-					mesh->ReleasePrivateMarker(mrk);
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
+						{
+							adj_type const& ilc = mesh->LowConn(lc[it]);
+							for (adj_type::size_type jt = 0; jt < ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
+							{
+								adj_type const& jlc = mesh->LowConn(ilc[jt]);
+								for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
+									if (!mesh->GetPrivateMarker(jlc[kt], mrk))
+									{
+										result.push_back(jlc[kt]);
+										mesh->SetPrivateMarker(jlc[kt], mrk);
+									}
+							}
+						}
+						ret += static_cast<enumerator>(result.size());
+						if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+						result.clear();
+						mesh->ReleasePrivateMarker(mrk);
+					}
 				}
 			}
 		}
@@ -372,55 +400,73 @@ namespace INMOST
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 ) // these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (invert ^ mesh->GetPrivateMarker(lc[it], mask)) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++)
 							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
 								{
-									if( (invert ^ mesh->GetPrivateMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
 									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										if ((invert ^ mesh->GetPrivateMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 ) // these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (invert ^ mesh->GetPrivateMarker(hc[it], mask)) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++)
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
 								{
-									if( (invert ^ mesh->GetPrivateMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetPrivateMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
 									}
 								}
 							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
 					}
 				}
 			}
@@ -483,55 +529,73 @@ namespace INMOST
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 ) // these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
-								{
-									if( (invert ^ mesh->GetPrivateMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
-									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
-									}
-								}
-							}
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (!mesh->GetMarker(lc[it], hm) && (invert ^ mesh->GetPrivateMarker(lc[it], mask))) ret++;
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
-					}
-					else if( i == myconn - 3 )
-					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+						else
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
 								{
-									if( (invert ^ mesh->GetPrivateMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetPrivateMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
-						}		
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
+						}
+					}
+					else if( i == myconn - 3 ) // these are nodes of the cell
+					{
+						if (mesh->HighConnTag().isDefined(CELL))
+						{
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (!mesh->GetMarker(hc[it], hm) && (invert ^ mesh->GetPrivateMarker(hc[it], mask))) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
+							{
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
+								{
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
+									{
+										if ((invert ^ mesh->GetPrivateMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
+									}
+								}
+							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
 				}
 			}
@@ -596,55 +660,73 @@ namespace INMOST
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 ) // these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (invert ^ mesh->GetMarker(lc[it], mask)) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++)
 							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
 								{
-									if( (invert ^ mesh->GetMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
 									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										if ((invert ^ mesh->GetMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 )// these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (invert ^ mesh->GetMarker(hc[it], mask)) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++)
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
 								{
-									if( (invert ^ mesh->GetMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
 									}
 								}
 							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
 					}
 				}
 			}
@@ -707,55 +789,73 @@ namespace INMOST
 						result.clear();
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 )// these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
-							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
-								{
-									if( (invert ^ mesh->GetMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
-									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
-									}
-								}
-							}
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (!mesh->GetMarker(lc[it], hm) && (invert ^ mesh->GetMarker(lc[it], mask))) ret++;
 						}
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
-					}
-					else if( i == myconn - 3 )
-					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+						else
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
 								{
-									if( (invert ^ mesh->GetMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
-						}		
-						ret += static_cast<enumerator>(result.size());
-						if( !result.empty() ) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(),mrk);
-						result.clear();
-						mesh->ReleasePrivateMarker(mrk);
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
+						}
+					}
+					else if( i == myconn - 3 )// these are nodes of the cell
+					{
+						if (mesh->HighConnTag().isDefined(CELL))
+						{
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (!mesh->GetMarker(hc[it], hm) && (invert ^ mesh->GetMarker(hc[it], mask))) ret++;
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
+							{
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
+								{
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
+									{
+										if ((invert ^ mesh->GetMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
+									}
+								}
+							}
+							ret += static_cast<enumerator>(result.size());
+							if (!result.empty()) mesh->RemPrivateMarkerArray(&result[0], (enumerator)result.size(), mrk);
+							result.clear();
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
 				}
 			}
@@ -831,57 +931,63 @@ namespace INMOST
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn + 3 )
+				else if( i == myconn + 3 ) // these are cells of the node
 				{
-					//~ std::vector<HandleType> tmp;
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); it++)
+					if (mesh->LowConnTag().isDefined(NODE))
 					{
-						adj_type const & ihc = mesh->HighConn(hc[it]);
-						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-							//~ if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						result.insert(result.end(), lc.begin(), lc.end());
+					}
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); it++)
+						{
+							adj_type const& ihc = mesh->HighConn(hc[it]);
+							for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
 							{
-								//~ mesh->SetPrivateMarker(ihc[jt],mrk);
-								//~ tmp.push_back(ihc[jt]);
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
-									if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
+								adj_type const& jhc = mesh->HighConn(ihc[jt]);
+								for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+									if (!mesh->GetPrivateMarker(jhc[kt], mrk))
 									{
 										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										mesh->SetPrivateMarker(jhc[kt], mrk);
 									}
 							}
+						}
+						result.RemPrivateMarker(mrk);
+						mesh->ReleasePrivateMarker(mrk);
 					}
-					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
-					result.RemPrivateMarker(mrk);
-					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn - 3 )
+				else if( i == myconn - 3 ) // these are nodes of the cell
 				{
-					//~ std::vector<HandleType> tmp;
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); it++)
+					if (mesh->HighConnTag().isDefined(CELL))
 					{
-						adj_type const & ilc = mesh->LowConn(lc[it]);
-						for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-							//~ if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						result.insert(result.end(), hc.begin(), hc.end());
+					}
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); it++)
+						{
+							adj_type const& ilc = mesh->LowConn(lc[it]);
+							for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
 							{
-								//~ mesh->SetPrivateMarker(ilc[jt],mrk);
-								//~ tmp.push_back(ilc[jt]);
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
-									if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
+								adj_type const& jlc = mesh->LowConn(ilc[jt]);
+								for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+									if (!mesh->GetPrivateMarker(jlc[kt], mrk))
 									{
 										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										mesh->SetPrivateMarker(jlc[kt], mrk);
 									}
 							}
+						}
+						result.RemPrivateMarker(mrk);
+						mesh->ReleasePrivateMarker(mrk);
 					}
-					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
-					result.RemPrivateMarker(mrk);
-					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -942,65 +1048,69 @@ namespace INMOST
 					result.RemPrivateMarker(mrk);
 					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn + 3 )
+				else if( i == myconn + 3 )// these are cells of the node
 				{
-					//~ std::vector<HandleType> tmp;
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & hc = mesh->HighConn(GetHandle());
-					for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+					if (mesh->LowConnTag().isDefined(NODE))
 					{
-						adj_type const & ihc = mesh->HighConn(hc[it]);
-						for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); ++it)
+							if (!mesh->GetMarker(lc[it], hm)) result.push_back(lc[it]);
+					}
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
 						{
-							//~ if( !mesh->GetPrivateMarker(ihc[jt],mrk) )
+							adj_type const& ihc = mesh->HighConn(hc[it]);
+							for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
 							{
-								//~ mesh->SetPrivateMarker(ihc[jt],mrk);
-								//~ tmp.push_back(ihc[jt]);
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
+								adj_type const& jhc = mesh->HighConn(ihc[jt]);
+								for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
 								{
-									if( !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									if (!mesh->GetPrivateMarker(jhc[kt], mrk))
 									{
 										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										mesh->SetPrivateMarker(jhc[kt], mrk);
 									}
 								}
 							}
 						}
+						result.RemPrivateMarker(mrk);
+						mesh->ReleasePrivateMarker(mrk);
 					}
-					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
-					result.RemPrivateMarker(mrk);
-					mesh->ReleasePrivateMarker(mrk);
 				}
-				else if( i == myconn - 3 )
+				else if( i == myconn - 3 ) // these are nodes of the cell
 				{
-					//~ std::vector<HandleType> tmp;
-					MarkerType mrk = mesh->CreatePrivateMarker();
-					adj_type const & lc = mesh->LowConn(GetHandle());
-					for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+					if (mesh->HighConnTag().isDefined(CELL))
 					{
-						adj_type const & ilc = mesh->LowConn(lc[it]);
-						for(adj_type::size_type jt = 0; jt != ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+						adj_type const& hc = mesh->HighConn(GetHandle());
+						for (adj_type::size_type it = 0; it < hc.size(); ++it)
+							if (!mesh->GetMarker(hc[it], hm)) result.push_back(hc[it]);
+					}
+					else
+					{
+						MarkerType mrk = mesh->CreatePrivateMarker();
+						adj_type const& lc = mesh->LowConn(GetHandle());
+						for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
 						{
-							//~ if( !mesh->GetPrivateMarker(ilc[jt],mrk) )
+							adj_type const& ilc = mesh->LowConn(lc[it]);
+							for (adj_type::size_type jt = 0; jt != ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
 							{
-								//~ mesh->SetPrivateMarker(ilc[jt],mrk);
-								//~ tmp.push_back(ilc[jt]);
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+								adj_type const& jlc = mesh->LowConn(ilc[jt]);
+								for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
 								{
-									if( !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									if (!mesh->GetPrivateMarker(jlc[kt], mrk))
 									{
 										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										mesh->SetPrivateMarker(jlc[kt], mrk);
 									}
 								}
 							}
 						}
+						result.RemPrivateMarker(mrk);
+						mesh->ReleasePrivateMarker(mrk);
 					}
-					//~ if(!tmp.empty()) mesh->RemPrivateMarkerArray(&tmp[0],tmp.size(),mrk);
-					result.RemPrivateMarker(mrk);
-					mesh->ReleasePrivateMarker(mrk);
 				}
 			}
 		}
@@ -1080,47 +1190,65 @@ namespace INMOST
 						result.RemPrivateMarker(mrk);
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 ) // these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
-									if( (invert ^ mesh->GetPrivateMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
-									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
-									}
-							}
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (invert ^ mesh->GetPrivateMarker(lc[it], mask)) result.push_back(lc[it]);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+								{
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+										if ((invert ^ mesh->GetPrivateMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
+								}
+							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 ) // these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
-									if( (invert ^ mesh->GetPrivateMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
-									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
-									}
-							}
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (invert ^ mesh->GetPrivateMarker(hc[it], mask)) result.push_back(hc[it]);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+								{
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+										if ((invert ^ mesh->GetPrivateMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
+								}
+							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
 				}
 			}
@@ -1181,51 +1309,69 @@ namespace INMOST
 						result.RemPrivateMarker(mrk);
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 ) // these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if ((invert ^ mesh->GetPrivateMarker(lc[it], mask)) && !mesh->GetMarker(lc[it], hm)) result.push_back(lc[it]);
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
 							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
 								{
-									if( (invert ^ mesh->GetPrivateMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
 									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										if ((invert ^ mesh->GetPrivateMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 ) // these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if ((invert ^ mesh->GetPrivateMarker(hc[it], mask)) && !mesh->GetMarker(hc[it], hm)) result.push_back(hc[it]);
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
 								{
-									if( (invert ^ mesh->GetPrivateMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetPrivateMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
 									}
 								}
 							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
 					}
 				}
 			}
@@ -1287,47 +1433,65 @@ namespace INMOST
 						result.RemPrivateMarker(mrk);
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 )// these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++)
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++)
-							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++)
-									if( (invert ^ mesh->GetMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
-									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
-									}
-							}
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if (invert ^ mesh->GetMarker(lc[it], mask)) result.push_back(lc[it]);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++)
+							{
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++)
+								{
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++)
+										if ((invert ^ mesh->GetMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
+								}
+							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 )// these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++)
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++)
-							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++)
-									if( (invert ^ mesh->GetMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
-									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
-									}
-							}
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if (invert ^ mesh->GetMarker(hc[it], mask)) result.push_back(hc[it]);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++)
+							{
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++)
+								{
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++)
+										if ((invert ^ mesh->GetMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
+								}
+							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
+						}
 					}
 				}
 			}
@@ -1388,51 +1552,69 @@ namespace INMOST
 						result.RemPrivateMarker(mrk);
 						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn + 3 )
+					else if( i == myconn + 3 )// these are cells of the node
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & hc = mesh->HighConn(GetHandle());
-						for(adj_type::size_type it = 0; it < hc.size(); it++) if( !mesh->GetMarker(hc[it],hm) )
+						if (mesh->LowConnTag().isDefined(NODE))
 						{
-							adj_type const & ihc = mesh->HighConn(hc[it]);
-							for(adj_type::size_type jt = 0; jt < ihc.size(); jt++) if( !mesh->GetMarker(ihc[jt],hm) )
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); ++it)
+								if ((invert ^ mesh->GetMarker(lc[it], mask)) && !mesh->GetMarker(lc[it], hm)) result.push_back(lc[it]);
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); it++) if (!mesh->GetMarker(hc[it], hm))
 							{
-								adj_type const & jhc = mesh->HighConn(ihc[jt]);
-								for(adj_type::size_type kt = 0; kt < jhc.size(); kt++) if( !mesh->GetMarker(jhc[kt],hm) )
+								adj_type const& ihc = mesh->HighConn(hc[it]);
+								for (adj_type::size_type jt = 0; jt < ihc.size(); jt++) if (!mesh->GetMarker(ihc[jt], hm))
 								{
-									if( (invert ^ mesh->GetMarker(jhc[kt],mask)) && !mesh->GetPrivateMarker(jhc[kt],mrk) )
+									adj_type const& jhc = mesh->HighConn(ihc[jt]);
+									for (adj_type::size_type kt = 0; kt < jhc.size(); kt++) if (!mesh->GetMarker(jhc[kt], hm))
 									{
-										result.push_back(jhc[kt]);
-										mesh->SetPrivateMarker(jhc[kt],mrk);
+										if ((invert ^ mesh->GetMarker(jhc[kt], mask)) && !mesh->GetPrivateMarker(jhc[kt], mrk))
+										{
+											result.push_back(jhc[kt]);
+											mesh->SetPrivateMarker(jhc[kt], mrk);
+										}
 									}
 								}
 							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
 					}
-					else if( i == myconn - 3 )
+					else if( i == myconn - 3 )// these are nodes of the cell
 					{
-						MarkerType mrk = mesh->CreatePrivateMarker();
-						adj_type const & lc = mesh->LowConn(GetHandle());
-						for(adj_type::size_type it = 0; it < lc.size(); it++) if( !mesh->GetMarker(lc[it],hm) )
+						if (mesh->HighConnTag().isDefined(CELL))
 						{
-							adj_type const & ilc = mesh->LowConn(lc[it]);
-							for(adj_type::size_type jt = 0; jt < ilc.size(); jt++) if( !mesh->GetMarker(ilc[jt],hm) )
+							adj_type const& hc = mesh->HighConn(GetHandle());
+							for (adj_type::size_type it = 0; it < hc.size(); ++it)
+								if ((invert ^ mesh->GetMarker(hc[it], mask)) && !mesh->GetMarker(hc[it], hm)) result.push_back(hc[it]);
+						}
+						else
+						{
+							MarkerType mrk = mesh->CreatePrivateMarker();
+							adj_type const& lc = mesh->LowConn(GetHandle());
+							for (adj_type::size_type it = 0; it < lc.size(); it++) if (!mesh->GetMarker(lc[it], hm))
 							{
-								adj_type const & jlc = mesh->LowConn(ilc[jt]);
-								for(adj_type::size_type kt = 0; kt < jlc.size(); kt++) if( !mesh->GetMarker(jlc[kt],hm) )
+								adj_type const& ilc = mesh->LowConn(lc[it]);
+								for (adj_type::size_type jt = 0; jt < ilc.size(); jt++) if (!mesh->GetMarker(ilc[jt], hm))
 								{
-									if( (invert ^ mesh->GetMarker(jlc[kt],mask)) && !mesh->GetPrivateMarker(jlc[kt],mrk) )
+									adj_type const& jlc = mesh->LowConn(ilc[jt]);
+									for (adj_type::size_type kt = 0; kt < jlc.size(); kt++) if (!mesh->GetMarker(jlc[kt], hm))
 									{
-										result.push_back(jlc[kt]);
-										mesh->SetPrivateMarker(jlc[kt],mrk);
+										if ((invert ^ mesh->GetMarker(jlc[kt], mask)) && !mesh->GetPrivateMarker(jlc[kt], mrk))
+										{
+											result.push_back(jlc[kt]);
+											mesh->SetPrivateMarker(jlc[kt], mrk);
+										}
 									}
 								}
 							}
+							result.RemPrivateMarker(mrk);
+							mesh->ReleasePrivateMarker(mrk);
 						}
-						result.RemPrivateMarker(mrk);
-						mesh->ReleasePrivateMarker(mrk);
 					}
 				}
 			}
@@ -1548,7 +1730,7 @@ namespace INMOST
 		//
 		//for unhidden element
 		
-		if( GetElementType() < CELL )
+		if( GetElementType() < CELL || mesh->HighConnTag().isDefined(CELL) )
 		{
 			adj_type const & hc = mesh->HighConn(GetHandle());
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) //iterate over upper adjacent
@@ -1584,7 +1766,7 @@ namespace INMOST
 				}
 			}
 		}
-		if( GetElementType() > NODE )
+		if( GetElementType() > NODE || mesh->LowConnTag().isDefined(NODE) )
 		{
 			adj_type const & lc = mesh->LowConn(GetHandle());
 			for(adj_type::size_type jt = 0; jt < lc.size(); jt++) //iterate over lower adjacent
@@ -1628,7 +1810,7 @@ namespace INMOST
 		Mesh * mesh = GetMeshLink();
 		HandleType me = GetHandle();
 		std::cout << "Element " << ElementTypeName(GetElementType()) << " " << LocalID() << std::endl;
-		if( GetElementType() < CELL )
+		if( GetElementType() < CELL || mesh->HighConnTag().isDefined(CELL) )
 		{
 			adj_type const & hc = mesh->HighConn(GetHandle());
 			std::cout << "Upper adjacencies (" << hc.size() << "):" << std::endl;
@@ -1647,7 +1829,7 @@ namespace INMOST
 				std::cout << std::endl;
 			}
 		}
-		if( GetElementType() > NODE )
+		if( GetElementType() > NODE || mesh->LowConnTag().isDefined(NODE) )
 		{
 			adj_type const & lc = mesh->LowConn(GetHandle());
 			std::cout << "Lower adjacencies (" << lc.size() << "):" << std::endl;

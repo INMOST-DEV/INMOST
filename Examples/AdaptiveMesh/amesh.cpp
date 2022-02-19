@@ -469,7 +469,7 @@ namespace INMOST
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->PrepareAdaptation(*m);
+			(*it)->BeginAdaptation();
 		static int call_counter = 0;
 		Storage::integer ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -1174,12 +1174,12 @@ namespace INMOST
 		ENTER_BLOCK();
 		m->CheckSetLinks(__FILE__,__LINE__);
 		EXIT_BLOCK();
-		ENTER_BLOCK();
-		m->Barrier();
-		EXIT_BLOCK();
+		//ENTER_BLOCK();
+		//m->Barrier();
+		//EXIT_BLOCK();
 		//11. Restore parallel connectivity, global ids
 		m->ResolveModification();
-
+		
 		if( check_orientation )
 		{
 			ENTER_BLOCK();
@@ -1222,8 +1222,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if( model ) model->Adaptation(*m);
 //#endif
+		ENTER_BLOCK();
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->Adaptation(*m);
+			(*it)->Adaptation();
+		EXIT_BLOCK();
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
 		m->ApplyModification();
@@ -1363,12 +1365,15 @@ namespace INMOST
 		*/
 		//std::cout << rank << " check parent_set at end" << std::endl;
 		//CheckParentSet();
-
         //ExchangeData(hanging_nodes,CELL | FACE,0);
         //cout << rank << ": After end " << std::endl;
 		//reorder element's data to free up space
 		ENTER_BLOCK();
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->EndAdaptation();
 		EXIT_BLOCK();
 		//return number of refined cells
 		call_counter++;
@@ -1399,7 +1404,7 @@ namespace INMOST
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->PrepareAdaptation(*m);
+			(*it)->BeginAdaptation();
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells
@@ -2173,7 +2178,7 @@ namespace INMOST
 //		if( model ) model->Adaptation(*m);
 //#endif
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->Adaptation(*m);
+			(*it)->Adaptation();
 		m->ApplyModification();
 
 		
@@ -2289,7 +2294,10 @@ namespace INMOST
 		ENTER_BLOCK();
 		m->ReorderEmpty(CELL|FACE|EDGE|NODE|ESET);
 		EXIT_BLOCK();
-		
+		ENTER_BLOCK();
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->EndAdaptation();
+		EXIT_BLOCK();
 		call_counter++;
 		
 		ret = m->Integrate(ret);

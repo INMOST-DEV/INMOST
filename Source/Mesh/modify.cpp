@@ -33,6 +33,8 @@ __INLINE std::string NameSlash(std::string input)
 #define EXIT_FUNC_DIE()  {}
 #endif
 
+const bool optimize_split_geom = true;
+const bool optimize_unite_geom = true;
 
 namespace INMOST
 {
@@ -50,7 +52,7 @@ namespace INMOST
 		//Reorder face edges, so that they always apear in right direction
 		if( GetElementType() == CELL ) //This is a cell
 			getAsCell()->SwapBackCell();
-		if( GetElementType() < CELL )
+		if( GetElementType() < CELL || m->HighConnTag().isDefined(CELL) )
 		{
 			adj_type & hc = m->HighConn(GetHandle()); // node->edges, edge->faces, face->cells
 			adj_type::size_type i = 0;
@@ -73,20 +75,23 @@ namespace INMOST
 			}
 			if( del_upper )
 			{
-				if( Hidden() ) 
+				if (GetElementType() < CELL)
 				{
-					for(std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
-						if( m->GetMarker(hc[*it],m->HideMarker()) ) m->Delete(hc[*it]);
-				}
-				else 
-				{
-					for(std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
-						m->Delete(hc[*it]);
+					if (Hidden())
+					{
+						for (std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
+							if (m->GetMarker(hc[*it], m->HideMarker())) m->Delete(hc[*it]);
+					}
+					else
+					{
+						for (std::vector<adj_type::size_type>::iterator it = del.begin(); it != del.end(); it++)
+							m->Delete(hc[*it]);
+					}
 				}
 			}
 			hc.clear();
 		}
-		if( GetElementType() > NODE )
+		if( GetElementType() > NODE || m->LowConnTag().isDefined(NODE) )
 		{
 			adj_type & lc = m->LowConn(GetHandle()); // edge->nodes, face->edges, cell->faces
 			for(adj_type::size_type it = 0; it < lc.size(); it++)
@@ -123,7 +128,7 @@ namespace INMOST
 				if( !m->GetMarker(lc[it],hm) ) face_visit[lc[it]]++;
 		}
 		if( doexit ) return Cell(m,InvalidHandle());
-		MarkerType visited = m->CreateMarker(), rem = m->CreateMarker();
+		MarkerType visited = m->CreatePrivateMarker(), rem = m->CreatePrivateMarker();
 		std::vector<HandleType> edges;
 		std::vector<HandleType> nodes;
 		//gather boundary faces into set that will be used to create new cell
@@ -137,13 +142,13 @@ namespace INMOST
 			{
 				if( m->GetMarker(it->first,del_protect) ) doexit = true;
 				//mark face to be deleted
-				m->SetMarker(it->first,rem);
+				m->SetPrivateMarker(it->first,rem);
 				//access edges of the face, gather into array
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
-					if( !m->GetMarker(lc[jt],visited) )
+					if( !m->GetPrivateMarker(lc[jt],visited) )
 					{
-						m->SetMarker(lc[jt],visited);
+						m->SetPrivateMarker(lc[jt],visited);
 						edges.push_back(lc[jt]);
 					}
 				//gather internal faces
@@ -155,14 +160,14 @@ namespace INMOST
 		//then the edge should be deleted, otherwise keep the edge
 		for(size_t i = 0; i < edges.size(); i++) 
 		{
-			m->RemMarker(edges[i],visited);
+			m->RemPrivateMarker(edges[i],visited);
 			//access nodes of the edge, gather into array
 			adj_type const & lc = m->LowConn(edges[i]);
 			for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 			{
-				if( !m->GetMarker(lc[jt],visited) )
+				if( !m->GetPrivateMarker(lc[jt],visited) )
 				{
-					m->SetMarker(lc[jt],visited);
+					m->SetPrivateMarker(lc[jt],visited);
 					nodes.push_back(lc[jt]);
 				}
 			}
@@ -171,11 +176,11 @@ namespace INMOST
 			int nonzero = 0;
 			adj_type const & hc = m->HighConn(edges[i]); //faces
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )//iterate over faces
-				if( !m->GetMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
+				if( !m->GetPrivateMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
 			if( nonzero == 0 ) //all faces should be deleted, edge to remove
 			{
 				//mark edge to be deleted
-				m->SetMarker(edges[i],rem);
+				m->SetPrivateMarker(edges[i],rem);
 				if( m->GetMarker(edges[i],del_protect) ) doexit = true;
 			}
 		}
@@ -183,27 +188,27 @@ namespace INMOST
 		//that should not be deleted
 		for(size_t i = 0; i < nodes.size(); i++) 
 		{
-			m->RemMarker(nodes[i],visited);
+			m->RemPrivateMarker(nodes[i],visited);
 			int nonzero = 0;
 			//acces edges of the node, check is there any
 			//edge that would not be deleted
 			adj_type const & hc = m->HighConn(nodes[i]); //edges
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
-				if( !m->GetMarker(hc[jt],rem) ) nonzero++;
+				if( !m->GetPrivateMarker(hc[jt],rem) ) nonzero++;
 			if( nonzero == 0 ) //all edges should be deleted, node to remove
 			{
 				//mark node to be deleted
-				m->SetMarker(nodes[i],rem);
+				m->SetPrivateMarker(nodes[i],rem);
 				if( m->GetMarker(nodes[i],del_protect) ) doexit = true;
 			}
 		}
-		m->ReleaseMarker(visited);
+		m->ReleasePrivateMarker(visited);
 		if( doexit )
 		{
-			m->RemMarkerArray(inner_faces.data(),(enumerator)inner_faces.size(),rem);
-			m->RemMarkerArray(edges.data(), (enumerator)edges.size(), rem);
-			m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
-			m->ReleaseMarker(rem);
+			m->RemPrivateMarkerArray(inner_faces.data(),(enumerator)inner_faces.size(),rem);
+			m->RemPrivateMarkerArray(edges.data(), (enumerator)edges.size(), rem);
+			m->RemPrivateMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
+			m->ReleasePrivateMarker(rem);
 			return Cell(m,InvalidHandle());
 		}
 		//delete cells
@@ -220,9 +225,9 @@ namespace INMOST
 		for(size_t j = 0; j < inner_faces.size(); j++)
 		{
 			//std::cout << "delete face " << GetHandleID(inner_faces[j]) << std::endl;
-			if( m->GetMarker(inner_faces[j],rem) )
+			if( m->GetPrivateMarker(inner_faces[j],rem) )
 			{
-				m->RemMarker(inner_faces[j],rem);
+				m->RemPrivateMarker(inner_faces[j],rem);
 				if( m->GetMarker(inner_faces[j],del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected faces, united " << unite.size() << " cells " << std::endl;
 				if( m->HideMarker() )
@@ -234,9 +239,9 @@ namespace INMOST
 		//delete unused edges
 		for(size_t j = 0; j < edges.size(); j++)
 		{
-			if( m->GetMarker(edges[j],rem) )
+			if( m->GetPrivateMarker(edges[j],rem) )
 			{
-				m->RemMarker(edges[j],rem);
+				m->RemPrivateMarker(edges[j],rem);
 				if( m->GetMarker(edges[j],del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected edge, united " << unite.size() << " cells " << std::endl;
 				if( m->HideMarker() )
@@ -249,9 +254,11 @@ namespace INMOST
 		for(size_t j = 0; j < nodes.size(); j++)
 		{
 
-			if( m->GetMarker(nodes[j],rem) ) //there are no edges that use this edge
+			if( m->GetPrivateMarker(nodes[j],rem) ) //there are no edges that use this edge
 			{
-				m->RemMarker(nodes[j],rem);
+				m->RemPrivateMarker(nodes[j],rem);
+				// there must be no cells that use this node
+				assert(!m->LowConnTag().isDefined(NODE) || m->LowConn(nodes[j]).empty() || m->Count(m->LowConn(nodes[j]).data(), static_cast<integer>(m->LowConn(nodes[j]).size()), hm) == 0);
 				if( m->GetMarker(nodes[j],del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected node, united " << unite.size() << " cells " << std::endl;
 				if( m->HideMarker() )
@@ -260,7 +267,7 @@ namespace INMOST
 					m->Delete(nodes[j]);
 			}
 		}
-		m->ReleaseMarker(rem);
+		m->ReleasePrivateMarker(rem);
 		//reconstruct cell by outer faces
 		return m->CreateCell(faces).first;
 	}
@@ -281,7 +288,7 @@ namespace INMOST
 				face_visit[lc[it]]++;
 		}
 		if( doexit ) return false;
-		MarkerType rem = m->CreateMarker();
+		MarkerType rem = m->CreatePrivateMarker();
 		std::vector<HandleType> edges;
 		std::vector<HandleType> nodes;		
 		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++)
@@ -289,25 +296,25 @@ namespace INMOST
 			if( it->second != 1 )
 			{
 				if( m->GetMarker(it->first,del_protect) ) doexit = true;
-				m->SetMarker(it->first,rem);
+				m->SetPrivateMarker(it->first,rem);
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
-					if( !m->GetMarker(lc[jt],rem) )
+					if( !m->GetPrivateMarker(lc[jt],rem) )
 					{
-						m->SetMarker(lc[jt],rem);
+						m->SetPrivateMarker(lc[jt],rem);
 						edges.push_back(lc[jt]);
 					}
 			}
 		}
 		for(size_t i = 0; i < edges.size(); i++) 
 		{
-			m->RemMarker(edges[i],rem);
+			m->RemPrivateMarker(edges[i],rem);
 			adj_type const & lc = m->LowConn(edges[i]);
 			for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 			{
-				if( !m->GetMarker(lc[jt],rem) )
+				if( !m->GetPrivateMarker(lc[jt],rem) )
 				{
-					m->SetMarker(lc[jt],rem);
+					m->SetPrivateMarker(lc[jt],rem);
 					nodes.push_back(lc[jt]);
 				}
 			}
@@ -316,7 +323,7 @@ namespace INMOST
 			//that would not be deleted
 			adj_type const & hc = m->HighConn(edges[i]); //faces
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) ) //iterate over faces
-				if( !m->GetMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
+				if( !m->GetPrivateMarker(hc[jt],rem) ) nonzero++; // check if it is not deleted
 			//all faces should be deleted, edge to remove
 			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
 				doexit = true;
@@ -328,15 +335,15 @@ namespace INMOST
 			//any that would not be deleted
 			adj_type const & hc = m->HighConn(nodes[i]); //edges
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) if( !m->GetMarker(hc[jt],hm) )
-				if( !m->GetMarker(hc[jt],rem) ) nonzero++;
+				if( !m->GetPrivateMarker(hc[jt],rem) ) nonzero++;
 			//all edges should be deleted, node to remove
 			if( nonzero == 0 && m->GetMarker(edges[i],del_protect) )
 				doexit = true;
 		}
-		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemMarker(it->first,rem);
-		m->RemMarkerArray(edges.data(), (enumerator)edges.size(),rem);
-		m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
-		m->ReleaseMarker(rem);
+		for(std::map<HandleType,int>::iterator it = face_visit.begin(); it != face_visit.end(); it++) m->RemPrivateMarker(it->first,rem);
+		m->RemPrivateMarkerArray(edges.data(), (enumerator)edges.size(),rem);
+		m->RemPrivateMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
+		m->ReleasePrivateMarker(rem);
 		if( doexit ) return false;
 		return true;
 	}
@@ -354,8 +361,10 @@ namespace INMOST
 			if( m->GetMarker(unite.at(j),del_protect) ) doexit = true;
 		if( doexit ) return Face(m,InvalidHandle());
 		std::vector<HandleType> cells;
-		MarkerType edge_set = m->CreateMarker();
-		MarkerType rem = m->CreateMarker();
+		MarkerType edge_set = m->CreatePrivateMarker();
+		MarkerType rem = m->CreatePrivateMarker();
+
+		bool plane = optimize_unite_geom && Face::SamePlane(unite);
 		
 		//gather cells adjacent to united faces
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -363,14 +372,14 @@ namespace INMOST
 			adj_type const & hc = m->HighConn(unite.at(j)); //cells (unite is face)
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )
 			{
-				if( !m->GetMarker(hc[it],edge_set) )
+				if( !m->GetPrivateMarker(hc[it],edge_set) )
 				{
 					cells.push_back(hc[it]);
-					m->SetMarker(hc[it],edge_set);
+					m->SetPrivateMarker(hc[it],edge_set);
 				}
 			}
 		}
-		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), edge_set);
+		m->RemPrivateMarkerArray(cells.data(), (enumerator)cells.size(), edge_set);
 		assert(cells.size() <= 2);
 		//check is there a topological problem
 		//new face should be adjacent to no more then two cells
@@ -402,7 +411,7 @@ namespace INMOST
 			if( it->second == 1 )
 			{
 				expect_q++;
-				m->SetMarker(it->first,edge_set);
+				m->SetPrivateMarker(it->first,edge_set);
 				if( first == InvalidHandle() ) first = it->first;
 			}
 			else if( it->second == 2 )
@@ -410,14 +419,14 @@ namespace INMOST
 				//edge is protected
 				if( m->GetMarker(it->first,del_protect) ) doexit = true;
 				//mark edge to be deleted
-				m->SetMarker(it->first,rem);
+				m->SetPrivateMarker(it->first,rem);
 				//access nodes of the edge
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 				{
-					if( !m->GetMarker(lc[jt],edge_set) )
+					if( !m->GetPrivateMarker(lc[jt],edge_set) )
 					{
-						m->SetMarker(lc[jt],edge_set);
+						m->SetPrivateMarker(lc[jt],edge_set);
 						nodes.push_back(lc[jt]);
 					}
 				}
@@ -431,16 +440,16 @@ namespace INMOST
 		//Find out set of nodes to be deleted
 		for(size_t j = 0; j < nodes.size(); j++) 
 		{
-			m->RemMarker(nodes[j],edge_set);
+			m->RemPrivateMarker(nodes[j],edge_set);
 			int nonzero = 0;
 			//access edges of the nodes, find out whether all
 			//of them are deleted
 			adj_type const & hc = m->HighConn(nodes[j]); // edge
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) ) //iterate through edges of the node
-				if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
+				if( !m->GetPrivateMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
 			if( nonzero == 0 ) //all edges are deleted but the node is protected
 			{
-				m->SetMarker(nodes[j],rem);
+				m->SetPrivateMarker(nodes[j],rem);
 				if( m->GetMarker(nodes[j],del_protect) ) doexit = true;
 			}
 		}
@@ -449,18 +458,18 @@ namespace INMOST
 		{
 			for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			{
-				m->RemMarker(it->first,rem);
-				m->RemMarker(it->first,edge_set);
+				m->RemPrivateMarker(it->first,rem);
+				m->RemPrivateMarker(it->first,edge_set);
 			}
-			m->RemMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
-			m->ReleaseMarker(edge_set);
-			m->ReleaseMarker(rem);
+			m->RemPrivateMarkerArray(nodes.data(), (enumerator)nodes.size(), rem);
+			m->ReleasePrivateMarker(edge_set);
+			m->ReleasePrivateMarker(rem);
 			assert( !dothrow ); //report the situation, because user need to debug the input
 			return Face(m,InvalidHandle());
 		}
 		//Order edges on the boundary of united faces into loop
 		edges.push_back(first);
-		edges.back()->RemMarker(edge_set);
+		edges.back()->RemPrivateMarker(edge_set);
 		bool done = false;
 		int q = 1;
 		while( !done )
@@ -490,19 +499,19 @@ namespace INMOST
 					found = done = true;
 					break;
 				}
-				if( m->GetMarker(hc[it],edge_set) )
+				if( m->GetPrivateMarker(hc[it],edge_set) )
 				{
 					q++;
 					found = true;
 					edges.push_back(hc[it]);
-					m->RemMarker(hc[it],edge_set);
+					m->RemPrivateMarker(hc[it],edge_set);
 					break;
 				}
 			}
 			assert(found); //there is no loop
 			//if( !found ) throw Failure;
 		}
-		m->ReleaseMarker(edge_set);
+		m->ReleasePrivateMarker(edge_set);
 		
 		//number of edges collected matches number of edges expected
 		assert(expect_q == q);
@@ -512,18 +521,18 @@ namespace INMOST
 		
 		if( !m->HideMarker() ) //we can't hide elements
 		{
-			unite.SetMarker(rem);
+			unite.SetPrivateMarker(rem);
 			//untie every face from the cell
 			for(size_t it = 0; it < cells.size(); it++)
 			{
 				adj_type & lc = m->LowConn(cells[it]);
 				adj_type::iterator jt = lc.begin();
 				while( jt != lc.end()) //don't need to check is it hidden
-					if( m->GetMarker(*jt,rem) )
+					if( m->GetPrivateMarker(*jt,rem) )
 						jt = lc.erase(jt);
 					else jt++;
 			}
-			unite.RemMarker(rem);
+			unite.RemPrivateMarker(rem);
 		}
 		
 		//delete old faces
@@ -546,7 +555,7 @@ namespace INMOST
 		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
 			if( it->second != 1 )
 			{
-				m->RemMarker(it->first,rem);
+				m->RemPrivateMarker(it->first,rem);
 				assert( m->HighConn(it->first).empty() || m->Count(m->HighConn(it->first).data(),static_cast<integer>(m->HighConn(it->first).size()),hm) == 0 ); //it's connected to face somewhere
 				if( m->GetMarker(it->first,del_protect) )
 					std::cout << __FUNCTION__ << " deleted protected edge, united " << unite.size() << " faces " << std::endl;
@@ -560,12 +569,30 @@ namespace INMOST
 
 		for(size_t it = 0; it < nodes.size(); it++) //delete nodes inside the face
 		{
-			if( m->GetMarker(nodes[it],rem) )
+			if( m->GetPrivateMarker(nodes[it],rem) )
 			{
 				assert( m->HighConn(nodes[it]).empty() || m->Count(m->HighConn(nodes[it]).data(),static_cast<integer>(m->HighConn(nodes[it]).size()),hm) == 0 ); //it's connected to edge somewhere
-				m->RemMarker(nodes[it],rem);
+				m->RemPrivateMarker(nodes[it],rem);
 				if( !m->HideMarker() )
 				{
+					if (m->LowConnTag().isDefined(NODE))
+					{
+						adj_type& lc = m->LowConn(nodes[it]);
+						adj_type::iterator jt = lc.begin();
+						while (jt != lc.end()) // iterate through cells of the node
+						{
+							adj_type& ihc = m->HighConn(*jt);
+							adj_type::iterator qt = ihc.begin(); //iterate through nodes of the cell
+							while (qt != ihc.end())
+							{
+								if (*qt == nodes[it])
+									qt = ihc.erase(qt); //remove links from the cell to the node
+								else ++qt;
+							}
+							++jt;
+						}
+						lc.clear(); // remove links to cells
+					}
 					if( m->GetMarker(nodes[it],del_protect) )
 						std::cout << __FUNCTION__ << " deleted protected node, united " << unite.size() << " faces " << std::endl;
 					m->Destroy(nodes[it]);
@@ -574,7 +601,7 @@ namespace INMOST
 			}
 		}
 		
-		m->ReleaseMarker(rem);
+		m->ReleasePrivateMarker(rem);
 				
 		Face ret = m->CreateFace(edges).first;
 		
@@ -590,19 +617,25 @@ namespace INMOST
 			
 		}
 		
+		//determine orientation for connected cells
+		m->RecomputeGeometricData(ret.GetHandle(), ORIENTATION);
 		
-		for(size_t it = 0; it < cells.size(); it++)  //tie new face to old cells
+		for (size_t it = 0; it < cells.size(); it++)  //tie new face to old cells
 		{
-			assert(m->Count(m->LowConn(cells[it]).data(),m->LowConn(cells[it]).size(),hm) >= 4);
+			assert(m->Count(m->LowConn(cells[it]).data(), m->LowConn(cells[it]).size(), hm) >= 4);
 			//compute geometric data
 			m->ComputeGeometricType(cells[it]);
 			assert(m->GetGeometricType(cells[it]) != MultiPolygon);
-			//recompute geometric data
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(cells[it],m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(cells[it]);
-			m->EndTopologyCheck(cells[it],0);
 		}
+		for (size_t it = 0; it < cells.size(); it++) m->RecomputeGeometricData(cells[it], CENTROID);
+		if (!plane)
+		{
+			for (size_t it = 0; it < cells.size(); it++) m->RecomputeGeometricData(cells[it], NORMAL);
+			//for (size_t it = 0; it < cells.size(); it++) m->RecomputeGeometricData(cells[it], ORIENTATION);
+			for (size_t it = 0; it < cells.size(); it++) m->RecomputeGeometricData(cells[it], MEASURE);
+			for (size_t it = 0; it < cells.size(); it++) m->RecomputeGeometricData(cells[it], BARYCENTER);
+		}
+		for (size_t it = 0; it < cells.size(); it++) m->EndTopologyCheck(cells[it], 0);
 		
 		return ret;
 	}
@@ -619,18 +652,18 @@ namespace INMOST
 		MarkerType hm = m->HideMarker();
 		if( doexit ) return false;
 		std::vector<HandleType> cells;
-		MarkerType rem = m->CreateMarker();
+		MarkerType rem = m->CreatePrivateMarker();
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
 		{
 			adj_type const & hc = m->HighConn(unite.at(j)); // cells (unite is face)
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )
-				if( !m->GetMarker(hc[it],rem) )
+				if( !m->GetPrivateMarker(hc[it],rem) )
 				{
 					cells.push_back(hc[it]);
-					m->SetMarker(hc[it],rem);
+					m->SetPrivateMarker(hc[it],rem);
 				}
 		}
-		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
+		m->RemPrivateMarkerArray(cells.data(), (enumerator)cells.size(), rem);
 		std::vector<HandleType> nodes;
 		std::map<HandleType, int> edge_visit;
 		for(ElementArray<Face>::size_type j = 0; j < unite.size(); j++)
@@ -648,9 +681,9 @@ namespace INMOST
 				adj_type const & lc = m->LowConn(it->first);
 				for(adj_type::size_type jt = 0; jt < lc.size(); jt++) if( !m->GetMarker(lc[jt],hm) )
 				{
-					if( !m->GetMarker(lc[jt],rem) )
+					if( !m->GetPrivateMarker(lc[jt],rem) )
 					{
-						m->SetMarker(lc[jt],rem);
+						m->SetPrivateMarker(lc[jt],rem);
 						nodes.push_back(lc[jt]);
 					}
 				}
@@ -663,17 +696,17 @@ namespace INMOST
 		}
 		for(size_t j = 0; j < nodes.size(); j++) 
 		{
-			m->RemMarker(nodes[j],rem);
+			m->RemPrivateMarker(nodes[j],rem);
 			int nonzero = 0;
 			adj_type const & hc = m->HighConn(nodes[j]); // edges
 			for(adj_type::size_type it = 0; it < hc.size(); it++) if( !m->GetMarker(hc[it],hm) )//iterate through edges of the node
-				if( !m->GetMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
+				if( !m->GetPrivateMarker(hc[it],rem) ) nonzero++; // check if edge should not be deleted
 			//all edges are deleted but the node is protected
 			if( nonzero == 0 && m->GetMarker(nodes[j],del_protect)) doexit = true;
 		}
 		for(std::map<HandleType,int>::iterator it = edge_visit.begin(); it != edge_visit.end(); it++)
-			if( it->second != 1 ) m->RemMarker(it->first,rem);
-		m->ReleaseMarker(rem);
+			if( it->second != 1 ) m->RemPrivateMarker(it->first,rem);
+		m->ReleasePrivateMarker(rem);
 		if( doexit )
 		{
 			assert(!dothrow);
@@ -689,9 +722,10 @@ namespace INMOST
 		if( edges.size() == 0 ) return Edge(m,InvalidHandle());
 		
 		bool doexit = false, dothrow = false;
+		bool line = optimize_unite_geom && Edge::SameLine(edges);
 		(void)dothrow;
 		MarkerType hm = m->HideMarker();
-		MarkerType rem = m->CreateMarker();
+		MarkerType rem = m->CreatePrivateMarker();
 		std::vector<HandleType> cells;
 		std::vector<HandleType> faces;
 		std::map<HandleType,int> nodes;
@@ -703,10 +737,10 @@ namespace INMOST
 			adj_type const & hc = m->HighConn(edges.at(it)); // faces
 			for(adj_type::size_type jt = 0; jt != hc.size(); ++jt) if( !m->GetMarker(hc[jt],hm) )
 			{
-				if( !m->GetMarker(hc[jt],rem) )
+				if( !m->GetPrivateMarker(hc[jt],rem) )
 				{
 					faces.push_back(hc[jt]);
-					m->SetMarker(hc[jt],rem);
+					m->SetPrivateMarker(hc[jt],rem);
 				}
 			}
 			adj_type const & lc = m->LowConn(edges.at(it));
@@ -716,25 +750,25 @@ namespace INMOST
 		
 		for(size_t it = 0; it < faces.size(); ++it)
 		{
-			m->RemMarker(faces[it],rem);
+			m->RemPrivateMarker(faces[it],rem);
 			adj_type const & hc = m->HighConn(faces[it]); // cells
 			for(adj_type::size_type jt = 0; jt < hc.size(); ++jt)
 			{
-				if( !m->GetMarker(hc[jt],rem) )
+				if( !m->GetPrivateMarker(hc[jt],rem) )
 				{
-					m->SetMarker(hc[jt],rem);
+					m->SetPrivateMarker(hc[jt],rem);
 					cells.push_back(hc[jt]);
 				}
 			}
 		}
 		
-		m->RemMarkerArray(cells.data(), (enumerator)cells.size(), rem);
+		if( !cells.empty() ) m->RemPrivateMarkerArray(&cells[0], (enumerator)cells.size(), rem);
 		
 		
 
 		if( doexit )
 		{
-			m->ReleaseMarker(rem);
+			m->ReleasePrivateMarker(rem);
 			return Edge(m,InvalidHandle());
 		}
 		
@@ -760,7 +794,7 @@ namespace INMOST
 
 		if( doexit )
 		{
-			m->ReleaseMarker(rem);
+			m->ReleasePrivateMarker(rem);
 			assert(!dothrow);
 			//if( dothrow ) throw Impossible; // bad input
 			return Edge(m,InvalidHandle());
@@ -770,7 +804,7 @@ namespace INMOST
 		std::vector<adj_type::size_type> insert_pos; //position where we insert new edge
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
-			m->SetMarker(edges.at(it),rem);
+			m->SetPrivateMarker(edges.at(it),rem);
 
 		for(size_t it = 0; it < faces.size(); ++it)
 		{
@@ -778,7 +812,7 @@ namespace INMOST
 			bool found_rem = false;
 			for(adj_type::size_type k = 0; k < lc.size(); k++) //insert new edge to the first position where we delete old edge
 			{
-				if( m->GetMarker(lc[k],rem) )
+				if( m->GetPrivateMarker(lc[k],rem) )
 				{
 					//all united edges should appear in consecutive order in deleted face
 					/*
@@ -807,8 +841,8 @@ namespace INMOST
 
 		if( doexit )
 		{
-			m->RemMarkerArray(edges.data(), (enumerator)edges.size(), rem);
-			m->ReleaseMarker(rem);
+			m->RemPrivateMarkerArray(edges.data(), (enumerator)edges.size(), rem);
+			m->ReleasePrivateMarker(rem);
 			assert(!dothrow);
 			//if( dothrow ) throw Impossible; // bad input
 			return Edge(m,InvalidHandle());
@@ -822,7 +856,7 @@ namespace INMOST
 				adj_iterator jt = lc.begin(); //iterate over edges of faces
 				while( jt != lc.end())
 				{
-					if( m->GetMarker(*jt,rem) )
+					if( m->GetPrivateMarker(*jt,rem) )
 						jt = lc.erase(jt);
 					else ++jt;
 				}
@@ -832,7 +866,7 @@ namespace INMOST
 
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)//delete edges
 		{
-			m->RemMarker(edges.at(it),rem);
+			m->RemPrivateMarker(edges.at(it),rem);
 			if( !m->Hide(edges.at(it)) ) //cannot hide
 			{
 				m->HighConn(edges.at(it)).clear(); //remove connection from edge to faces
@@ -840,41 +874,100 @@ namespace INMOST
 			}
 		}
 
-		m->ReleaseMarker(rem);
+		m->ReleasePrivateMarker(rem);
 
 		for(std::map<HandleType,int>::iterator it = nodes.begin(); it != nodes.end(); it++)
 		{
 			if( it->second != 1 )
 			{
-				if( !m->Hide(it->first) ) //cannot hide, we have to untie cells from nodes
+				if (!m->Hide(it->first)) //cannot hide, we have to untie cells from nodes
+				{
+					if (m->LowConnTag().isDefined(NODE))
+					{
+						adj_type& lc = m->LowConn(it->first);
+						for (adj_type::size_type qt = 0; qt < lc.size(); ++qt) //iterate through cells of the node
+						{
+							adj_type& hc = m->HighConn(lc[qt]);
+							adj_iterator jt = hc.begin();
+							while (jt != hc.end()) // iterate through nodes of the cell
+							{
+								if (*jt == it->first)
+								{
+									jt = hc.erase(jt); //erase link to node
+								}
+								else ++jt;
+							}
+						}
+					}
 					m->Destroy(it->first);
+				}
 			}
 		}
 			
 		Edge e = m->CreateEdge(build_nodes).first;
 		adj_type & ehc = m->HighConn(e->GetHandle());
 
-		for(size_t k = 0; k < insert_pos.size(); k++)
+		for (size_t k = 0; k < insert_pos.size(); k++)
 		{
-			adj_type & lc = m->LowConn(faces[k]);
-			std::vector<HandleType> tlc(lc.begin(),lc.end());
-			lc.insert(lc.begin()+insert_pos[k],e->GetHandle());
+			adj_type& lc = m->LowConn(faces[k]);
+			std::vector<HandleType> tlc(lc.begin(), lc.end());
+			lc.insert(lc.begin() + insert_pos[k], e->GetHandle());
 			ehc.push_back(faces[k]);
-			m->ComputeGeometricType(faces[k]);
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(faces[k],m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(faces[k]);
-			m->EndTopologyCheck(faces[k],0);
 		}
-
-		for(size_t it = 0; it < cells.size(); ++it)
+		bool nonplanar = false;
+		MarkerType upd = 0;
+		for (size_t k = 0; k < faces.size(); k++) m->ComputeGeometricType(faces[k]);
+		for (size_t k = 0; k < faces.size(); k++) m->RecomputeGeometricData(faces[k], CENTROID);
+		if (line)
 		{
-			m->ComputeGeometricType(cells[it]);
-			//update centroid, volume, orientation, etc
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(cells[it],m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(cells[it]);
-			m->EndTopologyCheck(cells[it],0);
+			upd = m->CreatePrivateMarker();
+			for (size_t it = 0; it < faces.size(); ++it)
+			{
+				if (!Face(m, faces[it]).Planarity())
+				{
+					m->SetPrivateMarker(faces[it], upd);
+					nonplanar = true;
+				}
+			}
+			if (!nonplanar)
+			{
+				m->ReleasePrivateMarker(upd);
+				upd = 0;
+			}
+		}
+		if (!line || nonplanar )
+		{
+			for (size_t k = 0; k < faces.size(); k++) if (!upd || m->GetPrivateMarker(faces[k], upd)) m->RecomputeGeometricData(faces[k], NORMAL);
+			for (size_t k = 0; k < faces.size(); k++) if (!upd || m->GetPrivateMarker(faces[k], upd)) m->RecomputeGeometricData(faces[k], ORIENTATION);
+			for (size_t k = 0; k < faces.size(); k++) if (!upd || m->GetPrivateMarker(faces[k], upd)) m->RecomputeGeometricData(faces[k], MEASURE);
+			for (size_t k = 0; k < faces.size(); k++) if (!upd || m->GetPrivateMarker(faces[k], upd)) m->RecomputeGeometricData(faces[k], BARYCENTER);
+		}
+		for (size_t k = 0; k < faces.size(); k++) m->EndTopologyCheck(faces[k],0);
+
+		for (size_t it = 0; it < cells.size(); ++it) m->ComputeGeometricType(cells[it]);
+		for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], CENTROID);
+		if (upd)
+		{
+			for (size_t it = 0; it < faces.size(); ++it) if (m->GetPrivateMarker(faces[it], upd))
+			{
+				Element::adj_type const& hc = m->HighConn(faces[it]);
+				for (Element::adj_type::size_type jt = 0; jt < hc.size(); ++jt)
+					m->SetPrivateMarker(hc[jt], upd);
+			}
+		}
+		if (!line || nonplanar)
+		{
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], NORMAL);
+			//for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], ORIENTATION);
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], MEASURE);
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], BARYCENTER);
+		}
+		for (size_t it = 0; it < cells.size(); ++it) m->EndTopologyCheck(cells[it],0);
+		if (upd)
+		{
+			m->RemPrivateMarkerArray(&faces[0], (enumerator)faces.size(), upd);
+			m->RemPrivateMarkerArray(&cells[0], (enumerator)cells.size(), upd);
+			m->ReleasePrivateMarker(upd);
 		}
 		return e;
 	}
@@ -885,7 +978,7 @@ namespace INMOST
 		bool doexit = false, dothrow = false;
 		(void)dothrow;
 		MarkerType hm = m->HideMarker();
-		MarkerType rem = m->CreateMarker();
+		MarkerType rem = m->CreatePrivateMarker();
 		std::vector<HandleType> faces;
 		std::map<HandleType,int> nodes;
 
@@ -896,10 +989,10 @@ namespace INMOST
 			adj_type const & hc = m->HighConn(edges.at(it)); //faces
 			for(adj_type::size_type jt = 0; jt < hc.size(); ++jt) if( !m->GetMarker(hc[jt],hm) )
 			{
-				if( !m->GetMarker(hc[jt],rem) )
+				if( !m->GetPrivateMarker(hc[jt],rem) )
 				{
 					faces.push_back(hc[jt]);
-					m->SetMarker(hc[jt],rem);
+					m->SetPrivateMarker(hc[jt],rem);
 				}
 			}
 			adj_type const & lc = m->LowConn(edges.at(it));
@@ -908,11 +1001,11 @@ namespace INMOST
 		}
 		
 		for(size_t it = 0; it < faces.size(); ++it)
-			m->RemMarker(faces[it],rem);
+			m->RemPrivateMarker(faces[it],rem);
 
 		if( doexit )
 		{
-			m->ReleaseMarker(rem);
+			m->ReleasePrivateMarker(rem);
 			return false;
 		}
 		
@@ -936,7 +1029,7 @@ namespace INMOST
 
 		if( doexit )
 		{
-			m->ReleaseMarker(rem);
+			m->ReleasePrivateMarker(rem);
 			assert(!dothrow); //inner loop in deleted edges
 			//if( dothrow ) throw Impossible; // bad input
 			return false;
@@ -944,7 +1037,7 @@ namespace INMOST
 
 
 
-		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->SetMarker(edges.at(it),rem);
+		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->SetPrivateMarker(edges.at(it),rem);
 
 		for(size_t it = 0; it < faces.size(); ++it)
 		{
@@ -952,7 +1045,7 @@ namespace INMOST
 			bool found_rem = false;
 			for(adj_type::size_type k = 0; k < lc.size(); k++) //insert new edge to the first position where we delete old edge
 			{
-				if( m->GetMarker(lc[k],rem) )
+				if( m->GetPrivateMarker(lc[k],rem) )
 				{
 					/*
 					//all united edges should appear in consecutive order in deleted face
@@ -977,11 +1070,11 @@ namespace INMOST
 				dothrow = true;
 			}
 		}
-		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->RemMarker(edges.at(it),rem);
+		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it) m->RemPrivateMarker(edges.at(it),rem);
 
 		if( doexit )
 		{
-			m->ReleaseMarker(rem);
+			m->ReleasePrivateMarker(rem);
 			assert(!dothrow);
 			//if( dothrow ) throw Impossible; // bad input
 			return false;
@@ -1124,8 +1217,11 @@ namespace INMOST
 		if( e->GetMarker(del_protect) || nodes.empty() ) return ret;
 		ret.reserve(nodes.size()+1);
 		MarkerType hm = m->HideMarker();
-		MarkerType dup = m->CreateMarker();
+		MarkerType dup = m->CreatePrivateMarker();
 		adj_type & hc = m->HighConn(e->GetHandle()); // faces
+
+		//for geometry recomputation, compute that all nodes are on the line of initial segment
+		bool line = optimize_split_geom && e.SameLine(nodes);
 		
 		for(adj_type::size_type it = 0; it < hc.size(); ++it) if( !m->GetMarker(hc[it],hm) )
 		{
@@ -1133,18 +1229,20 @@ namespace INMOST
 			adj_type const & ihc = m->HighConn(hc[it]); //cells
 			for(adj_type::size_type jt = 0; jt < ihc.size(); ++jt) if( !m->GetMarker(ihc[jt],hm) )
 			{
-				if( !m->GetMarker(ihc[jt],dup) )
+				if( !m->GetPrivateMarker(ihc[jt],dup) )
 				{
 					cells.push_back(ihc[jt]);
-					m->SetMarker(ihc[jt],dup);
+					m->SetPrivateMarker(ihc[jt],dup);
 				}
 			}
 		}
 
 		for(size_t it = 0; it < cells.size(); ++it)
-			m->RemMarker(cells[it],dup);
+			m->RemPrivateMarker(cells[it],dup);
 
-		m->ReleaseMarker(dup);
+		
+
+		m->ReleasePrivateMarker(dup);
 
 		int k = 0;
 
@@ -1216,37 +1314,102 @@ namespace INMOST
 		}
 
 		//connect new edges to faces
-		for(size_t it = 0; it < faces.size(); ++it)
+		for (size_t it = 0; it < faces.size(); ++it)
 		{
-			adj_type & lc = m->LowConn(faces[it]);
+			adj_type& lc = m->LowConn(faces[it]);
 			//check that that one of the nodes of privious edge match n[0],
 			//otherwise we have to insert in reverse
-			const adj_type & phc = m->LowConn(lc[(insert_pos[it]+lc.size()-1)%lc.size()]);
-			if( phc[0] == n[0] || phc[1] == n[0] )
-				lc.insert(lc.begin()+insert_pos[it],ret.begin(),ret.end());
+			const adj_type& phc = m->LowConn(lc[(insert_pos[it] + lc.size() - 1) % lc.size()]);
+			if (phc[0] == n[0] || phc[1] == n[0])
+				lc.insert(lc.begin() + insert_pos[it], ret.begin(), ret.end());
 			else
-				lc.insert(lc.begin()+insert_pos[it],ret.rbegin(),ret.rend());
-			m->ComputeGeometricType(faces[it]);
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(faces[it], m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(faces[it]);
-			m->EndTopologyCheck(faces[it],0);
-			//Face(m,faces[it]).FixEdgeOrder();
-		}
-		//inform edges that they are connected to faces
-		for(ElementArray<Edge>::iterator kt = ret.begin(); kt != ret.end(); ++kt)
-		{
-			adj_type & hc = m->HighConn(kt->GetHandle()); //faces
-			hc.insert(hc.end(),faces.begin(),faces.end());
+				lc.insert(lc.begin() + insert_pos[it], ret.rbegin(), ret.rend());
 		}
 
-		for(size_t it = 0; it < cells.size(); ++it)
+		//inform edges that they are connected to faces
+		for (ElementArray<Edge>::iterator kt = ret.begin(); kt != ret.end(); ++kt)
 		{
-			m->ComputeGeometricType(cells[it]);
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(cells[it], m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(cells[it]);
-			m->EndTopologyCheck(cells[it],0);
+			adj_type& hc = m->HighConn(kt->GetHandle()); //faces
+			hc.insert(hc.end(), faces.begin(), faces.end());
+		}
+
+		//inform nodes that they are connected to cells of this edge
+		if (m->LowConnTag().isDefined(NODE))
+		{
+			for (ElementArray<Node>::const_iterator kt = nodes.begin(); kt != nodes.end(); ++kt)
+			{
+				adj_type& lc = m->LowConn(kt->GetHandle()); //cells of the node
+				lc.insert(lc.end(), cells.begin(), cells.end());
+			}
+		}
+
+		//inform cells that they are connected to nodes
+		if (m->HighConnTag().isDefined(CELL))
+		{
+			for (size_t it = 0; it < cells.size(); ++it)
+			{
+				adj_type& hc = m->HighConn(cells[it]); //nodes of the cell
+				hc.insert(hc.end(), nodes.begin(), nodes.end());
+			}
+		}
+
+		
+		bool nonplanar = false;
+		MarkerType upd = 0;
+		for (size_t it = 0; it < faces.size(); ++it) m->ComputeGeometricType(faces[it]);
+		for (size_t it = 0; it < faces.size(); ++it) m->RecomputeGeometricData(faces[it], CENTROID);
+		if (line)
+		{
+			upd = m->CreatePrivateMarker();
+			for (size_t it = 0; it < faces.size(); ++it)
+			{
+				if (!Face(m, faces[it]).Planarity())
+				{
+					m->SetPrivateMarker(faces[it], upd);
+					nonplanar = true;
+				}
+			}
+			if (!nonplanar)
+			{
+				m->ReleasePrivateMarker(upd);
+				upd = 0;
+			}
+		}
+		if (!line || nonplanar)
+		{
+			for (size_t it = 0; it < faces.size(); ++it) if (!upd || m->GetPrivateMarker(faces[it], upd)) m->RecomputeGeometricData(faces[it], NORMAL);
+			for (size_t it = 0; it < faces.size(); ++it) if (!upd || m->GetPrivateMarker(faces[it], upd)) m->RecomputeGeometricData(faces[it], ORIENTATION);
+			for (size_t it = 0; it < faces.size(); ++it) if (!upd || m->GetPrivateMarker(faces[it], upd)) m->RecomputeGeometricData(faces[it], MEASURE);
+			for (size_t it = 0; it < faces.size(); ++it) if (!upd || m->GetPrivateMarker(faces[it], upd)) m->RecomputeGeometricData(faces[it], BARYCENTER);
+		}
+		for (size_t it = 0; it < faces.size(); ++it) m->EndTopologyCheck(faces[it],0);
+
+		
+
+		for (size_t it = 0; it < cells.size(); ++it) m->ComputeGeometricType(cells[it]);
+		for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], CENTROID);
+		if (upd)
+		{
+			for (size_t it = 0; it < faces.size(); ++it) if (m->GetPrivateMarker(faces[it], upd))
+			{
+				Element::adj_type const& hc = m->HighConn(faces[it]);
+				for (Element::adj_type::size_type jt = 0; jt < hc.size(); ++jt)
+					m->SetPrivateMarker(hc[jt], upd);
+			}
+		}
+		if (!line || nonplanar)
+		{
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], NORMAL);
+			//for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], ORIENTATION);
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], MEASURE);
+			for (size_t it = 0; it < cells.size(); ++it) if (!upd || m->GetPrivateMarker(cells[it], upd)) m->RecomputeGeometricData(cells[it], BARYCENTER);
+		}
+		for (size_t it = 0; it < cells.size(); ++it) m->EndTopologyCheck(cells[it],0);
+		if (upd)
+		{
+			m->RemPrivateMarkerArray(&faces[0], (enumerator)faces.size(), upd);
+			m->RemPrivateMarkerArray(&cells[0], (enumerator)cells.size(), upd);
+			m->ReleasePrivateMarker(upd);
 		}
 		return ret;
 	}
@@ -1265,12 +1428,42 @@ namespace INMOST
 		Mesh * m = face->GetMeshLink();
 		ElementArray<Edge> loop(m);
 		ElementArray<Face> ret(m);
+		ElementArray<Node> cnodes(m);
 		std::vector<HandleType> temp;
 		if( edges.empty() || face->GetMarker(del_protect) ) return ret;
 		MarkerType hm = m->HideMarker();
 		std::vector<HandleType> cells;
 		
 		//if( report ) std::cout << "Marker for hidden elements: " << hm << std::endl;
+
+		bool plane = optimize_split_geom && face.Planarity() && face.SamePlane(edges);
+
+		//collect nodes that should be connected to cell
+		//these are nodes not present at face
+		if (m->HighConnTag().isDefined(CELL) || m->LowConnTag().isDefined(NODE))
+		{
+			MarkerType mrk = m->CreatePrivateMarker();
+			ElementArray<Node> fnodes = face.getNodes();
+			fnodes.SetPrivateMarker(mrk);
+			for (ElementArray<Edge>::const_iterator it = edges.begin(); it != edges.end(); ++it)
+			{
+				Element::adj_type const& lc = m->LowConn(*it); //edge nodes
+				for (Element::adj_type::const_iterator ilc = lc.begin(); ilc != lc.end(); ++ilc) if (!m->GetMarker(*ilc, hm))
+				{
+					if (!m->GetPrivateMarker(*ilc, mrk))
+					{
+						cnodes.push_back(*ilc);
+						m->SetPrivateMarker(*ilc, mrk);
+					}
+				}
+				//ElementArray<Node> enodes = it->getNodes(mrk, true); //nodes does not have marker
+				//cnodes.insert(cnodes.end(), enodes.begin(), enodes.end());
+				//enodes.SetPrivateMarker(mrk);
+			}
+			fnodes.RemPrivateMarker(mrk);
+			cnodes.RemPrivateMarker(mrk);
+			m->ReleasePrivateMarker(mrk);
+		}
 
 		adj_type & hc = m->HighConn(face->GetHandle()); // cells
 		//if( report ) std::cout << "Adjacent cells for face: ";
@@ -1287,14 +1480,14 @@ namespace INMOST
 		//assert(cells.size() == 2);
 
 		
-		MarkerType outer = m->CreateMarker();
+		MarkerType outer = m->CreatePrivateMarker();
 
 		int ninner = 0;
 		adj_type & lc = m->LowConn(face->GetHandle());
 		//if( report ) std::cout << "Edges for face: ";
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
 		{
-			m->SetMarker(lc[it],outer);
+			m->SetPrivateMarker(lc[it],outer);
 			//if( report ) std::cout << GetHandleID(lc[it]) << " ";
 		}
 		//if( report ) std::cout << std::endl;
@@ -1302,7 +1495,7 @@ namespace INMOST
 		
 		//if( report ) std::cout << "Split edges: ";
 		for(ElementArray<Edge>::size_type it = 0; it < edges.size(); ++it)
-			if( !m->GetMarker(edges[it].GetHandle(),outer) )
+			if( !m->GetPrivateMarker(edges[it].GetHandle(),outer) )
 			{
 				temp.push_back(edges[it].GetHandle());
 				//if( report ) std::cout << GetHandleID(edges[it].GetHandle()) << " ";
@@ -1313,9 +1506,9 @@ namespace INMOST
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
 		{
 			temp.push_back(lc[it]);
-			m->RemMarker(lc[it],outer);
+			m->RemPrivateMarker(lc[it],outer);
 		}
-		m->ReleaseMarker(outer);
+		m->ReleasePrivateMarker(outer);
 
 		//all provided edges coincide with boundary edges of current face, no action required
 		if( ninner == 0 ) 
@@ -1399,6 +1592,7 @@ namespace INMOST
 					{
 						//std::cout << "hello1 from " << ff.first.LocalID() << std::endl;
 						hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
+						m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
 					}
 					else //face already existed before and may be connected to some cells
 					{
@@ -1414,7 +1608,11 @@ namespace INMOST
 							bool add = true;
 							for(int j = 0; j < (int)hc.size() && add; ++j)
 								if( hc[j] == cells[k] ) add = false;
-							if( add ) hc.push_back(cells[k]);
+							if (add)
+							{
+								hc.push_back(cells[k]);
+								m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
+							}
 						} //FIXME: what if more then 2 connections? have to fire topology exception, unless there are hidden cells
 					}
 				}
@@ -1424,17 +1622,45 @@ namespace INMOST
 
 
 
-		for(size_t it = 0; it < cells.size(); ++it)
+		for (size_t it = 0; it < cells.size(); ++it)
 		{
-			//hc.clear(); //have to recompute cell nodes
-			adj_type & lc = m->LowConn(cells[it]); //cell faces
-			lc.insert(lc.end(),ret.begin(),ret.end());
-			m->ComputeGeometricType(cells[it]);
-			if (m->UpdateGeometryMarker())
-				m->SetMarker(cells[it], m->UpdateGeometryMarker());
-			else m->RecomputeGeometricData(cells[it]);
-			m->EndTopologyCheck(cells[it],0);
+			//connect cell faces 
+			adj_type& lc = m->LowConn(cells[it]); //cell faces
+			lc.insert(lc.end(), ret.begin(), ret.end());
+			//connect cell nodes
+			if (m->HighConnTag().isDefined(CELL))
+			{
+				adj_type& hc = m->HighConn(cells[it]);
+				hc.insert(hc.end(), cnodes.begin(), cnodes.end());
+				//do we need to check duplicates?
+			}
+			//connect nodes to cell
+			if (m->LowConnTag().isDefined(NODE))
+			{
+				for (ElementArray<Node>::iterator jt = cnodes.begin(); jt != cnodes.end(); ++jt)
+				{
+					adj_type& nlc = m->LowConn(*jt); //node cells
+					//nlc.push_back(cells[it]);
+					//do we need to check duplicates?
+					bool have_cell = false;
+					for (adj_type::iterator kt = nlc.begin(); kt != nlc.end() && !have_cell; ++kt)
+						if (*kt == cells[it]) have_cell = true;
+					if (!have_cell)
+						nlc.push_back(cells[it]);
+				}
+			}
 		}
+
+		for (size_t it = 0; it < cells.size(); ++it) m->ComputeGeometricType(cells[it]);
+		for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], CENTROID);
+		if (!plane)
+		{
+			for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], NORMAL);
+			//for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], ORIENTATION);
+			for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], MEASURE);
+			for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], BARYCENTER);
+		}
+		for (size_t it = 0; it < cells.size(); ++it) m->EndTopologyCheck(cells[it],0);
 
 		return ret;
 	}
@@ -1455,14 +1681,14 @@ namespace INMOST
 
 
 
-		MarkerType outer = m->CreateMarker();
+		MarkerType outer = m->CreatePrivateMarker();
 		int ninner = 0;
 		adj_type & lc = m->LowConn(cell->GetHandle());
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
-			m->SetMarker(lc[it],outer);
+			m->SetPrivateMarker(lc[it],outer);
 
 		for(ElementArray<Face>::size_type it = 0; it < faces.size(); ++it)
-			if( !m->GetMarker(faces[it].GetHandle(),outer) )
+			if( !m->GetPrivateMarker(faces[it].GetHandle(),outer) )
 			{
 				temp.push_back(faces[it].GetHandle());
 				ninner++;
@@ -1471,9 +1697,9 @@ namespace INMOST
 		for(adj_type::size_type it = 0; it < lc.size(); ++it) if( !m->GetMarker(lc[it],hm) )
 		{
 			temp.push_back(lc[it]);
-			m->RemMarker(lc[it],outer);
+			m->RemPrivateMarker(lc[it],outer);
 		}
-		m->ReleaseMarker(outer);
+		m->ReleasePrivateMarker(outer);
 
 		//all provided faces coincide with boundary faces of current cell, no action required
 		if( ninner == 0 )
@@ -1526,7 +1752,7 @@ namespace INMOST
 		ENTER_FUNC();
 		hide_element = CreateMarker();
 		new_element = CreateMarker();
-		update_geometry = 0;
+		//update_geometry = 0;
 		//update_geometry = CreateMarker();
 		EXIT_FUNC();
 	}
@@ -1550,7 +1776,7 @@ namespace INMOST
 				for(integer it = 0; it < LastLocalID(etype); ++it) if( isValidElement(etype,it) )
 				{
 					HandleType h = ComposeHandle(etype,it);
-					if( GetMarker(h,NewMarker()) && !GetMarker(h,UpdateGeometryMarker()) ) //element is new and geometry was already recomputed
+					if( GetMarker(h,NewMarker()) )//&& !GetMarker(h,UpdateGeometryMarker()) ) //element is new and geometry was already recomputed
 					{
 						ComputeGeometricType(h);
 						RecomputeGeometricData(h);
@@ -1642,6 +1868,7 @@ namespace INMOST
 					}
 			}
 		}
+//somehow openmp does not work here, maybe non-private markers
 //#if defined(USE_OMP)
 //#pragma omp parallel for schedule(dynamic,1)
 //#endif
@@ -1795,6 +2022,7 @@ namespace INMOST
 			}
 #endif
 		EXIT_BLOCK();
+		/*
 		ENTER_BLOCK();
 		if (UpdateGeometryMarker())
 		{
@@ -1819,6 +2047,7 @@ namespace INMOST
 			update_geometry = 0;
 		}
 		EXIT_BLOCK();
+		*/
 		//Destroy(erase);//old approach
 		EXIT_FUNC();
 	}
@@ -2114,12 +2343,7 @@ namespace INMOST
 						//hc[k2] = GetHandle(); //cannot use the cell because virtualization table is already destroyed and FixNormalOrientation will do bad things
 						//hc.resize(1); //just remove element, we will do this anyway later
 						if (m->HaveGeometricData(ORIENTATION, FACE))
-						{
-							if (!m->UpdateGeometryMarker())
-								Face(m, lc[it])->FixNormalOrientation(false); //restore orientation
-							else
-								m->SetMarker(lc[it], m->UpdateGeometryMarker()); //delay
-						}
+							Face(m, lc[it])->FixNormalOrientation(false); //restore orientation
 					}
 				}
 				//~ if( !Face(m,lc[it])->CheckNormalOrientation() )
@@ -2135,8 +2359,8 @@ namespace INMOST
 		Mesh * m = GetMeshLink();
 		INMOST_DATA_ENUM_TYPE k = 0;
 		std::vector<HandleType> arr[4];
-		MarkerType mrk = m->CreateMarker(), mod = m->CreateMarker();
-		for(k = 0; k < num; k++) m->SetMarker(adjacent[k], mrk);
+		MarkerType mrk = m->CreatePrivateMarker(), mod = m->CreatePrivateMarker();
+		for(k = 0; k < num; k++) m->SetPrivateMarker(adjacent[k], mrk);
 		adj_iterator it;
 		// disconnects nodes from current edge, edges from current face, faces from current cell
 		if( GetElementType() > NODE ) //cannot disconnect cells from current node
@@ -2146,7 +2370,7 @@ namespace INMOST
 			//look into nodes (edge), edges (face), faces (cell)
 			while(it != lc.end() ) 
 			{
-				if( m->GetMarker(*it,mrk) ) //element should be disconnected
+				if( m->GetPrivateMarker(*it,mrk) ) //element should be disconnected
 				{
 					adj_type & hc = m->HighConn(*it); // edges (node), faces (edge), cells (face)
 					if( GetElementType() == CELL ) //update some geometric data
@@ -2178,9 +2402,9 @@ namespace INMOST
 						}
 					}
 					//update my data
-					if( !m->GetMarker(GetHandle(),mod) ) 
+					if( !m->GetPrivateMarker(GetHandle(),mod) ) 
 					{
-						m->SetMarker(GetHandle(),mod);
+						m->SetPrivateMarker(GetHandle(),mod);
 						arr[GetElementNum()].push_back(GetHandle());
 					}
 					//disconnect element
@@ -2197,7 +2421,7 @@ namespace INMOST
 			//go over edges (node), faces (edge), cells (face)
 			while(it != hc.end() ) 
 			{
-				if( m->GetMarker(*it,mrk) ) //should be disconnected
+				if( m->GetPrivateMarker(*it,mrk) ) //should be disconnected
 				{
 					adj_type & lc = m->LowConn(*it);
 					//look into nodes of edge (node), edges of face (edge), faces of cell (face)
@@ -2208,9 +2432,9 @@ namespace INMOST
 							lc.erase(jt);
 							// lower adjacencies of edge (node), face (edge), cell (face) where modified
 							// update it's geometric data
-							if( !m->GetMarker(*it,mod) ) 
+							if( !m->GetPrivateMarker(*it,mod) ) 
 							{
-								m->SetMarker(*it,mod);
+								m->SetPrivateMarker(*it,mod);
 								arr[GetHandleElementNum(*it)].push_back(*it);
 							}
 							break;
@@ -2231,37 +2455,105 @@ namespace INMOST
 				else it++;
 			}
 		}
-		for(k = 0; k < num; k++) m->RemMarker(adjacent[k],mrk);
+		for(k = 0; k < num; k++) m->RemPrivateMarker(adjacent[k],mrk);
 		//if element placed below on ierarhy was modified, then all upper elements
 		//should be also modified, start from lowest elements in ierarchy and go up
 		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
 		{
 			int el_num = ElementNum(etype);
-			for(size_t it = 0; it < arr[el_num].size(); it++) 
+			for (size_t it = 0; it < arr[el_num].size(); it++)
 			{
-				assert( GetHandleElementType(arr[el_num][it]) == etype );
-				if( etype < CELL ) //check for upper adjacencies of current element
+				assert(GetHandleElementType(arr[el_num][it]) == etype);
+				if (etype < CELL) //check for upper adjacencies of current element
 				{
 					//check all upper adjacencies that may be affected by modification of me
-					adj_type & hc = m->HighConn(arr[el_num][it]);
-					for(adj_type::size_type jt = 0; jt < hc.size(); ++jt)
+					adj_type& hc = m->HighConn(arr[el_num][it]);
+					for (adj_type::size_type jt = 0; jt < hc.size(); ++jt)
 					{
-						if( !m->GetMarker(hc[jt],mod))
+						if (!m->GetPrivateMarker(hc[jt], mod))
 						{
-							m->SetMarker(hc[jt],mod);
+							m->SetPrivateMarker(hc[jt], mod);
 							arr[GetHandleElementNum(hc[jt])].push_back(hc[jt]);
 						}
 					}
 				}
-				m->ComputeGeometricType(arr[el_num][it]);
-				if (m->UpdateGeometryMarker())
-					m->SetMarker(arr[el_num][it],m->UpdateGeometryMarker());
-				else m->RecomputeGeometricData(arr[el_num][it]);
-				m->RemMarker(arr[el_num][it],mod);
+				else if( m->HighConnTag().isDefined(CELL) && m->LowConnTag().isDefined(NODE) ) //update nodes for current cell
+				{
+					//mark remaining connected nodes
+					ElementArray<Node> cnodes(m);
+					MarkerType keep = m->CreatePrivateMarker();
+					adj_type& lc = m->LowConn(arr[el_num][it]); //cell faces
+					for (adj_type::iterator ilc = lc.begin(); ilc != lc.end(); ++ilc) //loop remaining faces
+					{
+						adj_type& elc = m->LowConn(*ilc);//edges of the face
+						for (adj_type::iterator jlc = elc.begin(); jlc != elc.end(); ++jlc) //loop edges
+						{
+							adj_type& nlc = m->LowConn(*jlc);//nodes of the edge
+							for (adj_type::iterator klc = nlc.begin(); klc != nlc.end(); ++klc) if(!m->GetPrivateMarker(*klc,keep))
+							{
+								cnodes.push_back(keep);
+								m->SetPrivateMarker(*klc, keep);
+							}
+						}
+					}
+					//remove me from disconnected nodes
+					adj_type& hc = m->HighConn(arr[el_num][it]);
+					adj_iterator jt = hc.begin();
+					while(jt != hc.end()) //iterate over my nodes
+					{
+						if (!m->GetPrivateMarker(*jt, keep))
+						{
+							adj_type& lc = m->LowConn(*jt);
+							adj_iterator kt = lc.begin();
+							while (kt != lc.end()) //iterate over nodes's cells
+							{
+								if ((*kt) == arr[el_num][it]) // if nodes's cell is equal to modified cell, then remove connection
+								{
+									kt = lc.erase(kt);
+									break;
+								}
+								else kt++;
+							}
+							jt = hc.erase(jt);
+						}
+						else jt++;
+					}
+					//check that we have an extra node
+					cnodes.RemPrivateMarker(keep);
+					m->SetPrivateMarkerArray(hc.data(), hc.size(), keep);
+					for (ElementArray<Node>::iterator jt = cnodes.begin(); jt != cnodes.end(); ++jt) if (!jt->GetPrivateMarker(keep))
+					{
+						hc.push_back(*jt);
+						//connect cell to node (if not)
+						adj_type& nlc = m->LowConn(*jt); 
+						bool have_cell = false;
+						for (adj_type::iterator kt = nlc.begin(); kt != nlc.end() && !have_cell; ++kt)
+							if (*kt == arr[el_num][it]) have_cell = true;
+						if (!have_cell)
+							nlc.push_back(arr[el_num][it]);
+						jt->SetPrivateMarker(keep);
+					}
+					m->RemPrivateMarkerArray(hc.data(), hc.size(), keep);
+					m->ReleasePrivateMarker(keep);
+				}
 			}
+			if (etype > NODE)
+			{
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->ComputeGeometricType(arr[el_num][it]);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], CENTROID);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], NORMAL);
+				if (etype >= FACE)
+				{
+					for (size_t it = 0; it < arr[el_num].size(); it++)
+						m->RecomputeGeometricData(arr[el_num][it], ORIENTATION);
+				}
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], MEASURE);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], BARYCENTER);
+			}
+			if (!arr[el_num].empty()) m->RemPrivateMarkerArray(&arr[el_num][0], (enumerator)arr[el_num].size(), mod);
 		}
-		m->ReleaseMarker(mod);
-		m->ReleaseMarker(mrk);
+		m->ReleasePrivateMarker(mod);
+		m->ReleasePrivateMarker(mrk);
 	}
 
 	void Element::Connect(const HandleType * adjacent, INMOST_DATA_ENUM_TYPE num) const
@@ -2269,7 +2561,7 @@ namespace INMOST
 		assert( !(GetElementType() == EDGE && GetMeshLink()->LowConn(GetHandle()).size() > 2) ); // cannot add another node to edge
 		Mesh * m = GetMeshLink();
 		std::vector<HandleType> arr[4];
-		MarkerType mod = m->CreateMarker();
+		MarkerType mod = m->CreatePrivateMarker();
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < num; k++)
 		{
 			assert( GetHandleElementType(adjacent[k]) != CELL );
@@ -2279,9 +2571,9 @@ namespace INMOST
 			m->HighConn(adjacent[k]).push_back(GetHandle());
 			//this may be dead slow
 			//LowConn().push_back(adjacent[k]);
-			if (!m->GetMarker(adjacent[k], mod))
+			if (!m->GetPrivateMarker(adjacent[k], mod))
 			{
-				m->SetMarker(adjacent[k], mod);
+				m->SetPrivateMarker(adjacent[k], mod);
 				arr[GetHandleElementNum(adjacent[k])].push_back(adjacent[k]);
 			}
 		}
@@ -2289,9 +2581,9 @@ namespace INMOST
 		//TODO:
 		//for face have to find positions where to attach edges
 		lc.insert(lc.end(),adjacent,adjacent+num);
-		if (!m->GetMarker(GetHandle(), mod))
+		if (!m->GetPrivateMarker(GetHandle(), mod))
 		{
-			m->SetMarker(GetHandle(), mod);
+			m->SetPrivateMarker(GetHandle(), mod);
 			arr[GetElementNum()].push_back(GetHandle());
 		}
 		//perform fix instead of algorithm above
@@ -2308,9 +2600,14 @@ namespace INMOST
 			}
 		}
 		ComputeGeometricType();
-		if (m->UpdateGeometryMarker())
-			m->SetMarker(GetHandle(),m->UpdateGeometryMarker());
-		else m->RecomputeGeometricData(GetHandle());
+		//if (m->UpdateGeometryMarker())
+		//{
+		//	m->SetMarker(GetHandle(), m->UpdateGeometryMarker());
+		//	if (GetElementType() == FACE)
+		//		Face(m, GetHandle()).FixNormalOrientation();
+		//}
+		//else 
+		m->RecomputeGeometricData(GetHandle());
 		//if element placed below on ierarhy was modified, then all upper elements
 		//should be also modified, start from lowest elements in ierarchy and go up
 		for (ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
@@ -2322,24 +2619,92 @@ namespace INMOST
 				if (etype < CELL) //check for upper adjacencies of current element
 				{
 					//check all upper adjacencies that may be affected by modification of me
-					adj_type & hc = m->HighConn(arr[el_num][it]);
+					adj_type& hc = m->HighConn(arr[el_num][it]);
 					for (adj_type::size_type jt = 0; jt < hc.size(); ++jt)
 					{
-						if (!m->GetMarker(hc[jt], mod))
+						if (!m->GetPrivateMarker(hc[jt], mod))
 						{
-							m->SetMarker(hc[jt], mod);
+							m->SetPrivateMarker(hc[jt], mod);
 							arr[GetHandleElementNum(hc[jt])].push_back(hc[jt]);
 						}
 					}
 				}
-				m->ComputeGeometricType(arr[el_num][it]);
-				if (m->UpdateGeometryMarker())
-					m->SetMarker(arr[el_num][it],m->UpdateGeometryMarker());
-				else m->RecomputeGeometricData(arr[el_num][it]);
-				m->RemMarker(arr[el_num][it], mod);
+				else if (m->HighConnTag().isDefined(CELL) && m->LowConnTag().isDefined(NODE)) //update nodes for current cell
+				{
+					//mark remaining connected nodes
+					ElementArray<Node> cnodes(m);
+					MarkerType keep = m->CreatePrivateMarker();
+					adj_type& lc = m->LowConn(arr[el_num][it]); //cell faces
+					for (adj_type::iterator ilc = lc.begin(); ilc != lc.end(); ++ilc) //loop remaining faces
+					{
+						adj_type& elc = m->LowConn(*ilc);//edges of the face
+						for (adj_type::iterator jlc = elc.begin(); jlc != elc.end(); ++jlc) //loop edges
+						{
+							adj_type& nlc = m->LowConn(*jlc);//nodes of the edge
+							for (adj_type::iterator klc = nlc.begin(); klc != nlc.end(); ++klc) if (!m->GetPrivateMarker(*klc, keep))
+							{
+								cnodes.push_back(keep);
+								m->SetPrivateMarker(*klc, keep);
+							}
+						}
+					}
+					//remove me from disconnected nodes
+					adj_type& hc = m->HighConn(arr[el_num][it]);
+					adj_iterator jt = hc.begin();
+					while (jt != hc.end()) //iterate over my nodes
+					{
+						if (!m->GetPrivateMarker(*jt, keep))
+						{
+							adj_type& lc = m->LowConn(*jt);
+							adj_iterator kt = lc.begin();
+							while (kt != lc.end()) //iterate over nodes's cells
+							{
+								if ((*kt) == arr[el_num][it]) // if nodes's cell is equal to modified cell, then remove connection
+								{
+									kt = lc.erase(kt);
+									break;
+								}
+								else kt++;
+							}
+							jt = hc.erase(jt);
+						}
+						else jt++;
+					}
+					//check that we have an extra node
+					cnodes.RemPrivateMarker(keep);
+					m->SetPrivateMarkerArray(hc.data(), hc.size(), keep);
+					for (ElementArray<Node>::iterator jt = cnodes.begin(); jt != cnodes.end(); ++jt) if (!jt->GetPrivateMarker(keep))
+					{
+						hc.push_back(*jt);
+						//connect cell to node (if not)
+						adj_type& nlc = m->LowConn(*jt);
+						bool have_cell = false;
+						for (adj_type::iterator kt = nlc.begin(); kt != nlc.end() && !have_cell; ++kt)
+							if (*kt == arr[el_num][it]) have_cell = true;
+						if (!have_cell)
+							nlc.push_back(arr[el_num][it]);
+						jt->SetPrivateMarker(keep);
+					}
+					m->RemPrivateMarkerArray(hc.data(), hc.size(), keep);
+					m->ReleasePrivateMarker(keep);
+				}
 			}
+			if (etype > NODE)
+			{
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->ComputeGeometricType(arr[el_num][it]);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], CENTROID);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], NORMAL);
+				if (etype >= FACE)
+				{
+					for (size_t it = 0; it < arr[el_num].size(); it++)
+						m->RecomputeGeometricData(arr[el_num][it], ORIENTATION);
+				}
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], MEASURE);
+				for (size_t it = 0; it < arr[el_num].size(); it++) m->RecomputeGeometricData(arr[el_num][it], BARYCENTER);
+			}
+			if (!arr[el_num].empty())m->RemPrivateMarkerArray(&arr[el_num][0], (enumerator)arr[el_num].size(), mod);
 		}
-		m->ReleaseMarker(mod);
+		m->ReleasePrivateMarker(mod);
 	}
 }
 

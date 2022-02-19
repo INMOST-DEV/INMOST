@@ -23,9 +23,9 @@ namespace INMOST
 		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) = 0;
 		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) = 0;
 
-		virtual void Adaptation(Mesh& m) const = 0;
-
-		virtual void PrepareAdaptation(Mesh& m) = 0;
+		virtual void Adaptation() const = 0;
+		virtual void BeginAdaptation() = 0;
+		virtual void EndAdaptation() = 0;
 	};
 
 
