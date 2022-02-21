@@ -455,7 +455,9 @@ namespace INMOST
 		//Save("before_equiv"+std::to_string(counter)+".pvtk");
 		ElementType bridge = FACE;
 		if( tag_bridge.isValid() ) bridge = ElementType(Integer(GetHandle(),tag_bridge));
-		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG",DATA_INTEGER,CELL,CELL,2);
+		assert(OneType(bridge)); //what if there is multiple types? (todo: the lowest type is required!)
+#if 0
+		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG", DATA_INTEGER, CELL, CELL, 2);
 		std::queue<HandleType> cells_queue;
 		double t, tadj = 0;
 		ENTER_BLOCK();
@@ -510,7 +512,121 @@ namespace INMOST
 		}
 		EXIT_BLOCK();
 		REPORT_VAL("adjacency requests", tadj);
-		
+#else
+		TagIntegerArray tag;
+		ENTER_BLOCK();
+		tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG", DATA_INTEGER, CELL | bridge, NONE, 2);
+		EXIT_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+		for (integer k = 0; k < CellLastLocalID(); k++) if (isValidCell(k))
+		{
+			Cell c = CellByLocalID(k);
+			if (!c.Hidden() && c.GetStatus() != Element::Owned)
+			{
+				tag[c][0] = INT_MAX;
+				tag[c][1] = INT_MAX;
+			}
+		}
+		//init bridge elements
+		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+		for (integer k = 0; k < LastLocalID(bridge); k++) if (isValidElement(bridge,k))
+		{
+			Element e = ElementByLocalID(bridge, k);
+			if (!e.Hidden())
+			{
+				tag[e][0] = INT_MAX;
+				tag[e][1] = INT_MAX;
+				ElementArray<Cell> cells = e.getCells();
+				Element::Status stat;
+				for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
+					stat |= it->GetStatus();
+				if ((stat & Element::Owned) && (stat & (Element::Shared | Element::Ghost)))
+				{
+					int owner = INT_MAX;
+					for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it) if (it->GetStatus() == Element::Owned)
+						owner = std::min(owner, it->IntegerDF(tag_owner));
+					tag[e][0] = owner;
+					tag[e][1] = 0;
+				}
+			}
+		}
+		EXIT_BLOCK();
+		int cur_dist = 0, incdist = 0;
+		ENTER_BLOCK();
+		do
+		{
+			incdist = 0;
+			REPORT_VAL("current distance", cur_dist);
+			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1) reduction(+:incdist)
+#endif
+			for (integer k = 0; k < CellLastLocalID(); k++) if (isValidCell(k))
+			{
+				Cell c = CellByLocalID(k);
+				if (!c.Hidden() && c.GetStatus() != Element::Owned)
+				{
+					ElementArray<Element> adj = c.getAdjElements(bridge);
+					std::pair<int, int> val(INT_MAX, INT_MAX);
+					for (ElementArray<Element>::iterator it = adj.begin(); it != adj.end(); ++it)
+						val = std::min(val, std::make_pair(tag[*it][1], tag[*it][0]));
+					if (val.first == cur_dist)
+					{
+						tag[c][0] = val.second;
+						tag[c][1] = val.first + 1;
+						incdist++;
+					}
+				}
+			}
+			EXIT_BLOCK();
+			REPORT_VAL("increased distance", incdist);
+			cur_dist++;
+			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for (integer k = 0; k < LastLocalID(bridge); k++) if (isValidElement(bridge, k))
+			{
+				Element e = ElementByLocalID(bridge, k);
+				if (!e.Hidden())
+				{
+					if (tag[e][1] == INT_MAX)
+					{
+						ElementArray<Cell> cells = e.getCells();
+						std::pair<int, int> val(INT_MAX, INT_MAX);
+						for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
+							val = std::min(val, std::make_pair(tag[*it][1], tag[*it][0]));
+						tag[e][0] = val.second;
+						tag[e][1] = val.first;
+					}
+				}
+			}
+			EXIT_BLOCK();
+		} while (incdist);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+		tag = DeleteTag(tag, bridge);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+		for (integer k = 0; k < CellLastLocalID(); k++) if (isValidCell(k))
+		{
+			Cell c = CellByLocalID(k);
+			if (!c.Hidden() && c.GetStatus() != Element::Owned)
+			{
+				if (tag[c][0] == INT_MAX)
+					tag[c][0] = -1;
+			}
+		}
+		EXIT_BLOCK();
+#endif
 		//static int equiv = 0;
 		//std::string file;
 		//file = "aequiv"+std::to_string(equiv)+".pvtk";
@@ -553,7 +669,8 @@ namespace INMOST
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
 				integer new_owner = tag[c][0];
-				if( new_owner == -1 ) continue;
+				//if( new_owner == -1 ) continue;
+				if (new_owner == -1) continue;
 #if !defined(NDEBUG)
 				Storage::integer_array procs = c.IntegerArray(ProcessorsTag());
 				if( !std::binary_search(procs.begin(),procs.end(),tag[c][0]) ) 
@@ -1662,24 +1779,6 @@ namespace INMOST
 				//ComputeSharedProcs();
 				RecomputeParallelStorage(CELL | EDGE | FACE | NODE);
 				AssignGlobalID(CELL | EDGE | FACE | NODE);
-				ENTER_BLOCK();
-#if defined(USE_PARALLEL_STORAGE)
-				for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
-					for(int i = 0; i < 4; i++)
-					{
-						if( !it->second[i].empty() )
-							std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
-							//qsort(&it->second[i][0],it->second[i].size(),sizeof(Element *),CompareElementsCGID);
-					}
-				for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)
-					for(int i = 0; i < 4; i++)
-					{
-						if( !it->second[i].empty() )
-							std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
-							//qsort(&it->second[i][0],it->second[i].size(),sizeof(Element *),CompareElementsCGID);
-					}
-#endif //USE_PARALLEL_STORAGE
-				EXIT_BLOCK();
 			}
 			else
 			{
@@ -1700,21 +1799,20 @@ namespace INMOST
 				
 				Storage::real epsilon = GetEpsilon();
 				
-				GeomParam table;
-				
-				//if( !only_new )
+				const bool precompute_geom = true;
+				GeomParam table;	
+				ENTER_BLOCK();
+				if (precompute_geom)
 				{
-					ENTER_BLOCK();
-					
-					for(ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
-						if( !HaveGeometricData(CENTROID,etype) )
+					for (ElementType etype = EDGE; etype <= CELL; etype = NextElementType(etype))
+						if (!HaveGeometricData(CENTROID, etype))
 							table[CENTROID] |= etype;
 					PrepareGeometricData(table);
-				
+
 					REPORT_STR("Prepare geometric data");
-					EXIT_BLOCK();
 				}
-				
+				EXIT_BLOCK();
+
 			
 				//for(iteratorNode it = BeginNode(); it != EndNode(); it++)
 				ENTER_BLOCK();
@@ -1933,28 +2031,10 @@ namespace INMOST
 					}
 					EXIT_BLOCK();
 					//ComputeSharedProcs();
-					ENTER_BLOCK();
 					RecomputeParallelStorage(NODE);
 					AssignGlobalID(NODE);
 					ReportParallelStorage();
-					EXIT_BLOCK();
-					ENTER_BLOCK();
-#if defined(USE_PARALLEL_STORAGE)
-					for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
-					{
-						if( !it->second[0].empty() )
-							std::sort(it->second[0].begin(),it->second[0].end(),GlobalIDComparator(this));
-							//qsort(&it->second[0][0],it->second[0].size(),sizeof(Element *),CompareElementsCGID);
-					}
-					for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)
-					{
-						if( !it->second[0].empty() )
-							std::sort(it->second[0].begin(),it->second[0].end(),GlobalIDComparator(this));
-							//qsort(&it->second[0][0],it->second[0].size(),sizeof(Element *),CompareElementsCGID);
-					}
-#endif //USE_PARALLEL_STORAGE
 					REPORT_STR("Set parallel info for nodes");
-					EXIT_BLOCK();
 					
 					
 					MarkerType new_lc = 0;
@@ -2075,13 +2155,15 @@ namespace INMOST
 								message_send.clear();
 								message_send.push_back(0);
 								ENTER_BLOCK();
-								for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
+								//for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
+								for(int i = 0; i < LastLocalID(current_mask); ++i) if( isValidElement(current_mask,i))
 								{
+									Element it = ElementByLocalID(current_mask, i);
                                     if (only_new && !it->GetMarker(new_lc)) continue;
 									Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 									if( std::binary_search(pr.begin(),pr.end(),*p) )
 									{
-										Element::adj_type & sub = LowConn(*it);
+										Element::adj_type & sub = LowConn(it->GetHandle());
 										if( sub.size() == 0 ) throw Impossible;
 										integer message_size_pos = (integer)message_send.size();
 										message_send.push_back(0);
@@ -2097,7 +2179,7 @@ namespace INMOST
 										}
 										//~ message_send[1]++;
 										message_send[0]++;
-										elements[m].push_back(*it);
+										elements[m].push_back(it->GetHandle());
 									}
 								}
 								EXIT_BLOCK();
@@ -2238,8 +2320,10 @@ namespace INMOST
 						
 						ENTER_BLOCK();
 						//Now mark all the processors status
-						for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
+						//for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
+						for(int i = 0; i < LastLocalID(current_mask); ++i) if( isValidElement(current_mask,i))
 						{
+							Element it = ElementByLocalID(current_mask, i);
 							if (only_new && !it->GetMarker(new_lc)) continue;
 							Storage::integer_array pr = it->IntegerArrayDV(tag_processors);
 							if( pr.empty() )
@@ -2259,7 +2343,7 @@ namespace INMOST
 							}
 							else
 								estat = Element::Ghost;
-							SetStatus(*it, estat);
+							SetStatus(it->GetHandle(), estat);
 						}
 						EXIT_BLOCK();
 						RecomputeParallelStorage(current_mask);
@@ -2271,23 +2355,6 @@ namespace INMOST
 						EXIT_BLOCK();
 						AssignGlobalID(current_mask);
 						ReportParallelStorage();
-						integer num = ElementNum(current_mask);
-						ENTER_BLOCK();
-#if defined(USE_PARALLEL_STORAGE)
-						for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
-						{
-							if( !it->second[num].empty() )
-								std::sort(it->second[num].begin(),it->second[num].end(),GlobalIDComparator(this));
-						}
-						for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); it++)
-						{
-							if( !it->second[num].empty() )
-								std::sort(it->second[num].begin(),it->second[num].end(),GlobalIDComparator(this));
-						}
-#endif //USE_PARALLEL_STORAGE
-	
-						REPORT_STR("Set parallel info");
-						EXIT_BLOCK();
 					}
 					EXIT_BLOCK();
 					if( only_new ) ReleaseMarker(new_lc,EDGE|FACE|CELL);
@@ -2295,9 +2362,12 @@ namespace INMOST
 				}
 				EXIT_BLOCK();
 				//if( !only_new ) 
-				ENTER_BLOCK();
-				RemoveGeometricData(table);	
-				EXIT_BLOCK();
+				if (precompute_geom)
+				{
+					ENTER_BLOCK();
+					RemoveGeometricData(table);
+					EXIT_BLOCK();
+				}
 			}
 		}
 		EXIT_BLOCK();
@@ -2877,13 +2947,16 @@ namespace INMOST
 		Tag tag_skin = CreateTag("TEMPORARY_COMPUTE_SHARED_SKIN_SET",DATA_INTEGER,FACE,FACE);
 
 		REPORT_STR("filling neighbouring cell's global identificators for faces")
-#if defined(USE_PARALLEL_WRITE_TIME)
-		std::map<int,int> numfacesperproc;
-#endif
 
-		for(iteratorFace it = BeginFace(); it != EndFace(); it++)
+		//for(iteratorFace it = BeginFace(); it != EndFace(); it++)
+		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+		for(int i = 0; i < FaceLastLocalID(); ++i) if( isValidFace(i) )
 		{
-			Element::Status estat = GetStatus(*it);
+			Face it = FaceByLocalID(i);
+			Element::Status estat = GetStatus(it->GetHandle());
 			if( estat == Element::Ghost || estat == Element::Shared )
 			{
 				Storage::integer_array arr = it->IntegerArray(tag_skin);
@@ -2895,18 +2968,9 @@ namespace INMOST
 					arr.push_back(jt->IntegerDF(tag_owner)); //owner of the cell
         		}
 			}
-#if defined(USE_PARALLEL_WRITE_TIME)
-			++numfacesperproc[it->IntegerDF(tag_owner)];
-#endif
 		}
+		EXIT_BLOCK();
 		REPORT_STR("number of ghosted or shared faces");
-#if defined(USE_PARALLEL_WRITE_TIME)
-		for(std::map<int,int>::iterator it = numfacesperproc.begin(); it != numfacesperproc.end(); ++it)
-		{
-			REPORT_VAL("processor",it->first);
-			REPORT_VAL("skin faces",it->second);
-		}
-#endif
 
 		REPORT_STR("reducing cell's global identificators information")
 
@@ -2931,13 +2995,15 @@ namespace INMOST
 		ExchangeData(tag_skin,FACE,0);
 		REPORT_STR("synchornization done")
 		proc_elements skin_faces;
-#if defined(USE_PARALLEL_WRITE_TIME)
-    numfacesperproc.clear();
+		//for(iteratorFace it = BeginFace(); it != EndFace(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for
 #endif
-		for(iteratorFace it = BeginFace(); it != EndFace(); it++)
+		for (int i = 0; i < FaceLastLocalID(); ++i) if (isValidFace(i))
 		{
+			Face it = FaceByLocalID(i);
 			bool flag = false;
-			Element::Status estat1 = GetStatus(*it), estat2;
+			Element::Status estat1 = GetStatus(it->GetHandle()), estat2;
 			if( estat1 == Element::Owned ) continue;
 			if (marker && !it->GetMarker(marker)) continue;
 			Cell c1 = it->BackCell();
@@ -2971,23 +3037,16 @@ namespace INMOST
 					assert(owner >= 0 && owner < GetProcessorsNumber());
 					if( owner != mpirank )
 					{
-						skin_faces[owner].push_back(*it);
-#if defined(USE_PARALLEL_WRITE_TIME)
-						++numfacesperproc[owner];
+#if defined(USE_OMP)
+#pragma omp critical
 #endif
+						skin_faces[owner].push_back(it->GetHandle());
 						break;
 					}
 				}	
 			}
 		}
 		REPORT_STR("number of shared faces");
-#if defined(USE_PARALLEL_WRITE_TIME)
-		for(std::map<int,int>::iterator it = numfacesperproc.begin(); it != numfacesperproc.end(); ++it)
-		{
-			REPORT_VAL("processor",it->first);
-			REPORT_VAL("skin faces",it->second);
-		}
-#endif
 		tag_skin = DeleteTag(tag_skin);
 #if defined(DEBUG_COMPUTE_SHARED_SKIN_SET)
 		{
@@ -3067,9 +3126,6 @@ namespace INMOST
 			ReduceData(on_skin,bridge_type,0,UnpackOnSkin); //on each processor each element will know
 			ExchangeData(on_skin,bridge_type,0);            //what processors share this element
 			
-#if defined(USE_PARALLEL_WRITE_TIME)
-			std::map<int,int> numelemsperproc;
-#endif
 			for(element_set::iterator it = all_visited.begin(); it != all_visited.end(); it++)
 			{
 				Storage::integer_array os = IntegerArray(*it,on_skin);
@@ -3077,23 +3133,11 @@ namespace INMOST
 				{
 					assert(*p >= 0 && *p < GetProcessorsNumber());
 					if( *p != mpirank )
-					{
 						bridge[*p].push_back(*it);
-#if defined(USE_PARALLEL_WRITE_TIME)
-						++numelemsperproc[*p];
-#endif
-					}
 				}
 			}
 			on_skin = DeleteTag(on_skin);
 			REPORT_STR("number of shared elements")
-#if defined(USE_PARALLEL_WRITE_TIME)
-			for(std::map<int,int>::iterator it = numelemsperproc.begin(); it != numelemsperproc.end(); ++it)
-			{
-				REPORT_VAL("processor",it->first);
-				REPORT_VAL("skin elements",it->second);
-			}
-#endif
 		}
 		EXIT_FUNC();
 		return bridge;
@@ -3513,6 +3557,7 @@ namespace INMOST
 				std::stringstream tag_name;
 				tag_name << "PROTECTED_TEMPORARY_PACK_POSITION_" << GetLocalProcessorRank();
 				pack_position = CreateTag(tag_name.str(), DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE, 1);
+				//pack_position = CreateTag(tag_name.str(), DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, NONE, 1);
 			}
 #if defined(USE_OMP)
 #pragma omp for schedule(dynamic,1)
@@ -3557,7 +3602,7 @@ namespace INMOST
 				DeleteTag(pack_position);
 		}
 		EXIT_BLOCK();
-		//storage.send_buffers.resize(num_send);
+		ENTER_BLOCK();
 		{
 			exch_buffer_type::iterator it = storage.send_buffers.begin();
 			while (it != storage.send_buffers.end())
@@ -3567,7 +3612,8 @@ namespace INMOST
 				else ++it;
 			}
 		}
-		//storage.recv_buffers.resize(num_recv);
+		EXIT_BLOCK();
+		ENTER_BLOCK();
 		{
 			exch_buffer_type::iterator it = storage.recv_buffers.begin();
 			while (it != storage.recv_buffers.end())
@@ -3577,6 +3623,7 @@ namespace INMOST
 				else ++it;
 			}
 		}
+		EXIT_BLOCK();
 		if( unknown_size ) 
 		{
 			REPORT_STR("prepare receive with unknown size");
@@ -6576,6 +6623,29 @@ namespace INMOST
 #endif
 	}
 
+	/*
+	template<typename Pred>
+	void mergeSortRecursive(HandleType * v, Storage::enumerator left, Storage::enumerator right, const Pred & Pr)
+	{
+		if (left < right) 
+		{
+			if (right - left >= 32)
+			{
+				Storage::enumerator mid = (left + right) / 2;
+				mergeSortRecursive(v, left, mid,Pr);
+				mergeSortRecursive(v, mid + 1, right,Pr);
+				std::inplace_merge(v + left, v + mid + 1, v + right + 1, Pr);
+			}
+			else std::sort(v + left, v + right + 1, Pr);
+		}
+	}
+
+	template<typename Pred>
+	void mergeSort(HandleType* v, Storage::enumerator size, const Pred & Pr)
+	{
+		mergeSortRecursive(v, 0, size - 1, Pr);
+	}
+	*/
 
 	void Mesh::SortParallelStorage(parallel_storage & ghost, parallel_storage & shared, ElementType mask)
 	{
@@ -6583,6 +6653,21 @@ namespace INMOST
 #if defined(USE_MPI)
 		REPORT_STR("sort shared elements")
 		ENTER_BLOCK();
+#if defined(USE_PARALLEL_WRITE_TIME)
+		for (int j = 0; j < 5 * (int)shared.size(); ++j)
+		{
+			int i = j % 5;
+			if (mask & ElementTypeFromDim(i))
+			{
+				parallel_storage::iterator it = shared.begin();
+				int k = j / 5;
+				while (k) ++it, --k;
+				REPORT_VAL("processor", it->first);
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i)) ? "YES" : "NO")));
+				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)), it->second[i].size());
+			}
+		}
+#endif
 		//for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
 #if defined(USE_OMP)
 #pragma omp parallel for schedule(dynamic,1)
@@ -6639,6 +6724,21 @@ namespace INMOST
 		EXIT_BLOCK();
 		REPORT_STR("sort ghost elements")
 		ENTER_BLOCK();
+#if defined(USE_PARALLEL_WRITE_TIME)
+		for (int j = 0; j < 5 * (int)ghost.size(); ++j)
+		{
+			int i = j % 5;
+			if (mask & ElementTypeFromDim(i))
+			{
+				parallel_storage::iterator it = ghost.begin();
+				int k = j / 5;
+				while (k) ++it, --k;
+				REPORT_VAL("processor", it->first);
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)), it->second[i].size());
+			}
+		}
+#endif
 		//for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
 #if defined(USE_OMP)
 #pragma omp parallel for schedule(dynamic,1)

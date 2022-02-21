@@ -1881,12 +1881,13 @@ namespace INMOST
 		{
 			ElementSet it = EsetByLocalID(jt);
 			//std::cout << "set name: " << it->GetName() << " size " << it->Size() << " id " << it->LocalID() << std::endl;
-			if (it->HaveParent() && it->GetParent()->GetMarker(mrk))
-				it->GetParent()->RemChild(it->self());
 			while (it->HaveChild() && it->GetChild()->GetMarker(mrk))
 				it->RemChild(it->GetChild());
 			while (it->HaveSibling() && it->GetSibling()->GetMarker(mrk))
 				it->RemSibling(it->GetSibling());
+			if (it->HaveParent() && it->GetParent()->GetMarker(mrk))
+				it->GetParent()->RemChild(it->self());
+
 			ElementSet::iterator jt = it->Begin();
 			//int q = 0;
 			while (jt != it->End())
