@@ -8,6 +8,34 @@ const std::string measure_name = "PROTECTED_GEOM_UTIL_MEASURE";
 const std::string centroid_name = "PROTECTED_GEOM_UTIL_CENTROID";
 const std::string barycenter_name = "PROTECTED_GEOM_UTIL_BARYCENTER";
 
+#if defined(USE_PARALLEL_WRITE_TIME)
+__INLINE std::string NameSlash(std::string input)
+{
+	for (size_t l = input.size(); l > 0; --l)
+		if (input[l - 1] == '/' || input[l - 1] == '\\')
+			return std::string(input.c_str() + l);
+	return input;
+}
+#define REPORT_MPI(x) {WriteTab(out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
+#define REPORT_STR(x) {WriteTab(out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {WriteTab(out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#define ENTER_FUNC() double all_time = Timer(); {WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << func_id++ << "\">" << std::endl; Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); WriteTab(out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << GetFuncID()++ << "\">" << std::endl; Enter();
+#define EXIT_BLOCK() WriteTab(out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC() {WriteTab(out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC_DIE() {WriteTab(out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; Exit(); WriteTab(out_time) << "</FUNCTION>" << std::endl;}
+#else // USE_PARALLEL_WRITE_TIME
+#define REPORT_MPI(x) x
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_FUNC() {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
+#define EXIT_FUNC() {}
+#define EXIT_FUNC_DIE()  {}
+#endif // USE_PARALLEL_WRITE_TIME
+
+
 
 namespace INMOST
 {
@@ -1231,6 +1259,7 @@ namespace INMOST
 	
 	void Mesh::PrepareGeometricData(GeomParam table)
 	{
+		ENTER_FUNC();
 		for(GeomParam::iterator it = table.begin(); it != table.end(); ++it)
 		{
 			GeometricData types = it->first;
@@ -1240,6 +1269,8 @@ namespace INMOST
 				//std::cout << "ORIENTATION" << std::endl;
 				if( mask & FACE )
 				{
+					ENTER_BLOCK();
+					REPORT_STR("Prepare ORIENTATION");
 					if( HideMarker() )
 					{
 						MarkerType hm = HideMarker();
@@ -1265,6 +1296,7 @@ namespace INMOST
 						for(integer e = 0; e < FaceLastLocalID(); ++e) if( isValidElement(FACE,e) )
 							Face(this,ComposeHandle(FACE,e))->FixNormalOrientation();
 					}
+					EXIT_BLOCK();
 				}
 				ShowGeometricData(ORIENTATION,FACE);
 			}
@@ -1275,6 +1307,8 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(MEASURE,etype))
 					{
+						ENTER_BLOCK();
+						REPORT_STR("Prepare MEASURE for " << ElementTypeName(etype));
 						measure_tag = CreateTag(measure_name,DATA_REAL,etype,NONE,1);
 						if( HideMarker() )
 						{
@@ -1300,6 +1334,7 @@ namespace INMOST
 							}
 						}
 						ShowGeometricData(MEASURE,etype);
+						EXIT_BLOCK();
 					}
 				}
 			}
@@ -1310,6 +1345,8 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(CENTROID,etype))
 					{
+						ENTER_BLOCK();
+						REPORT_STR("Prepare CENTROID for " << ElementTypeName(etype));
 						centroid_tag = CreateTag(centroid_name,DATA_REAL,etype,NONE,GetDimensions());
 						if( HideMarker() )
 						{
@@ -1335,6 +1372,7 @@ namespace INMOST
 							}
 						}
 						ShowGeometricData(CENTROID,etype);
+						EXIT_BLOCK();
 					}
 				}
 			}
@@ -1345,6 +1383,8 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(BARYCENTER,etype))
 					{
+						ENTER_BLOCK();
+						REPORT_STR("Prepare BARYCENTER for " << ElementTypeName(etype));
 						barycenter_tag = CreateTag(barycenter_name,DATA_REAL,etype,NONE,GetDimensions());
 						if( HideMarker() )
 						{
@@ -1370,6 +1410,7 @@ namespace INMOST
 							}
 						}
 						ShowGeometricData(BARYCENTER,etype);
+						EXIT_BLOCK();
 					}
 				}	
 			}
@@ -1380,6 +1421,8 @@ namespace INMOST
 				{
 					if( (mask & etype) && !HaveGeometricData(NORMAL,etype))
 					{
+						ENTER_BLOCK();
+						REPORT_STR("Prepare NORMAL for " << ElementTypeName(etype));
 						normal_tag = CreateTag(normal_name,DATA_REAL,etype,NONE,GetDimensions());
 						if( HideMarker() )
 						{
@@ -1405,10 +1448,12 @@ namespace INMOST
 							}
 						}
 						ShowGeometricData(NORMAL,etype);
+						EXIT_BLOCK();
 					}
 				}
 			}
 		}
+		EXIT_FUNC();
 	}
 
 	bool Cell::CheckConvexity() const {return GetMeshLink()->CheckConvexity(getFaces());}

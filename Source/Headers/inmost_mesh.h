@@ -1364,7 +1364,7 @@ namespace INMOST
 		__INLINE sparse_type const &        MGetSparseLink      (HandleType h) const {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE sparse_type &              MGetSparseLink      (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE const void *               MGetSparseLink      (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
-		__INLINE void * &                   MGetSparseLink      (HandleType h, const Tag & t) {sparse_type & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec;}
+		__INLINE void*&                     MGetSparseLink      (HandleType h, const Tag& t);// {sparse_type& s = MGetSparseLink(GetHandleElementNum(h), GetHandleID(h)); for (senum i = 0; i < s.size(); ++i) if (s[i].tag == t.mem) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec; }
 		__INLINE const void *               MGetDenseLink       (integer n, integer ID, const Tag & t) const {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
 		__INLINE void *                     MGetDenseLink       (integer n, integer ID, const Tag & t) {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}
@@ -2015,25 +2015,30 @@ namespace INMOST
 		/// Set a marker on the element represented by handle.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
-		void                              SetMarker          (HandleType h,MarkerType n)  {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
+		__INLINE void                     SetMarker          (HandleType h,MarkerType n)  {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] |= static_cast<bulk>(n & MarkerMask);}
 		void                              SetPrivateMarker   (HandleType h,MarkerType n);
+		__INLINE void                     SetAnyMarker       (HandleType h, MarkerType n) { return isPrivate(n) ? SetPrivateMarker(h, n) : SetMarker(h, n); }
+
 		/// Set a marker on the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles
 		/// @param m stores byte number and byte bit mask that represent marker
 		/// @see Mesh::SetMarker
-		void                              SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
-		void                              SetPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetPrivateMarker(h[i],m);}
+		__INLINE void                     SetMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetMarker(h[i],m);}
+		__INLINE void                     SetPrivateMarkerArray     (const HandleType * h, enumerator n, MarkerType m) {for(enumerator i = 0; i < n; ++i) if( h[i] != InvalidHandle() )SetPrivateMarker(h[i],m);}
+		__INLINE void                     SetAnyMarkerArray  (const HandleType* h, enumerator n, MarkerType m) { return isPrivate(n) ? SetPrivateMarkerArray(h, n, m) : SetMarkerArray(h, n, m); }
 		/// Check whether the marker is set one the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
-		bool                              GetMarker          (HandleType h,MarkerType n) const {assert(!isPrivate(n)); return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
+		__INLINE bool                     GetMarker          (HandleType h,MarkerType n) const {assert(!isPrivate(n)); return (static_cast<const bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] & static_cast<bulk>(n & MarkerMask)) != 0;}
 		bool                              GetPrivateMarker   (HandleType h,MarkerType n) const;
+		__INLINE bool                     GetAnyMarker       (HandleType h, MarkerType n) const { return isPrivate(n) ? GetPrivateMarker(h, n) : GetMarker(h, n); }
 		/// Remove the marker from the element.
 		/// @param h element handle
 		/// @param n stores byte number and byte bit mask that represent marker
-		void                              RemMarker          (HandleType h,MarkerType n) {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
+		__INLINE void                     RemMarker          (HandleType h,MarkerType n) {assert(!isPrivate(n)); static_cast<bulk *>(MGetDenseLink(h,MarkersTag()))[n >> MarkerShift] &= ~static_cast<bulk>(n & MarkerMask);}
 		void                              RemPrivateMarker   (HandleType h,MarkerType n);
+		__INLINE void                     RemAnyMarker       (HandleType h, MarkerType n) { return isPrivate(n) ? RemPrivateMarker(h, n) : RemMarker(h, n); }
 		/// Remove the marker from the set of handles.
 		/// @param h set of handles
 		/// @param n number of handles

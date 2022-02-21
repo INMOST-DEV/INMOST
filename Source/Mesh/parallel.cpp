@@ -544,32 +544,30 @@ namespace INMOST
 		//}
 		//ExchangeData(tag_new_owner,CELL,0);
 		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 		for(integer k = 0; k < CellLastLocalID(); k++) if( isValidCell(k) )
 		{
 			Cell c = CellByLocalID(k);
 			if( !c.Hidden() && c.GetStatus() != Element::Owned )
 			{
-				assert( c.GetStatus() == Element::Shared || c.GetStatus() == Element::Ghost );
-				//if ( !only_new || it->nbAdjElements(NODE | EDGE | FACE | CELL, NewMarker()) != 0)
+				integer new_owner = tag[c][0];
+				if( new_owner == -1 ) continue;
+#if !defined(NDEBUG)
+				Storage::integer_array procs = c.IntegerArray(ProcessorsTag());
+				if( !std::binary_search(procs.begin(),procs.end(),tag[c][0]) ) 
 				{
-					integer new_owner = tag[c][0];
-					if( new_owner == -1 ) continue;
-					//int new_owner = tag_new_owner[c];
-
-					Storage::integer_array procs = c.IntegerArray(ProcessorsTag());
-					if( !std::binary_search(procs.begin(),procs.end(),tag[c][0]) ) 
-					{
-						std::cout << "new owner " << tag[c][0] << " dist " << tag[c][1] << " is not among processors ";
-						for(INMOST_DATA_ENUM_TYPE k = 0; k < procs.size();++k) std::cout << procs[k] << " ";
-						std::cout << " for cell " << c.LocalID() << " " << c.GlobalID() << std::endl;
-					}
-					
-					c.IntegerDF(tag_owner) = new_owner;
-					if (GetProcessorRank() == new_owner)
-						c.SetStatus(Element::Shared);
-					else
-						c.SetStatus(Element::Ghost);
+					std::cout << "new owner " << tag[c][0] << " dist " << tag[c][1] << " is not among processors ";
+					for(INMOST_DATA_ENUM_TYPE k = 0; k < procs.size();++k) std::cout << procs[k] << " ";
+					std::cout << " for cell " << c.LocalID() << " " << c.GlobalID() << std::endl;
 				}
+#endif
+				c.IntegerDF(tag_owner) = new_owner;
+				if (GetProcessorRank() == new_owner)
+					c.SetStatus(Element::Shared);
+				else
+					c.SetStatus(Element::Ghost);
 			}
 		}
 		EXIT_BLOCK();
@@ -590,21 +588,42 @@ namespace INMOST
 		{
 			REPORT_VAL("etype ", ElementTypeName(etype));
 			ENTER_BLOCK();
-			for(integer k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
+			if (HideMarker())
 			{
-				Element e = ElementByLocalID(etype,k);
-				if( !e.Hidden() && e.GetStatus() != Element::Owned )
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for (integer k = 0; k < LastLocalID(etype); k++) if (isValidElement(etype, k))
 				{
-					assert( e.GetStatus() == Element::Shared || e.GetStatus() == Element::Ghost );
-					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
+					Element e = ElementByLocalID(etype, k);
+					if (!e.Hidden() && e.GetStatus() != Element::Owned)
 					{
-						Element::adj_type & hc = HighConn(e.GetHandle());
-						new_owner[e] = INT_MAX;
-						for(INMOST_DATA_ENUM_TYPE l = 0; l < hc.size(); ++l)
+						Element::adj_type& hc = HighConn(e.GetHandle());
+						Storage::integer owner = INT_MAX;
+						for (INMOST_DATA_ENUM_TYPE l = 0; l < hc.size(); ++l)
 						{
-							if( !GetMarker(hc[l],HideMarker()) )
-								new_owner[e] = std::min(new_owner[e],Integer(hc[l],tag_owner));
+							if (!GetMarker(hc[l], HideMarker()))
+								owner = std::min(owner, IntegerDF(hc[l], tag_owner));
 						}
+						new_owner[e] = owner;
+					}
+				}
+			}
+			else
+			{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+				for (integer k = 0; k < LastLocalID(etype); k++) if (isValidElement(etype, k))
+				{
+					Element e = ElementByLocalID(etype, k);
+					if (e.GetStatus() != Element::Owned)
+					{
+						Element::adj_type& hc = HighConn(e.GetHandle());
+						Storage::integer owner = INT_MAX;
+						for (INMOST_DATA_ENUM_TYPE l = 0; l < hc.size(); ++l)
+							owner = std::min(owner, IntegerDF(hc[l], tag_owner));
+						new_owner[e] = owner;
 					}
 				}
 			}
@@ -612,23 +631,22 @@ namespace INMOST
 			ReduceData(new_owner,etype,0,OperationMinOwner);
 			ExchangeData(new_owner,etype);
 			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
 			for(integer k = 0; k < LastLocalID(etype); k++) if( isValidElement(etype,k) )
 			{
 				Element e = ElementByLocalID(etype,k);
 				if( !e.Hidden() && e.GetStatus() != Element::Owned )
 				{
-					assert( e.GetStatus() == Element::Shared || e.GetStatus() == Element::Ghost );
-					//if( !only_new || e.nbAdjElements(NODE | EDGE | FACE | CELL,NewMarker()) )
+					Storage::integer nowner = new_owner[e], & owner = e.IntegerDF(tag_owner);
+					if( nowner != INT_MAX && owner != nowner )
 					{
-						if( new_owner[e] != INT_MAX &&
-						   e.IntegerDF(tag_owner) != new_owner[e] )
-						{
-							e.IntegerDF(tag_owner) = new_owner[e];
-							if (GetProcessorRank() == new_owner[e])
-								e.SetStatus(Element::Shared);
-							else
-								e.SetStatus(Element::Ghost);
-						}
+						owner = nowner;
+						if (GetProcessorRank() == nowner)
+							e.SetStatus(Element::Shared);
+						else
+							e.SetStatus(Element::Ghost);
 					}
 				}
 			}
@@ -2823,6 +2841,7 @@ namespace INMOST
 				//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 				//procs.clear();
 				//procs.insert(procs.begin(),shared_procs.begin(),shared_procs.end());
+#if !defined(NDEBUG)
 				ir = shared_procs.find(-1);
 				if( ir != shared_procs.end() )
 				{
@@ -2830,6 +2849,7 @@ namespace INMOST
 					REPORT_STR(GetProcessorRank() << " found processor -1 ");
 					exit(-1);
 				}
+#endif
 			}
 		}
 		//REPORT_VAL("processors",procs.size());
@@ -3089,11 +3109,11 @@ namespace INMOST
 	{
 		(void)destination;
 		if( tag.GetDataType() == DATA_REMOTE_REFERENCE ) return; //NOT IMPLEMENTED TODO 14
-		ENTER_FUNC();
-		REPORT_VAL("TagName",tag.GetTagName());
+		//ENTER_FUNC();
+		//REPORT_VAL("TagName",tag.GetTagName());
 #if defined(USE_MPI)
-		REPORT_VAL("Processor",destination);
-		REPORT_VAL("Buffer size before pack",buffer.size());
+		//REPORT_VAL("Processor",destination);
+		//REPORT_VAL("Buffer size before pack",buffer.size());
 		ElementType pack_types[2] = {NONE,NONE};
 		element_set::const_iterator eit;
 		//elements_by_type pack_elements;
@@ -3111,19 +3131,19 @@ namespace INMOST
 		for(int i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 		{
 			pack_types[0] |= ElementTypeFromDim(i);
-			REPORT_VAL("select marker",select);
-			REPORT_VAL("pack for type",ElementTypeName(ElementTypeFromDim(i)));
-			REPORT_VAL("number of elements",elements[i].size());
+			//REPORT_VAL("select marker",select);
+			//REPORT_VAL("pack for type",ElementTypeName(ElementTypeFromDim(i)));
+			//REPORT_VAL("number of elements",elements[i].size());
 			int total_packed = 0;
 			if( tag.isSparseByDim(i) )
 			{
-				REPORT_VAL("sparse for type", ElementTypeName(ElementTypeFromDim(i)));
+				//REPORT_VAL("sparse for type", ElementTypeName(ElementTypeFromDim(i)));
 				pack_types[1] |= ElementTypeFromDim(i);
 				INMOST_DATA_ENUM_TYPE count = (INMOST_DATA_ENUM_TYPE)array_size_send.size();
 				array_size_send.push_back(0);
 				for(eit = elements[i].begin(); eit != elements[i].end(); eit++)
 				{
-					if( (!select || GetMarker(*eit,select)) && HaveData(*eit,tag) )
+					if( (!select || GetAnyMarker(*eit,select)) && HaveData(*eit,tag) )
 					{
 						//REPORT_VAL("element index", static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
 						array_size_send.push_back(static_cast<INMOST_DATA_ENUM_TYPE>(eit-elements[i].begin()));
@@ -3151,13 +3171,13 @@ namespace INMOST
 						++total_packed;
 					}
 				}
-				REPORT_VAL("index", count);
-				REPORT_VAL("count",array_size_send[count]);
+				//REPORT_VAL("index", count);
+				//REPORT_VAL("count",array_size_send[count]);
 			}
 			else
 			{
-				REPORT_VAL("dense for type", ElementTypeName(ElementTypeFromDim(i)));
-				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetMarker(*eit,select) )
+				//REPORT_VAL("dense for type", ElementTypeName(ElementTypeFromDim(i)));
+				for(eit = elements[i].begin(); eit != elements[i].end(); eit++) if( !select || GetAnyMarker(*eit,select) )
 				{
 					INMOST_DATA_ENUM_TYPE s = GetDataSize(*eit,tag);
 					size_t had_s = array_data_send.size();
@@ -3182,18 +3202,18 @@ namespace INMOST
 					++total_packed;
 				}
 			}
-			REPORT_VAL("total packed records",total_packed);
-			REPORT_VAL("Buffer size after pack for type", buffer.size());
+			//REPORT_VAL("total packed records",total_packed);
+			//REPORT_VAL("Buffer size after pack for type", buffer.size());
 		}
-		REPORT_VAL("tag defined on",static_cast<int>(pack_types[0]));
-		REPORT_VAL("tag sparse on",static_cast<int>(pack_types[1]));
-		REPORT_VAL("size_send",array_size_send.size());
-		REPORT_VAL("data_send",array_data_send.size());
+		//REPORT_VAL("tag defined on",static_cast<int>(pack_types[0]));
+		//REPORT_VAL("tag sparse on",static_cast<int>(pack_types[1]));
+		//REPORT_VAL("size_send",array_size_send.size());
+		//REPORT_VAL("data_send",array_data_send.size());
 		
 		pack_data_array(buffer,pack_types,2,GetCommunicator());
 		pack_data_vector(buffer,array_size_send,GetCommunicator());
 		pack_data_vector(buffer,array_data_send,GetCommunicator());
-		REPORT_VAL("Buffer size after pack",buffer.size());
+		//REPORT_VAL("Buffer size after pack",buffer.size());
 #else
 		(void) tag;
 		(void) elements;
@@ -3202,8 +3222,8 @@ namespace INMOST
 		(void) select;
 		(void) buffer;
 #endif
-		REPORT_VAL("TagName",tag.GetTagName());
-		EXIT_FUNC();
+		//REPORT_VAL("TagName",tag.GetTagName());
+		//EXIT_FUNC();
 	}
 	
 
@@ -3294,7 +3314,7 @@ namespace INMOST
 						assert( array_size_recv[k] < elements[i].size() );
 						//REPORT_VAL("element index", array_size_recv[k]);
 						eit = elements[i].begin() + array_size_recv[k++];
-						assert( !select || GetMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
+						assert( !select || GetAnyMarker(*eit,select) ); //if fires then very likely that marker was not synchronized
 						array_size = size;
 						if (array_size == ENUMUNDEF)
 						{
@@ -3330,7 +3350,7 @@ namespace INMOST
 					REPORT_VAL("dense for type",ElementTypeName(ElementTypeFromDim(i)));
 					for(eit = elements[i].begin(); eit != elements[i].end(); eit++) 
 					{
-						if( !select || GetMarker(*eit,select) )
+						if( !select || GetAnyMarker(*eit,select) )
 						{
 							array_size = size;
 							if (array_size == ENUMUNDEF)
@@ -3455,15 +3475,15 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
-		int num_send = 0, num_recv = 0;
-		TagInteger pack_position;
+		//int num_send = 0, num_recv = 0;
+		//TagInteger pack_position;
 		tag_set tag_pack_list;
 		if( have_reference_tag )
 		{
-			ENTER_BLOCK();
-			REPORT_STR("Create tag");
-			pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
-			EXIT_BLOCK();
+			//ENTER_BLOCK();
+			//REPORT_STR("Create tag");
+			//pack_position = CreateTag("PROTECTED_TEMPORARY_PACK_POSITION",DATA_INTEGER,ESET|CELL|FACE|EDGE|NODE,ESET|CELL|FACE|EDGE|NODE,1);
+			//EXIT_BLOCK();
 			ENTER_BLOCK();
 			REPORT_STR("List tags");
 			ListTags(tag_pack_list);
@@ -3482,67 +3502,81 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 		}
-        ///////////
-		for(p = procs.begin(); p != procs.end(); p++ )
+		ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 		{
-			REPORT_VAL("for processor",*p);//p-procs.begin());
-			REPORT_VAL("send size",send_size[p-procs.begin()]);
-			REPORT_VAL("recv size",recv_size[p-procs.begin()]);
-			ENTER_BLOCK();
-			REPORT_STR("Pack elements and data");
-			if( send_size[p-procs.begin()] )
+			TagInteger pack_position;
+			if (have_reference_tag)
 			{
-				elements_by_type selems;
-				if( have_reference_tag )
-				{
-					PackElementsGather(selems,from.find(*p)->second,*p,mask,select,tags,true,true,true);
-					PackElementsEnumerate(selems,pack_position);
-					//PackElementsData(selems,storage.send_buffers[num_send].second,*p,tags,pack_position);
-					PackElementsData(selems,storage.send_buffers[num_send].second,*p,tag_pack_list,pack_position,true);
-				}
-				for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
-					PackTagData(tags[k],from.find(*p)->second,*p,mask,select,storage.send_buffers[num_send].second,pack_position);
-				if( have_reference_tag )
-					PackElementsUnenumerate(selems,pack_position);
-				storage.send_buffers[num_send].first = *p;
-				num_send++;
+				std::stringstream tag_name;
+				tag_name << "PROTECTED_TEMPORARY_PACK_POSITION_" << GetLocalProcessorRank();
+				pack_position = CreateTag(tag_name.str(), DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE, 1);
 			}
-			EXIT_BLOCK();
-			ENTER_BLOCK();
-			REPORT_STR("Resize recv buffers");
-			if( recv_size[p-procs.begin()] )
+#if defined(USE_OMP)
+#pragma omp for schedule(dynamic,1)
+#endif
+			for(int pos = 0; pos < (int)procs.size(); ++pos)
 			{
-				if( !unknown_size )
+				std::vector<int>::iterator p = procs.begin() + pos;
+				if (send_size[pos])
 				{
-					size_t buffer_size = 0,n = recv_size[p-procs.begin()];
-					for(INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
+					elements_by_type selems;
+					if (have_reference_tag)
 					{
-						buffer_size += pack_data_array_size<ElementType>(2,GetCommunicator());
-						buffer_size += pack_data_vector_size<INMOST_DATA_ENUM_TYPE>(6+2*n,GetCommunicator());
-						buffer_size += pack_data_vector_size<INMOST_DATA_BULK_TYPE>(n*tags[k].GetSize()*tags[k].GetPackedBytesSize(),GetCommunicator());
-						//~ int temp;
-						//~ MPI_Pack_size(2,INMOST_MPI_DATA_BULK_TYPE,comm,&temp); buffer_size += temp;
-						//~ MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						//~ MPI_Pack_size(1,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						//~ MPI_Pack_size(6+n*2,INMOST_MPI_DATA_ENUM_TYPE,comm,&temp); buffer_size += temp;
-						//~ MPI_Pack_size(n*tags[k].GetSize(),tags[k].GetBulkDataType(),comm,&temp); buffer_size += temp;
+						PackElementsGather(selems, from.find(*p)->second, *p, mask, select, tags, true, true, true);
+						PackElementsEnumerate(selems, pack_position);
+						PackElementsData(selems, storage.send_buffers[pos].second, *p, tag_pack_list, pack_position, true);
 					}
-					storage.recv_buffers[num_recv].second.resize(buffer_size);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
+						PackTagData(tags[k], from.find(*p)->second, *p, mask, select, storage.send_buffers[pos].second, pack_position);
+					if (have_reference_tag)
+						PackElementsUnenumerate(selems, pack_position);
+					storage.send_buffers[pos].first = *p;
 				}
-				storage.recv_buffers[num_recv].first = *p;
-				num_recv++;
+				else storage.send_buffers[pos].first = -1;
+				if (recv_size[pos])
+				{
+					if (!unknown_size)
+					{
+						size_t buffer_size = 0, n = recv_size[pos];
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < tags.size(); k++)
+						{
+							buffer_size += pack_data_array_size<ElementType>(2, GetCommunicator());
+							buffer_size += pack_data_vector_size<INMOST_DATA_ENUM_TYPE>(6 + 2 * n, GetCommunicator());
+							buffer_size += pack_data_vector_size<INMOST_DATA_BULK_TYPE>(n * tags[k].GetSize() * tags[k].GetPackedBytesSize(), GetCommunicator());
+						}
+						storage.recv_buffers[pos].second.resize(buffer_size);
+					}
+					storage.recv_buffers[pos].first = *p;
+				}
+				else storage.recv_buffers[pos].first = -1;
 			}
-			EXIT_BLOCK();
+			if (have_reference_tag)
+				DeleteTag(pack_position);
 		}
-		if( have_reference_tag )
+		EXIT_BLOCK();
+		//storage.send_buffers.resize(num_send);
 		{
-			ENTER_BLOCK();
-			REPORT_STR("Delete tag");
-			DeleteTag(pack_position);
-			EXIT_BLOCK();
+			exch_buffer_type::iterator it = storage.send_buffers.begin();
+			while (it != storage.send_buffers.end())
+			{
+				if (it->first == -1)
+					it = storage.send_buffers.erase(it);
+				else ++it;
+			}
 		}
-		storage.send_buffers.resize(num_send);
-		storage.recv_buffers.resize(num_recv);
+		//storage.recv_buffers.resize(num_recv);
+		{
+			exch_buffer_type::iterator it = storage.recv_buffers.begin();
+			while (it != storage.recv_buffers.end())
+			{
+				if (it->first == -1)
+					it = storage.recv_buffers.erase(it);
+				else ++it;
+			}
+		}
 		if( unknown_size ) 
 		{
 			REPORT_STR("prepare receive with unknown size");
@@ -3968,21 +4002,21 @@ namespace INMOST
 
 	void Mesh::PackElementsGather(elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner, bool pack_by_gids)
 	{
-		ENTER_FUNC();
+		//ENTER_FUNC();
 		if( !allow_pack_by_gids ) pack_by_gids = false;
 
-		MarkerType busy = CreateMarker();
+		MarkerType busy = CreatePrivateMarker();
 
-		REPORT_STR("initial number of elements");
-		REPORT_VAL("NODE",selems[0].size());
-		REPORT_VAL("EDGE",selems[1].size());
-		REPORT_VAL("FACE",selems[2].size());
-		REPORT_VAL("CELL",selems[3].size());
-		REPORT_VAL("ESET",selems[4].size());
+		//REPORT_STR("initial number of elements");
+		//REPORT_VAL("NODE",selems[0].size());
+		//REPORT_VAL("EDGE",selems[1].size());
+		//REPORT_VAL("FACE",selems[2].size());
+		//REPORT_VAL("CELL",selems[3].size());
+		//REPORT_VAL("ESET",selems[4].size());
 		
 		
 		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(CELL); ++etypenum) if( !selems[etypenum].empty() )
-			SetMarkerArray(&selems[etypenum][0],(INMOST_DATA_ENUM_TYPE)selems[etypenum].size(),busy);
+			SetPrivateMarkerArray(&selems[etypenum][0],(INMOST_DATA_ENUM_TYPE)selems[etypenum].size(),busy);
 
 
 
@@ -4006,7 +4040,7 @@ namespace INMOST
 								reference_array refs = ReferenceArray(eit, tag);
 								for(Storage::reference_array::size_type i = 0; i < refs.size(); ++i) if ( refs[i].isValid() ) 
 								{
-									if( !refs[i].Hidden() && !refs[i].GetMarker(busy) )
+									if( !refs[i].Hidden() && !refs[i].GetPrivateMarker(busy) )
 									{
 										bool add = force_send;
 										if( !add )
@@ -4018,7 +4052,7 @@ namespace INMOST
 										if( add )
 										{
 											selems[refs[i].GetElementNum()].push_back(refs[i].GetHandle());
-											refs[i]->SetMarker(busy);
+											refs[i]->SetPrivateMarker(busy);
 										}
 									} //if
 								} //for
@@ -4037,13 +4071,13 @@ namespace INMOST
 			Element::adj_type const & adj = LowConn(*it);
 			for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
 			{
-				if( *jt != InvalidHandle() && !Hidden(*jt) && !GetMarker(*jt,busy) )
+				if( *jt != InvalidHandle() && !Hidden(*jt) && !GetPrivateMarker(*jt,busy) )
 				{
 					Storage::integer_array procs = IntegerArrayDV(*jt,ProcessorsTag());
 					if( std::binary_search(procs.begin(),procs.end(),destination) )
 					{
 						selems[GetHandleElementNum(*jt)].push_back(*jt);
-						SetMarker(*jt,busy);
+						SetPrivateMarker(*jt,busy);
 					}
 				}
 			}
@@ -4068,10 +4102,10 @@ namespace INMOST
 					Element::adj_type const & adj = LowConn(*it);
 					for(Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
 					{
-						if( !Hidden(*jt) && !GetMarker(*jt,busy) )
+						if( !Hidden(*jt) && !GetPrivateMarker(*jt,busy) )
 						{
 							selems[etypenum-1].push_back(*jt);
-							SetMarker(*jt,busy);
+							SetPrivateMarker(*jt,busy);
 						}
 					}
 					if (etypenum == ElementNum(CELL) && HighConnTag().isDefined(CELL))
@@ -4079,10 +4113,10 @@ namespace INMOST
 						Element::adj_type const& adj = HighConn(*it);
 						for (Element::adj_type::const_iterator jt = adj.begin(); jt != adj.end(); jt++)
 						{
-							if (!Hidden(*jt) && !GetMarker(*jt, busy))
+							if (!Hidden(*jt) && !GetPrivateMarker(*jt, busy))
 							{
 								selems[0].push_back(*jt);
-								SetMarker(*jt, busy);
+								SetPrivateMarker(*jt, busy);
 							}
 						}
 					}
@@ -4091,7 +4125,7 @@ namespace INMOST
 		}
 
 		// Recursevely looking for all high connections for ESETs
-		if( !selems[4].empty() ) SetMarkerArray(&selems[4][0],(INMOST_DATA_ENUM_TYPE)selems[4].size(),busy);
+		if( !selems[4].empty() ) SetPrivateMarkerArray(&selems[4][0],(INMOST_DATA_ENUM_TYPE)selems[4].size(),busy);
 		
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < selems[4].size(); ++i)
 		{
@@ -4099,13 +4133,13 @@ namespace INMOST
 			if( set.HaveParent() )
 			{
 				//if set is on the remote processor, then don't have to reconstruct the tree
-				if( !set.GetParent().GetMarker(busy) && !set.GetParent().Hidden() )
+				if( !set.GetParent().GetPrivateMarker(busy) && !set.GetParent().Hidden() )
 				{
 					//Storage::integer_array procs = set.GetParent().IntegerArrayDV(ProcessorsTag());
 					//if( std::binary_search(procs.begin(),procs.end(),destination) )
 					{
 						selems[4].push_back(set.GetParent().GetHandle());
-						set.GetParent().SetMarker(busy);
+						set.GetParent().SetPrivateMarker(busy);
 					}
 				}
 			}
@@ -4115,55 +4149,55 @@ namespace INMOST
 			{
 				for(ElementSet jt = set.GetChild(); jt.isValid(); jt = jt.GetSibling() )
 				{
-					if( !jt.GetMarker(busy) && !jt.Hidden() )
+					if( !jt.GetPrivateMarker(busy) && !jt.Hidden() )
 					{
 						Storage::integer_array procs = jt.IntegerArrayDV(ProcessorsTag());
 						if( std::binary_search(procs.begin(),procs.end(),destination) )
 						{
 							selems[4].push_back(jt.GetHandle());
-							jt.SetMarker(busy);
+							jt.SetPrivateMarker(busy);
 						}
 					}
 				}
 			}
 		}
 
-		REPORT_STR("final number of elements");
-		REPORT_VAL("NODE",selems[0].size());
-		REPORT_VAL("EDGE",selems[1].size());
-		REPORT_VAL("FACE",selems[2].size());
-		REPORT_VAL("CELL",selems[3].size());
-		REPORT_VAL("ESET",selems[4].size());
+		//REPORT_STR("final number of elements");
+		//REPORT_VAL("NODE",selems[0].size());
+		//REPORT_VAL("EDGE",selems[1].size());
+		//REPORT_VAL("FACE",selems[2].size());
+		//REPORT_VAL("CELL",selems[3].size());
+		//REPORT_VAL("ESET",selems[4].size());
 		
 		
 		
 		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum) if( !selems[etypenum].empty() )
-			RemMarkerArray(&selems[etypenum][0],(INMOST_DATA_ENUM_TYPE)selems[etypenum].size(),busy);
+			RemPrivateMarkerArray(&selems[etypenum][0],(INMOST_DATA_ENUM_TYPE)selems[etypenum].size(),busy);
 
-		ReleaseMarker(busy);
+		ReleasePrivateMarker(busy);
 
-		EXIT_FUNC();
+		//EXIT_FUNC();
 	}
 	
 	void Mesh::PackElementsData(elements_by_type & selems, buffer_type & buffer, int destination, const tag_set & tag_list, TagInteger arr_position, bool pack_by_gids)
 	{
-		ENTER_FUNC();
+		//ENTER_FUNC();
 		if( !allow_pack_by_gids ) pack_by_gids = false;
-		REPORT_VAL("dest",destination);
+		//REPORT_VAL("dest",destination);
 #if defined(USE_MPI)
-		REPORT_VAL("buffer size",buffer.size());
+		//REPORT_VAL("buffer size",buffer.size());
 		
 		
-		MarkerType pack_tags_mrk = CreateMarker();
+		MarkerType pack_tags_mrk = CreatePrivateMarker();
 		//pack nodes coords
-		ENTER_BLOCK();
+		//ENTER_BLOCK();
 		{
 			integer dim = GetDimensions();
 			char have_gids = HaveGlobalID(NODE);
 			std::vector<Storage::integer> global_ids;
 			if( have_gids )
 			{
-				REPORT_STR("pack nodes global id");
+				//REPORT_STR("pack nodes global id");
 				global_ids.reserve(selems[0].size());
 			}
 			size_t marked_for_data = 0, marked_shared = 0, k = 0;
@@ -4194,7 +4228,7 @@ namespace INMOST
 				//TODO: 45
 				if( owner != destination ) 
 				{
-					SetMarker(*it,pack_tags_mrk);
+					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[0].push_back(*it);
 					++marked_for_data;
@@ -4211,13 +4245,13 @@ namespace INMOST
 			pack_data(buffer,have_gids,GetCommunicator());
 			pack_data_vector(buffer,coords,GetCommunicator());
 			pack_data_vector(buffer,global_ids,GetCommunicator());
-			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
-			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
+			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
 		//pack edges
-		ENTER_BLOCK();
+		//ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[1].size());
 			std::vector<Storage::integer> low_conn_nums;
@@ -4307,7 +4341,7 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
-					SetMarker(*it,pack_tags_mrk);
+					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[1].push_back(*it);
 					++marked_for_data;
@@ -4315,19 +4349,19 @@ namespace INMOST
 				k++;
 			}
 			assert(low_conn_nums.size() == num);
-			REPORT_VAL("number of edge nodes",num);
-			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
-			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
-			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[1].size());
+			//REPORT_VAL("number of edge nodes",num);
+			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
+			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
+			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[1].size());
 			pack_data(buffer,selems[1].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
 		//pack faces
-		ENTER_BLOCK();
+		//ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
@@ -4393,27 +4427,27 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
-					SetMarker(*it, pack_tags_mrk);
+					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[2].push_back(*it);
 					++marked_for_data;
 				}
 				k++;
 			}
-			REPORT_VAL("number of faces",selems[2].size());
-			REPORT_VAL("number of face edges",num);
-			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
-			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
-			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[2].size());
+			//REPORT_VAL("number of faces",selems[2].size());
+			//REPORT_VAL("number of face edges",num);
+			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
+			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
+			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[2].size());
 			pack_data(buffer,selems[2].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
 		//pack cells
-		ENTER_BLOCK();
+		//ENTER_BLOCK();
 		{
 			bool node_conns = HighConnTag().isDefined(CELL);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[3].size());
@@ -4503,18 +4537,18 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
-					SetMarker(*it, pack_tags_mrk);
+					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[3].push_back(*it);
 					++marked_for_data;
 				}
 				k++;
 			}
-			REPORT_VAL("number of cell faces",num);
-			REPORT_VAL("number of cell nodes", num_high);
-			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
-			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
-			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
+			//REPORT_VAL("number of cell faces",num);
+			//REPORT_VAL("number of cell nodes", num_high);
+			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
+			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
+			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
 			pack_data(buffer,selems[3].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
@@ -4524,12 +4558,12 @@ namespace INMOST
 				pack_data_vector(buffer, high_conn_size, GetCommunicator());
 				pack_data_vector(buffer, high_conn_nums, GetCommunicator());
 			}
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
         /////////////////////////////////////////
         // pack esets
-		ENTER_BLOCK();
+		//ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size()); //store number of elements in set
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // store number of children in set
@@ -4582,7 +4616,7 @@ namespace INMOST
 				if( owner != destination )
 				{
 					
-					SetMarker(*it, pack_tags_mrk);
+					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[3].push_back(*it);
 					++marked_for_data;
@@ -4700,12 +4734,12 @@ namespace INMOST
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
 			pack_data_vector(buffer,high_conn_size,GetCommunicator());
 			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
-			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
-			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
+			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
+			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
 			//REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
 		//for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum) if( !selems[etypenum].empty() )
 		//	RemMarkerArray(&selems[etypenum][0],selems[etypenum].size(),busy);
 			//for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); ++it) RemMarker(*it,busy);
@@ -4713,7 +4747,7 @@ namespace INMOST
 		//ReleaseMarker(busy);
 		
         /////////////////////////////////////////
-		SetMarker(GetHandle(), pack_tags_mrk);
+		SetPrivateMarker(GetHandle(), pack_tags_mrk);
 		selems[5].push_back(GetHandle()); //data on mesh
 		
 		//DeleteTag(arr_position);
@@ -4724,19 +4758,19 @@ namespace INMOST
 		//Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 		//if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);		
 		//pack number of tags
-		ENTER_BLOCK();
-		REPORT_STR("prepare elements to pack tag data");
+		//ENTER_BLOCK();
+		//REPORT_STR("prepare elements to pack tag data");
 		{
-			REPORT_VAL("number of tags",tag_list.size());
+			//REPORT_VAL("number of tags",tag_list.size());
 			pack_data(buffer,tag_list.size(),GetCommunicator());
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < tag_list.size(); i++)
 		{
 			//assert(HaveTag(tag_list[i]));
 			const Tag & tag = tag_list[i];
 			//pack tag name
-			ENTER_BLOCK();
+			//ENTER_BLOCK();
 			{
 				std::string name = tag.GetTagName();
 				INMOST_DATA_ENUM_TYPE defined, sparse, datatype, datasize;
@@ -4749,38 +4783,38 @@ namespace INMOST
 					if( tag.isDefined(mask) ) defined |= mask;
 					if( tag.isSparse(mask) ) sparse |= mask;
 				}
-				REPORT_VAL("characters in name",name.size());
-				REPORT_VAL("name of tag",name);
-				REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
-				REPORT_VAL("data size",datasize);
-#if defined(USE_PARALLEL_WRITE_TIME)
-				for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
-				{
-					if( defined & etype ) REPORT_VAL("defined on",ElementTypeName(etype));
-					if( sparse & etype ) REPORT_VAL("sparse on",ElementTypeName(etype));
-				}
-#endif
+				//REPORT_VAL("characters in name",name.size());
+				//REPORT_VAL("name of tag",name);
+				//REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
+				//REPORT_VAL("data size",datasize);
+//#if defined(USE_PARALLEL_WRITE_TIME)
+//				for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
+//				{
+//					if( defined & etype ) REPORT_VAL("defined on",ElementTypeName(etype));
+//					if( sparse & etype ) REPORT_VAL("sparse on",ElementTypeName(etype));
+//				}
+//#endif
 				pack_data(buffer,datatype,GetCommunicator());
 				pack_data(buffer,defined,GetCommunicator());
 				pack_data(buffer,sparse,GetCommunicator());
 				pack_data(buffer,datasize,GetCommunicator());
 				pack_data(buffer,name.size(),GetCommunicator());
 				pack_data_array(buffer,name.c_str(),name.size(),GetCommunicator());
-				REPORT_VAL("buffer position",buffer.size());
+				//REPORT_VAL("buffer position",buffer.size());
 			}
-			EXIT_BLOCK();
+			//EXIT_BLOCK();
 			//TODO 46 old
 			//PackTagData(GetTag(tag_list[i]),pack_tags,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			PackTagData(tag,selems,destination,NODE | EDGE | FACE | CELL | ESET | MESH,pack_tags_mrk,buffer,arr_position);
 			//PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			//std::cout << mpirank << " After pack_tag_data\n" << std::endl;
-			REPORT_VAL("buffer position",buffer.size());
+			//REPORT_VAL("buffer position",buffer.size());
 		}
-		EXIT_BLOCK();
+		//EXIT_BLOCK();
 		
 		for(integer i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( !selems[i].empty() )
-			RemMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
-		ReleaseMarker(pack_tags_mrk);
+			RemPrivateMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
+		ReleasePrivateMarker(pack_tags_mrk);
 
 #else
 		(void) selems;
@@ -4788,8 +4822,8 @@ namespace INMOST
 		(void) destination;
 		(void) tag_list;
 #endif
-		REPORT_VAL("destination",destination);
-		EXIT_FUNC();
+		//REPORT_VAL("destination",destination);
+		//EXIT_FUNC();
 	}
 	
 	
@@ -5937,17 +5971,20 @@ namespace INMOST
 		}
 		{
 			REPORT_STR("Gathering elements to send");
-			for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
-				for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
+			for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+			{
+				int itype = ElementNum(etype);
+				for (iteratorElement it = BeginElement(etype); it != EndElement(); it++)
 				{
 					Storage::integer_array mark = it->IntegerArray(tag_sendto);
-					for(Storage::integer_array::iterator kt = mark.begin(); kt != mark.end(); kt++)
+					for (Storage::integer_array::iterator kt = mark.begin(); kt != mark.end(); kt++)
 					{
-						assert( *kt >= 0 && *kt < GetProcessorsNumber() );
-						if( *kt != mpirank ) send_elements[*kt][GetHandleElementNum(*it)].push_back(*it);
+						assert(*kt >= 0 && *kt < GetProcessorsNumber());
+						if (*kt != mpirank) send_elements[*kt][itype].push_back(*it);
 					}
 					it->DelData(tag_sendto);
 				}
+			}
 		}
 		num_wait = 0;
 		storage.send_buffers.resize(send_elements.size());
@@ -6546,24 +6583,35 @@ namespace INMOST
 #if defined(USE_MPI)
 		REPORT_STR("sort shared elements")
 		ENTER_BLOCK();
-		for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
+		//for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+		for(int j = 0; j < 5 * (int)shared.size(); ++j)
 		{
-			REPORT_VAL("processor",it->first);
-			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
+			int i = j % 5;
+			if( mask & ElementTypeFromDim(i) )
 			{
-				ENTER_BLOCK();
-				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				parallel_storage::iterator it = shared.begin();
+				int k = j / 5;
+				while (k) ++it, --k;
+				//REPORT_VAL("processor", it->first);
+				//ENTER_BLOCK();
+				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
-					if(HaveGlobalID(ElementTypeFromDim(i)))
-						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
+					if (HaveGlobalID(ElementTypeFromDim(i)))
+						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
+					else if (i < 4)
+						std::sort(it->second[i].begin(), it->second[i].end(), CentroidComparator(this));
 					else
-						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
-				}
-				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
-				EXIT_BLOCK();
-			}
+						std::sort(it->second[4].begin(), it->second[4].end(), SetNameComparator(this));
 
+				}
+				//REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+				//EXIT_BLOCK();
+			}
+			/*
             // ESET sort
 			if (mask & ElementTypeFromDim(4))
             {
@@ -6586,28 +6634,40 @@ namespace INMOST
                 REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(4)),it->second[4].size());
 				EXIT_BLOCK();
             }
+			*/
 		}
 		EXIT_BLOCK();
 		REPORT_STR("sort ghost elements")
 		ENTER_BLOCK();
-		for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
+		//for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+
+		for (int j = 0; j < 5 * (int)ghost.size(); ++j)
 		{
-			REPORT_VAL("processor",it->first);
-			for(int i = 0; i < 4; i++) if( mask & ElementTypeFromDim(i) )
+			int i = j % 5;
+			if( mask & ElementTypeFromDim(i) )
 			{
-				ENTER_BLOCK();
-				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				parallel_storage::iterator it = ghost.begin();
+				int k = j / 5;
+				while (k) ++it, --k;
+				//REPORT_VAL("processor", it->first);
+				//ENTER_BLOCK();
+				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
-					if( HaveGlobalID(ElementTypeFromDim(i)) )
-						std::sort(it->second[i].begin(),it->second[i].end(),GlobalIDComparator(this));
+					if (HaveGlobalID(ElementTypeFromDim(i)))
+						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
+					else if (i < 4)
+						std::sort(it->second[i].begin(), it->second[i].end(), CentroidComparator(this));
 					else
-						std::sort(it->second[i].begin(),it->second[i].end(),CentroidComparator(this));
+						std::sort(it->second[4].begin(), it->second[4].end(), SetNameComparator(this));
 				}
-				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
-				EXIT_BLOCK();
+				//REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
+				//EXIT_BLOCK();
 			}
-
+			/*
             // ESET sort
 			if (mask & ElementTypeFromDim(4))
             {
@@ -6630,6 +6690,7 @@ namespace INMOST
                 REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(4)),it->second[4].size());
 				EXIT_BLOCK();
             }
+			*/
 		}
 		EXIT_BLOCK();
 #else //USE_MPI and USE_PARALLEL_STORAGE

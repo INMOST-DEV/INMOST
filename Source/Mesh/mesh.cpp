@@ -2536,6 +2536,24 @@ namespace INMOST
 		if( data != NULL ) DelDenseData(data,tag);
 	}
 
+
+	__INLINE void*& Mesh::MGetSparseLink(HandleType h, const Tag& t) 
+	{ 
+		sparse_type& s = MGetSparseLink(GetHandleElementNum(h), GetHandleID(h)); 
+		for (senum i = 0; i < s.size(); ++i) 
+			if (s[i].tag == t.mem) 
+				return s[i].rec; 
+		void** ret;
+#if defined(USE_OMP)
+#pragma omp critical (sparse_data)
+#endif
+		{
+			s.push_back(mkrec(t));
+			ret = &s.back().rec;
+		}
+		return *ret; 
+	}
+
 	bool Mesh::DelSparseData(HandleType h,const Tag & tag)
 	{
 		assert( tag.GetMeshLink() == this );
@@ -2554,6 +2572,9 @@ namespace INMOST
 #endif
 			delete [] static_cast<char *>(s[i].rec);
 			//~ free(s[i].rec);
+#if defined(USE_OMP)
+#pragma omp critical (sparse_data)
+#endif
 			s.erase(s.begin()+i);
 			return true;
 		}

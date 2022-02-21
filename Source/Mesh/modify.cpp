@@ -1789,6 +1789,8 @@ namespace INMOST
 
 	void Mesh::RemoveLinksToDeletedElements(MarkerType mrk)
 	{
+		ENTER_FUNC();
+		ENTER_BLOCK();
 		for (Mesh::iteratorTag it = BeginTag(); it != EndTag(); ++it)
 		{
 			Tag t = *it;
@@ -1868,6 +1870,8 @@ namespace INMOST
 					}
 			}
 		}
+		EXIT_BLOCK();
+		ENTER_BLOCK();
 //somehow openmp does not work here, maybe non-private markers
 //#if defined(USE_OMP)
 //#pragma omp parallel for schedule(dynamic,1)
@@ -1899,6 +1903,8 @@ namespace INMOST
 			//std::cout << "size " << it->Size() << " traversed " << q << std::endl;
 			//it->Subtract(erase); //old approach
 		}
+		EXIT_BLOCK();
+		EXIT_FUNC();
 	}
 	
 	void Mesh::ApplyModification()
