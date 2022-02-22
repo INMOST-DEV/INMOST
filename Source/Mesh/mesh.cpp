@@ -2014,6 +2014,9 @@ namespace INMOST
 	
 	void Mesh::ReorderEmpty(ElementType etype)
 	{
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
 		for(int etypenum = 0; etypenum < ElementNum(MESH); etypenum++) if( ElementTypeFromDim(etypenum) & etype )
 		{
 			integer cend = static_cast<integer>(back_links[etypenum].size())-1;
@@ -2540,16 +2543,22 @@ namespace INMOST
 	__INLINE void*& Mesh::MGetSparseLink(HandleType h, const Tag& t) 
 	{ 
 		sparse_type& s = MGetSparseLink(GetHandleElementNum(h), GetHandleID(h)); 
-		for (senum i = 0; i < s.size(); ++i) 
-			if (s[i].tag == t.mem) 
-				return s[i].rec; 
-		void** ret;
+		void** ret = NULL;
 #if defined(USE_OMP)
 #pragma omp critical (sparse_data)
 #endif
 		{
-			s.push_back(mkrec(t));
-			ret = &s.back().rec;
+			for (senum i = 0; i < s.size(); ++i)
+				if (s[i].tag == t.mem)
+				{
+					ret = &s[i].rec;
+					break;
+				}
+			if (!ret)
+			{
+				s.push_back(mkrec(t));
+				ret = &s.back().rec;
+			}
 		}
 		return *ret; 
 	}
@@ -2559,23 +2568,31 @@ namespace INMOST
 		assert( tag.GetMeshLink() == this );
 		assert( tag.isSparseByDim(GetHandleElementNum(h)) );
 		sparse_type & s = MGetSparseLink(h);
-		for(sparse_type::size_type i = 0; i < s.size(); ++i) if( s[i].tag == tag.mem )
+		void* p = NULL;
+#if defined(USE_OMP)
+#pragma omp critical (sparse_data)
+#endif
+		{
+			for (sparse_type::size_type i = 0; i < s.size(); ++i)
+				if (s[i].tag == tag.mem)
+				{
+					p = s[i].rec;
+					s.erase(s.begin() + i);
+					break;
+				}
+		}
+		if( p )
 		{
 			if( tag.GetSize() == ENUMUNDEF ) 
-				TagManager::DestroyVariableData(tag,s[i].rec);
+				TagManager::DestroyVariableData(tag,p);
 #if defined(USE_AUTODIFF)
 			else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
 			{
 				for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k)
-					(static_cast<variable *>(s[i].rec)[k]).~variable();
+					(static_cast<variable *>(p)[k]).~variable();
 			}
 #endif
-			delete [] static_cast<char *>(s[i].rec);
-			//~ free(s[i].rec);
-#if defined(USE_OMP)
-#pragma omp critical (sparse_data)
-#endif
-			s.erase(s.begin()+i);
+			delete [] static_cast<char *>(p);
 			return true;
 		}
 		return false;

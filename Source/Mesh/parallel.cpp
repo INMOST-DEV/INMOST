@@ -700,7 +700,7 @@ namespace INMOST
 		
 		ENTER_BLOCK();
 		
-		TagInteger new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,NODE|EDGE|FACE,NODE|EDGE|FACE,1);
+		TagInteger new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,NODE|EDGE|FACE,NONE,1);
 		for(ElementType etype = FACE; etype >= NODE; etype = PrevElementType(etype))
 		{
 			REPORT_VAL("etype ", ElementTypeName(etype));
@@ -2748,23 +2748,23 @@ namespace INMOST
 #if defined(USE_MPI)
 		if( m_state == Parallel )
 		{
-			INMOST_DATA_ENUM_TYPE number,shift[5], shift_recv[5], local_shift;
-			int num;
+			INMOST_DATA_ENUM_TYPE number, shift[5] = { 0,0,0,0,0 }, shift_recv[5] = { 0,0,0,0,0 };
 			ENTER_BLOCK();
-			memset(shift,0,sizeof(INMOST_DATA_ENUM_TYPE));
-			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
+			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
+			//num = ElementNum(currenttype);
+			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if (mask & ElementTypeFromDim(num))
 			{
-				if( mask & currenttype )
+				number = 0;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:number)
+#endif
+				for (integer i = 0; i < LastLocalIDNum(num); ++i) if (isValidElementNum(num, i))
 				{
-					num = ElementNum(currenttype);
-					number = 0;
-					for(Mesh::iteratorElement it = BeginElement(currenttype); it != EndElement(); it++)
-					{
-						if( it->GetStatus() != Element::Ghost )
-							number++;
-					}
-					shift[num] = number;
+					Element it = ElementByLocalIDNum(num, i);
+					if( it->GetStatus() != Element::Ghost )
+						number++;
 				}
+				shift[num] = number;
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
@@ -2775,17 +2775,19 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
+			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
+			//num = ElementNum(currenttype);
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if( mask & ElementTypeFromDim(num) )
 			{
-				if( mask & currenttype )
+				INMOST_DATA_ENUM_TYPE local_shift = shift_recv[num] - shift[num];
+				for(integer i = 0; i < LastLocalIDNum(num); ++i) if( isValidElementNum(num,i))
 				{
-					num = ElementNum(currenttype);
-					local_shift = shift_recv[num] - shift[num];
-					for(Mesh::iteratorElement it = BeginElement(currenttype); it != EndElement(); it++)
-					{
-						if( it->GetStatus() != Element::Ghost )
-							it->Integer(tag_global_id) = local_shift++;
-					}
+					Element it = ElementByLocalIDNum(num, i);
+					if( it->GetStatus() != Element::Ghost )
+						it->IntegerDF(tag_global_id) = local_shift++;
 				}
 			}
 			EXIT_BLOCK();
@@ -2804,14 +2806,15 @@ namespace INMOST
 		else
 		{
 #endif //USE_MPI
-			INMOST_DATA_ENUM_TYPE number;
-			for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
-				if( mask & currenttype )
-				{
-					number = 0;
-					for(Mesh::iteratorElement it = BeginElement(currenttype); it != EndElement(); it++)
-						it->Integer(tag_global_id) = number++;
-				}
+#if defined(USE_OMP)
+#pragma omp parallel for schedule(dynamic,1)
+#endif
+			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if (mask & ElementTypeFromDim(num))
+			{
+				INMOST_DATA_ENUM_TYPE number = 0;
+				for (integer i = 0; i < LastLocalIDNum(num); ++i) if (isValidElementNum(num, i))
+					ElementByLocalIDNum(num, i)->IntegerDF(tag_global_id) = number++;
+			}
 #if defined(USE_MPI)
 		}
 #endif //USE_MPI
@@ -3548,7 +3551,7 @@ namespace INMOST
 		}
 		ENTER_BLOCK();
 #if defined(USE_OMP)
-#pragma omp parallel
+//#pragma omp parallel
 #endif
 		{
 			TagInteger pack_position;
@@ -3560,7 +3563,7 @@ namespace INMOST
 				//pack_position = CreateTag(tag_name.str(), DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, NONE, 1);
 			}
 #if defined(USE_OMP)
-#pragma omp for schedule(dynamic,1)
+//#pragma omp for schedule(dynamic,1)
 #endif
 			for(int pos = 0; pos < (int)procs.size(); ++pos)
 			{
@@ -4261,14 +4264,19 @@ namespace INMOST
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-						if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-						if( GetStatus(*it) != Element::Shared)
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 						{
-							//if( GetStatus(*it) != Element::Owned )
-							//	std::cout << "node " << GetHandleID(*it) << " " << Element::StatusName(GetStatus(*it)) << std::endl;
-							//assert(GetStatus(*it) == Element::Owned);
-							++marked_shared;
-							SetStatus(*it, Element::Shared);
+							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
+							if (GetStatus(*it) != Element::Shared)
+							{
+								//if( GetStatus(*it) != Element::Owned )
+								//	std::cout << "node " << GetHandleID(*it) << " " << Element::StatusName(GetStatus(*it)) << std::endl;
+								//assert(GetStatus(*it) == Element::Owned);
+								++marked_shared;
+								SetStatus(*it, Element::Shared);
+							}
 						}
 					}
 				}
@@ -4377,12 +4385,17 @@ namespace INMOST
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-						if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-						if( GetStatus(*it) != Element::Shared)
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 						{
-							//assert(GetStatus(*it) == Element::Owned);
-							++marked_shared;
-							SetStatus(*it,Element::Shared);
+							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
+							if (GetStatus(*it) != Element::Shared)
+							{
+								//assert(GetStatus(*it) == Element::Owned);
+								++marked_shared;
+								SetStatus(*it, Element::Shared);
+							}
 						}
 					}
 				}
@@ -4463,12 +4476,17 @@ namespace INMOST
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-						if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-						if( GetStatus(*it) != Element::Shared)
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 						{
-							//assert(GetStatus(*it) == Element::Owned);
-							++marked_shared;
-							SetStatus(*it,Element::Shared);
+							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
+							if (GetStatus(*it) != Element::Shared)
+							{
+								//assert(GetStatus(*it) == Element::Owned);
+								++marked_shared;
+								SetStatus(*it, Element::Shared);
+							}
 						}
 					}
 				}
@@ -4573,12 +4591,17 @@ namespace INMOST
 					{
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
 						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-						if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-						if( GetStatus(*it) != Element::Shared)
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 						{
-							//assert(GetStatus(*it) == Element::Owned);
-							++marked_shared;
-							SetStatus(*it,Element::Shared);
+							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
+							if (GetStatus(*it) != Element::Shared)
+							{
+								//assert(GetStatus(*it) == Element::Owned);
+								++marked_shared;
+								SetStatus(*it, Element::Shared);
+							}
 						}
 					}
 				}
@@ -4647,14 +4670,19 @@ namespace INMOST
 				
 				if( owner == GetProcessorRank() )
 				{
-					Storage::integer_array proc = IntegerArray(*it,tag_processors);
-					Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
-					if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);
-					if( GetStatus(*it) != Element::Shared)
+					Storage::integer_array proc = IntegerArray(*it, tag_processors);
+					Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 					{
-						//assert(GetStatus(*it) == Element::Owned);
-						++marked_shared;
-						SetStatus(*it,Element::Shared);
+						if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
+						if (GetStatus(*it) != Element::Shared)
+						{
+							//assert(GetStatus(*it) == Element::Owned);
+							++marked_shared;
+							SetStatus(*it, Element::Shared);
+						}
 					}
 				}
 
@@ -7078,51 +7106,50 @@ namespace INMOST
 		Tag tag_new_processors = CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET | CELL | FACE | EDGE | NODE, NONE);
 		ElementType bridge = Integer(GetHandle(),tag_bridge);
 		Storage::integer layers = Integer(GetHandle(),tag_layers);
-		std::vector<Storage::integer> result,intersection;
 		
 		ExchangeData(tag_new_owner,CELL,0);
 		
 		
 		ENTER_BLOCK();
 		REPORT_STR("Determine new processors");
-		for(iteratorElement it = BeginElement(CELL); it != EndElement(); it++)
-			it->IntegerArrayDV(tag_new_processors).push_back(it->Integer(tag_new_owner));
+		//for(iteratorElement it = BeginElement(CELL); it != EndElement(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+		for(integer i = 0; i < CellLastLocalID(); ++i) if( isValidCell(i))
+			CellByLocalID(i)->IntegerArrayDV(tag_new_processors).push_back(CellByLocalID(i)->IntegerDF(tag_new_owner));
 		//determine tag_new_processors for FACEs to calculate shared skin
 		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 		{
-#if defined(USE_PARALLEL_WRITE_TIME)
-			std::map<int,int> numelems;
+			REPORT_VAL("for ", ElementTypeName(mask));
+			ENTER_BLOCK();
+#if defined(USE_OMP)
+#pragma omp parallel
 #endif
-			for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
 			{
-				Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
-				determine_my_procs_high(this,*it,tag_new_processors,result,intersection);
-				if( !result.empty() )
-				{
-					it->Integer(tag_new_owner) = result[0];
-					procs.replace(procs.begin(),procs.end(),result.begin(),result.end());
-#if defined(USE_PARALLEL_WRITE_TIME)
-					numelems[result[0]]++;
+				std::vector<integer> result, intersection;
+#if defined(USE_OMP)
+#pragma omp for
 #endif
-				}
-				else
+				for (integer i = 0; i < LastLocalID(mask); ++i) if (isValidElement(mask, i))
 				{
-					it->Integer(tag_new_owner) = mpirank;
-					procs.clear();
-					procs.push_back(mpirank);
-#if defined(USE_PARALLEL_WRITE_TIME)
-					numelems[mpirank]++;
-#endif
+					Element it = ElementByLocalID(mask, i);
+					Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
+					determine_my_procs_high(this, it->GetHandle(), tag_new_processors, result, intersection);
+					if (!result.empty())
+					{
+						it->IntegerDF(tag_new_owner) = result[0];
+						procs.replace(procs.begin(), procs.end(), result.begin(), result.end());
+					}
+					else
+					{
+						it->IntegerDF(tag_new_owner) = mpirank;
+						procs.clear();
+						procs.push_back(mpirank);
+					}
 				}
 			}
-#if defined(USE_PARALLEL_WRITE_TIME)
-			for(std::map<int,int>::iterator it = numelems.begin(); it != numelems.end(); ++it)
-			{
-				REPORT_VAL(ElementTypeName(mask),it->second);
-				REPORT_STR("elements on lower ierarhy belong to");
-				REPORT_VAL("processor",it->first);
-			}
-#endif
+			EXIT_BLOCK();
 		}	
 		EXIT_BLOCK();
 		ExchangeData(tag_new_owner,FACE | EDGE | NODE,0);
@@ -7140,13 +7167,15 @@ namespace INMOST
 			ENTER_BLOCK();
 			REPORT_STR("Compute shared skin");
 			//compute skin around migrated cells to compute ghost layer
-			for(iteratorElement it = BeginElement(FACE); it != EndElement(); it++)
+			//for(iteratorElement it = BeginElement(FACE); it != EndElement(); it++)
+			for(integer i = 0; i < FaceLastLocalID(); ++i) if( isValidFace(i) )
 			{
-				Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+				Face it = FaceByLocalID(i);
+				Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
 				if( procs.size() == 2 ) //there may be only 2 procs for every face max, because we have unique redistribution for every cell at the beginning
 				{
-					skin_faces[procs[0]].push_back(*it);
-					skin_faces[procs[1]].push_back(*it);
+					skin_faces[procs[0]].push_back(it->GetHandle());
+					skin_faces[procs[1]].push_back(it->GetHandle());
 				}
 			}
 			if( bridge == FACE ) redistribute_skin.swap(skin_faces);
@@ -7263,16 +7292,27 @@ namespace INMOST
 			REPORT_STR("Extend processors list to lower level adjacencies");
 			for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 			{
-				for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+				//for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 				{
-					Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
-					determine_my_procs_high(this,*it,tag_new_processors,result,intersection);
-					if( result.empty() ) 
+					std::vector<integer> result, intersection;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for (integer i = 0; i < LastLocalID(mask); ++i) if (isValidElement(mask,i))
 					{
-						procs.clear();
-						procs.push_back(mpirank);
+						Element it = ElementByLocalID(mask, i);
+						Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
+						determine_my_procs_high(this, it->GetHandle(), tag_new_processors, result, intersection);
+						if (result.empty())
+						{
+							procs.clear();
+							procs.push_back(mpirank);
+						}
+						else procs.replace(procs.begin(), procs.end(), result.begin(), result.end());
 					}
-					else procs.replace(procs.begin(),procs.end(),result.begin(),result.end());
 				}
 			}
 			
@@ -7297,24 +7337,26 @@ namespace INMOST
 			if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
 			if( t->GetDataType() == DATA_REFERENCE )
 			{
-				for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if( t->isDefined(etype) )
-					for(INMOST_DATA_INTEGER_TYPE eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
+				for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (t->isDefined(etype))
+				{
+					for (integer eit = 0; eit < LastLocalID(etype); ++eit) if (isValidElement(etype, eit))
 					{
-						Element it = ElementByLocalID(etype,eit);
-						if( it->HaveData(*t) )
+						Element it = ElementByLocalID(etype, eit);
+						if (it->HaveData(*t))
 						{
 							Storage::integer owner = it->Integer(tag_new_owner);
 							Storage::integer_array procs;
 							Storage::reference_array refs = it->ReferenceArray(*t);
-							for(Storage::reference_array::iterator jt = refs.begin(); jt != refs.end(); ++jt) if( jt->isValid() )
+							for (Storage::reference_array::iterator jt = refs.begin(); jt != refs.end(); ++jt) if (jt->isValid())
 							{
-								procs = jt->IntegerArray(tag_new_processors);
-								Storage::integer_array::iterator find = std::lower_bound(procs.begin(),procs.end(),owner);
-								if( find == procs.end() || *find != owner ) procs.insert(find,owner);
+								procs = jt->IntegerArrayDV(tag_new_processors);
+								Storage::integer_array::iterator find = std::lower_bound(procs.begin(), procs.end(), owner);
+								if (find == procs.end() || *find != owner) procs.insert(find, owner);
 								jt->SetMarker(reffered);
 							}
 						}
 					}
+				}
 			}
 		}
 		ReduceData(tag_new_processors,ESET|CELL|FACE|EDGE|NODE,0,RedistUnpack);
@@ -7326,16 +7368,27 @@ namespace INMOST
 		//OPTIMIZE!!!
 		for(ElementType mask = FACE; mask >= NODE; mask = PrevElementType(mask))
 		{
-			for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+			//for(iteratorElement it = BeginElement(mask); it != EndElement(); it++)
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
 			{
-				Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
-				determine_my_procs_high(this,*it,tag_new_processors,result,intersection);
-				if( result.empty() ) 
+				std::vector<integer> result, intersection;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for (integer i = 0; i < LastLocalID(mask); ++i) if (isValidElement(mask, i))
 				{
-					procs.clear();
-					procs.push_back(mpirank);
+					Element it = ElementByLocalID(mask, i);
+					Storage::integer_array procs = it->IntegerArrayDV(tag_new_processors);
+					determine_my_procs_high(this, it->GetHandle(), tag_new_processors, result, intersection);
+					if (result.empty())
+					{
+						procs.clear();
+						procs.push_back(mpirank);
+					}
+					else procs.replace(procs.begin(), procs.end(), result.begin(), result.end());
 				}
-				else procs.replace(procs.begin(),procs.end(),result.begin(),result.end());
 			}
 		}
 		ReduceData(tag_new_processors,FACE| EDGE| NODE,0,RedistUnpack);
@@ -7345,28 +7398,30 @@ namespace INMOST
 		ENTER_BLOCK();
 		REPORT_STR("Determine new processors for sets");
 		ENTER_BLOCK();
-		for(INMOST_DATA_INTEGER_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+		for(integer eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
 		{
 			ElementSet it = EsetByLocalID(eit);
 			if( !it.Empty() )
 			{
 				std::set<Storage::integer> elem_procs;
-				Storage::integer_array new_procs;
 				for(ElementSet::iterator jt = it.Begin(); jt != it.End(); ++jt)
 				{
-					new_procs = jt->IntegerArray(tag_new_processors);
+					Storage::integer_array new_procs = jt->IntegerArrayDV(tag_new_processors);
 					elem_procs.insert(new_procs.begin(),new_procs.end());
 				}
-				new_procs = it->IntegerArray(tag_new_processors);
-				elem_procs.insert(new_procs.begin(),new_procs.end());
-				new_procs.replace(new_procs.begin(),new_procs.end(),elem_procs.begin(),elem_procs.end());
+				Storage::integer_array set_procs = it->IntegerArrayDV(tag_new_processors);
+				elem_procs.insert(set_procs.begin(),set_procs.end());
+				set_procs.replace(set_procs.begin(),set_procs.end(),elem_procs.begin(),elem_procs.end());
 			}
 		}
 		EXIT_BLOCK();
 		
 		ENTER_BLOCK();
 		
-		for(INMOST_DATA_INTEGER_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
+		for(integer eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
 		{
 			ElementSet it = EsetByLocalID(eit);
 			if( !it.HaveParent() )  CollectSetProcessors(it,tag_new_processors);
@@ -7375,12 +7430,12 @@ namespace INMOST
 		ReduceData(tag_new_processors,ESET,0,RedistUnpack);
 		ExchangeData(tag_new_processors,ESET,0);
 
-		for(INMOST_DATA_INTEGER_TYPE eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
+		for(integer eit = 0; eit < EsetLastLocalID(); ++eit) if( isValidElementSet(eit) )
 		{
 			ElementSet it = EsetByLocalID(eit);
 			Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
 			if( !new_procs.empty() ) 
-				it->Integer(tag_new_owner) = new_procs[0];
+				it->IntegerDF(tag_new_owner) = new_procs[0];
 		}
 		
 		ExchangeData(tag_new_owner,ESET,0);
@@ -7402,33 +7457,31 @@ namespace INMOST
 		ENTER_BLOCK();
 		REPORT_STR("Determine local entities to send");
 		for(ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
-		//for(iteratorElement it = BeginElement(etype); it != EndElement(); it++)
-		//for(iteratorElement it = BeginElement(CELL | FACE | EDGE | NODE); it != EndElement(); it++)
-		for(INMOST_DATA_INTEGER_TYPE eit = 0; eit < LastLocalID(etype); ++eit) if( isValidElement(etype,eit) )
-		{
-			Element it = ElementByLocalID(etype,eit);
-			//Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
-			if( it->GetMarker(reffered) )
+			for (integer eit = 0; eit < LastLocalID(etype); ++eit) if (isValidElement(etype, eit))
 			{
-				Storage::integer_array sendto = it->IntegerArray(SendtoTag());
-				Storage::integer_array procs = it->IntegerArray(tag_new_processors);
-				sendto.replace(sendto.begin(),sendto.end(),procs.begin(),procs.end());
+				Element it = ElementByLocalID(etype, eit);
+				//Storage::integer_array new_procs = it->IntegerArray(tag_new_processors);
+				if (it->GetMarker(reffered))
+				{
+					Storage::integer_array sendto = it->IntegerArray(SendtoTag());
+					Storage::integer_array procs = it->IntegerArray(tag_new_processors);
+					sendto.replace(sendto.begin(), sendto.end(), procs.begin(), procs.end());
+				}
+				else if (etype == ESET || it->IntegerDF(tag_owner) == mpirank) // deal with my entities, others will deal with theirs
+					it->SendTo(it->IntegerArray(tag_new_processors));
+				/*
+				{
+					//compute processors that should have the entity but they have not
+					Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
+					result.resize(new_procs.size());
+					std::vector<Storage::integer>::iterator end = std::set_difference(new_procs.begin(),new_procs.end(),old_procs.begin(),old_procs.end(),result.begin());
+					result.resize(end-result.begin());
+					//mark to send entity to processors that don't have it
+					Storage::integer_array sendto = it->IntegerArray(tag_sendto);
+					sendto.insert(sendto.end(),result.begin(),result.end());
+				}
+				*/
 			}
-			else if( etype == ESET || it->IntegerDF(tag_owner) == mpirank ) // deal with my entities, others will deal with theirs
-				it->SendTo(it->IntegerArray(tag_new_processors));
-			/*
-			{
-				//compute processors that should have the entity but they have not
-				Storage::integer_array old_procs = it->IntegerArrayDV(tag_processors);
-				result.resize(new_procs.size());
-				std::vector<Storage::integer>::iterator end = std::set_difference(new_procs.begin(),new_procs.end(),old_procs.begin(),old_procs.end(),result.begin());
-				result.resize(end-result.begin());
-				//mark to send entity to processors that don't have it
-				Storage::integer_array sendto = it->IntegerArray(tag_sendto);
-				sendto.insert(sendto.end(),result.begin(),result.end());
-			}
-			*/
-		}
 		EXIT_BLOCK();
 
 		ReleaseMarker(reffered,ESET|CELL|FACE|EDGE|NODE);
