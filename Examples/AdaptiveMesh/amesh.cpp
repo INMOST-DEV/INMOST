@@ -461,13 +461,33 @@ namespace INMOST
 		EXIT_FUNC();
 	}
 	
-	bool AdaptiveMesh::Refine(TagInteger & indicator)
+	bool AdaptiveMesh::Refine(TagInteger indicator)
 	{
 		static int fi = 0;
         ENTER_FUNC();
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
+		if (!indicator.isValid() || !indicator.isDefined(CELL))
+		{
+			indicator = m->CreateTag(indicator.isValid() ? indicator.GetTagName() : "indicator", DATA_INTEGER, CELL, NONE, 1);
+			for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
+				indicator[m->CellByLocalID(i)] = 0;
+		}
+		//TagInteger indicator = m->CreateTag(indicator.GetTagName(), DATA_INTEGER, CELL, NONE, 1);
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->RefineIndicator(*this,indicator);
+		int refine = 0, tot = m->TotalNumberOf(CELL);
+		for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
+		{
+			Cell c = m->CellByLocalID(i);
+			if (indicator[c]) refine++;
+		}
+		refine = m->Integrate(refine);
+		if (m->GetProcessorRank() == 0)
+			std::cout << __FUNCTION__ << " indicator marked " << refine << "/" << tot << std::endl;
+		if (!refine) return false;
+		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 			(*it)->BeginAdaptation();
 		static int call_counter = 0;
@@ -1396,13 +1416,33 @@ namespace INMOST
     }
 	
 
-	bool AdaptiveMesh::Coarse(TagInteger & indicator)
+	bool AdaptiveMesh::Coarse(TagInteger indicator)
 	{
 		std::string file;
 		ENTER_FUNC();
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
+		if (!indicator.isValid() || !indicator.isDefined(CELL))
+		{
+			indicator = m->CreateTag(indicator.isValid() ? indicator.GetTagName() : "indicator", DATA_INTEGER, CELL, NONE, 1);
+			for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
+				indicator[m->CellByLocalID(i)] = 1;
+		}
+		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+			(*it)->CoarseIndicator(*this,indicator);
+		int coarse = 0, tot = m->TotalNumberOf(CELL);
+		for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
+		{
+			Cell c = m->CellByLocalID(i);
+			if (GetLevel(c) && indicator[c] == 1)
+				coarse++;
+		}
+		coarse = m->Integrate(coarse);
+		if (m->GetProcessorRank() == 0)
+			std::cout << __FUNCTION__ << " indicator marked " << coarse << "/" << tot << std::endl;
+		if (!coarse) return false;
+		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 			(*it)->BeginAdaptation();
         //return false;

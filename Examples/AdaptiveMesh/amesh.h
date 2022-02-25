@@ -4,6 +4,9 @@
 
 namespace INMOST
 {
+
+	class AdaptiveMesh;
+
 	struct AdaptiveMeshCallback
 	{
 		virtual void NewNode(Cell& c, Node& n, Storage::reference_array cell_hanging_nodes) = 0;
@@ -23,9 +26,16 @@ namespace INMOST
 		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) = 0;
 		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) = 0;
 
-		virtual void Adaptation() const = 0;
+		virtual void Adaptation() = 0;
 		virtual void BeginAdaptation() = 0;
 		virtual void EndAdaptation() = 0;
+
+		//Set indicator to 1 if cell is to be refined and to 0 if not.
+		//Indicator is exchanged after all callbacks.
+		virtual void RefineIndicator(AdaptiveMesh & am, TagInteger tag_I) = 0;
+		//Set indicator to 0 if cell is not allowed to be coarsened and to 1 otherwise.
+		//Indicator is exchanged after all callbacks.
+		virtual void CoarseIndicator(AdaptiveMesh & am, TagInteger tag_I) = 0;
 	};
 
 
@@ -62,8 +72,8 @@ namespace INMOST
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
-		bool Refine(TagInteger & indicator);
-		bool Coarse(TagInteger & indicator);
+		bool Refine(TagInteger indicator = Tag());
+		bool Coarse(TagInteger indicator = Tag());
 		/// Delete all data related to mesh refinement-coarsement.
 		void ClearData();
 		void PrintSet(std::ostream & fout, ElementSet set);
