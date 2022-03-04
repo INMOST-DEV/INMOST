@@ -305,6 +305,8 @@ namespace INMOST
 				for(const_iterator it = Begin(); it != End(); ++it) if( fabs(it->second) > eps ) {sout << "(" << it->first << "," << it->second << ") "; k++; }
 				if( k ) sout << std::endl;
 			}
+			/// Sort row
+			void                    Sort() { std::sort(data.begin(), data.end()); }
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
 			/// Add up two rows. Performs operation output=alpha*left+beta*right.
@@ -528,6 +530,8 @@ namespace INMOST
 			const bool &         isParallel() const { return is_parallel; }
 			/// Get the matrix name specified in the main constructor.
 			std::string          GetName() const {return name;}
+			/// Sort rows
+			void                 Sort() { for (iterator it = Begin(); it != End(); ++it) it->Sort(); }
 			/// Calculate the real residual.
 			///
 			/// @param RHS The right-hand side Vector b.

@@ -2889,7 +2889,7 @@ namespace INMOST
 					for (enumerator j = 0; j < pB->Cols(); ++j)
 					{
 						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < Cols(); ++k)
+						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k) * (*pB)(k, j).GetValue();
 							merger.AddRow((*pA)(i, k), (*pB)(k, j).GetRow());
@@ -2974,7 +2974,7 @@ namespace INMOST
 					for (enumerator j = 0; j < pB->Cols(); ++j)
 					{
 						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < Cols(); ++k)
+						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k).GetValue() * (*pB)(k, j);
 							merger.AddRow((*pB)(k, j), (*pA)(i, k).GetRow());
@@ -3059,7 +3059,7 @@ namespace INMOST
 					for (enumerator j = 0; j < pB->Cols(); ++j)
 					{
 						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < Cols(); ++k)
+						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k).GetValue() * (*pB)(k, j).GetValue();
 							merger.AddRow((*pA)(i, k).GetValue(), (*pB)(k, j).GetRow());
