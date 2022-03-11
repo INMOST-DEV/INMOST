@@ -489,7 +489,7 @@ namespace INMOST
 		if (!refine) return false;
 		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->BeginAdaptation();
+			(*it)->BeginRefinement();
 		static int call_counter = 0;
 		Storage::integer ret = 0; //return number of refined cells
 		//initialize tree structure
@@ -1244,7 +1244,7 @@ namespace INMOST
 //#endif
 		ENTER_BLOCK();
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->Adaptation();
+			(*it)->Refinement();
 		EXIT_BLOCK();
 		m->CheckSetLinks(__FILE__,__LINE__);
 		//13. Delete old elements of the mesh
@@ -1393,7 +1393,7 @@ namespace INMOST
 		EXIT_BLOCK();
 		ENTER_BLOCK();
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->EndAdaptation();
+			(*it)->EndRefinement();
 		EXIT_BLOCK();
 		//return number of refined cells
 		call_counter++;
@@ -1444,7 +1444,7 @@ namespace INMOST
 		if (!coarse) return false;
 		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->BeginAdaptation();
+			(*it)->BeginCoarsening();
         //return false;
 		static int call_counter = 0;
 		//return number of coarsened cells
@@ -2218,7 +2218,7 @@ namespace INMOST
 //		if( model ) model->Adaptation(*m);
 //#endif
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->Adaptation();
+			(*it)->Coarsening();
 		m->ApplyModification();
 
 		
@@ -2336,7 +2336,7 @@ namespace INMOST
 		EXIT_BLOCK();
 		ENTER_BLOCK();
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-			(*it)->EndAdaptation();
+			(*it)->EndCoarsening();
 		EXIT_BLOCK();
 		call_counter++;
 		

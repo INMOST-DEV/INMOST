@@ -451,7 +451,7 @@ namespace INMOST
 			{
 				if( !tag.isSparse(mask) ) 
 				{
-          //this was already done in Mesh::DeleteTag()
+					//this was already done in Mesh::DeleteTag()
 					ReallocateData(tag,ElementNum(mask),0); //this should clean up the structures
 					dense_data[tpos].clear(); //here all data should be deleted
 					empty_dense_data.push_back(tpos);

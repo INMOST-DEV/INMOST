@@ -775,6 +775,15 @@ namespace INMOST
 				}
 			}
 		}
+		if ((FACE & type_mask) && tag.isDefined(FACE))
+		{
+			for(std::vector<Tag>::iterator it = orient_tags.begin(); it != orient_tags.end(); ++it)
+				if (*it == tag)
+				{
+					orient_tags.erase(it);
+					break;
+				}
+		}
 #if defined(USE_OMP)
 #pragma omp critical (change_tags)
 #endif
@@ -784,7 +793,34 @@ namespace INMOST
 		return tag;
 	}
 	
-	
+	void Mesh::OrientTags(Face f)
+	{
+		for (std::vector<Tag>::iterator it = orient_tags.begin(); it != orient_tags.end(); ++it) if( it->isDefined(FACE) && f.HaveData(*it))
+		{
+			if (it->GetDataType() == DATA_REAL)
+			{
+				real_array v = f.RealArray(*it);
+				for (real_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+			}
+			else if (it->GetDataType() == DATA_INTEGER)
+			{
+				integer_array v = f.IntegerArray(*it);
+				for (integer_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+			}
+			else if (it->GetDataType() == DATA_BULK)
+			{
+				bulk_array v = f.BulkArray(*it);
+				for (bulk_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+			}
+#if defined(USE_AUTODIFF)
+			else if (it->GetDataType() == DATA_VARIABLE)
+			{
+				var_array v = f.VariableArray(*it);
+				for (var_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+			}
+#endif
+		}
+	}
 	
 	HandleType Mesh::FindSharedAdjacency(const HandleType * arr, enumerator s) const
 	{

@@ -26,9 +26,13 @@ namespace INMOST
 		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) = 0;
 		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) = 0;
 
-		virtual void Adaptation() = 0;
-		virtual void BeginAdaptation() = 0;
-		virtual void EndAdaptation() = 0;
+		virtual void BeginRefinement() = 0;
+		virtual void Refinement() = 0;
+		virtual void EndRefinement() = 0;
+
+		virtual void BeginCoarsening() = 0;
+		virtual void Coarsening() = 0;
+		virtual void EndCoarsening() = 0;
 
 		//Set indicator to 1 if cell is to be refined and to 0 if not.
 		//Indicator is exchanged after all callbacks.

@@ -56,28 +56,11 @@ namespace INMOST
 			vecout[i] = vecin1[i] - vecin2[i];
 	}
 	
-	__INLINE static void vec_diff(const Storage::real_array & vecin1, const Storage::real * vecin2, Storage::real * vecout, unsigned int size)
-	{
-		for(unsigned int i = 0; i < size; i++)
-			vecout[i] = vecin1[i] - vecin2[i];
-	}
-	
-	__INLINE static void vec_diff(const Storage::real_array & vecin1,const Storage::real_array & vecin2, Storage::real * vecout, unsigned int size)
-	{
-		for(unsigned int i = 0; i < size; i++)
-			vecout[i] = vecin1[i] - vecin2[i];
-	}
-	
-	
 	__INLINE static void vec_cross_product(const Storage::real * vecin1, const Storage::real * vecin2, Storage::real * vecout)
 	{
-		Storage::real temp[3];
-		temp[0] = vecin1[1]*vecin2[2] - vecin1[2]*vecin2[1];
-		temp[1] = vecin1[2]*vecin2[0] - vecin1[0]*vecin2[2];
-		temp[2] = vecin1[0]*vecin2[1] - vecin1[1]*vecin2[0];
-		vecout[0] = temp[0];
-		vecout[1] = temp[1];
-		vecout[2] = temp[2];
+		vecout[0] = vecin1[1]*vecin2[2] - vecin1[2]*vecin2[1];
+		vecout[1] = vecin1[2]*vecin2[0] - vecin1[0]*vecin2[2];
+		vecout[2] = vecin1[0]*vecin2[1] - vecin1[1]*vecin2[0];
 	}
 	
 	__INLINE static Storage::real vec_dot_product(const Storage::real * vecin1,const Storage::real * vecin2, unsigned int size)
@@ -92,12 +75,73 @@ namespace INMOST
 	{
 		return vec_dot_product(vecin,vecin,size);
 	}
+
+	__INLINE static Storage::real vec_len2(const Storage::real* vecin1, const Storage::real* vecin2, unsigned int size)
+	{
+		Storage::real ret = 0.0;
+		for (unsigned int i = 0; i < size; ++i)
+			ret += (vecin1[i] - vecin2[i]) * (vecin1[i] - vecin2[i]);
+		return ret;
+	}
 	
 	__INLINE static Storage::real vec_len(const Storage::real * vecin, unsigned int size)
 	{
 		return ::sqrt(vec_len2(vecin,size));
 	}
-	
+
+	__INLINE static Storage::real vec_len(const Storage::real* vecin1, const Storage::real* vecin2, unsigned int size)
+	{
+		return ::sqrt(vec_len2(vecin1,vecin2, size));
+	}
+
+
+#if defined(USE_AUTODIFF)
+	__INLINE static void vec_cross_product(const variable* vecin1, const variable* vecin2, variable* vecout)
+	{
+		vecout[0] = vecin1[1] * vecin2[2] - vecin1[2] * vecin2[1];
+		vecout[1] = vecin1[2] * vecin2[0] - vecin1[0] * vecin2[2];
+		vecout[2] = vecin1[0] * vecin2[1] - vecin1[1] * vecin2[0];
+	}
+
+
+	__INLINE static variable vec_dot_product(const variable* vecin1, const variable* vecin2, unsigned int size)
+	{
+		variable ret = 0;
+		for (unsigned int i = 0; i < size; i++)
+			ret += vecin1[i] * vecin2[i];
+		return ret;
+	}
+
+	__INLINE static void vec_diff(const variable* vecin1, const variable* vecin2, variable* vecout, unsigned int size)
+	{
+		for (unsigned int i = 0; i < size; i++)
+			vecout[i] = vecin1[i] - vecin2[i];
+	}
+
+	__INLINE static variable vec_len2(const variable* vecin, unsigned int size)
+	{
+		return vec_dot_product(vecin, vecin, size);
+	}
+
+	__INLINE static variable vec_len2(const variable* vecin1, const variable* vecin2, unsigned int size)
+	{
+		variable ret = 0.0;
+		for (unsigned int i = 0; i < size; ++i)
+			ret += (vecin1[i] - vecin2[i]) * (vecin1[i] - vecin2[i]);
+		return ret;
+	}
+
+	__INLINE static variable vec_len(const variable* vecin, unsigned int size)
+	{
+		return sqrt(vec_len2(vecin, size));
+	}
+
+	__INLINE static variable vec_len(const variable* vecin1, const variable* vecin2, unsigned int size)
+	{
+		return sqrt(vec_len2(vecin1, vecin2, size));
+	}
+#endif
+
 	__INLINE static Storage::real det3d(Storage::real a, Storage::real b, Storage::real c,
 	                         Storage::real d, Storage::real e, Storage::real f,
 	                         Storage::real g, Storage::real h, Storage::real i ) 
@@ -129,13 +173,10 @@ namespace INMOST
 
 	__INLINE static Storage::real triarea3d(const Storage::real p1[3], const Storage::real p2[3], const Storage::real p3[3])
 	{
-		Storage::real v12[3], v13[3], v23[3], l12, l13, l23, halfperim;
-		vec_diff(p2,p1,v12,3);
-		vec_diff(p3,p1,v13,3);
-		vec_diff(p3,p2,v23,3);
-		l12 = vec_len(v12,3);
-		l13 = vec_len(v13,3);
-		l23 = vec_len(v23,3);
+		Storage::real l12, l13, l23, halfperim;
+		l12 = vec_len(p2,p1,3);
+		l13 = vec_len(p3,p1,3);
+		l23 = vec_len(p3,p2,3);
 		halfperim = 0.5*(l12+l13+l23);
 		return sqrt(std::max(0.0, halfperim * (halfperim - l12) * (halfperim - l13) * (halfperim - l23)));
 	}
@@ -236,8 +277,7 @@ namespace INMOST
 				for (Storage::integer k = 0; k < mdim; ++k)
 					xv[k] = a[k] + alpha * v[k];
 				// check positions match
-				vec_diff(xn.data(), xv, xa, mdim);
-				if (vec_len2(xa, mdim) > eps * eps)
+				if (vec_len2(xn.data(), xv, mdim) > eps * eps)
 					return false;
 			}
 		}
@@ -1677,410 +1717,45 @@ namespace INMOST
 		switch(type)
 		{
 			case MEASURE:
-			if( HaveGeometricData(MEASURE,etype) )// && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
-			{
-				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
-				*ret = static_cast<Storage::real *>(MGetDenseLink(e,measure_tag))[0];
-				//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
-			}
-			else
-			{
-				switch(edim)
-				{
-					case 0: *ret = 0; break;
-					case 1: //length of edge
-					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						if( nodes.size() > 1 )
-						{
-							real c[3] = {0,0,0};
-							real_array v0 = nodes[0].Coords();
-							real_array v1 = nodes[1].Coords();
-							vec_diff(v0.data(),v1.data(),c,mdim);
-							*ret = vec_len(c,mdim);
-						}
-						else *ret = 0;
-						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
-						break;
-					}
-					case 2: //area of face
-					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						if( nodes.size() > 2 )
-						{
-							*ret = 0;
-							real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 }, n0[3] = { 0,0,0 };// , ss, at;
-							real_array v0, v1, v2;
-							v0 = nodes[0].Coords();
-							for(int i = 1; i < (int)nodes.size()-1; i++)
-							{
-								v1 = nodes[i].Coords();
-								v2 = nodes[i+1].Coords();
-								vec_diff(v1,v0,l1,mdim);
-								vec_diff(v2,v0,l2,mdim);
-								vec_cross_product(l1,l2,nt);
-								for(int q = 0; q < 3; ++q)
-									n0[q] += nt[q]*0.5;
-							}
-							*ret = vec_len(n0,3);
-							//code below is not really needed
-							/*
-							for(int i = 1; i < (int)nodes.size()-1; i++)
-							{
-								v1 = nodes[i].Coords();
-								v2 = nodes[i+1].Coords();
-								vec_diff(v1,v0,l1,mdim);
-								vec_diff(v2,v0,l2,mdim);
-								vec_cross_product(l1,l2,nt);
-								for(int q = 0; q < 3; ++q) 
-									nt[q] *= 0.5;
-								ss = vec_dot_product(n0,nt,3);
-								if( ss ) ss /= fabs(ss);
-								at = sqrt(vec_dot_product(nt,nt,3))*ss;
-								*ret += at;
-							}
-							*/
-							if( *ret != *ret ) std::cout << "area is nan" << std::endl;
-							*ret = fabs(*ret);
-						} else *ret = 0;
-						//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
-						break;
-					}
-					case 3: //volume of cell
-					{
-						//bool print = false;
-//redo:
-						Cell me = Cell(this,e);
-						ElementArray<Face> faces = me->getFaces();
-						bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
-						//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
-						//bool ornt = !CheckConvexity(faces);
-						MarkerType rev = 0;
-						if( ornt )
-						{
-							rev = CreatePrivateMarker();
-							FacesOrientation(faces,rev);
-						}
-						real vol = 0, a, at, volp;
-						real x[3] = {0,0,0}, n0[3] = {0,0,0}, s, ss;
-						real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real nt[3] = {0,0,0};
-						//me.Centroid(cx);
-						//if( print ) std::cout << "cx: " << cx[0] << " " << cx[1] << " " << cx[2] << std::endl;
-						for(unsigned j = 0; j < faces.size(); j++)
-						{
-							//compute normal to face
-							ElementArray<Node> nodes = faces[j].getNodes();
-							if( ornt )
-								s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
-							else
-								s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
-							x[0] = x[1] = x[2] = 0;
-							n0[0] = n0[1] = n0[2] = 0;
-							a = 0;
-							real_array v0 = nodes[0].Coords(), v1, v2;
-							for(int i = 1; i < (int)nodes.size()-1; i++)
-							{
-								v1 = nodes[i].Coords();
-								v2 = nodes[i+1].Coords();
-								vec_diff(v1,v0,l1,mdim);
-								vec_diff(v2,v0,l2,mdim);
-								vec_cross_product(l1,l2,nt);
-								for(int q = 0; q < 3; ++q)
-									n0[q] += nt[q]*0.5;
-							}
-							for(int i = 1; i < (int)nodes.size()-1; i++)
-							{
-								v1 = nodes[i].Coords();
-								v2 = nodes[i+1].Coords();
-								vec_diff(v1,v0,l1,mdim);
-								vec_diff(v2,v0,l2,mdim);
-								vec_cross_product(l1,l2,nt);
-								for(int q = 0; q < 3; ++q) 
-									nt[q] *= 0.5;
-								ss = vec_dot_product(n0,nt,3);
-								if( ss ) 
-									ss /= fabs(ss);
-								at = sqrt(vec_dot_product(nt,nt,3))*ss;
-								//same as faces[j].Barycenter(x)
-								for(int q = 0; q < 3; ++q)
-									x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
-								a += at;
-							}
-							if( a )
-							{
-								for(int q = 0; q < 3; ++q) 
-									x[q] = x[q]/a;
-							}
-							else Element(this,e).Centroid(x);
-							volp = vec_dot_product(x,n0,3) / 3.0;
-							vol += s*volp;
-						}
-						if( ornt )
-						{
-							if( vol < 0.0 ) vol = -vol;
-							faces.RemPrivateMarker(rev);
-							ReleasePrivateMarker(rev);
-						}
-						assert(vol > 0);
-						*ret = vol;
-						break;
-					}
-				}
-			}
-			//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
-			break;
-			case CENTROID:
-				if(etype == NODE )
-					memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-				else if(HaveGeometricData(CENTROID,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+				if (HaveGeometricData(MEASURE, etype))// && !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
 					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
-					memcpy(ret,MGetDenseLink(e,centroid_tag),sizeof(real)*mdim);
+					*ret = static_cast<Storage::real*>(MGetDenseLink(e, measure_tag))[0];
+					//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
 				}
-				else
+				else ComputeMeasure(Element(this, e), TagRealArray(CoordsTag()), *ret);
+			break;
+			case CENTROID:
+				if (etype == NODE)
+					memcpy(ret, MGetDenseLink(e, CoordsTag()), sizeof(real) * mdim);
+				else if (HaveGeometricData(CENTROID, etype))//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
-					ElementArray<Node> nodes = Element(this,e).getNodes();
-					memset(ret,0,sizeof(real)*mdim);
-					for(unsigned k = 0; k < nodes.size(); ++k)
-					{
-						for(int q = 0; q < mdim; ++q)
-							ret[q] += nodes[k].Coords()[q];
-					}
-					for(int q = 0; q < mdim; ++q)
-						ret[q] /= (real)nodes.size();
+					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+					memcpy(ret, MGetDenseLink(e, centroid_tag), sizeof(real) * mdim);
 				}
+				else ComputeCentroid(Element(this, e), TagRealArray(CoordsTag()), ret);
 			break;
 			case BARYCENTER:
-			if(etype == NODE )
-				memcpy(ret,MGetDenseLink(e,CoordsTag()),sizeof(real)*mdim);
-			else if(HaveGeometricData(BARYCENTER,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
-			{
-				//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
-				memcpy(ret,MGetDenseLink(e,barycenter_tag),sizeof(real)*mdim);
-			}
-			else
-			{
-				memset(ret,0,sizeof(real)*mdim);
-				if( edim == 1 )
+				if (etype == NODE)
+					memcpy(ret, MGetDenseLink(e, CoordsTag()), sizeof(real) * mdim);
+				else if (HaveGeometricData(BARYCENTER, etype))//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
-					ElementArray<Node> n = Element(this,e)->getNodes();
-					if( n.size() == 2 )
-					{
-						real_array v0 = n[0].Coords();
-						real_array v1 = n[1].Coords();
-						for(integer j = 0; j < dim; j++)
-							ret[j] = (v0[j] + v1[j])*0.5;
-					}
-					else if( n.size() == 1 )
-					{
-						real_array v0 = n[0].Coords();
-						for(integer j = 0; j < dim; j++) ret[j] = v0[j];
-					}
+					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
+					memcpy(ret, MGetDenseLink(e, barycenter_tag), sizeof(real) * mdim);
 				}
-				else if( edim == 2 )
-				{
-					ElementArray<Node> nodes = Element(this,e)->getNodes();
-					if( nodes.size() > 2 )
-					{
-						*ret = 0;
-						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss;
-						real_array v0 = nodes[0].Coords(), v1, v2;
-						for(int i = 1; i < (int)nodes.size()-1; i++)
-						{
-							v1 = nodes[i].Coords();
-							v2 = nodes[i+1].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,nt);
-							for(int q = 0; q < 3; ++q)
-								n0[q] += nt[q]*0.5;
-						}
-						real a = 0, at;
-						for(int i = 1; i < (int)nodes.size()-1; i++)
-						{
-							v1 = nodes[i].Coords();
-							v2 = nodes[i+1].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,nt);
-							for(int q = 0; q < 3; ++q) 
-								nt[q] *= 0.5;
-							ss = vec_dot_product(n0,nt,3);
-							if( ss ) ss /= fabs(ss);
-							at = sqrt(vec_dot_product(nt,nt,3))*ss;
-							for(int q = 0; q < mdim; ++q)
-								c[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
-							a += at;
-						}
-						if( a )
-						{
-							for(int q = 0; q < mdim; ++q) 
-								ret[q] = c[q]/a;
-						} 
-						else Element(this,e).Centroid(ret);
-					}
-				}
-				else if( edim == 3 )
-				{
-					Cell me = Cell(this,e);
-					ElementArray<Face> faces = me->getFaces();
-					bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
-					//bool ornt = !CheckConvexity(faces);
-					//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
-					MarkerType rev = 0;
-					if( ornt )
-					{
-						rev = CreatePrivateMarker();
-						FacesOrientation(faces,rev);
-					}
-					real vol = 0, a, at, volp;
-					real x[3] = {0,0,0}, nt[3] = {0,0,0}, s;
-					real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
-					real n0[3] = { 0,0,0 }, ss;// , xc[3] = { 0,0,0 };
-					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
-					for(unsigned j = 0; j < faces.size(); j++)
-					{
-						//compute normal to face
-						ElementArray<Node> nodes = faces[j].getNodes();
-						if( ornt )
-							s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
-						else
-							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
-						n0[0] = n0[1] = n0[2] = 0;
-						x[0] = x[1] = x[2] = 0;
-						a = 0;
-						real_array v0 = nodes[0].Coords(), v1, v2;
-						for(int i = 1; i < (int)nodes.size()-1; i++)
-						{
-							v1 = nodes[i].Coords();
-							v2 = nodes[i+1].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,nt);
-							for(int q = 0; q < 3; ++q)
-								n0[q] += nt[q]*0.5;
-						}
-						for(int i = 1; i < (int)nodes.size()-1; i++)
-						{
-							v1 = nodes[i].Coords();
-							v2 = nodes[i+1].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,nt);
-							for(int q = 0; q < 3; ++q)
-								nt[q] *= 0.5;
-							ss = vec_dot_product(n0,nt,3);
-							if( ss ) 
-								ss /= fabs(ss);
-							at = sqrt(vec_dot_product(nt,nt,3))*ss;
-							//same as faces[j].Centroid(x)
-							for(int q = 0; q < 3; ++q)
-							{
-								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
-								c[q] += s*nt[q]*(pow(v0[q]+v1[q],2)+pow(v1[q]+v2[q],2)+pow(v2[q]+v0[q],2))/24.0;
-							}
-							a += at;
-						}
-						if( a )
-						{
-							for(int q = 0; q < 3; ++q) 
-								x[q] = x[q]/a;
-						} else faces[j].Centroid(x);
-						//vec_diff(xc, x, l1, mdim);
-						//volp = s * vec_dot_product(l1, n0, 3) / 3.0;
-						volp = s * vec_dot_product(x, n0, 3) / 3.0;
-						//for(int q = 0; q < 3; ++q)
-						//	c[q] += 0.75 * x[q] * volp;
-						vol += volp;
-					}
-					if( ornt )
-					{
-						if( vol < 0.0 )
-						{
-							vol = -vol;
-							for(int q = 0; q < 3; ++q)
-								c[q] = -c[q];
-						}
-						faces.RemPrivateMarker(rev);
-						ReleasePrivateMarker(rev);
-					}
-					if( vol ) 
-					{
-						for (int q = 0; q < mdim; ++q)
-							c[q] = c[q] / vol;// +xc[q];
-						//for (int q = 0; q < mdim; ++q)
-						//	c2[q] /= vol;
-						//real c3[3] = { 0,0,0 };
-						for (int q = 0; q < mdim; ++q)
-							ret[q] = c[q];
-						//me.Centroid(c3);
-//#pragma omp critical
-//						std::cout << "c1 " << c[0] << " " << c[1] << " " << c[2] << " c2 " << c2[0] << " " << c2[1] << " " << c2[2] << " c3 " << c3[0] << " " << c3[1] << " " << c3[2] << std::endl;
-					}
-					else me.Centroid(ret);//for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
-					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
-				}
-			}
+				else ComputeBarycenter(Element(this, e), TagRealArray(CoordsTag()), ret);
 			break;
 			case NORMAL:
 			{
-				if( HaveGeometricData(NORMAL,etype) )//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
+				if (HaveGeometricData(NORMAL, etype))//&& !(UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())))
 				{
 					//if (UpdateGeometryMarker() && GetMarker(e, UpdateGeometryMarker())) RecomputeGeometricData(e);
-					memcpy(ret,MGetDenseLink(e,normal_tag),sizeof(real)*mdim);
+					memcpy(ret, MGetDenseLink(e, normal_tag), sizeof(real) * mdim);
 				}
-				else
-				{
-					memset(ret,0,sizeof(real)*mdim);
-					if( edim == 2 )//&& mdim == 3)
-					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						real n[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real nt[3] = {0,0,0};
-						real_array v0 = nodes[0].Coords();
-						for(int i = 1; i < (int)nodes.size()-1; i++)
-						{
-							real_array v1 = nodes[i].Coords();
-							real_array v2 = nodes[i+1].Coords();
-							vec_diff(v1,v0,l1,mdim);
-							vec_diff(v2,v0,l2,mdim);
-							vec_cross_product(l1,l2,nt);
-							for(int q = 0; q < 3; ++q)
-								n[q] += nt[q]*0.5;
-						}
-						for(int q = 0; q < mdim; ++q)
-							ret[q] = n[q];
-					}
-					else if( edim == 1 )//&& mdim == 2 )
-					{
-						ElementArray<Node> nodes = Element(this,e)->getNodes();
-						if( nodes.size() > 1 )
-						{
-							Storage::real_array a = nodes[0].Coords();
-							Storage::real_array b = nodes[1].Coords();
-							ret[0] = b[1] - a[1];
-							ret[1] = a[0] - b[0];
-							Storage::real l = ::sqrt(ret[0]*ret[0]+ret[1]*ret[1]);
-							if( l )
-							{
-								ret[0] /= l;
-								ret[1] /= l;
-							}
-							l = ::sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]));
-							ret[0] *= l;
-							ret[1] *= l;
-						}
-					}
-				}
+				else ComputeNormal(Element(this, e), TagRealArray(CoordsTag()), ret);
 			}
 			break;
 		}
-		//~ if( type == MEASURE )
-		//~ {
-			//~ if( isnan(*ret) || fabs(*ret) < 1e-15  ) throw -1;
-		//~ }
 	}
 	
 
@@ -2110,8 +1785,8 @@ namespace INMOST
 		{
 			v1 = nodes[i].Coords();
 			v2 = nodes[i+1].Coords();
-			vec_diff(v1,v0,l1,dim);
-			vec_diff(v2,v0,l2,dim);
+			vec_diff(v1.data(),v0.data(),l1,dim);
+			vec_diff(v2.data(),v0.data(),l2,dim);
 			vec_cross_product(l1,l2,nt);
 			for(int q = 0; q < 3; ++q)
 				n0[q] += nt[q]*0.5;
@@ -2121,8 +1796,8 @@ namespace INMOST
 		{
 			v1 = nodes[i].Coords();
 			v2 = nodes[i+1].Coords();
-			vec_diff(v1,v0,l1,dim);
-			vec_diff(v2,v0,l2,dim);
+			vec_diff(v1.data(),v0.data(),l1,dim);
+			vec_diff(v2.data(),v0.data(),l2,dim);
 			vec_cross_product(l1,l2,nt);
 			vec_normalize(nt,3);
 			if( fabs(fabs(vec_dot_product(n0,nt,3))-1) > m->GetEpsilon() ) 
@@ -2380,6 +2055,7 @@ namespace INMOST
 						real_array nrm = GetMeshLink()->RealArrayDF(GetHandle(),GetMeshLink()->GetGeometricTag(NORMAL));
 						for(real_array::size_type it = 0; it < nrm.size(); ++it)
 							nrm[it] = -nrm[it];
+						GetMeshLink()->OrientTags(self());
 					}
 				}
 			}
@@ -3000,5 +2676,689 @@ namespace INMOST
 		}
 	}
 
+	void Mesh::ComputeMeasure(Element e, TagRealArray coords, real& ret) const
+	{
+		assert(coords.isDefined(NODE));
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		if (edim == 0)
+			ret = 0.0;
+		else if (edim == 1) // length of edge
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 1)
+			{
+				real_array v0 = coords[nodes[0]];
+				real_array v1 = coords[nodes[1]];
+				ret = vec_len(v0.data(),v1.data(), mdim);
+			}
+			else ret = 0;
+		}
+		else if( edim == 2) //area of face
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 2)
+			{
+				ret = 0;
+				real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 }, n0[3] = { 0,0,0 };// , ss, at;
+				real_array v0, v1, v2;
+				v0 = coords[nodes[0]];
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				ret = vec_len(n0, 3);
+				if (ret != ret) std::cout << "area is nan" << std::endl;
+				ret = fabs(ret);
+			}
+			else ret = 0;
+		}
+		else if( edim == 3) //volume of cell
+		{
+			Cell me = e.getAsCell();
+			ElementArray<Face> faces = me.getFaces();
+			bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
+			//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+			//bool ornt = !CheckConvexity(faces);
+			MarkerType rev = 0;
+			if (ornt)
+			{
+				rev = me.GetMeshLink()->CreatePrivateMarker();
+				me.GetMeshLink()->FacesOrientation(faces, rev);
+			}
+			real vol = 0, a, at, volp;
+			real x[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, s, ss;
+			real l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
+			real nt[3] = { 0,0,0 };
+			for (unsigned j = 0; j < faces.size(); j++)
+			{
+				//compute normal to face
+				ElementArray<Node> nodes = faces[j].getNodes();
+				if (ornt)
+					s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+				else
+					s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+				x[0] = x[1] = x[2] = 0;
+				n0[0] = n0[1] = n0[2] = 0;
+				a = 0;
+				real_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (ss)
+						ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					//same as faces[j].Barycenter(x)
+					for (int q = 0; q < mdim; ++q)
+						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+					a += at;
+				}
+				if (a)
+				{
+					for (int q = 0; q < 3; ++q)
+						x[q] = x[q] / a;
+				}
+				else ComputeCentroid(e, coords, x);
+				volp = vec_dot_product(x, n0, 3) / 3.0;
+				vol += s * volp;
+			}
+			if (ornt)
+			{
+				if (vol < 0.0) vol = -vol;
+				faces.RemPrivateMarker(rev);
+				me.GetMeshLink()->ReleasePrivateMarker(rev);
+			}
+			assert(vol > 0);
+			ret = vol;
+		}
+	}
+
+	void Mesh::ComputeCentroid(Element e, TagRealArray coords, real ret[3]) const
+	{
+		assert(coords.isDefined(NODE));
+		ElementArray<Node> nodes = e.getNodes();
+		integer mdim = coords.GetSize();
+		memset(ret, 0, sizeof(real) * mdim);
+		for (unsigned k = 0; k < nodes.size(); ++k)
+		{
+			real_array v = coords[nodes[k]];
+			for (int q = 0; q < mdim; ++q)
+				ret[q] += v[q];
+		}
+		for (int q = 0; q < mdim; ++q)
+			ret[q] /= (real)nodes.size();
+	}
+
+	void Mesh::ComputeBarycenter(Element e, TagRealArray coords, real ret[3]) const
+	{
+		assert(coords.isDefined(NODE));
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		memset(ret, 0, sizeof(real) * mdim);
+		if (edim == 0)
+		{
+			real_array v0 = coords[e];
+			for (integer j = 0; j < mdim; j++) ret[j] = v0[j];
+		}
+		else if (edim == 1)
+		{
+			ElementArray<Node> n = e.getNodes();
+			if (n.size() == 2)
+			{
+				real_array v0 = coords[n[0]];
+				real_array v1 = coords[n[1]];
+				for (integer j = 0; j < mdim; j++)
+					ret[j] = (v0[j] + v1[j]) * 0.5;
+			}
+			else if (n.size() == 1)
+			{
+				real_array v0 = coords[n[0]];
+				for (integer j = 0; j < mdim; j++) ret[j] = v0[j];
+			}
+		}
+		else if (edim == 2)
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 2)
+			{
+				real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
+				real c[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, ss;
+				real_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				real a = 0, at;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (ss) ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					for (int q = 0; q < mdim; ++q)
+						c[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+					a += at;
+				}
+				if (a)
+				{
+					for (int q = 0; q < mdim; ++q)
+						ret[q] = c[q] / a;
+				}
+				else ComputeCentroid(e, coords, ret);
+			}
+		}
+		else if (edim == 3)
+		{
+			Cell me = e.getAsCell();
+			ElementArray<Face> faces = me.getFaces();
+			bool ornt = true;
+			MarkerType rev = 0;
+			if (ornt)
+			{
+				rev = me.GetMeshLink()->CreatePrivateMarker();
+				me.GetMeshLink()->FacesOrientation(faces, rev);
+			}
+			real vol = 0, a, at, volp;
+			real x[3] = { 0,0,0 }, nt[3] = { 0,0,0 }, s;
+			real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
+			real n0[3] = { 0,0,0 }, ss;// , xc[3] = { 0,0,0 };
+			real l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
+			for (unsigned j = 0; j < faces.size(); j++)
+			{
+				//compute normal to face
+				ElementArray<Node> nodes = faces[j].getNodes();
+				if (ornt)
+					s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+				else
+					s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+				n0[0] = n0[1] = n0[2] = 0;
+				x[0] = x[1] = x[2] = 0;
+				a = 0;
+				real_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (ss)
+						ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					for (int q = 0; q < 3; ++q)
+					{
+						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						c[q] += s * nt[q] * (pow(v0[q] + v1[q], 2) + pow(v1[q] + v2[q], 2) + pow(v2[q] + v0[q], 2)) / 24.0;
+					}
+					a += at;
+				}
+				if (a)
+				{
+					for (int q = 0; q < 3; ++q)
+						x[q] = x[q] / a;
+				}
+				else ComputeCentroid(e, coords, x);
+				volp = s * vec_dot_product(x, n0, 3) / 3.0;
+				vol += volp;
+			}
+			if (ornt)
+			{
+				if (vol < 0.0)
+				{
+					vol = -vol;
+					for (int q = 0; q < mdim; ++q)
+						c[q] = -c[q];
+				}
+				faces.RemPrivateMarker(rev);
+				me.GetMeshLink()->ReleasePrivateMarker(rev);
+			}
+			if (vol)
+			{
+				for (int q = 0; q < mdim; ++q)
+					c[q] = c[q] / vol;// +xc[q];
+				for (int q = 0; q < mdim; ++q)
+					ret[q] = c[q];
+			}
+			else ComputeCentroid(e, coords, ret);
+		}
+	}
+
+	void Mesh::ComputeNormal(Element e, TagRealArray coords, real ret[3]) const
+	{
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		memset(ret, 0, sizeof(real) * mdim);
+		if (edim == 2)//&& mdim == 3)
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			real n[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
+			real nt[3] = { 0,0,0 };
+			real_array v0 = coords[nodes[0]];
+			for (int i = 1; i < (int)nodes.size() - 1; i++)
+			{
+				real_array v1 = coords[nodes[i]];
+				real_array v2 = coords[nodes[i + 1]];
+				vec_diff(v1.data(), v0.data(), l1, mdim);
+				vec_diff(v2.data(), v0.data(), l2, mdim);
+				vec_cross_product(l1, l2, nt);
+				for (int q = 0; q < 3; ++q)
+					n[q] += nt[q] * 0.5;
+			}
+			for (int q = 0; q < mdim; ++q)
+				ret[q] = n[q];
+		}
+		else if (edim == 1)//&& mdim == 2 )
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 1)
+			{
+				real_array a = coords[nodes[0]];
+				real_array b = coords[nodes[1]];
+				ret[0] = b[1] - a[1];
+				ret[1] = a[0] - b[0];
+				real l = ::sqrt(ret[0] * ret[0] + ret[1] * ret[1]);
+				if (l)
+				{
+					ret[0] /= l;
+					ret[1] /= l;
+				}
+				l = ::sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));
+				ret[0] *= l;
+				ret[1] *= l;
+			}
+		}
+	}
+
+#if defined(USE_AUTODIFF)
+	void Mesh::ComputeMeasure(Element e, TagVariableArray coords, variable& ret) const
+	{
+		assert(coords.isDefined(NODE));
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		if (edim == 0)
+			ret = 0.0;
+		else if (edim == 1) // length of edge
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 1)
+			{
+				var_array v0 = coords[nodes[0]];
+				var_array v1 = coords[nodes[1]];
+				ret = vec_len(v0.data(),v1.data(), mdim);
+			}
+			else ret = 0;
+		}
+		else if (edim == 2) //area of face
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 2)
+			{
+				ret = 0;
+				variable nt[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. };
+				var_array v0, v1, v2;
+				v0 = coords[nodes[0]];
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				ret = vec_len(n0, 3);
+				if (ret != ret) std::cout << "area is nan" << std::endl;
+				ret = fabs(ret);
+			}
+			else ret = 0;
+		}
+		else if (edim == 3) //volume of cell
+		{
+			Cell me = e.getAsCell();
+			ElementArray<Face> faces = me.getFaces();
+			bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
+			//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
+			//bool ornt = !CheckConvexity(faces);
+			MarkerType rev = 0;
+			if (ornt)
+			{
+				rev = me.GetMeshLink()->CreatePrivateMarker();
+				me.GetMeshLink()->FacesOrientation(faces, rev);
+			}
+			variable vol = 0, a, at, volp;
+			variable x[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. }, s, ss;
+			variable l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
+			variable nt[3] = { 0.,0.,0. };
+			for (unsigned j = 0; j < faces.size(); j++)
+			{
+				//compute normal to face
+				ElementArray<Node> nodes = faces[j].getNodes();
+				if (ornt)
+					s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+				else
+					s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+				x[0] = x[1] = x[2] = 0;
+				n0[0] = n0[1] = n0[2] = 0;
+				a = 0;
+				var_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (get_value(ss))
+						ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					//same as faces[j].Barycenter(x)
+					for (int q = 0; q < mdim; ++q)
+						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+					a += at;
+				}
+				if (get_value(a))
+				{
+					for (int q = 0; q < 3; ++q)
+						x[q] = x[q] / a;
+				}
+				else ComputeCentroid(e, coords, x);
+				volp = vec_dot_product(x, n0, 3) / 3.0;
+				vol += s * volp;
+			}
+			if (ornt)
+			{
+				if (vol < 0.0) vol = -vol;
+				faces.RemPrivateMarker(rev);
+				me.GetMeshLink()->ReleasePrivateMarker(rev);
+			}
+			assert(vol > 0);
+			ret = vol;
+		}
+	}
+
+	void Mesh::ComputeCentroid(Element e, TagVariableArray coords, variable ret[3]) const
+	{
+		assert(coords.isDefined(NODE));
+		ElementArray<Node> nodes = e.getNodes();
+		integer mdim = coords.GetSize();
+		for (int q = 0; q < mdim; ++q) ret[q] = 0.0;
+		for (unsigned k = 0; k < nodes.size(); ++k)
+		{
+			var_array v = coords[nodes[k]];
+			for (int q = 0; q < mdim; ++q)
+				ret[q] += v[q];
+		}
+		for (int q = 0; q < mdim; ++q)
+			ret[q] /= (real)nodes.size();
+	}
+
+	void Mesh::ComputeBarycenter(Element e, TagVariableArray coords, variable ret[3]) const
+	{
+		assert(coords.isDefined(NODE));
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		for (int q = 0; q < mdim; ++q) ret[q] = 0.0;
+		if (edim == 0)
+		{
+			var_array v0 = coords[e];
+			for (integer j = 0; j < mdim; j++) ret[j] = v0[j];
+		}
+		else if (edim == 1)
+		{
+			ElementArray<Node> n = e.getNodes();
+			if (n.size() == 2)
+			{
+				var_array v0 = coords[n[0]];
+				var_array v1 = coords[n[1]];
+				for (integer j = 0; j < mdim; j++)
+					ret[j] = (v0[j] + v1[j]) * 0.5;
+			}
+			else if (n.size() == 1)
+			{
+				var_array v0 = coords[n[0]];
+				for (integer j = 0; j < mdim; j++) ret[j] = v0[j];
+			}
+		}
+		else if (edim == 2)
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 2)
+			{
+				*ret = 0;
+				variable nt[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
+				variable c[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. }, ss;
+				var_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				variable a = 0, at;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (get_value(ss)) ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					for (int q = 0; q < mdim; ++q)
+						c[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+					a += at;
+				}
+				if (get_value(a))
+				{
+					for (int q = 0; q < mdim; ++q)
+						ret[q] = c[q] / a;
+				}
+				else ComputeCentroid(e, coords, ret);
+			}
+		}
+		else if (edim == 3)
+		{
+			Cell me = e.getAsCell();
+			ElementArray<Face> faces = me.getFaces();
+			bool ornt = true;
+			MarkerType rev = 0;
+			if (ornt)
+			{
+				rev = me.GetMeshLink()->CreatePrivateMarker();
+				me.GetMeshLink()->FacesOrientation(faces, rev);
+			}
+			variable vol = 0., a, at, volp;
+			variable x[3] = { 0.,0.,0. }, nt[3] = { 0.,0.,0. }, s;
+			variable c[3] = { 0.,0.,0. };// , c2[3] = { 0,0,0 };
+			variable n0[3] = { 0.,0.,0. }, ss;// , xc[3] = { 0,0,0 };
+			variable l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
+			for (unsigned j = 0; j < faces.size(); j++)
+			{
+				//compute normal to face
+				ElementArray<Node> nodes = faces[j].getNodes();
+				if (ornt)
+					s = faces[j].GetPrivateMarker(rev) ? -1.0 : 1.0;
+				else
+					s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
+				n0[0] = n0[1] = n0[2] = 0;
+				x[0] = x[1] = x[2] = 0;
+				a = 0;
+				var_array v0 = coords[nodes[0]], v1, v2;
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						n0[q] += nt[q] * 0.5;
+				}
+				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				{
+					v1 = coords[nodes[i]];
+					v2 = coords[nodes[i + 1]];
+					vec_diff(v1.data(), v0.data(), l1, mdim);
+					vec_diff(v2.data(), v0.data(), l2, mdim);
+					vec_cross_product(l1, l2, nt);
+					for (int q = 0; q < 3; ++q)
+						nt[q] *= 0.5;
+					ss = vec_dot_product(n0, nt, 3);
+					if (get_value(ss))
+						ss /= fabs(ss);
+					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
+					for (int q = 0; q < 3; ++q)
+					{
+						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						c[q] += s * nt[q] * (pow(v0[q] + v1[q], 2) + pow(v1[q] + v2[q], 2) + pow(v2[q] + v0[q], 2)) / 24.0;
+					}
+					a += at;
+				}
+				if (get_value(a))
+				{
+					for (int q = 0; q < 3; ++q)
+						x[q] = x[q] / a;
+				}
+				else ComputeCentroid(e, coords, x);
+				volp = s * vec_dot_product(x, n0, 3) / 3.0;
+				vol += volp;
+			}
+			if (ornt)
+			{
+				if (vol < 0.0)
+				{
+					vol = -vol;
+					for (int q = 0; q < mdim; ++q)
+						c[q] = -c[q];
+				}
+				faces.RemPrivateMarker(rev);
+				me.GetMeshLink()->ReleasePrivateMarker(rev);
+			}
+			if (get_value(vol))
+			{
+				for (int q = 0; q < mdim; ++q)
+					c[q] = c[q] / vol;// +xc[q];
+				for (int q = 0; q < mdim; ++q)
+					ret[q] = c[q];
+			}
+			else ComputeCentroid(e, coords, ret);
+		}
+	}
+
+	void Mesh::ComputeNormal(Element e, TagVariableArray coords, variable ret[3]) const
+	{
+		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
+		integer mdim = coords.GetSize();
+		memset(ret, 0, sizeof(real) * mdim);
+		if (edim == 2)//&& mdim == 3)
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			variable n[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
+			variable nt[3] = { 0.,0.,0. };
+			var_array v0 = coords[nodes[0]];
+			for (int i = 1; i < (int)nodes.size() - 1; i++)
+			{
+				var_array v1 = coords[nodes[i]];
+				var_array v2 = coords[nodes[i + 1]];
+				vec_diff(v1.data(), v0.data(), l1, mdim);
+				vec_diff(v2.data(), v0.data(), l2, mdim);
+				vec_cross_product(l1, l2, nt);
+				for (int q = 0; q < 3; ++q)
+					n[q] += nt[q] * 0.5;
+			}
+			for (int q = 0; q < mdim; ++q)
+				ret[q] = n[q];
+		}
+		else if (edim == 1)//&& mdim == 2 )
+		{
+			ElementArray<Node> nodes = e.getNodes();
+			if (nodes.size() > 1)
+			{
+				var_array a = coords[nodes[0]];
+				var_array b = coords[nodes[1]];
+				ret[0] = b[1] - a[1];
+				ret[1] = a[0] - b[0];
+				variable l = ::sqrt(ret[0] * ret[0] + ret[1] * ret[1]);
+				if (get_value(l))
+				{
+					ret[0] /= l;
+					ret[1] /= l;
+				}
+				l = ::sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));
+				ret[0] *= l;
+				ret[1] *= l;
+			}
+		}
+	}
+#endif
 }
 #endif

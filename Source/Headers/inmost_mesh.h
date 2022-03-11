@@ -1326,6 +1326,7 @@ namespace INMOST
 	private:
 		std::string                         name;
 		std::map<std::string,HandleType>    set_search;
+		std::vector<Tag>                    orient_tags; // tags that follow normal orientation
 		real                                epsilon;
 		empty_container                     empty_space[6];
 		empty_container                     empty_links[6];
@@ -1376,6 +1377,10 @@ namespace INMOST
 	public:
 		Tag                                 tag_sendto;
 		Tag                                 tag_processors;
+		/// Add a data tag that follows normal orientation.
+		void                                AddOrientedTag(Tag t) { assert(t.isValid() && t.isDefined(FACE)); orient_tags.push_back(t); }
+		/// Swap sign for oriented data
+		void                                OrientTags(Face f);
 		/// Go through all elements and detect presence of prescribed element in
 		/// any reference data tag.
 		void                                ReportConnection(HandleType h);
@@ -3288,6 +3293,17 @@ namespace INMOST
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		void                              RecomputeGeometricData(HandleType e, GeometricData d);
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);
+		void                              ComputeCentroid(Element e, TagRealArray coords, real x[3]) const;
+		void                              ComputeBarycenter(Element e, TagRealArray coords, real x[3]) const;
+		void                              ComputeNormal(Element e, TagRealArray coords, real n[3]) const;
+		void                              ComputeMeasure(Element e, TagRealArray coords, real & m) const;
+#if defined(USE_AUTODIFF)
+		void                              ComputeCentroid(Element e, TagVariableArray coords, variable x[3]) const;
+		void                              ComputeBarycenter(Element e, TagVariableArray coords, variable x[3]) const;
+		void                              ComputeNormal(Element e, TagVariableArray coords, variable n[3]) const;
+		void                              ComputeMeasure(Element e, TagVariableArray coords, variable & m) const;
+#endif
+
 		/// Compute node-centered interpolation on 2d face for point.
 		/// Point should be inside face or on its boundary.
 		/// @param x Interpolation point
