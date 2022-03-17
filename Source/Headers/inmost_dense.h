@@ -3133,7 +3133,9 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE VarR operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i, j) * (*coef);
+			VarR ret;
+			assign(ret, (*A)(i, j) * (*coef));
+			return ret;
 		}
 	};
 
@@ -3173,7 +3175,9 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE VarR operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i, j) / (*coef);
+			VarR ret;
+			assign(ret, (*A)(i, j) / (*coef));
+			return ret;
 		}
 	};
 
@@ -3212,7 +3216,9 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE VarR operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i, j) * coef;
+			VarR ret;
+			assign(ret, (*A)(i, j) * coef);
+			return ret;
 		}
 	};
 
@@ -3252,7 +3258,9 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE VarR operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i, j) / coef;
+			VarR ret;
+			assign(ret, (*A)(i, j) / coef);
+			return ret;
 		}
 	};
 
