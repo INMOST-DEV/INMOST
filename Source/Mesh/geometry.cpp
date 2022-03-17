@@ -7,6 +7,7 @@ const std::string normal_name = "PROTECTED_GEOM_UTIL_NORMAL";
 const std::string measure_name = "PROTECTED_GEOM_UTIL_MEASURE";
 const std::string centroid_name = "PROTECTED_GEOM_UTIL_CENTROID";
 const std::string barycenter_name = "PROTECTED_GEOM_UTIL_BARYCENTER";
+const bool ornt_inside = false;
 
 #if defined(USE_PARALLEL_WRITE_TIME)
 __INLINE std::string NameSlash(std::string input)
@@ -350,6 +351,7 @@ namespace INMOST
 		return b;
 	}
 
+
 	bool Face::Inside(const Storage::real * point) const
 	{
 		Mesh * mesh = GetMeshLink();
@@ -407,7 +409,9 @@ namespace INMOST
 		}
 		return false;
 	}
-	
+
+
+
 	bool Cell::Inside(const Storage::real * point) const//check for 2d case
 	{
 		Mesh * mesh = GetMeshLink();
@@ -433,126 +437,12 @@ namespace INMOST
 			real_array v1,v2;
 			//ElementArray<Face> data = getFaces();
 			Element::adj_type const& data = mesh->LowConn(GetHandle());
-			MarkerType rev = 0, mrk;
+			MarkerType rev = 0;
 			//for non-orientable meshes this check is not good
-			if (!mesh->HaveGeometricData(ORIENTATION, FACE))
+			if (ornt_inside || !mesh->HaveGeometricData(ORIENTATION, FACE))
 			{
-				Edge e0, e1, ej, en;
-				Node e0b, e0e, e1b, e1e, ene, enb;
-				Face cur(mesh,data[0]);
-				mrk = mesh->CreatePrivateMarker();
 				rev = mesh->CreatePrivateMarker(); //reverse orientation
-				//data.SetPrivateMarker(mrk); //0-th face orientation is default
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->SetPrivateMarker(data[k], mrk);
-				cur->RemPrivateMarker(mrk);
-				Node n1, n2; //to retrive edge
-				bool reverse = false; //reverse orientation in considered face
-				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
-				//should not use FindSharedAdjacency
-				Element::adj_type const & cur_edges = mesh->LowConn(cur->GetHandle());
-				//ElementArray<Edge> edges = cur->getEdges();
-				do
-				{
-					e0 = Edge(mesh, cur_edges[0]);
-					e1 = Edge(mesh, cur_edges[1]);
-					e0b = e0.getBeg();
-					e0e = e0.getEnd();
-					e1b = e1.getBeg();
-					e1e = e1.getEnd();
-					//figure out starting node order
-					if (e0b == e1b || e0b == e1e)
-					{
-						n1 = e0e;
-						n2 = e0b;
-					}
-					else
-					{
-						n1 = e0b;
-						n2 = e0e;
-					}
-					//schedule unvisited adjacent faces
-					for (unsigned j = 0; j < cur_edges.size(); j++)
-					{
-						//schedule face adjacent to considered edge
-						ej = Edge(mesh, cur_edges[j]);
-						en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
-						//ElementArray<Face> adjacent = ej->getFaces(mrk);
-						Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
-						for (unsigned q = 0; q < adjacent.size(); ++q)
-						{
-							if (mesh->GetPrivateMarker(adjacent[q], mrk))
-							{
-								mesh->RemPrivateMarker(adjacent[q], mrk);
-								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
-							}
-						}
-						//update edge nodes
-						n1 = n2; //current end is new begin
-						enb = en.getBeg();
-						ene = en.getEnd();
-						//find new end
-						if (n2 == enb)
-							n2 = ene;
-						else
-							n2 = enb;
-					}
-					if (stack.empty()) break;
-					//get entry from stack
-					orient_face r = stack.front();
-					//remove face from stack
-					stack.pop_front();
-					//retrive edges for new face
-					//edges = r.face->getEdges();
-					Element::adj_type const & redges = mesh->LowConn(r.face->GetHandle());
-					e0 = Edge(mesh, redges[0]);
-					e1 = Edge(mesh, redges[1]);
-					e0b = e0.getBeg();
-					e0e = e0.getEnd();
-					e1b = e1.getBeg();
-					e1e = e1.getEnd();
-					reverse = false;
-					//figure out starting node order
-					if (e0b == e1b || e0b == e1e)
-					{
-						n1 = e0e;
-						n2 = e0b;
-					}
-					else
-					{
-						n1 = e0b;
-						n2 = e0e;
-					}
-					//find out common edge orientation
-					for (unsigned j = 0; j < redges.size(); j++)
-					{
-						ej = Edge(mesh, redges[j]);
-						en = Edge(mesh, redges[(j + 1) % redges.size()]);
-						if (ej == r.bridge) //found the edge
-						{
-							//reverse ordering on this face
-							if (r.first == n1)
-							{
-								r.face->SetPrivateMarker(rev);
-								reverse = true;
-							}
-							break;
-						}
-						//update edge nodes
-						n1 = n2; //current end is new begin
-						//find new end
-						enb = en.getBeg();
-						ene = en.getEnd();
-						if (n2 == enb)
-							n2 = ene;
-						else
-							n2 = enb;
-					}
-				} while (true);
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->RemPrivateMarker(data[k], mrk);
-				mesh->ReleasePrivateMarker(mrk);
+				mesh->FacesOrientation(data.data(), (enumerator)data.size(), rev);
 			}
 			for(unsigned k = 0; k < data.size(); k++)
 			{
@@ -582,9 +472,7 @@ namespace INMOST
 			}
 			if (rev)
 			{
-				//data.RemPrivateMarker(rev);
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->RemPrivateMarker(data[k], rev);
+				mesh->RemPrivateMarkerArray(data.data(), (enumerator)data.size(), rev);
 				mesh->ReleasePrivateMarker(rev);
 			}
 			if(vp*vm > 0) return false;
@@ -644,6 +532,7 @@ namespace INMOST
 	}
 
 
+
 	bool Cell::InsidePrint(const Storage::real* point, std::ostream& sout) const//check for 2d case
 	{
 		Mesh* mesh = GetMeshLink();
@@ -669,126 +558,12 @@ namespace INMOST
 			real_array v1, v2;
 			//ElementArray<Face> data = getFaces();
 			Element::adj_type const& data = mesh->LowConn(GetHandle());
-			MarkerType rev = 0, mrk;
+			MarkerType rev = 0;
 			//for non-orientable meshes this check is not good
-			if (!mesh->HaveGeometricData(ORIENTATION, FACE))
+			if (ornt_inside || !mesh->HaveGeometricData(ORIENTATION, FACE))
 			{
-				Edge e0, e1, ej, en;
-				Node e0b, e0e, e1b, e1e, ene, enb;
-				Face cur(mesh, data[0]);
-				mrk = mesh->CreatePrivateMarker();
 				rev = mesh->CreatePrivateMarker(); //reverse orientation
-				//data.SetPrivateMarker(mrk); //0-th face orientation is default
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->SetPrivateMarker(data[k], mrk);
-				cur->RemPrivateMarker(mrk);
-				Node n1, n2; //to retrive edge
-				bool reverse = false; //reverse orientation in considered face
-				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
-				//should not use FindSharedAdjacency
-				Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
-				//ElementArray<Edge> edges = cur->getEdges();
-				do
-				{
-					e0 = Edge(mesh, cur_edges[0]);
-					e1 = Edge(mesh, cur_edges[1]);
-					e0b = e0.getBeg();
-					e0e = e0.getEnd();
-					e1b = e1.getBeg();
-					e1e = e1.getEnd();
-					//figure out starting node order
-					if (e0b == e1b || e0b == e1e)
-					{
-						n1 = e0e;
-						n2 = e0b;
-					}
-					else
-					{
-						n1 = e0b;
-						n2 = e0e;
-					}
-					//schedule unvisited adjacent faces
-					for (unsigned j = 0; j < cur_edges.size(); j++)
-					{
-						//schedule face adjacent to considered edge
-						ej = Edge(mesh, cur_edges[j]);
-						en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
-						//ElementArray<Face> adjacent = ej->getFaces(mrk);
-						Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
-						for (unsigned q = 0; q < adjacent.size(); ++q)
-						{
-							if (mesh->GetPrivateMarker(adjacent[q], mrk))
-							{
-								mesh->RemPrivateMarker(adjacent[q], mrk);
-								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
-							}
-						}
-						//update edge nodes
-						n1 = n2; //current end is new begin
-						enb = en.getBeg();
-						ene = en.getEnd();
-						//find new end
-						if (n2 == enb)
-							n2 = ene;
-						else
-							n2 = enb;
-					}
-					if (stack.empty()) break;
-					//get entry from stack
-					orient_face r = stack.front();
-					//remove face from stack
-					stack.pop_front();
-					//retrive edges for new face
-					//edges = r.face->getEdges();
-					Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
-					e0 = Edge(mesh, redges[0]);
-					e1 = Edge(mesh, redges[1]);
-					e0b = e0.getBeg();
-					e0e = e0.getEnd();
-					e1b = e1.getBeg();
-					e1e = e1.getEnd();
-					reverse = false;
-					//figure out starting node order
-					if (e0b == e1b || e0b == e1e)
-					{
-						n1 = e0e;
-						n2 = e0b;
-					}
-					else
-					{
-						n1 = e0b;
-						n2 = e0e;
-					}
-					//find out common edge orientation
-					for (unsigned j = 0; j < redges.size(); j++)
-					{
-						ej = Edge(mesh, redges[j]);
-						en = Edge(mesh, redges[(j + 1) % redges.size()]);
-						if (ej == r.bridge) //found the edge
-						{
-							//reverse ordering on this face
-							if (r.first == n1)
-							{
-								r.face->SetPrivateMarker(rev);
-								reverse = true;
-							}
-							break;
-						}
-						//update edge nodes
-						n1 = n2; //current end is new begin
-						//find new end
-						enb = en.getBeg();
-						ene = en.getEnd();
-						if (n2 == enb)
-							n2 = ene;
-						else
-							n2 = enb;
-					}
-				} while (true);
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->RemPrivateMarker(data[k], mrk);
-				mesh->ReleasePrivateMarker(mrk);
+				mesh->FacesOrientation(data.data(), (enumerator)data.size(), rev);
 			}
 			Centroid(x0);
 			for (unsigned k = 0; k < data.size(); k++)
@@ -827,8 +602,7 @@ namespace INMOST
 			if (rev)
 			{
 				//data.RemPrivateMarker(rev);
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->RemPrivateMarker(data[k], rev);
+				mesh->RemPrivateMarkerArray(data.data(), (enumerator)data.size(), rev);
 				mesh->ReleasePrivateMarker(rev);
 			}
 			sout << "p " << vp << " n " << vm << " z " << vz << std::endl;
@@ -1498,99 +1272,110 @@ namespace INMOST
 
 	bool Cell::CheckConvexity() const {return GetMeshLink()->CheckConvexity(getFaces());}
 
-	bool Mesh::CheckConvexity(const ElementArray<Face> & faces) const
+	bool Mesh::CheckConvexity(const real * x, const real * n, enumerator size) const
 	{
-		if( !faces.empty() )
+		real eps = GetEpsilon();
+		//run comparison
+		for (enumerator j = 0; j != size; ++j)
 		{
-			std::vector<Storage::real> x(faces.size()*6,0.0);
-			Storage::real * n = &x[faces.size()*3];
-			Storage::real eps = GetEpsilon();
-			//precompute data for all faces
+			real dota = 0, dots = 0, dotv, v[3] = { 0.,0.,0. };
+			for (enumerator m = 0; m != size; ++m)
+			{
+				vec_diff(&x[m * 3], &x[j * 3], v, 3);
+				dotv = vec_dot_product(&n[j * 3], v, 3);
+				dots += dotv;
+				dota += fabs(dotv);
+			}
+			if (fabs(fabs(dots) - dota) > eps)
+				return false;
+		}
+		return true;
+	}
+
+	void Mesh::CollectCentroidsNormals(const HandleType * faces, enumerator size, real* x, real* n)
+	{
+		for (enumerator j = 0; j != size; ++j)
+			GetGeometricData(faces[j], CENTROID, &x[j * 3]);
+		//precompute data for all faces
 #if defined(USE_OMP)
 #pragma omp critical (reorder_edges)
 #endif
-			{ //collect data safely so that nobody changes it
-				for(ElementArray<Face>::size_type j = 0; j != faces.size(); ++j)
-				{
-					faces[j].Centroid(&x[j*3]);
-					faces[j].UnitNormal(&n[j*3]);
-				}
-			}
-			//run comparison
-			for(ElementArray<Face>::size_type j = 0; j != faces.size(); ++j)
-			{
-				Storage::real dota = 0, dots = 0, dotv, v[3] = {0.,0.,0.};
-				for(ElementArray<Face>::size_type m = 0; m != faces.size(); ++m)
-				{
-					vec_diff(&x[m*3],&x[j*3],v,3);
-					dotv = vec_dot_product(&n[j*3],v,3);
-					dots += dotv;
-					dota += fabs(dotv);
-				}
-				if( fabs(fabs(dots) - dota) > eps )
-					return false;
-			}
+		{ //collect data safely so that nobody changes it
+			for (enumerator j = 0; j != size; ++j)
+				GetGeometricData(faces[j], NORMAL, &n[j * 3]);
+		}
+	}
+
+	bool Mesh::CheckConvexity(const HandleType * faces, enumerator size)
+	{
+		if (size)
+		{
+			enumerator s6 = size * 6, s3 = size * 3;
+			std::vector<real> x(s6, 0.0);
+			real* n = &x[s3];
+			CollectCentroidsNormals(faces,size,&x[0], &n[0]);
+			return CheckConvexity(&x[0], &n[0], size);
 		}
 		return true;
 	}
 	
-	void Mesh::FacesOrientation(ElementArray<Face> & faces, MarkerType rev)
+	void Mesh::FacesOrientation(const HandleType * faces, enumerator size, MarkerType rev, bool check_convexity, enumerator start)
 	{
 		//can copy orientation-independent algorithm from
 		//incident_matrix.hpp: incident_matrix::compute_measure
 		//assume mdim is of size 3 at most
-		if( !faces.empty() )
+		if( size )
 		{
-			if( CheckConvexity(faces) ) //simpler algorithm
+			bool done = false;
+			if (check_convexity)
 			{
-				std::vector<Storage::real> x(faces.size()*6);
-				Storage::real * n = &x[faces.size()*3];
-				Storage::real xc[3] = {0.,0.,0.}, v[3] = {0.,0.,0.};
-				for(ElementArray<Face>::size_type j = 0; j != faces.size(); ++j)
+				enumerator s6 = size * 6, s3 = size * 3;
+				std::vector<real> x(s6);
+				real* n = &x[s3];
+				CollectCentroidsNormals(faces, size, &x[0], n);
+				if (CheckConvexity(&x[0], n, size)) //simpler algorithm
 				{
-					faces[j].Centroid(&x[j*3]);
-					faces[j].UnitNormal(&n[j*3]);
-					xc[0] += x[j*3+0];
-					xc[1] += x[j*3+1];
-					xc[2] += x[j*3+2];
-				}
-				xc[0] /= (Storage::real)faces.size();
-				xc[1] /= (Storage::real)faces.size();
-				xc[2] /= (Storage::real)faces.size();
-				for(ElementArray<Face>::size_type j = 0; j != faces.size(); ++j)
-				{
-					vec_diff(&x[j*3],xc,v,3);
-					if( vec_dot_product(&n[j*3],v,3) < 0 )
+					real xc[3] = { 0.,0.,0. }, v[3] = { 0.,0.,0. };
+					for (enumerator j = 0; j < size; ++j)
 					{
-						if( isPrivate(rev) )
-							faces[j].SetPrivateMarker(rev);
-						else
-							faces[j].SetMarker(rev);
+						xc[0] += x[j * 3 + 0];
+						xc[1] += x[j * 3 + 1];
+						xc[2] += x[j * 3 + 2];
 					}
+					xc[0] /= (real)size;
+					xc[1] /= (real)size;
+					xc[2] /= (real)size;
+					for (enumerator j = 0; j < size; ++j)
+					{
+						vec_diff(&x[j * 3], xc, v, 3);
+						if (vec_dot_product(&n[j * 3], v, 3) < 0)
+						{
+							if (isPrivate(rev))
+								SetPrivateMarker(faces[j], rev);
+							else
+								SetMarker(faces[j], rev);
+						}
+					}
+					done = true;
 				}
 			}
-			else
+			if( !done )
 			{
 				Edge e0, e1, ej, en;
 				Node e0b, e0e, e1b, e1e, ene, enb;
-				//real was = *ret/3.0;
-				Face cur = faces[0];
-				Mesh * mesh = faces.GetMeshLink();
 				//firstly, have to figure out orientation of each face
 				//mark all faces, so that we can perform adjacency retrival
-				MarkerType mrk = mesh->CreatePrivateMarker();
-				//MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
-				faces.SetPrivateMarker(mrk); //0-th face orientation is default
-				cur->RemPrivateMarker(mrk);
+				MarkerType mrk = CreatePrivateMarker();
+				SetPrivateMarkerArray(faces, size, mrk);
+				RemPrivateMarker(faces[start], mrk);//0-th face orientation is default
 				Node n1,n2; //to retrive edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//ElementArray<Edge> edges = cur->getEdges();
-				Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
+				Element::adj_type * edges = &LowConn(faces[start]);
 				do
 				{
-					e0 = Edge(mesh, cur_edges[0]);
-					e1 = Edge(mesh, cur_edges[1]);
+					e0 = Edge(this, (*edges)[0]);
+					e1 = Edge(this, (*edges)[1]);
 					e0b = e0.getBeg();
 					e0e = e0.getEnd();
 					e1b = e1.getBeg();
@@ -1607,29 +1392,22 @@ namespace INMOST
 						n2 = e0e;
 					}
 					//schedule unvisited adjacent faces
-					for (unsigned j = 0; j < cur_edges.size(); j++)
+					for (unsigned j = 0; j < edges->size(); j++)
 					{
 						//schedule face adjacent to considered edge
-						ej = Edge(mesh, cur_edges[j]);
-						en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
+						unsigned k = (j + 1) % edges->size();
+						ej = Edge(this, (*edges)[j]);
+						en = Edge(this, (*edges)[k]);
 						//ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
-						Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
+						Element::adj_type const& adjacent = HighConn(ej->GetHandle());
 						for (unsigned q = 0; q < adjacent.size(); ++q)
 						{
-							if (mesh->GetPrivateMarker(adjacent[q], mrk))
+							if (GetPrivateMarker(adjacent[q], mrk))
 							{
-								mesh->RemPrivateMarker(adjacent[q], mrk);
-								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
+								RemPrivateMarker(adjacent[q], mrk);
+								stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(this, adjacent[q])));
 							}
 						}
-						/*
-						assert(adjacent.size() <= 1);
-						if( !adjacent.empty() )
-						{
-							adjacent.RemPrivateMarker(mrk);
-							stack.push_back(orient_face(edges[j],reverse ? n2 : n1,adjacent[0]));
-						}
-						*/
 						//update edge nodes
 						n1 = n2; //current end is new begin
 						//find new end
@@ -1648,9 +1426,9 @@ namespace INMOST
 					stack.pop_front();
 					//retrive edges for new face
 					//edges = r.face->getEdges();
-					Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
-					e0 = Edge(mesh, redges[0]);
-					e1 = Edge(mesh, redges[1]);
+					edges = &LowConn(r.face->GetHandle());
+					e0 = Edge(this, (*edges)[0]);
+					e1 = Edge(this, (*edges)[1]);
 					e0b = e0.getBeg();
 					e0e = e0.getEnd();
 					e1b = e1.getBeg();
@@ -1668,10 +1446,11 @@ namespace INMOST
 						n2 = e0e;
 					}
 					//find out common edge orientation
-					for(unsigned j = 0; j < redges.size(); j++)
+					for(unsigned j = 0; j < edges->size(); j++)
 					{
-						ej = Edge(mesh, redges[j]);
-						en = Edge(mesh, redges[(j + 1) % redges.size()]);
+						unsigned k = (j + 1) % edges->size();
+						ej = Edge(this, (*edges)[j]);
+						en = Edge(this, (*edges)[k]);
 						if( ej == r.bridge ) //found the edge
 						{
 							//reverse ordering on this face
@@ -1696,9 +1475,8 @@ namespace INMOST
 							n2 = enb;
 					}
 				} while(true);
-				faces.RemPrivateMarker(mrk);
-				mesh->ReleasePrivateMarker(mrk);
-				//faces.RemPrivateMarker(rev);
+				RemPrivateMarkerArray(faces,size,mrk);
+				ReleasePrivateMarker(mrk);
 			}
 		}
 	}
@@ -1879,156 +1657,30 @@ namespace INMOST
 			}
 			else
 			{
-				MarkerType mrk = mesh->CreatePrivateMarker();
 				MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
 				Storage::real measure = 0;
-				//ElementArray<Face> data = c1.getFaces();
 				Element::adj_type const& data = mesh->LowConn(c1.GetHandle());
-				Face cur = *this;
-				//firstly, have to figure out orientation of each face
-				//mark all faces, so that we can perform adjacency retrival
-#if defined(USE_OMP)
-#pragma omp critical (reorder_edges)
-#endif
-				{
-					Edge e0, e1, ej, en;
-					Node e0b, e0e, e1b, e1e, ene, enb;
-					//data.SetPrivateMarker(mrk); //0-th face orientation is default
-					for (unsigned k = 0; k < data.size(); ++k)
-						mesh->SetPrivateMarker(data[k], mrk);
-					cur->RemPrivateMarker(mrk);
-					Node n1,n2; //to retrive edge
-					bool reverse = false; //reverse orientation in considered face
-					std::deque< orient_face > stack; //edge and first node and face for visiting
-					//ElementArray<Edge> edges;
-					//edges = cur->getEdges();
-					Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
-					do
+				enumerator start = ENUMUNDEF;
+				for (enumerator k = 0; k < data.size(); ++k)
+					if (data[k] == GetHandle())
 					{
-						e0 = Edge(mesh, cur_edges[0]);
-						e1 = Edge(mesh, cur_edges[1]);
-						e0b = e0.getBeg();
-						e0e = e0.getEnd();
-						e1b = e1.getBeg();
-						e1e = e1.getEnd();
-						//figure out starting node order
-						if (e0b == e1b || e0b == e1e)
-						{
-							n1 = e0e;
-							n2 = e0b;
-						}
-						else
-						{
-							n1 = e0b;
-							n2 = e0e;
-						}
-						//schedule unvisited adjacent faces
-						for(unsigned j = 0; j < cur_edges.size(); j++)
-						{
-							//schedule face adjacent to considered edge
-							ej = Edge(mesh, cur_edges[j]);
-							en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
-							//ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
-							Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
-							for (unsigned q = 0; q < adjacent.size(); ++q)
-							{
-								if (mesh->GetPrivateMarker(adjacent[q], mrk))
-								{
-									mesh->RemPrivateMarker(adjacent[q], mrk);
-									stack.push_back(orient_face(ej, reverse ? n2 : n1, Face(mesh, adjacent[q])));
-								}
-							}
-							/*
-							assert(adjacent.size() <= 1);
-							if( !adjacent.empty() )
-							{
-								adjacent.RemPrivateMarker(mrk);
-								stack.push_back(orient_face(edges[j],reverse ? n2 : n1,adjacent[0]));
-							}
-							*/
-							//update edge nodes
-							n1 = n2; //current end is new begin
-							//find new end
-							enb = en.getBeg();
-							ene = en.getEnd();
-							//find new end
-							if (n2 == enb)
-								n2 = ene;
-							else
-								n2 = enb;
-						}
-						if( stack.empty() ) break;
-						//get entry from stack
-						orient_face r = stack.front();
-						//remove face from stack
-						stack.pop_front();
-						//retrive edges for new face
-						//edges = r.face->getEdges();
-						Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
-						e0 = Edge(mesh, redges[0]);
-						e1 = Edge(mesh, redges[1]);
-						e0b = e0.getBeg();
-						e0e = e0.getEnd();
-						e1b = e1.getBeg();
-						e1e = e1.getEnd();
-						reverse = false;
-						//figure out starting node order
-						if (e0b == e1b || e0b == e1e)
-						{
-							n1 = e0e;
-							n2 = e0b;
-						}
-						else
-						{
-							n1 = e0b;
-							n2 = e0e;
-						}
-						//find out common edge orientation
-						for(unsigned j = 0; j < redges.size(); j++)
-						{
-							ej = Edge(mesh, redges[j]);
-							en = Edge(mesh, redges[(j + 1) % redges.size()]);
-							if( ej == r.bridge ) //found the edge
-							{
-								//reverse ordering on this face
-								if( r.first == n1 )
-								{
-									r.face->SetPrivateMarker(rev);
-									reverse = true;
-								}
-								break;
-							}
-							//update edge nodes
-							n1 = n2; //current end is new begin
-							//find new end
-							enb = en.getBeg();
-							ene = en.getEnd();
-							if (n2 == enb)
-								n2 = ene;
-							else
-								n2 = enb;
-						}
-					} while(true);
-					//data.RemPrivateMarker(mrk);
-					for (unsigned k = 0; k < data.size(); ++k)
-						mesh->RemPrivateMarker(data[k], mrk);
-					mesh->ReleasePrivateMarker(mrk);
-					Storage::real nrm[3], cnt[3];
-					for(unsigned j = 0; j < data.size(); j++)
-					{
-						Face f(mesh, data[j]);
-						//std::cout << (data[j].GetPrivateMarker(rev) ? 0:1);
-						//compute normal to face
-						f.Barycenter(cnt);
-						f.Normal(nrm);
-						measure += (f.GetPrivateMarker(rev) ? -1.0 : 1.0)*vec_dot_product(cnt,nrm,3);
+						start = k;
+						break;
 					}
+				assert(start != ENUMUNDEF);
+				mesh->FacesOrientation(data.data(), data.size(), rev, false, start);
+				real nrm[3], cnt[3];
+				for (unsigned j = 0; j < data.size(); j++)
+				{
+					//Face f = data[j];
+					Face f(mesh, data[j]);
+					//compute normal to face
+					f.Barycenter(cnt);
+					f.Normal(nrm);
+					measure += (f.GetPrivateMarker(rev) ? -1.0 : 1.0) * vec_dot_product(cnt, nrm, 3);
 				}
 				//std::cout << "cur" << (cur->GetPrivateMarker(rev) ? 0:1) << " " << measure << " ";
-				//bool have_rev = cur->GetPrivateMarker(rev);
-				//data.RemPrivateMarker(rev);
-				for (unsigned k = 0; k < data.size(); ++k)
-					mesh->RemPrivateMarker(data[k], rev);
+				mesh->RemPrivateMarkerArray(data.data(), (unsigned)data.size(), rev);
 				mesh->ReleasePrivateMarker(rev);
 				if( (measure < 0 ))// && !have_rev) || (measure > 0 && have_rev))
 					return false;

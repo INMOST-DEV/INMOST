@@ -3278,8 +3278,12 @@ namespace INMOST
 		/// Marks face with the orientation direction by marker.
 		/// If marker is set then face is reversed.
 		/// Then all faces are oriented either inside or outside of the cell.
-		void                              FacesOrientation(ElementArray<Face> & faces, MarkerType rev);
-		bool                              CheckConvexity(const ElementArray<Face> & faces) const;
+		void                              FacesOrientation(const ElementArray<Face>& faces, MarkerType rev) { return FacesOrientation(faces.data(),(enumerator)faces.size(),rev); }
+		void                              FacesOrientation(const HandleType * faces, enumerator size, MarkerType rev, bool check_convexity = true, enumerator start = 0);
+		void                              CollectCentroidsNormals(const HandleType * faces, enumerator size, real* x, real* n);
+		bool                              CheckConvexity(const real* x, const real* n, enumerator size) const;
+		bool                              CheckConvexity(const ElementArray<Face>& faces) { return CheckConvexity(faces.data(),(enumerator)faces.size()); };
+		bool                              CheckConvexity(const HandleType * faces, enumerator size);
 		void                              PrepareGeometricData(GeomParam table);
 		void                              RemoveGeometricData(GeomParam table);
 		bool                              HaveGeometricData  (GeometricData type, ElementType mask) const {return remember[type][ElementNum(mask)-1];} // requests to only one geometric and element type allowed
