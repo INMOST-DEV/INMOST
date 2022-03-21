@@ -60,4 +60,247 @@ namespace INMOST {
 			pos = str.find_first_of(delims, end);
 		}
 	}
+
+
+	INMOST_DATA_REAL_TYPE Integrate(INMOST_DATA_REAL_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_REAL_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm);
+#else//USE_MPI
+		(void)input;
+#endif//USE_MPI
+		return output;
+	}
+	INMOST_DATA_ENUM_TYPE Integrate(INMOST_DATA_ENUM_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_ENUM_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, comm);
+#else//USE_MPI
+		(void)input;
+#endif//USE_MPI
+		return output;
+	}
+	INMOST_DATA_INTEGER_TYPE Integrate(INMOST_DATA_INTEGER_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_INTEGER_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_SUM, comm);
+#else//USE_MPI
+		(void)input;
+#endif//USE_MPI
+		return output;
+	}
+	void Integrate(INMOST_DATA_REAL_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_REAL_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+
+	}
+	void Integrate(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_ENUM_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	void Integrate(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_INTEGER_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_INTEGER_TYPE, MPI_SUM, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	INMOST_DATA_INTEGER_TYPE ExclusiveSum(INMOST_DATA_INTEGER_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_INTEGER_TYPE output = 0;
+#if defined(USE_MPI)
+		MPI_Scan(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_SUM, comm);
+		output -= input;
+#else//USE_MPI
+		(void)input;
+#endif//USE_MPI
+		return output;
+	}
+	INMOST_DATA_ENUM_TYPE ExclusiveSum(INMOST_DATA_ENUM_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_ENUM_TYPE output = 0;
+#if defined(USE_MPI)
+		MPI_Scan(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, comm);
+		output -= input;
+#else//USE_MPI
+		(void)input;
+#endif//USE_MPI
+		return output;
+	}
+	INMOST_DATA_REAL_TYPE AggregateMax(INMOST_DATA_REAL_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_REAL_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_MAX, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	INMOST_DATA_ENUM_TYPE AggregateMax(INMOST_DATA_ENUM_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_ENUM_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	INMOST_DATA_INTEGER_TYPE AggregateMax(INMOST_DATA_INTEGER_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_INTEGER_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MAX, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	void AggregateMax(INMOST_DATA_REAL_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_REAL_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_REAL_TYPE, MPI_MAX, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	void AggregateMax(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_ENUM_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	void AggregateMax(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_INTEGER_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MAX, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	INMOST_DATA_REAL_TYPE AggregateMin(INMOST_DATA_REAL_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_REAL_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_MIN, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	INMOST_DATA_ENUM_TYPE AggregateMin(INMOST_DATA_ENUM_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_ENUM_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	INMOST_DATA_INTEGER_TYPE AggregateMin(INMOST_DATA_INTEGER_TYPE input, INMOST_MPI_Comm comm)
+	{
+		INMOST_DATA_INTEGER_TYPE output = input;
+#if defined(USE_MPI)
+		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MIN, comm);
+#else //USE_MPI
+		(void)input;
+#endif //USE_MPI
+		return output;
+	}
+	void AggregateMin(INMOST_DATA_REAL_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_REAL_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_REAL_TYPE, MPI_MIN, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+	}
+	void AggregateMin(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_ENUM_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+
+	}
+	void AggregateMin(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
+	{
+#if defined(USE_MPI)
+		std::vector<INMOST_DATA_INTEGER_TYPE> temp(size);
+		if (!temp.empty())
+		{
+			std::copy(input, input + size, temp.begin());
+			MPI_Allreduce(&temp[0], input, size, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MIN, comm);
+		}
+#else//USE_MPI
+		(void)input;
+		(void)size;
+#endif//USE_MPI
+
+	}
 }
