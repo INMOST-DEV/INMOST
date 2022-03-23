@@ -157,8 +157,9 @@ namespace INMOST
 	}
 	
 
-  void Mesh::SaveVTK(std::string File)
-  {
+	void Mesh::SaveVTK(std::string File)
+	{
+		
 		integer dim = GetDimensions();
 		if( dim > 3 )
 		{
@@ -176,11 +177,16 @@ namespace INMOST
 		f << "DATASET UNSTRUCTURED_GRID\n";
 
 		bool output_faces = false;
+		bool keep_ghost = false;
 		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if (file_options[k].first == "VTK_OUTPUT_FACES")
 			{
 				output_faces = true;
+			}
+			else if (file_options[k].first == "KEEP_GHOST")
+			{
+				keep_ghost = true;
 			}
 		}
 		
@@ -191,16 +197,32 @@ namespace INMOST
 		
 		//ReorderEmpty(CELL | NODE);
 		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
-		Storage::integer cur_num = 0;
-		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it) it->IntegerDF(set_id) = cur_num++;
-		cur_num = 0;
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it) it->IntegerDF(set_id) = cur_num++;
-		cur_num = 0;
+		integer num_cells = 0, num_faces = 0, num_nodes = 0;
+		MarkerType used = CreateMarker();
+		for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it)
+			if (keep_ghost || it->GetStatus() != Element::Ghost)
+			{
+				it->IntegerDF(set_id) = num_cells++;
+				it->getAdjElements(NODE).SetMarker(used);
+			}
+			else it->IntegerDF(set_id) = -1;
+		if (output_faces)
+		{
+			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it)
+				if (keep_ghost || it->GetStatus() != Element::Ghost)
+				{
+					it->IntegerDF(set_id) = num_faces++;
+					it->getAdjElements(NODE).SetMarker(used);
+				}
+				else it->IntegerDF(set_id) = -1;
+		}
+		for (Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
+			it->IntegerDF(set_id) = it->GetMarker(used) ? num_nodes++ : -1;
 
-		if (output_faces) for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it) it->IntegerDF(set_id) = cur_num++;
-
-		f << "POINTS " << NumberOfNodes() << " double\n";
-		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
+		ReleaseMarker(used, NODE);
+		
+		f << "POINTS " << num_nodes << " double\n";
+		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) if( it->IntegerDF(set_id) != -1 )
 		{
 			Storage::real_array coords = it->RealArray(CoordsTag());
 			for(integer i = 0; i < dim; i++) 
@@ -214,7 +236,7 @@ namespace INMOST
 		}
 		{
 			std::vector<int> values;
-			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+			for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if( it->IntegerDF(set_id) != -1 )
 			{	
 				switch(it->GetGeometricType())
 				{
@@ -273,7 +295,7 @@ safe_output:
 			}
 			if (output_faces)
 			{
-				for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+				for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) if( it->IntegerDF(set_id) != -1)
 				{
 					switch (it->GetGeometricType())
 					{
@@ -299,10 +321,10 @@ safe_output:
 					default: std::cout << __FILE__ << ":" << __LINE__ << " This should not happen " << Element::GeometricTypeName(it->GetGeometricType()) << std::endl;
 					}
 				}
-				f << "CELLS " << NumberOfCells() + NumberOfFaces() << " " << values.size() << "\n";
+				f << "CELLS " << num_cells + num_faces << " " << values.size() << "\n";
 			}
 			else
-				f << "CELLS " << NumberOfCells() << " " << values.size() << "\n";
+				f << "CELLS " << num_cells << " " << values.size() << "\n";
 
 			for(size_t i = 0; i < values.size(); i++)
 			{
@@ -312,11 +334,11 @@ safe_output:
 			f << "\n";
 		}
 		if (output_faces)
-			f << "CELL_TYPES " << NumberOfCells() + NumberOfFaces() << "\n";
+			f << "CELL_TYPES " << num_cells + num_faces << "\n";
 		else 			
-			f << "CELL_TYPES " << NumberOfCells() << "\n";
+			f << "CELL_TYPES " << num_cells << "\n";
 
-		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+		for(Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if( it->IntegerDF(set_id) != -1)
 		{
 			INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
 			if( nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE) ) //nodes match - output correct type
@@ -324,8 +346,9 @@ safe_output:
 			else //number of nodes mismatch with expected - some topology checks must be off
 				f << VtkElementType(Element::MultiPolygon) << "\n";
 		}
-		if (output_faces){
-			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+		if (output_faces)
+		{
+			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) if(it->IntegerDF(set_id) != -1)
 			{
 				INMOST_DATA_ENUM_TYPE nnodes = VtkElementNodes(it->GetGeometricType());
 				if (nnodes == ENUMUNDEF || nnodes == it->nbAdjElements(NODE)) //nodes match - output correct type
@@ -334,7 +357,7 @@ safe_output:
 					f << VtkElementType(Element::MultiPolygon) << "\n";
 			}
 		}
-		DeleteTag(set_id);
+		
 		{
 			std::vector<std::string> tag_names;
 			std::vector<Tag> tags;
@@ -361,9 +384,9 @@ safe_output:
 				
 			if (!tags.empty() && output_faces) 
 			{ 
-				f << "CELL_DATA " << NumberOfCells() + NumberOfFaces() << "\n"; 
+				f << "CELL_DATA " <<num_cells + num_faces << "\n"; 
 			}
-			else if (!tags.empty()) f << "CELL_DATA " << NumberOfCells() << "\n";
+			else if (!tags.empty()) f << "CELL_DATA " << num_cells << "\n";
 
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
 			{
@@ -381,7 +404,7 @@ safe_output:
 						   ) type_str = "double";
 						f << "SCALARS " << Space2Underscore(tags[i].GetTagName()) << " " << type_str << " " << comps << "\n";
 						f << "LOOKUP_TABLE default\n";
-						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++)
+						for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); it++) if (it->IntegerDF(set_id) != -1)
 						{
 							switch (tags[i].GetDataType())
 							{
@@ -436,7 +459,7 @@ safe_output:
 
 						if (output_faces)
 						{
-							for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++)
+							for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); it++) if (it->IntegerDF(set_id) != -1)
 							{
 								switch (tags[i].GetDataType())
 								{
@@ -509,7 +532,7 @@ safe_output:
 				}
 			}
 				
-			if( !tags.empty() ) f << "POINT_DATA " << NumberOfNodes() << "\n";
+			if( !tags.empty() ) f << "POINT_DATA " << num_nodes << "\n";
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < tags.size(); i++)
 			{
 				INMOST_DATA_ENUM_TYPE comps = tags[i].GetSize();
@@ -526,7 +549,7 @@ safe_output:
 						   ) type_str = "double";
 						f << "SCALARS " << Space2Underscore(tags[i].GetTagName()) << " " << type_str << " " << comps << "\n";
 						f << "LOOKUP_TABLE default\n";
-						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++)
+						for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) if (it->IntegerDF(set_id) != -1)
 						{
 							switch( tags[i].GetDataType() )
 							{
@@ -580,6 +603,7 @@ safe_output:
 				}
 			}
 		}
+		DeleteTag(set_id);
 	}
 
 	void Mesh::LoadVTK(std::string File)

@@ -212,6 +212,39 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 		type_undef[DATA_VARIABLE] = "-0.9999E30";
 #endif
+		bool keep_ghost = false;
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
+		{
+			if (file_options[k].first == "KEEP_GHOST")
+			{
+				keep_ghost = true;
+			}
+		}
+		int num_cells = NumberOfCells(), num_nodes = NumberOfNodes();
+		//give id to nodes
+		TagInteger nid = CreateTag("TEMPORARY_NODE_ID", DATA_INTEGER, NODE, NONE, 1);
+		if (!keep_ghost)
+		{
+			MarkerType used = CreateMarker();
+			num_cells = 0;
+			for(iteratorCell it = BeginCell(); it != EndCell(); ++it)
+				if (it->GetStatus() != Element::Ghost)
+				{
+					num_cells++;
+					it->getAdjElements(NODE).SetMarker(used);
+				}
+			num_nodes = 0;
+			for (Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+				if (jt->GetMarker(used)) nid[*jt] = num_nodes++; else nid[*jt] = -1;
+			ReleaseMarker(used, NODE);
+		}
+		else
+		{
+			INMOST_DATA_INTEGER_TYPE q = 0;
+			for (Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+				nid[*jt] = q++;
+		}
+
 		
 		f << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">" << std::endl;
 		f << "\t<UnstructuredGrid>" << std::endl;
@@ -219,7 +252,7 @@ namespace INMOST
 		//~ f << "\t\t\t<DataArray>" << std::endl;
 		//~ f << "\t\t\t</DataArray>" << std::endl;
 		//~ f << "\t\t</FieldData>" << std::endl;
-		f << "\t\t<Piece NumberOfPoints=\"" << NumberOfNodes() << "\" NumberOfCells=\"" << NumberOfCells() << "\">" << std::endl;
+		f << "\t\t<Piece NumberOfPoints=\"" << num_nodes << "\" NumberOfCells=\"" << num_cells << "\">" << std::endl;
 		f << "\t\t\t<PointData>" << std::endl;
 		for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
 		{
@@ -237,7 +270,7 @@ namespace INMOST
 			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
 				continue;
 			f << "\t\t\t\t<DataArray type=\"" << type_name[it->GetDataType()] << "\" Name=\"" << it->GetTagName() << "\" NumberOfComponents=\"" << it->GetSize() << "\" format=\"ascii\">" << std::endl;
-			for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+			for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt) if( nid[*jt] != -1 )
 			{
 				if( !jt->HaveData(*it) )
 				{
@@ -298,7 +331,7 @@ namespace INMOST
 			if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
 				continue;
 			f << "\t\t\t\t<DataArray type=\"" << type_name[it->GetDataType()] << "\" Name=\"" << it->GetTagName() << "\" NumberOfComponents=\"" << it->GetSize() << "\" format=\"ascii\">" << std::endl;
-			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt) if( keep_ghost || jt->GetStatus() != Element::Ghost )
 			{
 				if( !jt->HaveData(*it) )
 				{
@@ -344,7 +377,7 @@ namespace INMOST
 		f << "\t\t\t</CellData>" << std::endl;
 		f << "\t\t\t<Points>" << std::endl;
 		f << "\t\t\t\t<DataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"" << GetDimensions() << "\" format=\"ascii\">" << std::endl;
-		for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
+		for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt) if( nid[*jt] != -1 )
 		{
 			for(int k = 0; k < GetDimensions(); ++k)
 				f << jt->Coords()[k] << " ";
@@ -353,16 +386,9 @@ namespace INMOST
 		f << "\t\t\t\t</DataArray>" << std::endl;
 		f << "\t\t\t</Points>" << std::endl;
 		f << "\t\t\t<Cells>" << std::endl;
-		//give id to nodes
-		TagInteger nid = CreateTag("TEMPORARY_NODE_ID",DATA_INTEGER,NODE,NONE,1);
-		{
-			INMOST_DATA_INTEGER_TYPE q = 0;
-			for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt)
-				nid[*jt] = q++;
-		}
 		
 		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << std::endl;
-		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt) if( keep_ghost || jt->GetStatus() != Element::Ghost )
 		{
 			ElementArray<Node> nodes(this); //= jt->getNodes();
 			RestoreCellNodes(*jt,nodes);
@@ -375,7 +401,7 @@ namespace INMOST
 		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << std::endl;
 		{
 			size_t offset = 0;
-			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)  if (keep_ghost || jt->GetStatus() != Element::Ghost)
 			{
 				//ElementArray<Node> nodes = jt->getNodes();
 				//offset += nodes.size();
@@ -386,7 +412,7 @@ namespace INMOST
 		f << "\t\t\t\t</DataArray>" << std::endl;
 		bool need_faces = false;
 		f << "\t\t\t\t<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">" << std::endl;
-		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt) if (keep_ghost || jt->GetStatus() != Element::Ghost)
 		{
 			int etype = VtkElementType(jt->GetGeometricType());
 			f << etype << std::endl;
@@ -396,7 +422,7 @@ namespace INMOST
 		if( need_faces )
 		{
 			f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"faces\" format=\"ascii\">" << std::endl;	
-			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)  if (keep_ghost || jt->GetStatus() != Element::Ghost)
 			{
 				int etype = VtkElementType(jt->GetGeometricType());
 				if( etype == 42 ) //polyhedron
@@ -419,7 +445,7 @@ namespace INMOST
 			f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"faceoffsets\" format=\"ascii\">" << std::endl;	
 			{
 				size_t offset = 0;
-				for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)
+				for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt) if (keep_ghost || jt->GetStatus() != Element::Ghost)
 				{
 					int etype = VtkElementType(jt->GetGeometricType());
 					if( etype == 42 ) //polyhedron
@@ -443,6 +469,7 @@ namespace INMOST
 		f << "\t\t</Piece>" << std::endl;
 		f << "\t</UnstructuredGrid>" << std::endl;
 		f << "</VTKFile>" << std::endl;
+		DeleteTag(nid);
 	}
 	
 	void Mesh::LoadVTU(std::string File)
