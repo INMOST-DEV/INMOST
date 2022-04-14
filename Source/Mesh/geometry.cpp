@@ -319,6 +319,7 @@ namespace INMOST
 		// 2d algorithm from Cell::Inside 
 		real data[9][3];
 		for(int k = 0; k < 9; k++) for(int j = 0; j < 3; j++)	data[k][j] = 0;
+		Centroid(data[0]);
 		ElementArray<Node> nodes = getNodes();
 		for(int i = 0; i < static_cast<int>(nodes.size()); i++)
 		{
