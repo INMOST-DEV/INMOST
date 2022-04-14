@@ -174,7 +174,9 @@ namespace INMOST
 		std::vector< std::pair<std::string, AbstractScalarFunction*> > ScalarFunctions; ///< A set of scalar functions, present in the model
 		std::vector< std::pair<std::string, AbstractMatrixFunction*> > MatrixFunctions; ///< A set of matrix functions, present in the model
 		std::vector< std::pair<std::string, AbstractOperator *> > Operators; ///< A set of operators used by submodels
-		bool initialized; ///< Indicates whether the model was initialized.
+		std::map< std::string, bool> activeEntries, activeSubModels; ///< Active entries and models
+
+		bool initialized; ///< Indicates whether a model was initialized.
 	public:
 		Model(Automatizator & aut) : aut(aut), initialized(false) {}
 		//todo:
@@ -182,6 +184,11 @@ namespace INMOST
 		//todo:
 		//Model & operator =(Model const & b);
 		virtual ~Model() {}
+		void ActivateSubModel(std::string name) { activeSubModels[name] = true; }
+		void DeactivateSubModel(std::string name) { activeSubModels[name] = false; }
+		void ToggleEntryState();
+		void ActivateEntry(std::string name) { activeEntries[name] = true; }
+		void DeactivateEntry(std::string name) { activeEntries[name] = false; }
 		/// Add an entry of block unknowns to a model.
 		/// The model stores a link to the entry and may modify it contents.
 		/// The intries should be added from Model::Initialize function,
