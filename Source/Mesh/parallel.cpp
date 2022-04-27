@@ -448,6 +448,7 @@ namespace INMOST
 		//Save("before_equiv"+std::to_string(counter)+".pvtk");
 		ElementType bridge = FACE;
 		if( tag_bridge.isValid() ) bridge = ElementType(Integer(GetHandle(),tag_bridge));
+		if( bridge == NONE ) bridge = FACE; // tag can be valid and uninitialized (for example, after Mesh::SetCommunicator)
 		assert(OneType(bridge)); //what if there is multiple types? (todo: the lowest type is required!)
 #if 0
 		TagIntegerArray tag = CreateTag("TEMPORARY_OWNER_DISTANCE_TAG", DATA_INTEGER, CELL, CELL, 2);
