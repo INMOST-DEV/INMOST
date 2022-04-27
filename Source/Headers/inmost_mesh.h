@@ -2810,7 +2810,7 @@ namespace INMOST
 		/// @param bridge bitwise mask of elements for which neighbouring cells should be considered a layer
 		/// @see Mesh::ExchangeMarked
 		/// @see Mesh::Redistribute
-		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType select = 0);
+		void                              ExchangeGhost      (integer layers, ElementType bridge, MarkerType select = 0, bool delete_ghost = true);
 		/// Migrate all the elements to the new owners prescribed in data corresponding to RedistributeTag.
 		/// This will perform all the actions to send mesh elements and data and reproduce new mesh partitions
 		/// on remote elements and correctly resolve parallel state of the mesh. If you have priviously

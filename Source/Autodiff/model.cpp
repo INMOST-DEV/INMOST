@@ -376,10 +376,18 @@ namespace INMOST
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 		{
-			model_time = Timer();
-			success &= it->second->FillResidual(R);
-			model_time = Timer() - model_time;
-			//~ std::cout << it->first << ":" << model_time << " ";
+			if( !activeSubModels.empty() )
+			{
+				std::map<std::string,bool>::const_iterator f = activeSubModels.find(it->first);
+				if( f != activeSubModels.end() && f->second == false )
+					continue;
+			}
+			{
+				model_time = Timer();
+				success &= it->second->FillResidual(R);
+				model_time = Timer() - model_time;
+				//~ std::cout << it->first << ":" << model_time << " ";
+			}
 		}
 		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::const_iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
@@ -403,7 +411,15 @@ namespace INMOST
 		bool success = true;
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
+		{
+			if( !activeSubModels.empty() )
+			{
+				std::map<std::string,bool>::const_iterator f = activeSubModels.find(it->first);
+				if( f != activeSubModels.end() && f->second == false )
+					continue;
+			}
 			success &= it->second->UpdateSolution(sol,alpha);
+		}
 		return success;
 	}
 	
@@ -477,8 +493,15 @@ namespace INMOST
 		double alpha = 1;
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
+		{
+			if( !activeSubModels.empty() )
+			{
+				std::map<std::string,bool>::const_iterator f = activeSubModels.find(it->first);
+				if( f != activeSubModels.end() && f->second == false )
+					continue;
+			}
 			alpha = std::min(alpha,it->second->UpdateMultiplier(sol));
-
+		}
 		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::const_iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
 		{
@@ -530,6 +553,13 @@ namespace INMOST
 	{
 		for(std::vector< std::pair< std::string, AbstractEntry *> >::const_iterator it = Entries.begin(); it != Entries.end(); ++it)
 		{
+			if( !activeEntries.empty() )
+			{
+				std::map<std::string,bool>::const_iterator f = activeEntries.find(it->first);
+				if( f != activeEntries.end() && f->second == false )
+					continue;
+			}
+
 			ElementType etypes = it->second->GetElementType();
 			Mesh * m = it->second->GetMeshLink();
 			//if( m->GetProcessorRank() == 0 )
@@ -688,5 +718,18 @@ namespace INMOST
 			it->second->EdgeCoarsening(old_edges,new_edge);
 	}
 	*/
+	void Model::ToggleEntryState()
+	{
+		if( !activeEntries.empty() )
+		{
+			for(std::map<std::string,bool>::const_iterator it = activeEntries.begin();
+				it!=activeEntries.end();++it)
+				if( !it->second )
+					aut.DeactivateEntry(GetEntry(it->first)->reg_index);
+				else
+					aut.ActivateEntry(GetEntry(it->first)->reg_index);
+			aut.EnumerateEntries();
+		}
+	}
 }
 #endif

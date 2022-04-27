@@ -6890,20 +6890,20 @@ namespace INMOST
 #endif //NDEBUG
 	}
 	
-	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType marker)
+	void Mesh::ExchangeGhost(Storage::integer layers, ElementType bridge, MarkerType marker, bool delete_ghost)
 	{
 		//printf("%d called exchange ghost with layers %d bridge %s\n",GetProcessorRank(), layers,ElementTypeName(bridge));
 		if( m_state == Serial ) return;
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		int mpirank = GetProcessorRank();
-		bool delete_ghost = false;
+		// bool delete_ghost = false;
 		//if( layers == Integer(tag_layers) && bridge == Integer(tag_bridge) ) return;
 		//cout << "Check " << layers << " " << Integer(GetHandle(),tag_layers) << endl;
 		//~ if( layers <= Integer(GetHandle(),tag_layers) ) delete_ghost = true;
 		//~ else if( layers == Integer(GetHandle(),tag_layers) && bridge < Integer(GetHandle(),tag_bridge) ) delete_ghost = true;
 		//if (marker != 0)
-		delete_ghost = true;
+		// delete_ghost = true;
 		int test_bridge = 0;
 		
 		if( (bridge & MESH) || (bridge & ESET) || (bridge & CELL) ) throw Impossible;
