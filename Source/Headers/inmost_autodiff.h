@@ -127,6 +127,8 @@ namespace INMOST
 	public:
 		/// Default constructor.
 		BlockEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false) : AbstractEntry(etype,mask,inverse) {}
+		/// Remove all existing tags.
+		void ClearTags() { unknown_tags.clear(); unknown_comp.clear(); }
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.
@@ -276,6 +278,8 @@ namespace INMOST
 		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag) : AbstractEntry(etype,mask,inverse), status_tag(status_tag) {}
 		/// Constructor with status tag and status table.
 		StatusBlockEntry(ElementType etype, MarkerType mask, bool inverse, TagInteger status_tag, const std::vector< std::vector<bool> >  & status_tbl) : AbstractEntry(etype,mask,inverse), status_tag(status_tag), status_tbl(status_tbl) {}
+		/// Remove all existing tags.
+		void ClearTags() { unknown_tags.clear(); unknown_comp.clear(); }
 		/// Add a component of the tag as unknown, by default all components of the tag are added.
 		/// Adding all components of variable-sized tags is not supported.
 		/// \warning Tags should belong to the same mesh and should be defined on the elements indicated in etype.

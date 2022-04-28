@@ -379,7 +379,7 @@ namespace INMOST
 			return vec_dot_product(r1,r2,dim) <= 0.0; // point is between edge nodes
 		}
 
-		real nrm[3], cnt[3], v[3];
+		real nrm[3], cnt[3], v[3], q12, q23, q13;
 		UnitNormal(nrm);
 		Centroid(cnt);
 		vec_diff(cnt,point,v,dim);
@@ -402,10 +402,11 @@ namespace INMOST
 			vec_cross_product(data[3],data[4],data[6]);
 			vec_cross_product(data[4],data[5],data[7]);
 			vec_cross_product(data[5],data[3],data[8]);
+			q12 = vec_dot_product(data[6], data[7], dim);
+			q23 = vec_dot_product(data[7], data[8], dim);
+			q13 = vec_dot_product(data[8], data[6], dim);
 			
-			if( vec_dot_product(data[6],data[7],dim) >= 0 &&
-				vec_dot_product(data[7],data[8],dim) >= 0 &&
-				vec_dot_product(data[8],data[6],dim) >= 0 )
+			if( q12 >= -eps && q23 >= -eps && q13 >= -eps )
 				return true; //inside one of the triangles
 		}
 		return false;
