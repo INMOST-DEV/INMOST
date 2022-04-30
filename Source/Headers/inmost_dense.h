@@ -49,7 +49,7 @@ namespace INMOST
 	template<> struct Promote<unknown, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<unknown, unknown>  {typedef variable type;};
 	template<> struct Promote<unknown, variable>  {typedef variable type;};
-	template<> struct Promote<unknown, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<unknown, value_reference> { typedef variable type; };
 	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
