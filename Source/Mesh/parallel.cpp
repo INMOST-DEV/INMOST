@@ -2981,6 +2981,7 @@ namespace INMOST
 #if defined(USE_MPI)
 		if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL);
 
+		bool mesh_2d_in_3d = false;
 		int mpirank = GetProcessorRank();
 		Tag tag_skin = CreateTag("TEMPORARY_COMPUTE_SHARED_SKIN_SET",DATA_INTEGER,FACE,NONE);
 
@@ -2999,12 +3000,12 @@ namespace INMOST
 			{
 				Storage::integer_array arr = it->IntegerArray(tag_skin);
 				ElementArray<Element> adj = it->getAdjElements(CELL);
-        		for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); jt++)
+        			for(ElementArray<Element>::iterator jt = adj.begin(); jt != adj.end(); jt++)
 				{
 					assert(jt->IntegerDF(tag_owner) >= 0 && jt->IntegerDF(tag_owner) < GetProcessorsNumber());
 					arr.push_back(jt->GlobalID()); //identificator of the cell
 					arr.push_back(jt->IntegerDF(tag_owner)); //owner of the cell
-        		}
+        			}
 			}
 		}
 		EXIT_BLOCK();
@@ -3042,34 +3043,73 @@ namespace INMOST
 			Face it = FaceByLocalID(i);
 			bool flag = false;
 			Element::Status estat1 = GetStatus(it->GetHandle()), estat2;
-			if( estat1 == Element::Owned ) continue;
 			if (marker && !it->GetMarker(marker)) continue;
-			Cell c1 = it->BackCell();
-			Cell c2 = it->FrontCell();
-			if( !c1.isValid() && !c2.isValid() ) continue; //no cells per face - skip hanging face
+
+			int ncells;
 			Storage::integer_array skin_data = it->IntegerArray(tag_skin);
-			if( skin_data.size()/2 < 2 ) continue; //only one cell per face - skip boundary face
-			assert( skin_data.size()/2 == 2 ); //more then 2 cells per face - invalid grid topology
-			if( !c2.isValid() ) //other cell is not present on current processor
+			if(it->GetElementDimension() == 2) 
 			{
-				estat1 = c1->GetStatus();
-				if( estat1 == Element::Owned || estat1 == Element::Shared )
-					flag = true;
+				if( estat1 == Element::Owned ) continue;
+				Cell c1 = it->BackCell();
+				Cell c2 = it->FrontCell();
+				if( !c1.isValid() && !c2.isValid() ) continue; //no cells per face - skip hanging face
+				if( skin_data.size()/2 < 2 ) continue; //only one cell per face - skip boundary face
+				assert( skin_data.size()/2 == 2 ); //more then 2 cells per face - invalid grid topology
+				ncells = 2;
+				if( !c2.isValid() ) //other cell is not present on current processor
+				{
+					estat1 = c1->GetStatus();
+					if( estat1 == Element::Owned || estat1 == Element::Shared )
+						flag = true;
+				}
+				else //other cell is present on current processor
+				{
+					estat1 = c1->GetStatus();
+					estat2 = c2->GetStatus();
+					if( (estat1 == Element::Ghost && estat2 == Element::Shared) ||
+						(estat2 == Element::Ghost && estat1 == Element::Shared) ||
+						(estat1 == Element::Owned && estat2 == Element::Ghost)  ||
+						(estat2 == Element::Owned && estat1 == Element::Ghost))
+						flag = true;
+				}
 			}
-			else //other cell is present on current processor
+			else //if(it->GetElementDimension() == 1)
 			{
-				estat1 = c1->GetStatus();
-				estat2 = c2->GetStatus();
-				if( (estat1 == Element::Ghost && estat2 == Element::Shared) ||
-					(estat2 == Element::Ghost && estat1 == Element::Shared) ||
-					(estat1 == Element::Owned && estat2 == Element::Ghost)  ||
-					(estat2 == Element::Owned && estat1 == Element::Ghost))
-					flag = true;
+				// attempt to generalize algorithm: more than two 2d cells neighbours on 1d face when multiple 2d meshes intersected by 1d faces.
+				mesh_2d_in_3d = true;//GetDimensions() == 3;
+				if( skin_data.size()/2 < 2 ) continue; //only one cell per face - skip boundary face
+				ElementArray<Cell> cells = it->getCells();
+				ncells = cells.size();
+				if( ncells != skin_data.size()/2 ) //some cells are not present on current processor
+				{
+					for(int k = 0; !flag && k < ncells; ++k) if(cells[k].isValid())
+					{
+						estat1 = cells[k].GetStatus();
+						if( estat1 == Element::Owned || estat1 == Element::Shared )
+							flag = true;
+					}
+				}
+				else //all cells are present on current processor
+				{
+					for(int k = 0; !flag && k < ncells; ++k) if(cells[k].isValid())
+					{
+						estat1 = cells[k].GetStatus();
+						for(int j = k+1; !flag && j < ncells; ++j) if(cells[j].isValid())
+						{
+							estat2 = cells[j].GetStatus();
+							if( (estat1 == Element::Ghost && estat2 == Element::Shared) ||
+								(estat2 == Element::Ghost && estat1 == Element::Shared) ||
+								(estat1 == Element::Owned && estat2 == Element::Ghost)  ||
+								(estat2 == Element::Owned && estat1 == Element::Ghost))
+								flag = true;
+						}
+					}
+				}
 			}
 			
 			if( flag )
 			{
-				for(int i = 0; i < 2; i++) //assert checks that there are two cells
+				for(int i = 0; i < skin_data.size()/2; i++) //assert checks that there are two cells
 				{
 					Storage::integer owner = skin_data[i*2+1]; //cell owner
 					assert(owner >= 0 && owner < GetProcessorsNumber());
