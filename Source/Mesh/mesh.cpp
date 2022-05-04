@@ -2093,6 +2093,10 @@ namespace INMOST
 				return ret;
 			}
 		}
+		std::cout << __FILE__ << ":" << __LINE__ << " Cannot create new marker ";
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFields; ++k)
+			std::cout << (int)marker_space[k] << " ";
+		std::cout << std::endl;
 		assert(false); //if you reached here then you either don't release markers (it's your bug) or you should increase MarkerFields const in inmost_mesh.h
 		return InvalidMarker();
 	}
@@ -2112,6 +2116,15 @@ namespace INMOST
 				//std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " ret " << ret << " k " << k << std::endl;
 				return ret;
 			}
+		}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " Cannot create new private marker ";
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < MarkerFieldsPrivate; ++k)
+				std::cout << (int)marker_space[k] << " ";
+			std::cout << std::endl;
 		}
 		assert(false); //if you reached here then you either don't release markers (it's your bug) or you should increase MarkerFields const in inmost_mesh.h
 		return InvalidMarker();

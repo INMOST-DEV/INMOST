@@ -399,6 +399,19 @@ namespace INMOST
 					ret += (*this)(i, j) * (*this)(i, j);
 			return sqrt(ret);
 		}
+		/// Computes maximum absolute value of the matrix.
+		/// @return Maximum norm of the matrix.
+		Var MaxNorm() const
+		{
+			Var ret = 0;
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					if (ret < fabs((*this)(i, j)))
+						ret = fabs((*this)(i, j));
+				}
+			return ret;
+		}
 		/// Calculates Moore-Penrose pseudo-inverse of the matrix.
 		/// @param tol Thershold for singular values. Singular values smaller
 		///            then threshold are considered to be zero.
