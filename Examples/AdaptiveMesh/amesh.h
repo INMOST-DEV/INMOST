@@ -9,22 +9,22 @@ namespace INMOST
 
 	struct AdaptiveMeshCallback
 	{
-		virtual void NewNode(Cell& c, Node& n, Storage::reference_array cell_hanging_nodes) = 0;
-		virtual void NewNode(Face& f, Node& n, Storage::reference_array face_hanging_nodes) = 0;
-		virtual void NewNode(Edge& e, Node& n) = 0;
+		virtual void NewNode(Cell c, Node n, Storage::reference_array cell_hanging_nodes) = 0;
+		virtual void NewNode(Face f, Node n, Storage::reference_array face_hanging_nodes) = 0;
+		virtual void NewNode(Edge e, Node n) = 0;
 
-		virtual void NewEdge(Cell& c, Edge& e) = 0;
-		virtual void NewEdge(Face& f, Edge& e) = 0;
+		virtual void NewEdge(Cell c, Edge e) = 0;
+		virtual void NewEdge(Face f, Edge e) = 0;
 
-		virtual void NewFace(Cell& c, Face& f) = 0;
+		virtual void NewFace(Cell c, Face f) = 0;
 
-		virtual void CellRefinement(Cell& old_cell, ElementArray<Cell>& new_cells, ElementSet& new_cell_set) = 0;
-		virtual void FaceRefinement(Face& old_face, ElementArray<Face>& new_faces) = 0;
-		virtual void EdgeRefinement(Edge& old_edge, ElementArray<Edge>& new_edges) = 0;
+		virtual void CellRefinement(Cell old_cell, ElementArray<Cell>& new_cells, ElementSet new_cell_set) = 0;
+		virtual void FaceRefinement(Face old_face, ElementArray<Face>& new_faces) = 0;
+		virtual void EdgeRefinement(Edge old_edge, ElementArray<Edge>& new_edges) = 0;
 
-		virtual void CellCoarsening(ElementArray<Cell>& old_cells, Cell& new_cell, ElementSet& old_cells_set) = 0;
-		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) = 0;
-		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) = 0;
+		virtual void CellCoarsening(ElementArray<Cell>& old_cells, Cell new_cell, ElementSet old_cells_set) = 0;
+		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face new_face) = 0;
+		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge new_edge) = 0;
 
 		virtual void BeginRefinement() = 0;
 		virtual void Refinement() = 0;

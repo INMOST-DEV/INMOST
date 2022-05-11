@@ -1365,7 +1365,7 @@ namespace INMOST
 		__INLINE sparse_type const &        MGetSparseLink      (HandleType h) const {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE sparse_type &              MGetSparseLink      (HandleType h) {return MGetSparseLink(GetHandleElementNum(h),GetHandleID(h));}
 		__INLINE const void *               MGetSparseLink      (HandleType h, const Tag & t) const {sparse_type const & s = MGetSparseLink(GetHandleElementNum(h),GetHandleID(h)); for(senum i = 0; i < s.size(); ++i) if( s[i].tag == t.mem ) return s[i].rec; return NULL;}
-		__INLINE void*&                     MGetSparseLink      (HandleType h, const Tag& t);// {sparse_type& s = MGetSparseLink(GetHandleElementNum(h), GetHandleID(h)); for (senum i = 0; i < s.size(); ++i) if (s[i].tag == t.mem) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec; }
+		void*&                     MGetSparseLink      (HandleType h, const Tag& t);// {sparse_type& s = MGetSparseLink(GetHandleElementNum(h), GetHandleID(h)); for (senum i = 0; i < s.size(); ++i) if (s[i].tag == t.mem) return s[i].rec; s.push_back(mkrec(t)); return s.back().rec; }
 		__INLINE const void *               MGetDenseLink       (integer n, integer ID, const Tag & t) const {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
 		__INLINE void *                     MGetDenseLink       (integer n, integer ID, const Tag & t) {assert(links[n][ID] != -1); return &(GetDenseData(t.GetPositionByDim(n))[links[n][ID]]);}
 		__INLINE const void *               MGetDenseLink       (HandleType h, const Tag & t) const {return MGetDenseLink(GetHandleElementNum(h),GetHandleID(h),t);}

@@ -1829,9 +1829,9 @@ namespace INMOST
 			array<int> n(static_cast<array<int>::size_type>(rfaces.size()));
 			array<real> v;
 			int k = 0;
-			for(ElementArray<Element>::iterator f = rfaces.begin(); f != rfaces.end(); f++)
+			for(ElementArray<Element>::iterator itf = rfaces.begin(); itf != rfaces.end(); itf++)
 			{
-				ElementArray<Node> nodes = f->getNodes();
+				ElementArray<Node> nodes = itf->getNodes();
 				int nn = n[k] = static_cast<int>(nodes.size());
 				for(int i = 0; i < nn; i++)
 				{
