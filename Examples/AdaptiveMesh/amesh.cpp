@@ -631,9 +631,6 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//6.Refine
 
-#if !defined(NDEBUG)
-		std::cout << "nodes " << m->NumberOfNodes() << " edges " << m->NumberOfEdges() << " faces " << m->NumberOfFaces() << " cells " << m->NumberOfCells() << std::endl;
-#endif
 
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
@@ -1194,7 +1191,6 @@ namespace INMOST
 		
 
 #if !defined(NDEBUG)
-		std::cout << "nodes " << m->NumberOfNodes() << " edges " << m->NumberOfEdges() << " faces " << m->NumberOfFaces() << " cells " << m->NumberOfCells() << std::endl;
 		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 		{
 			ElementArray<Edge> cell_edges = it->getEdges();
@@ -2152,9 +2148,6 @@ namespace INMOST
 								level[v] = level[f]-1;
 								visited = true;
 								numcoarsened++;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if( model ) model->FaceCoarsening(unite_faces,v);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->FaceCoarsening(unite_faces,v);
 								t2 = Timer(), tdata += t2 - t1, t1 = t2;
@@ -2222,9 +2215,6 @@ namespace INMOST
 								//set level for new edge
 								level[v] = level[e]-1;
 								visited = true;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if( model ) model->EdgeCoarsening(unite_edges,v);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->EdgeCoarsening(unite_edges,v);
 								t2 = Timer(), tdata += t2 - t1;
