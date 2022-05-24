@@ -62,7 +62,7 @@ int main(int argc, char ** argv)
 		}
 #endif
 		m.ExchangeGhost(1,FACE);
-		AdaptiveMesh am(m);
+		AdaptiveMesh am(m,true);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);

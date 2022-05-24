@@ -1,7 +1,7 @@
 #include "amesh.h"
 #include <iomanip>
 #include <set>
-
+#include <queue>
 
 #if defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_MPI(x) {m->WriteTab(m->out_time) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
@@ -631,6 +631,10 @@ namespace INMOST
 		//m->CheckCentroids(__FILE__,__LINE__);
 		//6.Refine
 
+#if !defined(NDEBUG)
+		std::cout << "nodes " << m->NumberOfNodes() << " edges " << m->NumberOfEdges() << " faces " << m->NumberOfFaces() << " cells " << m->NumberOfCells() << std::endl;
+#endif
+
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
 		ENTER_BLOCK();
@@ -688,9 +692,6 @@ namespace INMOST
 						t2 = Timer(), tsplit += t2 - t1, t1 = t2;
 						//set increased level for new edges
 						level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//						if( model ) model->EdgeRefinement(e,new_edges);
-//#endif
 						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 							(*it)->EdgeRefinement(e, new_edges);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
@@ -732,28 +733,30 @@ namespace INMOST
 						{
 							if( level[*jt] != level[f]+1 )
 							{
-								std::cout << m->GetProcessorRank() << " face " << f.LocalID();
+								std::cout << m->GetProcessorRank() << std::endl;
+								std::cout << " face " << f.LocalID() << " h " << f.GetHandle();
 								std::cout << " " << Element::StatusName(f.GetStatus()) << " owner " << f.Integer(m->OwnerTag());
 								std::cout << " lvl " << level[f] << " ind " << indicator[f];
-								std::cout << " edge " << jt->LocalID();
+								std::cout << std::endl;
+								std::cout << "edge " << jt->LocalID() << " h " << jt->GetHandle();
 								std::cout << " " << Element::StatusName(jt->GetStatus()) << " owner " << jt->Integer(m->OwnerTag());
 								std::cout << " lvl " << level[*jt] << " ind " << indicator[*jt];
 								std::cout << std::endl;
 								ElementArray<Cell> adj_cells;
 								adj_cells = f.getCells();
-								std::cout << "face cells ";
+								std::cout << "face cells " << std::endl;
 								for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
 								{
-									std::cout << m->GetProcessorRank() << " face " << kt->LocalID();
+									std::cout << m->GetProcessorRank() << " cell " << kt->LocalID() << " h " << kt->GetHandle();
 									std::cout << " " << Element::StatusName(kt->GetStatus()) << " owner " << kt->Integer(m->OwnerTag());
 									std::cout << " lvl " << level[*kt] << " ind " << indicator[*kt];
 									std::cout << std::endl;
 								}
-								std::cout << "edge cells ";
+								std::cout << "edge cells " << std::endl;
 								adj_cells = jt->getCells();
 								for(ElementArray<Cell>::iterator kt = adj_cells.begin(); kt != adj_cells.end(); ++kt)
 								{
-									std::cout << m->GetProcessorRank() << " face " << kt->LocalID();
+									std::cout << m->GetProcessorRank() << " cell " << kt->LocalID() << " h " << kt->GetHandle();
 									std::cout << " " << Element::StatusName(kt->GetStatus()) << " owner " << kt->Integer(m->OwnerTag());
 									std::cout << " lvl " << level[*kt] << " ind " << indicator[*kt];
 									std::cout << std::endl;
@@ -772,7 +775,7 @@ namespace INMOST
 						ElementArray<Node> edge_nodes(m, 2); //to create new edges
 						ElementArray<Edge> hanging_edges(m);
 						//skip triangle
-						if (skip_tri && f.GetGeometricType() == Element::Tri)
+						if (skip_tri && (f.nbAdjElements(NODE) - face_hanging_nodes.size()) == 3)
 						{
 							hanging_edges.resize(3);
 							for (Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
@@ -780,14 +783,12 @@ namespace INMOST
 								edge_nodes[0] = face_hanging_nodes[kt].getAsNode();
 								edge_nodes[1] = face_hanging_nodes[(kt+1)% face_hanging_nodes.size()].getAsNode();
 								hanging_edges[kt] = m->CreateEdge(edge_nodes).first;
+								new_edges++;
 								level[hanging_edges[kt]] = level[f] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if (model) model->NewEdge(f, hanging_edges[kt]);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->NewEdge(f, hanging_edges[kt]);
-								for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
-									tri_hanging_edges[face_cells[kt]].push_back(hanging_edges[kt]);
+								for (ElementArray<Face>::size_type qt = 0; qt < face_cells.size(); ++qt)
+									tri_hanging_edges[face_cells[qt]].push_back(hanging_edges[kt]);
 							}
 							t2 = Timer(), thanging += t2 - t1, t1 = t2;
 						}
@@ -805,9 +806,6 @@ namespace INMOST
 							new_nodes++;
 							//set increased level for the new node
 							level[n] = level[f] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//							if (model) model->NewNode(f, n, face_hanging_nodes);
-//#endif
 							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 								(*it)->NewNode(f, n, face_hanging_nodes);
 							t2 = Timer(), tcreate += t2 - t1, t1 = t2;
@@ -823,9 +821,6 @@ namespace INMOST
 								new_edges++;
 								//set increased level for new edges
 								level[hanging_edges[kt]] = level[f] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if (model) model->NewEdge(f, hanging_edges[kt]);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->NewEdge(f, hanging_edges[kt]);
 							}
@@ -838,9 +833,6 @@ namespace INMOST
 						//set increased level to new faces
 						for(ElementArray<Face>::size_type kt = 0; kt < new_faces.size(); ++kt)
 							level[new_faces[kt]] = level[f]+1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//						if( model ) model->FaceRefinement(f,new_faces);
-//#endif
 						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 							(*it)->FaceRefinement(f, new_faces);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
@@ -886,13 +878,18 @@ namespace INMOST
 						t1 = Timer();
 						Node n;
 						Storage::reference_array cell_hanging_nodes = hanging_nodes[c]; //nodes to be connected
-						if (!skip_tri || cell_hanging_nodes.size() > 3)
+						//if (!skip_tri || cell_hanging_nodes.size() > 3) //TODO
 						{
 							//create node at cell center
-							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
-							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
-								for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
-							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)cell_hanging_nodes.size();
+							if (cell_hanging_nodes.size() < 4)
+								c.Centroid(xyz);
+							else
+							{
+								for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+									for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
+								for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)cell_hanging_nodes.size();
+							}
 							//c->Centroid(xyz);
 							//todo: request transformation of node location according to geometrical model
 							//create middle node
@@ -900,9 +897,6 @@ namespace INMOST
 							new_nodes++;
 							//set increased level for the new node
 							level[n] = level[c] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//							if (model) model->NewNode(c, n, cell_hanging_nodes);
-//#endif
 							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 								(*it)->NewNode(c, n, cell_hanging_nodes);
 						}
@@ -975,6 +969,7 @@ namespace INMOST
 							internal_faces.resize(edge_hanging_nodes.size());
 							//unmark hanging nodes on edges
 							edge_hanging_nodes.RemMarker(mark_hanging_nodes);
+							std::pair<Edge, bool> new_edge;
 							for (ElementArray<Node>::size_type kt = 0; kt < edge_hanging_nodes.size(); ++kt)
 							{
 								//create a face based on collected edges
@@ -991,22 +986,20 @@ namespace INMOST
 									ElementArray<Edge> tri_edges(m, 3);
 									tri_edges[0] = face_edges[0].getAsEdge();
 									tri_edges[1] = face_edges[1].getAsEdge();
-									tri_edges[2] = m->CreateEdge(edge_nodes).first;
-									//double check, is this really a new edge???
-									level[tri_edges[2]] = level[c] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//									if (model) model->NewEdge(c, tri_edges[2]);
-//#endif
-									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-										(*it)->NewEdge(c, tri_edges[2]);
+									new_edge = m->CreateEdge(edge_nodes);
+									tri_edges[2] = new_edge.first;
+									//double check, is this really a new edge
+									if (new_edge.second)
+									{
+										level[new_edge.first] = level[c] + 1;
+										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+											(*it)->NewEdge(c, new_edge.first);
+									}
 									internal_faces[kt] = m->CreateFace(tri_edges).first;
 								}
 								new_faces++;
 								//set increased level
 								level[internal_faces[kt]] = level[c] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if (model) model->NewFace(c, internal_faces[kt]);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->NewFace(c, internal_faces[kt]);
 								//clean up structure, so that other cells can use it
@@ -1014,23 +1007,68 @@ namespace INMOST
 							}
 							if (skip_tri)
 							{
-								ElementArray<Node> tri_nodes(m, 3);
+								ElementArray<Edge> tri_edges(m, 3);
 								Storage::reference_array cell_tri_hanging_edges = tri_hanging_edges[c]; //edges to be connected
-								tri_nodes[0] = n;
+								edge_nodes[0] = n;
 								for (Storage::reference_array::size_type kt = 0; kt < cell_tri_hanging_edges.size(); ++kt)
 								{
-									tri_nodes[1] = cell_tri_hanging_edges[kt].getAsEdge().getBeg();
-									tri_nodes[2] = cell_tri_hanging_edges[kt].getAsEdge().getEnd();
-									internal_faces.push_back(m->CreateFace(tri_nodes).first);
+									tri_edges[0] = cell_tri_hanging_edges[kt].getAsEdge();
+									edge_nodes[1] = cell_tri_hanging_edges[kt].getAsEdge().getBeg();
+									new_edge = m->CreateEdge(edge_nodes);
+									tri_edges[1] = new_edge.first;
+									if (new_edge.second)
+									{
+										level[new_edge.first] = level[c] + 1;
+										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+											(*it)->NewEdge(c, new_edge.first);
+									}
+									edge_nodes[1] = cell_tri_hanging_edges[kt].getAsEdge().getEnd();
+									new_edge = m->CreateEdge(edge_nodes);
+									tri_edges[2] = new_edge.first;
+									if (new_edge.second)
+									{
+										level[new_edge.first] = level[c] + 1;
+										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+											(*it)->NewEdge(c, new_edge.first);
+									}
+									internal_faces.push_back(m->CreateFace(tri_edges).first);
 									level[internal_faces.back()] = level[c] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//									if (model) model->NewFace(c, internal_faces.back());
-//#endif
 									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 										(*it)->NewFace(c, internal_faces.back());
 								}
 							}
 							t2 = Timer(), thanging2 += t2 - t1, t1 = t2;
+						}
+						else //no central node
+						{
+							//connect all pairs of cell hanging nodes to create internal edges
+							ElementArray<Node> edge_nodes(m, 2);
+							ElementArray<Edge> internal_edges(m);
+							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+							{
+								for (Storage::reference_array::size_type qt = kt+1; qt < cell_hanging_nodes.size(); ++qt)
+								{
+									edge_nodes[0] = cell_hanging_nodes[kt].getAsNode();
+									edge_nodes[1] = cell_hanging_nodes[qt].getAsNode();
+									internal_edges.push_back(m->CreateEdge(edge_nodes).first);
+									new_edges++;
+									//set increased level for new edges
+									level[internal_edges.back()] = level[c] + 1;
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewEdge(c, internal_edges.back());
+								}
+							}
+							//create internal face from internal edges
+							if (internal_edges.size() > 2)
+							{
+								internal_faces.push_back(m->CreateFace(internal_edges).first);
+								new_faces++;
+								level[internal_faces.back()] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces.back());
+							}
+							//TODO!
+							throw - 1;
 						}
 						//if( c.GlobalID() == 228 )
 						//{
@@ -1153,8 +1191,36 @@ namespace INMOST
 			schedule_counter--;
 		}
 		m->CheckSetLinks(__FILE__,__LINE__);
+		
+
+#if !defined(NDEBUG)
+		std::cout << "nodes " << m->NumberOfNodes() << " edges " << m->NumberOfEdges() << " faces " << m->NumberOfFaces() << " cells " << m->NumberOfCells() << std::endl;
+		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		{
+			ElementArray<Edge> cell_edges = it->getEdges();
+			for (ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt)
+			{
+				if (level[*jt] < level[*it])
+				{
+					std::cout << "cell " << it->LocalID() << " h " << it->GetHandle() << " lvl " << level[*it] << " ind " << indicator[*it];
+					std::cout << std::endl;
+					std::cout << "edge " << jt->LocalID() << " h " << jt->GetHandle() << " lvl " << level[*jt] << " ind " << indicator[*jt];
+					std::cout << std::endl;
+				}
+				assert(level[*jt] >= level[*it]);
+			}
+			ElementArray<Face> cell_faces = it->getFaces();
+			for (ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] >= level[*it]);
+		}
+		for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
+		{
+			ElementArray<Edge> face_edges = it->getEdges();
+			for (ElementArray<Edge>::iterator jt = face_edges.begin(); jt != face_edges.end(); ++jt) assert(level[*jt] >= level[*it]);
+		}
+#endif //NDEBUG
+
 		//free created tag
-		m->DeleteTag(indicator,FACE|EDGE);
+		m->DeleteTag(indicator, FACE | EDGE);
 
 		if( check_orientation )
 		{
@@ -1871,85 +1937,87 @@ namespace INMOST
 							indicator[jt->self()] = 0; //prevent algorithm from visiting again
 						}
 						t2 = Timer(), tcollect += t2 - t1, t1 = t2;
-						//fout << "parent set " << parent.GetName() << " size " << parent.Size() << " cell " << c.GlobalID() << " " << x[0] << " " << x[1] << " " << x[2] << std::endl;
-						//fout << "cells(" << unite_cells.size() << "):" << std::endl;
-						//for(kt = 0; kt < unite_cells.size(); ++kt)
-						//{
-						//	unite_cells[kt].Centroid(x);
-						//	fout << unite_cells[kt].GlobalID();
-						//	fout << " parent " << ElementSet(m,parent_set[unite_cells[kt]]).GetName();
-						//	fout << " " << x[0] << " " << x[1] << " " << x[2];
-						//	fout << " lvl " << level[unite_cells[kt]];
-						//	fout << std::endl;
-						//}
 						//find a node common to all the cells
+						/*
 						ElementArray<Node> center_node = unite_cells[0].getNodes();
 						for(kt = 1; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
 							center_node.Intersect(unite_cells[kt].getNodes());
 						t2 = Timer(), tcenter += t2 - t1, t1 = t2;
-						//fout << "nodes(" << center_node.size() << "):" << std::endl;
-						//for(kt = 0; kt < center_node.size(); ++kt)
-						//	fout << center_node[kt].Coords()[0] << " " << center_node[kt].Coords()[1] << " " << center_node[kt].Coords()[2] << std::endl;
-						//fout << "child sets: ";
-						//for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())
-						//	fout << " " << chld.GetName();
-						//fout << std::endl;
 						//only one should be found
-						/*
-						if( center_node.size() != 1 )// || it == 127 )
-						{
-							INMOST_DATA_REAL_TYPE x[3];
-							std::cout << "call_counter " << call_counter << " schedule_counter " << schedule_counter << std::endl;
-							c.Centroid(x);
-							std::cout << "parent set " << parent.GetName() << " size " << parent.Size() << " cell " << c.GlobalID() << " " << x[0] << " " << x[1] << " " << x[2] << std::endl;
-							std::cout << "cells(" << unite_cells.size() << "):" << std::endl;
-							for(kt = 0; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
-							{
-								unite_cells[kt].Centroid(x);
-								std::cout << unite_cells[kt].GlobalID() << " lid " << unite_cells[kt].LocalID();
-								std::cout << " parent " << ElementSet(m,parent_set[unite_cells[kt]]).GetName();
-								std::cout << " " << x[0] << " " << x[1] << " " << x[2];
-								std::cout << std::endl;
-							}
-							std::cout << "nodes(" << center_node.size() << "):" << std::endl;
-							for(kt = 0; kt < static_cast<Storage::integer>(center_node.size()); ++kt)
-								std::cout << center_node[kt].Coords()[0] << " " << center_node[kt].Coords()[1] << " " << center_node[kt].Coords()[2] << std::endl;
-							std::cout << "child sets: ";
-							for(ElementSet chld = parent.GetChild(); chld.isValid(); chld = chld.GetSibling())
-								std::cout << " " << chld.GetName();
-							std::cout << std::endl;
-							for(kt = 0; kt < static_cast<Storage::integer>(unite_cells.size()); ++kt)
-							{
-								ElementArray<Face> faces = unite_cells[kt].getFaces();
-								std::cout << "cell " << unite_cells[kt].LocalID() << " faces " << faces.size() << " lc " << m->LowConn(unite_cells.at(kt)).size() << std::endl;
-								std::cout << (unite_cells[kt].Closure() ? "closed" : "open") << " ";
-								for(ElementArray<Face>::iterator qt = faces.begin(); qt != faces.end(); ++qt) std::cout << "f" << qt->LocalID() << " " << (qt->Closure() ? "closed" : "open") << " ";
-								std::cout << std::endl;
-								for(ElementArray<Face>::iterator qt = faces.begin(); qt != faces.end(); ++qt)
-								{
-									ElementArray<Edge> edges = qt->getEdges();
-									for(ElementArray<Edge>::iterator mt = edges.begin(); mt != edges.end(); ++mt)
-									{
-										std::cout << "(" << mt->getBeg()->Coords()[0] << "," << mt->getBeg()->Coords()[1] << "," << mt->getBeg()->Coords()[2] << ")";
-										std::cout << "<->";
-										std::cout << "(" << mt->getEnd()->Coords()[0] << "," << mt->getEnd()->Coords()[1] << "," << mt->getEnd()->Coords()[2] << ")";
-										std::cout << std::endl;
-									}
-								}
-							}
-						}
-						*/
 						assert(center_node.size() == 1);
 						ElementArray<Node> hanging = center_node[0].BridgeAdjacencies2Node(EDGE);
 						t2 = Timer(), thanging += t2 - t1, t1 = t2;
+						*/
+						MarkerType mrk = m->CreateMarker();
+						unite_cells.SetMarker(mrk);
+						//ElementArray<Node> face_hanging_nodes(m); //nodes that hang on faces
+						//ElementArray<Edge> face_hanging_edges(m); //edges that hang on faces without central node
+						std::map<Edge, int> edge_visit;
+						for (ElementArray<Cell>::iterator ct = unite_cells.begin(); ct != unite_cells.end(); ++ct)
+						{
+							ElementArray<Edge> cedges = ct->getEdges();
+							for (ElementArray<Edge>::iterator et = cedges.begin(); et != cedges.end(); ++et)
+								edge_visit[et->self()]++;
+						}
+						unite_cells.RemMarker(mrk);
+						m->ReleaseMarker(mrk);
 						Cell v = Cell::UniteCells(unite_cells,0);
 						unites++;
 						set_id[v] = set_id[parent];
 						t2 = Timer(), tunite += t2 - t1, t1 = t2;
 						//connect hanging nodes to the cell
+						/*
 						assert(hanging_nodes[v].size() == 0);
-						for(ElementArray<Node>::size_type kt = 0; kt < hanging.size(); ++kt)
-							hanging_nodes[v].push_back(hanging[kt]);
+						for(ElementArray<Node>::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt)
+							hanging_nodes[v].push_back(face_hanging_nodes[kt]);
+						//connect hanging edges to the cell
+						if (tri_hanging_edges.isValid())
+						{
+							assert(tri_hanging_edges[v].size() == 0);
+							for (ElementArray<Edge>::size_type kt = 0; kt < face_hanging_edges.size(); ++kt)
+								tri_hanging_edges[v].push_back(face_hanging_edges[kt]);
+						}
+						else assert(face_hanging_edges.empty());
+						*/
+						{
+							//std::cout << "Hello!" << std::endl;
+							assert(hanging_nodes[v].empty());
+							ElementArray<Node> cnodes = v->getNodes();
+							Storage::reference_array hnodes = hanging_nodes[v];
+							for (ElementArray<Node>::iterator nt = cnodes.begin(); nt != cnodes.end(); ++nt)
+							{
+								bool outer = false;
+								ElementArray<Edge> nedges = nt->getEdges();
+								for (ElementArray<Edge>::iterator et = nedges.begin(); et != nedges.end() && !outer; ++et)
+								{
+									std::map<Edge,int>::iterator f = edge_visit.find(et->self());
+									if (f != edge_visit.end() && f->second == 1)
+										outer = true;
+								}
+								if (!outer)
+								{
+									hnodes.push_back(nt->self());
+									for (ElementArray<Edge>::iterator et = nedges.begin(); et != nedges.end() && !outer; ++et)
+									{
+										std::map<Edge, int>::iterator f = edge_visit.find(et->self());
+										if (f != edge_visit.end()) f->second = -1;
+									}
+								}
+							}
+
+							if (tri_hanging_edges.isValid())
+							{
+								assert(tri_hanging_edges[v].empty());
+								ElementArray<Edge> cedges = v->getEdges();
+								Storage::reference_array hedges = tri_hanging_edges[v];
+								for (ElementArray<Edge>::iterator et = cedges.begin(); et != cedges.end(); ++et)
+								{
+									std::map<Edge, int>::iterator f = edge_visit.find(et->self());
+									if (f != edge_visit.end() && f->second > 1)
+										hedges.push_back(et->self());
+								}
+							}
+						}
 						t2 = Timer(), thangcon += t2 - t1, t1 = t2;
 						//set new parent
 						parent_set[v] = parent.GetParent().GetHandle();
@@ -1958,21 +2026,11 @@ namespace INMOST
 						t2 = Timer(), tparent += t2 - t1, t1 = t2;
 						//set level for new cell
 						level[v] = level[c]-1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//						if( model ) model->CellCoarsening(unite_cells,v,parent);
-//#endif
 						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 							(*it)->CellCoarsening(unite_cells,v,parent);
 						t2 = Timer(), tdata += t2 - t1, t1 = t2;
-						//~ v.Centroid(x);
-						//fout << v.GlobalID() << " lid " << v.LocalID();
-						//fout << " parent " << ElementSet(m,parent_set[v]).GetName();
-						//fout << " " << x[0] << " " << x[1] << " " << x[2];
-						//fout << " lvl " << level[v];
-						//fout << std::endl;
 						//delete set that contained cells
 						//tree structure should be resolved on ApplyModification
-						//fout << "delete set " << parent.GetName() << std::endl;
 						parent.DeleteSet();
 						t2 = Timer(), tdelset += t2 - t1, t1 = t2;
 						//increment number of coarsened cells
@@ -2010,7 +2068,7 @@ namespace INMOST
 					if( !f.Hidden() && indicator[f] == schedule_counter )
 					{
 						t1 = Timer();
-						//one (or both) of the adjacent cells were coarsened and has lower level
+						//both of the adjacent cells were coarsened and has lower level
 						bool visited = false;
 						(void)visited;
 						ElementArray<Cell> cells = f.getCells();
@@ -2029,21 +2087,59 @@ namespace INMOST
 								t2 = Timer(), tadjnode += t2 - t1, t1 = t2;
 								Storage::reference_array search_hanging = hanging_nodes[cells[kt]];
 								nodes.Intersect(search_hanging.data(),search_hanging.size());
-								assert(nodes.size() == 1);
-								t2 = Timer(), tcenter += t2 - t1, t1 = t2;
-								//faces that hanging node shares with the cell are
-								//those to be united
-								ElementArray<Face> unite_faces = cells[kt].getFaces();
-								unite_faces.Intersect(nodes[0].getFaces());
-								//unmark faces to prevent visit
-								for(ElementArray<Face>::size_type lt = 0; lt < unite_faces.size(); ++lt)
-									indicator[unite_faces[lt]] = 0;
-								t2 = Timer(), tcollect += t2 - t1, t1 = t2;
-								//nodes connected by edges to hanging node and
-								//common to the cell are hanging nodes on edges
-								ElementArray<Node> hanging = cells[kt].getNodes();
-								hanging.Intersect(nodes[0].BridgeAdjacencies(EDGE,NODE));
-								t2 = Timer(), thanging += t2 - t1, t1 = t2;
+								ElementArray<Face> unite_faces(m); // set of faces to be united
+								ElementArray<Node> hanging(m); // hanging nodes of the face
+								if (nodes.empty())
+								{
+									//traverse from current face to other faces connected by hanging edges
+									//all encountered faces are to be united
+									std::queue<Face> queue;
+									queue.push(f);
+									unite_faces.push_back(f);
+									MarkerType mrk = m->CreateMarker();
+									Storage::reference_array hanging_edges = tri_hanging_edges[cells[kt]];
+									m->SetMarkerArray(hanging_edges.data(), hanging_edges.size(), mrk);
+									f.SetMarker(mrk);
+									while (!queue.empty())
+									{
+										Face f = queue.front();
+										queue.pop();
+										ElementArray<Edge> face_hanging_edges = f.getEdges(mrk);
+										for (ElementArray<Edge>::iterator et = face_hanging_edges.begin(); et != face_hanging_edges.end(); ++et)
+										{
+											hanging.Unite(et->getNodes()); // hanging edges connect to hanging nodes
+											et->RemMarker(mrk);
+											ElementArray<Face> adj = et->getFaces(mrk, true);
+											for (ElementArray<Face>::iterator ft = adj.begin(); ft != adj.end(); ++ft)
+											{
+												ft->SetMarker(mrk);
+												queue.push(ft->self());
+												unite_faces.push_back(ft->self());
+											}
+										}
+									}
+									unite_faces.RemMarker(mrk);
+									m->RemMarkerArray(hanging_edges.data(), hanging_edges.size(), mrk);
+									m->ReleaseMarker(mrk);
+								}
+								else
+								{
+									assert(nodes.size() == 1);
+									t2 = Timer(), tcenter += t2 - t1, t1 = t2;
+									//faces that hanging node shares with the cell are
+									//those to be united
+									unite_faces = cells[kt].getFaces();
+									unite_faces.Intersect(nodes[0].getFaces());
+									//unmark faces to prevent visit
+									for (ElementArray<Face>::size_type lt = 0; lt < unite_faces.size(); ++lt)
+										indicator[unite_faces[lt]] = 0;
+									t2 = Timer(), tcollect += t2 - t1, t1 = t2;
+									//nodes connected by edges to hanging node and
+									//common to the cell are hanging nodes on edges
+									hanging = cells[kt].getNodes();
+									hanging.Intersect(nodes[0].BridgeAdjacencies(EDGE, NODE));
+									t2 = Timer(), thanging += t2 - t1, t1 = t2;
+								}
 								//unite faces
 								Face v = Face::UniteFaces(unite_faces,0);
 								unites++;
@@ -2281,6 +2377,20 @@ namespace INMOST
 				Storage::reference_array::size_type jt = 0;
 				for(Storage::reference_array::size_type kt = 0; kt < arr.size(); ++kt)
 					if( arr[kt] != InvalidElement() ) arr[jt++] = arr[kt];
+				arr.resize(jt);
+			}
+		}
+		if (tri_hanging_edges.isValid())
+		{
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for (Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if (m->isValidCell(it))
+			{
+				Storage::reference_array arr = tri_hanging_edges[m->CellByLocalID(it)];
+				Storage::reference_array::size_type jt = 0;
+				for (Storage::reference_array::size_type kt = 0; kt < arr.size(); ++kt)
+					if (arr[kt] != InvalidElement()) arr[jt++] = arr[kt];
 				arr.resize(jt);
 			}
 		}
