@@ -640,7 +640,7 @@ namespace INMOST
 		{
 			assert(Element::CheckConnectivity(m));
 			CheckClosure(__FILE__,__LINE__);
-			Storage::real xyz[3] = {0,0,0};
+			Storage::real xyz[3] = { 0,0,0 }, exyz[3] = { 0,0,0 };
 			//7.split all edges of the current schedule
 			ENTER_BLOCK();
 			{
@@ -878,15 +878,18 @@ namespace INMOST
 						//if (!skip_tri || cell_hanging_nodes.size() > 3) //TODO
 						{
 							//create node at cell center
-							if (cell_hanging_nodes.size() < 4)
-								c.Centroid(xyz);
-							else
+							Storage::reference_array cell_hanging_edges;
+							if (tri_hanging_edges.isValid())
+								cell_hanging_edges = tri_hanging_edges[c];
+							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
+							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+								for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
+							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
 							{
-								for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
-								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
-									for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
-								for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)cell_hanging_nodes.size();
+								cell_hanging_edges[kt].Centroid(exyz);
+								for (int d = 0; d < 3; ++d) xyz[d] += exyz[d];
 							}
+							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)(cell_hanging_nodes.size() + cell_hanging_edges.size());
 							//c->Centroid(xyz);
 							//todo: request transformation of node location according to geometrical model
 							//create middle node
