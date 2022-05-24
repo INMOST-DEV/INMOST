@@ -415,6 +415,7 @@ namespace INMOST
 			Element back() const;
 			Element front();
 			Element front() const;
+			iterator erase(iterator it) { return iterator(m, shell<reference>::erase(it)); }
 		};
 		/// Storage type for representing arrays of Element references on another Mesh.
 		class remote_reference_array : public shell<remote_reference>
