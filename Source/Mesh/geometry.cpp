@@ -1709,8 +1709,8 @@ namespace INMOST
 						real_array nrm = GetMeshLink()->RealArrayDF(GetHandle(),GetMeshLink()->GetGeometricTag(NORMAL));
 						for(real_array::size_type it = 0; it < nrm.size(); ++it)
 							nrm[it] = -nrm[it];
-						GetMeshLink()->OrientTags(self());
 					}
+					GetMeshLink()->OrientTags(self());
 				}
 			}
 			return true;
