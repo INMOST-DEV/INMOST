@@ -196,7 +196,7 @@ namespace INMOST
 		saveonly = TagOptions("saveonly");
 		
 		//ReorderEmpty(CELL | NODE);
-		Tag set_id = CreateTag("TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
+		Tag set_id = CreateTag("PROTECTED_TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
 		integer num_cells = 0, num_faces = 0, num_nodes = 0;
 		MarkerType used = CreateMarker();
 		for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it)

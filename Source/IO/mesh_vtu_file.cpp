@@ -222,7 +222,7 @@ namespace INMOST
 		}
 		int num_cells = NumberOfCells(), num_nodes = NumberOfNodes();
 		//give id to nodes
-		TagInteger nid = CreateTag("TEMPORARY_NODE_ID", DATA_INTEGER, NODE, NONE, 1);
+		TagInteger nid = CreateTag("PROTECTED_TEMPORARY_NODE_ID", DATA_INTEGER, NODE, NONE, 1);
 		if (!keep_ghost)
 		{
 			MarkerType used = CreateMarker();
