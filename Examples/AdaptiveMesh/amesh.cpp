@@ -875,10 +875,297 @@ namespace INMOST
 						t1 = Timer();
 						Node n;
 						Storage::reference_array cell_hanging_nodes = hanging_nodes[c]; //nodes to be connected
-						//if (!skip_tri || cell_hanging_nodes.size() > 3) //TODO
+						Storage::enumerator nedges = tri_hanging_edges.isValid() ? tri_hanging_edges[c].size() : 0;
+						ElementArray<Face> internal_faces(m);
+						if (cell_hanging_nodes.size() == 0 && nedges == 12) //tetrahedron
+						{
+							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+							MarkerType mrk = m->CreateMarker();
+							//get nodes, hanging on edges
+							ElementArray<Node> edge_hanging_nodes(m);
+							for (Storage::reference_array::iterator jt = cell_hanging_edges.begin(); jt != cell_hanging_edges.end(); ++jt)
+								edge_hanging_nodes.Unite(jt->getNodes());
+							//should be six nodes
+							assert(edge_hanging_nodes.size() == 6);
+							//find initial nodes of the tetrahedron
+							ElementArray<Node> corner_nodes = c.getNodes();
+							corner_nodes.Subtract(edge_hanging_nodes);
+							//should be four
+							assert(corner_nodes.size() == 4);
+							//find oposite nodes
+							bool conn[6] = { false,false,false,false,false,false};
+							unsigned edge[3][2], e = 0;
+							for (unsigned k = 0; k < 6; ++k) if( conn[k] == false )
+							{
+								edge_hanging_nodes.SetMarker(mrk);
+								ElementArray<Node> nodes = edge_hanging_nodes[k].BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+								assert(nodes.size() == 4);
+								nodes.RemMarker(mrk);
+								edge_hanging_nodes[k].RemMarker(mrk);
+								int unmarked = m->Count(edge_hanging_nodes.data(), 6, mrk);
+								assert(unmarked == 5);
+								for(unsigned q = 0; q < 6; ++q)
+									if (edge_hanging_nodes[q].GetMarker(mrk))
+									{
+										edge_hanging_nodes[q].RemMarker(mrk);
+										conn[q] = true;
+										conn[k] = true;
+										edge[e][0] = k;
+										edge[e][1] = q;
+										e++;
+										break;
+									}
+							}
+							assert(e == 3);
+							//find shortest edge
+							e = -1;
+							Storage::real dmin = 1.0e+20, d;
+							for (unsigned k = 0; k < 3; ++k)
+							{
+								Storage::real_array cb = edge_hanging_nodes[edge[k][0]].Coords();
+								Storage::real_array ce = edge_hanging_nodes[edge[k][1]].Coords();
+								d = 0.0;
+								for (unsigned q = 0; q < 3; ++q)
+									d += pow(cb[q] - ce[q], 2);
+								if (d < dmin)
+								{
+									dmin = d;
+									e = k;
+								}
+							}
+							//create shortest edge
+							{
+								ElementArray<Node> edge_nodes(m, 2);
+								edge_nodes[0] = edge_hanging_nodes[edge[e][0]].getAsNode();
+								edge_nodes[1] = edge_hanging_nodes[edge[e][1]].getAsNode();
+								Edge sedge = m->CreateEdge(edge_nodes).first;
+								new_edges++;
+								//set increased level for new edges
+								level[sedge] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewEdge(c, sedge);
+							}
+							//create four internal faces connected to the shortest edge
+							{
+								ElementArray<Node> tri_nodes(m, 3);
+								tri_nodes[0] = edge_hanging_nodes[edge[e][0]].getAsNode();
+								tri_nodes[1] = edge_hanging_nodes[edge[e][1]].getAsNode();
+								tri_nodes[0].SetMarker(mrk);
+								tri_nodes[1].SetMarker(mrk);
+								for (unsigned k = 0; k < 6; ++k) if( !edge_hanging_nodes[k].GetMarker(mrk))
+								{
+									tri_nodes[2] = edge_hanging_nodes[k];
+									internal_faces.push_back(m->CreateFace(tri_nodes).first);
+									new_faces++;
+									//set increased level
+									level[internal_faces.back()] = level[c] + 1;
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewFace(c, internal_faces.back());
+								}
+								tri_nodes[0].RemMarker(mrk);
+								tri_nodes[1].RemMarker(mrk);
+							}
+							//create remaining internal nodes
+							{
+								edge_hanging_nodes.SetMarker(mrk);
+								for (unsigned k = 0; k < 4; ++k)
+								{
+									//find three hanging nodes, reacheable from the corner
+									ElementArray<Node> tri_nodes = corner_nodes[k].BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+									internal_faces.push_back(m->CreateFace(tri_nodes).first);
+									new_faces++;
+									//set increased level
+									level[internal_faces.back()] = level[c] + 1;
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewFace(c, internal_faces.back());
+								}
+								edge_hanging_nodes.RemMarker(mrk);
+							}
+							m->ReleaseMarker(mrk);
+						}
+						else if (cell_hanging_nodes.size() == 3 && nedges == 6) //prism
+						{
+							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+							MarkerType mrk = m->CreateMarker();
+							//all nodes hanging on triangle edges
+							ElementArray<Node> edge_hanging_nodes_s1(m), edge_hanging_nodes_s2(m);
+							//select all nodes of the one side
+							cell_hanging_edges[0].getNodes().SetMarker(mrk);
+							for (unsigned k = 1; k < 6; ++k)
+							{
+								if (cell_hanging_edges[k].nbAdjElements(NODE, mrk))
+									cell_hanging_edges[k].getNodes().SetMarker(mrk);
+							}
+							//visit marked nodes over edges from hanging nodes on faces to keep the same order of nodes
+							for (Storage::reference_array::iterator jt = cell_hanging_nodes.begin(); jt != cell_hanging_nodes.end(); ++jt)
+							{
+								ElementArray<Node> node = jt->BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+								assert(node.size() == 1);
+								edge_hanging_nodes_s1.push_back(node.back());
+							}
+							assert(edge_hanging_nodes_s1.size() == 3);
+							edge_hanging_nodes_s1.SetMarker(mrk);
+							//detect oposite side
+							for (unsigned k = 0; k < 6; ++k) if (cell_hanging_edges[k].nbAdjElements(NODE, mrk) == 0)
+							{
+								edge_hanging_nodes_s1.RemMarker(mrk);
+								cell_hanging_edges[k].getNodes().SetMarker(mrk);
+								for (unsigned j = 0; j < 6; ++j) if (cell_hanging_edges[j].nbAdjElements(NODE, mrk))
+									cell_hanging_edges[j].getNodes().SetMarker(mrk);
+								//visit marked nodes over edges from hanging nodes on faces to keep the same order of nodes
+								for (Storage::reference_array::iterator jt = cell_hanging_nodes.begin(); jt != cell_hanging_nodes.end(); ++jt)
+								{
+									ElementArray<Node> node = jt->BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+									assert(node.size() == 1);
+									edge_hanging_nodes_s2.push_back(node.back());
+								}
+								assert(edge_hanging_nodes_s2.size() == 3);
+								edge_hanging_nodes_s2.RemMarker(mrk);
+								break;
+							}
+							//find three corner nodes hanging on edges in the middle of prism
+							ElementArray<Node> corner_nodes(m);
+							ElementArray<Node> cnodes = c.getNodes();
+							cnodes.SetMarker(mrk);
+							edge_hanging_nodes_s1.RemMarker(mrk);
+							edge_hanging_nodes_s2.RemMarker(mrk);
+							for (Storage::reference_array::iterator jt = cell_hanging_nodes.begin(); jt != cell_hanging_nodes.end(); ++jt)
+								corner_nodes.Unite(jt->BridgeAdjacencies2Node(EDGE, 0, false, mrk));
+							assert(corner_nodes.size() == 3);
+							cnodes.RemMarker(mrk);
+							//create internal edges
+							ElementArray<Edge> internal_edges(m, 3);
+							ElementArray<Node> edge_nodes(m, 2);
+							for (unsigned k = 0; k < 3; ++k)
+							{
+								unsigned j = (k + 1) % 3;
+								edge_nodes[0] = cell_hanging_nodes[k].getAsNode();
+								edge_nodes[1] = cell_hanging_nodes[j].getAsNode();
+								internal_edges[k] = m->CreateEdge(edge_nodes).first;
+								new_edges++;
+								//set increased level for new edges
+								level[internal_edges[k]] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewEdge(c, internal_edges[k]);
+							}
+							//create internal face joining internal edges
+							internal_faces.push_back(m->CreateFace(internal_edges).first);
+							new_faces++;
+							//set increased level
+							level[internal_faces.back()] = level[c] + 1;
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->NewFace(c, internal_faces.back());
+							//create internal faces from internal edges to sides
+							ElementArray<Node> quad_nodes(m,4);
+							for (unsigned k = 0; k < 3; ++k)
+							{
+								unsigned j = (k + 1) % 3;
+								quad_nodes[0] = cell_hanging_nodes[k].getAsNode();
+								quad_nodes[1] = cell_hanging_nodes[j].getAsNode();
+								quad_nodes[2] = edge_hanging_nodes_s1[j];
+								quad_nodes[3] = edge_hanging_nodes_s1[k];
+								internal_faces.push_back(m->CreateFace(quad_nodes).first);
+								new_faces++;
+								//set increased level
+								level[internal_faces.back()] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces.back());
+								quad_nodes[2] = edge_hanging_nodes_s2[j];
+								quad_nodes[3] = edge_hanging_nodes_s2[k];
+								internal_faces.push_back(m->CreateFace(quad_nodes).first);
+								new_faces++;
+								//set increased level
+								level[internal_faces.back()] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces.back());
+							}
+							//create internal faces from internal edges to corners
+							ElementArray<Node> tri_nodes(m);
+							m->SetMarkerArray(cell_hanging_nodes.data(),cell_hanging_nodes.size(),mrk);
+							for (unsigned k = 0; k < 3; ++k)
+							{
+								tri_nodes = corner_nodes[k].BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+								assert(tri_nodes.size() == 2);
+								tri_nodes.push_back(corner_nodes[k]);
+								internal_faces.push_back(m->CreateFace(tri_nodes).first);
+								new_faces++;
+								//set increased level
+								level[internal_faces.back()] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces.back());
+							}
+							m->RemMarkerArray(cell_hanging_nodes.data(), cell_hanging_nodes.size(), mrk);
+							m->ReleaseMarker(mrk);
+						}
+						else if (cell_hanging_nodes.size() == 1 && nedges == 12) //pyramid
+						{
+							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+							MarkerType mrk = m->CreateMarker();
+							//find nodes hanging on the edges of the quad
+							ElementArray<Node> cnodes = c.getNodes();
+							cnodes.SetMarker(mrk);
+							ElementArray<Node> quad_hanging_nodes = cell_hanging_nodes[0].BridgeAdjacencies2Node(EDGE, 0, false, mrk);
+							assert(quad_hanging_nodes.size() == 4);
+							//mark all hanging edges
+							m->SetMarkerArray(cell_hanging_edges.data(), 12, mrk);
+							ElementArray<Node> edge_nodes(m, 2), tri_nodes1(m,3), tri_nodes2(m,3);
+							for (unsigned k = 0; k < 4; ++k)
+							{
+								ElementArray<Edge> tri_edges = quad_hanging_nodes[k].getEdges(mrk);
+								tri_edges.RemMarker(mrk);
+								assert(tri_edges.size() == 2);
+								quad_hanging_nodes[k].SetMarker(mrk);
+								tri_nodes1[0] = tri_nodes2[0] = edge_nodes[0] = cell_hanging_nodes[0].getAsNode();
+								tri_nodes1[1] = quad_hanging_nodes[k].getAsNode();
+								for (unsigned j = 0; j < 2; ++j)
+								{
+									ElementArray<Node> node = tri_edges[j].getNodes(mrk, true);
+									assert(node.size() == 1);
+									tri_nodes1[2] = tri_nodes2[j + 1] = edge_nodes[1] = node.back();
+									Edge nedge = m->CreateEdge(edge_nodes).first;
+									new_edges++;
+									//set increased level for new edges
+									level[nedge] = level[c] + 1;
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewEdge(c, nedge);
+									//create internal face joining hanging edge on quad and hanging node on triangle edge
+									internal_faces.push_back(m->CreateFace(tri_nodes1).first);
+									new_faces++;
+									//set increased level
+									level[internal_faces.back()] = level[c] + 1;
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+										(*it)->NewFace(c, internal_faces.back());
+								}
+								quad_hanging_nodes[k].RemMarker(mrk);
+								//create internal face joining hanging node and hanging edge on triangle
+								internal_faces.push_back(m->CreateFace(tri_nodes2).first);
+								new_faces++;
+								//set increased level
+								level[internal_faces.back()] = level[c] + 1;
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+									(*it)->NewFace(c, internal_faces.back());
+							}
+							//collect middle hanging edges
+							ElementArray<Edge> face_edges(m);
+							for (Storage::reference_array::iterator jt = cell_hanging_edges.begin(); jt != cell_hanging_edges.end(); ++jt)
+								if (jt->GetMarker(mrk))
+								{
+									face_edges.push_back(jt->self());
+									jt->RemMarker(mrk);
+								}
+							//create middle quad
+							internal_faces.push_back(m->CreateFace(face_edges).first);
+							new_faces++;
+							//set increased level
+							level[internal_faces.back()] = level[c] + 1;
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->NewFace(c, internal_faces.back());
+
+							m->ReleaseMarker(mrk);
+						}
+						else //if (!skip_tri || cell_hanging_nodes.size() > 3) //TODO
 						{
 							//create node at cell center
-							Storage::enumerator nedges = 0;
 							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
 							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
 								for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
@@ -904,7 +1191,6 @@ namespace INMOST
 								(*it)->NewNode(c, n, cell_hanging_nodes);
 						}
 						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
-						ElementArray<Face> internal_faces(m);
 						if (n.isValid())
 						{
 							//retrive all edges of current face to mark them
@@ -930,9 +1216,6 @@ namespace INMOST
 								new_edges++;
 								//set increased level for new edges
 								level[edges_to_faces[kt]] = level[c] + 1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//								if (model) model->NewEdge(c, edges_to_faces[kt]);
-//#endif
 								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 									(*it)->NewEdge(c, edges_to_faces[kt]);
 								//for each node other then the hanging node of the face
@@ -1042,6 +1325,7 @@ namespace INMOST
 							}
 							t2 = Timer(), thanging2 += t2 - t1, t1 = t2;
 						}
+						/*
 						else //no central node
 						{
 							//connect all pairs of cell hanging nodes to create internal edges
@@ -1073,13 +1357,7 @@ namespace INMOST
 							//TODO!
 							throw - 1;
 						}
-						//if( c.GlobalID() == 228 )
-						//{
-						//	double cnt[3];
-						//	c.Centroid(cnt);
-						//	std::cout << "Split CELL:" << c.LocalID() << " " << c.GlobalID() << " " << Element::StatusName(c.GetStatus()) << " " << cnt[0] << " " << cnt[1] << " " << cnt[2] << std::endl;
-						//	
-						//}
+						*/
 						//split the cell
 						//retrive parent set
 						ElementSet parent(m,parent_set[c]);
