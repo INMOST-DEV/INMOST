@@ -878,18 +878,21 @@ namespace INMOST
 						//if (!skip_tri || cell_hanging_nodes.size() > 3) //TODO
 						{
 							//create node at cell center
-							Storage::reference_array cell_hanging_edges;
-							if (tri_hanging_edges.isValid())
-								cell_hanging_edges = tri_hanging_edges[c];
+							Storage::enumerator nedges = 0;
 							for (int d = 0; d < 3; ++d) xyz[d] = 0.0;
 							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
 								for (int d = 0; d < 3; ++d) xyz[d] += cell_hanging_nodes[kt].getAsNode().Coords()[d];
-							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
+							if (tri_hanging_edges.isValid())
 							{
-								cell_hanging_edges[kt].Centroid(exyz);
-								for (int d = 0; d < 3; ++d) xyz[d] += exyz[d];
+								Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
+								{
+									cell_hanging_edges[kt].Centroid(exyz);
+									for (int d = 0; d < 3; ++d) xyz[d] += exyz[d];
+								}
+								nedges = cell_hanging_edges.size();
 							}
-							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)(cell_hanging_nodes.size() + cell_hanging_edges.size());
+							for (int d = 0; d < 3; ++d) xyz[d] /= (Storage::real)(cell_hanging_nodes.size() + nedges);
 							//c->Centroid(xyz);
 							//todo: request transformation of node location according to geometrical model
 							//create middle node
