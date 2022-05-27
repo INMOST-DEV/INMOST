@@ -267,6 +267,9 @@ namespace INMOST
 		}
 		else
 		{
+			adj_type& lc = m->LowConn(GetHandle());
+			m->FixEdgeOrder(lc.data(), lc.size());
+			/*
 			if( !m->HideMarker() )
 			{
 				HandleType last, first;
@@ -467,6 +470,7 @@ namespace INMOST
 				if( !( (ilc[k1] == last && ilc[k2] == first) || (ilc[k1] == first && ilc[k2] == last) ) )
 					return false;
 			}
+			*/
 		}
 		return true;
 	}

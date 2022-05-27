@@ -3294,6 +3294,7 @@ namespace INMOST
 		ElementArray<Face>                GatherInteriorFaces();
 		integer                           CountBoundaryFaces ();
 		integer                           CountInteriorFaces ();
+		bool                              FixEdgeOrder(HandleType* edges, enumerator nedges) const;
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		void                              RecomputeGeometricData(HandleType e, GeometricData d);
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);

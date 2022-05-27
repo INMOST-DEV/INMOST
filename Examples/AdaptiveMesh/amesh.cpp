@@ -1106,6 +1106,7 @@ namespace INMOST
 							cnodes.SetMarker(mrk);
 							ElementArray<Node> quad_hanging_nodes = cell_hanging_nodes[0].BridgeAdjacencies2Node(EDGE, 0, false, mrk);
 							assert(quad_hanging_nodes.size() == 4);
+							cnodes.RemMarker(mrk);
 							//mark all hanging edges
 							m->SetMarkerArray(cell_hanging_edges.data(), 12, mrk);
 							ElementArray<Node> edge_nodes(m, 2), tri_nodes1(m,3), tri_nodes2(m,3);
@@ -1122,12 +1123,15 @@ namespace INMOST
 									ElementArray<Node> node = tri_edges[j].getNodes(mrk, true);
 									assert(node.size() == 1);
 									tri_nodes1[2] = tri_nodes2[j + 1] = edge_nodes[1] = node.back();
-									Edge nedge = m->CreateEdge(edge_nodes).first;
-									new_edges++;
-									//set increased level for new edges
-									level[nedge] = level[c] + 1;
-									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-										(*it)->NewEdge(c, nedge);
+									std::pair<Edge,bool> nedge = m->CreateEdge(edge_nodes);
+									if (nedge.second)
+									{
+										new_edges++;
+										//set increased level for new edges
+										level[nedge.first] = level[c] + 1;
+										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+											(*it)->NewEdge(c, nedge.first);
+									}
 									//create internal face joining hanging edge on quad and hanging node on triangle edge
 									internal_faces.push_back(m->CreateFace(tri_nodes1).first);
 									new_faces++;
@@ -1153,6 +1157,25 @@ namespace INMOST
 									face_edges.push_back(jt->self());
 									jt->RemMarker(mrk);
 								}
+							assert(face_edges.size() == 4);
+							//we need ordered nodes
+							m->FixEdgeOrder(face_edges.data(), face_edges.size());
+							/*
+							ElementArray<Node> face_nodes(m);
+							face_nodes.Unite(face_edges[0].getNodes());
+							face_nodes.SetMarker(mrk);
+							for (unsigned j = 1; j < 4; ++j)
+							{
+								ElementArray<Node> node = face_edges[j].getNodes(mrk, true);
+								if (node.size() == 1)
+								{
+									face_nodes.push_back(node.back());
+									node.SetMarker(mrk);
+								}
+							}
+							face_nodes.RemMarker(mrk);
+							assert(face_nodes.size() == 4);
+							*/
 							//create middle quad
 							internal_faces.push_back(m->CreateFace(face_edges).first);
 							new_faces++;

@@ -935,6 +935,209 @@ namespace INMOST
 			ShowGeometricData(d, GetHandleElementType(e));
 		}
 	}
+
+	bool Mesh::FixEdgeOrder(HandleType* edges, enumerator nedges) const
+	{
+		if (!HideMarker())
+		{
+			HandleType last, first;
+			if (nedges < 3) return false;
+			HandleType q = edges[0]; //edge 0
+			Element::adj_type const& qlc = LowConn(q);
+			if (qlc.size() != 2) return false;
+			first = qlc[0]; //node 0
+			last = qlc[1]; //node 1
+			HandleType r = edges[1]; //edge 1
+			Element::adj_type const& rlc = LowConn(r);
+			if (rlc.size() != 2) return false;
+			if (first == rlc[0] || first == rlc[1])
+			{
+				HandleType temp = first;
+				first = last;
+				last = temp;
+			}
+			else if (!(last == rlc[0] || last == rlc[1]))
+			{
+				Element::adj_type::size_type jt = 2, jend = nedges;
+				while (jt < jend)
+				{
+					Element::adj_type const& ilc = LowConn(edges[jt]);
+					if (ilc.size() != 2) return false;
+					if (first == ilc[0] || first == ilc[1])
+					{
+						HandleType temp = edges[1];
+						edges[1] = edges[jt];
+						edges[jt] = temp;
+						temp = first;
+						first = last;
+						last = temp;
+						break;
+					}
+					else if (last == ilc[0] || last == ilc[1])
+					{
+						HandleType temp = edges[1];
+						edges[1] = edges[jt];
+						edges[jt] = temp;
+						break;
+					}
+					++jt;
+				}
+				if (jt == jend) return false; //no matching edge
+			}
+			Element::adj_type::size_type it = 1, iend = nedges - 1;
+			while (it < iend) //loop over edges
+			{
+				Element::adj_type const& ilc = LowConn(edges[it]);
+				if (ilc.size() != 2) return false;
+				if (last == ilc[0])
+				{
+					last = ilc[1];
+					++it;
+				}
+				else if (last == ilc[1])
+				{
+					last = ilc[0];
+					++it;
+				}
+				else //search for the connected edge and swap with current
+				{
+					Element::adj_type::size_type jt = it + 1, jend = nedges;
+					while (jt < jend)
+					{
+						Element::adj_type const& ilc = LowConn(edges[jt]);
+						if (ilc.size() != 2) return false;
+						if (last == ilc[0] || last == ilc[1])
+						{
+							HandleType temp = edges[it];
+							edges[it] = edges[jt];
+							edges[jt] = temp;
+							break;
+						}
+						++jt;
+					}
+					if (jt == jend) return false; //no matching edge
+				}
+			}
+			//check that the loop is closed
+			Element::adj_type const& ilc = LowConn(edges[iend]);
+			if (ilc.size() != 2) return false;
+			if (!((ilc[0] == last && ilc[1] == first) || (ilc[0] == first && ilc[1] == last)))
+				return false;
+		}
+		else
+		{
+			HandleType first, last;
+			enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
+			MarkerType hm = HideMarker();
+			if (Count(edges, nedges, hm) < 3) return false;
+			i = getNext(edges, nedges, i, hm);
+			HandleType q = edges[i]; //edge 0
+			Element::adj_type const& qlc = LowConn(q);
+			if (Count(qlc.data(), qlc.size(), hm) != 2) return false;
+			k = getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+			first = qlc[k]; //node 0
+			k = getNext(qlc.data(), static_cast<enumerator>(qlc.size()), k, hm);
+			last = qlc[k]; //node 1
+			i = getNext(edges, nedges, i, hm);
+			HandleType r = edges[i]; //edge 1
+			Element::adj_type const& rlc = LowConn(r);
+			if (Count(rlc.data(), rlc.size(), hm) != 2) return false;
+			k1 = getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+			k2 = getNext(rlc.data(), static_cast<enumerator>(rlc.size()), k1, hm);
+			if (first == rlc[k1] || first == rlc[k2])
+			{
+				HandleType temp = first;
+				first = last;
+				last = temp;
+			}
+			else if (!(last == rlc[k1] || last == rlc[k2]))
+			{
+				Element::adj_type::size_type jt = i + 1, jend = nedges;
+				while (jt < jend)
+				{
+					if (!GetMarker(edges[jt], hm)) //loop over edges
+					{
+						Element::adj_type const& ilc = LowConn(edges[jt]);
+						if (Count(ilc.data(), ilc.size(), hm) != 2) return false;
+						k1 = ENUMUNDEF;
+						k1 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						k2 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+						if (first == ilc[k1] || first == ilc[k2])
+						{
+							HandleType temp = edges[i];
+							edges[i] = edges[jt];
+							edges[jt] = temp;
+							temp = first;
+							first = last;
+							last = temp;
+							break;
+						}
+						else if (last == ilc[k1] || last == ilc[k2])
+						{
+							HandleType temp = edges[i];
+							edges[i] = edges[jt];
+							edges[jt] = temp;
+							break;
+						}
+					}
+					++jt;
+				}
+				if (jt == jend) return false; //no matching edge
+			}
+			Element::adj_type::size_type it = i, iend = nedges - 1;
+			while (it != iend) if (!GetMarker(edges[it], hm)) //loop over edges
+			{
+				Element::adj_type const& ilc = LowConn(edges[it]);
+				if (Count(ilc.data(), ilc.size(), hm) != 2) return false;
+				k1 = ENUMUNDEF;
+				k1 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+				k2 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+				if (last == ilc[k1])
+				{
+					last = ilc[k2];
+					++it;
+				}
+				else if (last == ilc[k2])
+				{
+					last = ilc[k1];
+					++it;
+				}
+				else//search for the connected edge and swap with current
+				{
+					Element::adj_type::size_type jt = it + 1, jend = nedges;
+					while (jt < jend)
+					{
+						if (!GetMarker(edges[jt], hm)) //loop over edges
+						{
+							Element::adj_type const& ilc = LowConn(edges[jt]);
+							if (Count(ilc.data(), ilc.size(), hm) != 2) return false;
+							k1 = ENUMUNDEF;
+							k1 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+							k2 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+							if (last == ilc[k1] || last == ilc[k2])
+							{
+								HandleType temp = edges[it];
+								edges[it] = edges[jt];
+								edges[jt] = temp;
+								break;
+							}
+						}
+						++jt;
+					}
+					if (jt == jend) return false; //no matching edge
+				}
+			}
+			else ++it;
+			//check that the loop is closed
+			Element::adj_type const& ilc = LowConn(edges[iend]);
+			if (Count(ilc.data(), ilc.size(), hm) != 2) return false;
+			k1 = ENUMUNDEF;
+			k1 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+			k2 = getNext(ilc.data(), static_cast<enumerator>(ilc.size()), k1, hm);
+			if (!((ilc[k1] == last && ilc[k2] == first) || (ilc[k1] == first && ilc[k2] == last)))
+				return false;
+		}
+	}
 	
 	void Mesh::RecomputeGeometricData(HandleType e)
 	{
