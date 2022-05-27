@@ -1397,7 +1397,8 @@ namespace INMOST
 #if defined(USE_MPI)
 		randomizer = Random();
 		
-		parallel_file_strategy = 1;
+		//parallel_file_strategy = 1;
+		parallel_file_strategy = 0;
 
 		
 

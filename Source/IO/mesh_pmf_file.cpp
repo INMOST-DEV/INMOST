@@ -1003,7 +1003,7 @@ namespace INMOST
 		std::vector<HandleType> new_sets;
 		INMOST_DATA_ENUM_TYPE size,i,q;
 		TopologyCheck tmp = 0;
-		INMOST_DATA_ENUM_TYPE current_dim = GetDimensions();
+		INMOST_DATA_ENUM_TYPE current_dim = GetDimensions(), chunks = 0;
 		
 		bool start = false;
 		
@@ -1074,6 +1074,7 @@ namespace INMOST
 				REPORT_VAL("ESET",new_sets.size());
 				REPORT_VAL("TAG",tags.size());
 				start = false; //probably the next file is in the input
+				chunks++;
 			}
 			else if (token == INMOST::MeshHeader)
 			{

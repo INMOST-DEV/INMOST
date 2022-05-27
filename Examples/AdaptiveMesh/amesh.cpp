@@ -965,7 +965,7 @@ namespace INMOST
 								tri_nodes[0].RemMarker(mrk);
 								tri_nodes[1].RemMarker(mrk);
 							}
-							//create remaining internal nodes
+							//create remaining internal faces
 							{
 								edge_hanging_nodes.SetMarker(mrk);
 								for (unsigned k = 0; k < 4; ++k)
