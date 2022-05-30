@@ -1592,7 +1592,7 @@ namespace INMOST
 					{
 						//std::cout << "hello1 from " << ff.first.LocalID() << std::endl;
 						hc.replace(hc.begin(),hc.end(),cells.begin(),cells.end());
-						m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
+						//m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
 					}
 					else //face already existed before and may be connected to some cells
 					{
@@ -1608,11 +1608,7 @@ namespace INMOST
 							bool add = true;
 							for(int j = 0; j < (int)hc.size() && add; ++j)
 								if( hc[j] == cells[k] ) add = false;
-							if (add)
-							{
-								hc.push_back(cells[k]);
-								m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
-							}
+							if (add) hc.push_back(cells[k]);
 						} //FIXME: what if more then 2 connections? have to fire topology exception, unless there are hidden cells
 					}
 				}
@@ -1650,6 +1646,9 @@ namespace INMOST
 				}
 			}
 		}
+
+		for(unsigned it = 0; it < ret.size(); ++it)
+			m->RecomputeGeometricData(ret[it].GetHandle(), ORIENTATION);
 
 		for (size_t it = 0; it < cells.size(); ++it) m->ComputeGeometricType(cells[it]);
 		for (size_t it = 0; it < cells.size(); ++it) m->RecomputeGeometricData(cells[it], CENTROID);
