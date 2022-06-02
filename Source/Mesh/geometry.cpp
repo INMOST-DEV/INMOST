@@ -167,7 +167,7 @@ namespace INMOST
 		for(unsigned int i = 0; i < size; i++)
 			len += vecin[i]*vecin[i];
 		len = ::sqrt(len);
-		for(unsigned int i = 0; i < size; i++)
+		if(len) for(unsigned int i = 0; i < size; i++)
 			vecin[i] /= len;
 		return len;
 	}
@@ -358,7 +358,7 @@ namespace INMOST
 	bool Face::Inside(const Storage::real * point) const
 	{
 		Mesh * mesh = GetMeshLink();
-		real eps = mesh->GetEpsilon();
+		real eps = mesh->GetEpsilon(), eps2 = eps*eps;
 		integer dim = mesh->GetDimensions();
 		integer mdim = GetElementDimension();
 		
@@ -409,7 +409,7 @@ namespace INMOST
 			q23 = vec_dot_product(data[7], data[8], dim);
 			q13 = vec_dot_product(data[8], data[6], dim);
 			
-			if( q12 >= -eps && q23 >= -eps && q13 >= -eps )
+			if( q12 >= -eps2*eps2 && q23 >= -eps2*eps2 && q13 >= -eps2*eps2 )
 				return true; //inside one of the triangles
 		}
 		return false;

@@ -2497,7 +2497,7 @@ namespace INMOST
 							adj_type& nlc = m->LowConn(*jlc);//nodes of the edge
 							for (adj_type::iterator klc = nlc.begin(); klc != nlc.end(); ++klc) if(!m->GetPrivateMarker(*klc,keep))
 							{
-								cnodes.push_back(keep);
+								cnodes.push_back(*klc);
 								m->SetPrivateMarker(*klc, keep);
 							}
 						}
@@ -2649,7 +2649,7 @@ namespace INMOST
 							adj_type& nlc = m->LowConn(*jlc);//nodes of the edge
 							for (adj_type::iterator klc = nlc.begin(); klc != nlc.end(); ++klc) if (!m->GetPrivateMarker(*klc, keep))
 							{
-								cnodes.push_back(keep);
+								cnodes.push_back(*klc);
 								m->SetPrivateMarker(*klc, keep);
 							}
 						}
