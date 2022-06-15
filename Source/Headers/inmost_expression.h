@@ -2322,6 +2322,7 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::multivar_expression_reference & Val) {Arg = Val.GetValue();}
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val.GetValue(); }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::value_reference& Val) { Arg = Val.GetValue(); }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
@@ -2359,6 +2360,7 @@ template<class A>          __INLINE                                           vo
 template<class A>          __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
+                           __INLINE                                           void    assign(INMOST::value_reference& Arg, INMOST_DATA_REAL_TYPE Val) { Arg = (INMOST_DATA_REAL_TYPE)Val; }
 #if defined(USE_FP64)
                            __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      float Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg,                         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
