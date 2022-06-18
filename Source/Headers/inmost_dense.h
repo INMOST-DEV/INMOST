@@ -1679,7 +1679,7 @@ namespace INMOST
 		{
 			enumerator N = Rows();
 			enumerator M = Cols() / Rows();
-			Matrix<Var> V(MatrixUnit<Var>(m));
+			Matrix<Var> V((MatrixUnit<Var>(m)));
 			Matrix<Var> R(2,M);
 			Matrix<Var> G(2,2);
 			Matrix & A = *this;

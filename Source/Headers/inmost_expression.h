@@ -838,8 +838,8 @@ namespace INMOST
 			value = other.GetValue();
 			return *this;
 		}
-		__INLINE Sparse::Row& GetRow() { return *((Sparse::Row *)NULL); }
-		__INLINE const Sparse::Row& GetRow() const { return *((Sparse::Row*)NULL); }
+		__INLINE Sparse::Row& GetRow() { throw Impossible; }
+		__INLINE const Sparse::Row& GetRow() const { throw Impossible; }
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const { return 0.0; }
 		__INLINE value_reference& operator +=(basic_expression const& expr)
 		{

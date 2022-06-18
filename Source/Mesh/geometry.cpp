@@ -1137,6 +1137,7 @@ namespace INMOST
 			if (!((ilc[k1] == last && ilc[k2] == first) || (ilc[k1] == first && ilc[k2] == last)))
 				return false;
 		}
+		return true;
 	}
 	
 	void Mesh::RecomputeGeometricData(HandleType e)
@@ -3299,7 +3300,7 @@ namespace INMOST
 	{
 		integer edim = Element::GetGeometricDimension(GetGeometricType(e.GetHandle()));
 		integer mdim = coords.GetSize();
-		memset(ret, 0, sizeof(real) * mdim);
+		for (integer q = 0; q < mdim; ++q) ret[q] = 0;
 		if (edim == 2)//&& mdim == 3)
 		{
 			ElementArray<Node> nodes = e.getNodes();
