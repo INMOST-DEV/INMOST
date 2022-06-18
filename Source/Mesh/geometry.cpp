@@ -1231,7 +1231,7 @@ namespace INMOST
 	
 	void Mesh::RestoreGeometricTags()
 	{
-		for(GeometricData gtype = MEASURE; gtype <= NORMAL; gtype++)
+		for(GeometricData gtype = CENTROID; gtype <= BARYCENTER; gtype++)
 		{
 			bool restore = false;
 			for(ElementType etype = EDGE; etype <= CELL && !restore; etype = NextElementType(etype))
