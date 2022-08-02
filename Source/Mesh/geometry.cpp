@@ -1998,7 +1998,7 @@ namespace INMOST
 						break;
 					}
 				assert(start != ENUMUNDEF);
-				mesh->FacesOrientation(data.data(), data.size(), rev, false, start);
+				mesh->FacesOrientation(data.data(), (enumerator)data.size(), rev, false, start);
 				real nrm[3], cnt[3];
 				for (unsigned j = 0; j < data.size(); j++)
 				{

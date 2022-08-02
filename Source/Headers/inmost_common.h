@@ -114,6 +114,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <complex>
 
 #if defined(USE_OMP)
 #define OMP_THREAD omp_get_thread_num()
@@ -186,11 +187,15 @@
 #if defined(USE_FP64)
 #define INMOST_DATA_REAL_TYPE     double
 #define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_DOUBLE
+#define INMOST_DATA_CPLX_TYPE     std::complex<double>
 #else //USE_FP64
 #define INMOST_DATA_REAL_TYPE     float
 #define INMOST_MPI_DATA_REAL_TYPE     INMOST_MPI_FLOAT
+#define INMOST_DATA_CPLX_TYPE     std::complex<float>
 #endif //USE_FP64
 
+__INLINE static INMOST_DATA_REAL_TYPE fabs(const INMOST_DATA_CPLX_TYPE & Arg) { return std::abs(Arg); }
+__INLINE static INMOST_DATA_REAL_TYPE conj(INMOST_DATA_REAL_TYPE Arg) { return Arg; }
 
 #if defined(USE_INT64)
 #define INMOST_DATA_INTEGER_TYPE   int64_t
@@ -383,6 +388,12 @@ namespace INMOST
 
 	template<typename Var>
 	class ConstMatrixTranspose;
+
+	template<typename Var>
+	class ConstMatrixConjugate;
+
+	template<typename Var>
+	class ConstMatrixConjugateTranspose;
 
 	template<typename VarA, typename VarB>
 	class KroneckerProduct;

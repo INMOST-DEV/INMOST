@@ -805,12 +805,12 @@ namespace INMOST
 			else if (it->GetDataType() == DATA_INTEGER)
 			{
 				integer_array v = f.IntegerArray(*it);
-				for (integer_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+				for (integer_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1;
 			}
 			else if (it->GetDataType() == DATA_BULK)
 			{
 				bulk_array v = f.BulkArray(*it);
-				for (bulk_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+				for (bulk_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1;
 			}
 #if defined(USE_AUTODIFF)
 			else if (it->GetDataType() == DATA_VARIABLE)

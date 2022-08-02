@@ -5,7 +5,6 @@
 #include <sstream> //for debug
 #include <new>
 
-
 //TODO:
 // 1. Incorporate tables
 // 2. (ok, test) implement condition
@@ -2295,7 +2294,16 @@ template<class A>          __INLINE INMOST::variation_multiplication_expression<
 __INLINE                          INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
 template<class A>          __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST::shell_expression<A> const & Arg) { return Arg.GetValue(); }
                            __INLINE                          INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
-                           __INLINE                                           void set_value(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
+						   __INLINE                          INMOST_DATA_CPLX_TYPE get_value(INMOST_DATA_CPLX_TYPE Arg) { return Arg; }
+						   __INLINE                          INMOST_DATA_CPLX_TYPE get_value(std::complex<INMOST::var_expression> const& Arg) { return INMOST_DATA_CPLX_TYPE(Arg.real().GetValue(), Arg.imag().GetValue()); }
+						   __INLINE                          INMOST_DATA_CPLX_TYPE get_value(std::complex<INMOST::multivar_expression> const& Arg) { return INMOST_DATA_CPLX_TYPE(Arg.real().GetValue(), Arg.imag().GetValue()); }
+						   __INLINE                          INMOST_DATA_CPLX_TYPE get_value(std::complex<INMOST::hessian_multivar_expression> const& Arg) { return INMOST_DATA_CPLX_TYPE(Arg.real().GetValue(), Arg.imag().GetValue()); }
+						   __INLINE                  const INMOST::var_expression& conj(const INMOST::var_expression& Arg) { return Arg; }
+						   __INLINE             const INMOST::multivar_expression& conj(const INMOST::multivar_expression& Arg) { return Arg; }
+						   __INLINE   const INMOST::multivar_expression_reference& conj(const INMOST::multivar_expression_reference& Arg) { return Arg; }
+						   __INLINE     const INMOST::hessian_multivar_expression& conj(const INMOST::hessian_multivar_expression& Arg) { return Arg; }
+						   __INLINE     const INMOST::hessian_multivar_expression_reference& conj(const INMOST::hessian_multivar_expression_reference& Arg) { return Arg; }
+						   __INLINE                                           void set_value(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST::multivar_expression_reference & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
@@ -2323,6 +2331,15 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::hessian_multivar_expression & Val) {Arg = Val.GetValue(); }
                            __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::hessian_multivar_expression_reference & Val) {Arg = Val.GetValue(); }
 						   __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::value_reference& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST_DATA_CPLX_TYPE& Val) { Arg = Val; }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, INMOST_DATA_INTEGER_TYPE Val) { Arg = (INMOST_DATA_REAL_TYPE)Val; }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, INMOST_DATA_REAL_TYPE Val) { Arg = Val; }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::var_expression& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::multivar_expression& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::multivar_expression_reference& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::hessian_multivar_expression& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::hessian_multivar_expression_reference& Val) { Arg = Val.GetValue(); }
+						   __INLINE                                           void    assign(INMOST_DATA_CPLX_TYPE& Arg, const INMOST::value_reference& Val) { Arg = Val.GetValue(); }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val; }
                            __INLINE                                           void    assign(INMOST::var_expression & Arg, const INMOST::var_expression & Val) {Arg = Val; }
@@ -2435,8 +2452,11 @@ __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_
 __INLINE void                     assign(INMOST_DATA_INTEGER_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = static_cast<INMOST_DATA_INTEGER_TYPE>(Val);}
 __INLINE void                     assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_INTEGER_TYPE Val) {Arg = static_cast<INMOST_DATA_REAL_TYPE>(Val);}
 __INLINE void                     assign(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
+__INLINE void                     assign(INMOST_DATA_CPLX_TYPE& Arg, INMOST_DATA_REAL_TYPE Val) { Arg = Val; }
+__INLINE void                     assign(INMOST_DATA_CPLX_TYPE& Arg, INMOST_DATA_CPLX_TYPE Val) { Arg = Val; }
 __INLINE void                  set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DATA_REAL_TYPE Val) {Arg = Val;}
 __INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
+__INLINE INMOST_DATA_CPLX_TYPE get_value(INMOST_DATA_CPLX_TYPE Arg) { return Arg; }
 __INLINE INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
 __INLINE INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
 __INLINE INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}

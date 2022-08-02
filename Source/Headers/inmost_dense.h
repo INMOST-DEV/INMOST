@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <stdarg.h>
 
-
 namespace INMOST
 {
 	
@@ -13,19 +12,28 @@ namespace INMOST
 	template<class A, class B> struct Promote;
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_CPLX_TYPE>    {typedef INMOST_DATA_CPLX_TYPE type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>       {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, INMOST_DATA_CPLX_TYPE>       {typedef INMOST_DATA_CPLX_TYPE type;};
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, INMOST_DATA_INTEGER_TYPE>    {typedef INMOST_DATA_CPLX_TYPE type;};
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, INMOST_DATA_REAL_TYPE>       {typedef INMOST_DATA_CPLX_TYPE type;};
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, INMOST_DATA_CPLX_TYPE>       {typedef INMOST_DATA_CPLX_TYPE type;};
 #if defined(USE_FP64)
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, float> {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<float, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, float>    {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<float, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, float>    {typedef INMOST_DATA_CPLX_TYPE type;};
+	template<> struct Promote<float, INMOST_DATA_CPLX_TYPE>    {typedef INMOST_DATA_CPLX_TYPE type;};
 	template<> struct Promote<float, float> { typedef float type; };
 #else
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, double> {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<double, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, double>    {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<double, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, double>    {typedef INMOST_DATA_CPLX_TYPE type;};
+	template<> struct Promote<double, INMOST_DATA_CPLX_TYPE>    {typedef INMOST_DATA_CPLX_TYPE type;};
 	template<> struct Promote<double, double> { typedef double type; };
 #endif
 #if defined(USE_AUTODIFF)
@@ -43,8 +51,14 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
+	//For INMOST_DATA_CPLX_TYPE
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, unknown> { typedef std::complex<variable> type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, variable> { typedef std::complex<variable> type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, value_reference> { typedef INMOST_DATA_CPLX_TYPE type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, multivar_expression_reference> { typedef std::complex<variable> type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_multivar_expression_reference> { typedef std::complex<hessian_variable> type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_variable> { typedef std::complex<hessian_variable> type; };
 	//for unknown
-	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<unknown, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<unknown, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<unknown, unknown>  {typedef variable type;};
@@ -132,17 +146,17 @@ namespace INMOST
 	{
 	private:
 		/// Sign function for SVD algorithm.
-		static Var sign_func(const Var& a, const Var& b) { return (b >= 0.0 ? fabs(a) : -fabs(a)); }
+		static Var sign_func(const Var& a, const Var& b) { return (std::real(get_value(b)) >= 0.0 ? fabs(a) : -fabs(a)); }
 		/// Max function for SVD algorithm.
 		static INMOST_DATA_REAL_TYPE max_func(INMOST_DATA_REAL_TYPE x, INMOST_DATA_REAL_TYPE y) { return x > y ? x : y; }
 		/// Function for QR rotation in SVD algorithm.
 		static Var pythag(const Var& a, const Var& b)
 		{
-			Var at = fabs(a), bt = fabs(b), ct, result;
-			if (at > bt) { ct = bt / at; result = at * sqrt(1.0 + ct * ct); }
-			else if (bt > 0.0) { ct = at / bt; result = bt * sqrt(1.0 + ct * ct); }
-			else result = 0.0;
-			return result;
+			Var at = fabs(a), bt = fabs(b), ct;
+			if (std::real(get_value(at)) > std::real(get_value(bt))) { ct = bt / at; return at * sqrt(1.0 + ct * ct); }
+			else if (std::real(get_value(bt)) > 0.0) { ct = at / bt; return bt * sqrt(1.0 + ct * ct); }
+			else return 0.0;
+			//return sqrt(a * conj(a) + b * conj(b));
 		}
 	public:
 		typedef unsigned enumerator;
@@ -194,7 +208,7 @@ namespace INMOST
 			for (enumerator d = 0; d < n; ++d)
 				for (enumerator i = d + 1; i < n; ++i)
 				{
-					if (std::fabs(get_value(A(d, d))) < eps)
+					if (fabs(get_value(A(d, d))) < eps)
 						A(d, d) = eps;
 					for (enumerator j = 0; j < n; ++j)
 						A(i, j) = A(i, j) - A(i, d) * A(d, j) / A(d, d);
@@ -226,10 +240,18 @@ namespace INMOST
 		/// \warning Somehow result differ in auto-differential mode.
 		/// \todo Test implementation for auto-differentiation.
 		bool SVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V, bool order_singular_values = true, bool nonnegative = true) const;
-		/// Transpose the current matrix.
+
+		bool cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const;
+		/// Transpose current matrix.
 		/// @return Transposed matrix.
 		//Matrix<Var> Transpose() const;
 		ConstMatrixTranspose<Var> Transpose() const { return ConstMatrixTranspose<Var>(*this); }
+		/// Transpose and conjugate current matrix.
+		/// @return Transposed and conjugated matrix.
+		ConstMatrixConjugateTranspose<Var> ConjugateTranspose() const { return ConstMatrixConjugateTranspose<Var>(*this); }
+		/// Conjugate  current matrix.
+		/// @return Conjugated matrix.
+		ConstMatrixConjugate<Var> Conjugate() const { return ConstMatrixConjugate<Var>(*this); }
 		/// Cross-product operation for a vector.
 		/// Both right hand side and left hand side should be a vector
 		/// @param other The right hand side of cross product.
@@ -338,11 +360,12 @@ namespace INMOST
 			{
 				for (enumerator l = 0; l < Cols(); ++l)
 				{
-					if (__isinf__(get_value((*this)(k, l))))
-						sout << std::setw(12) << "inf";
-					else if (std::isnan(get_value((*this)(k, l))))
-						sout << std::setw(12) << "nan";
-					else if (fabs(get_value((*this)(k, l))) > threshold)
+					//if (__isinf__(std::real(get_value((*this)(k, l)))))
+					//	sout << std::setw(12) << "inf";
+					//else if (std::isnan(get_value((*this)(k, l))))
+					//	sout << std::setw(12) << "nan";
+					//else 
+					if (fabs(get_value((*this)(k, l))) > threshold)
 						sout << std::setw(12) << get_value((*this)(k, l));
 					else
 						sout << std::setw(12) << 0;
@@ -2216,12 +2239,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixSum(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 			: A(&rA), B(&rB) 
 		{
@@ -2259,12 +2276,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixDifference(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 			: A(&rA), B(&rB)
 		{
@@ -2301,12 +2312,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Rows(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixTranspose(const AbstractMatrixReadOnly<Var>& rA)
 			: A(&rA) {}
 		ConstMatrixTranspose(const ConstMatrixTranspose& b) : A(b.A) {}
@@ -2316,6 +2321,64 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE Var operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
+	};
+
+	template<typename Var>
+	class ConstMatrixConjugateTranspose : public AbstractMatrixReadOnly<Var>
+	{
+	public:
+		using AbstractMatrixReadOnly<Var>::operator();
+		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<Var>* A;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return A->TrivialArguments(); };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Cols(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Rows(); }
+		ConstMatrixConjugateTranspose(const AbstractMatrixReadOnly<Var>& rA)
+			: A(&rA) {}
+		ConstMatrixConjugateTranspose(const ConstMatrixConjugateTranspose& b) : A(b.A) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(j, i)); }
+	};
+
+	template<typename Var>
+	class ConstMatrixConjugate : public AbstractMatrixReadOnly<Var>
+	{
+	public:
+		using AbstractMatrixReadOnly<Var>::operator();
+		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrixReadOnly<Var>* A;
+	public:
+		/// Check that this matrix does not require calculations for element access.
+		/// The function is used during multiplication.
+		bool TrivialArguments() const { return A->TrivialArguments(); };
+		/// Number of rows.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return A->Rows(); }
+		/// Number of columns.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return A->Cols(); }
+		ConstMatrixConjugate(const AbstractMatrixReadOnly<Var>& rA)
+			: A(&rA) {}
+		ConstMatrixConjugate(const ConstMatrixConjugate& b) : A(b.A) {}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to constant element.
+		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(i, j)); }
 	};
 
 	template<typename Var>
@@ -2335,12 +2398,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixUnaryMinus(const AbstractMatrixReadOnly<Var>& rA)
 			: A(&rA) {}
 		MatrixUnaryMinus(const MatrixUnaryMinus& b) : A(b.A) {}
@@ -2370,12 +2427,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Rows(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixTranspose(AbstractMatrix<Var>& rA)
 			: A(&rA) {}
 		MatrixTranspose(const MatrixTranspose& b) : A(b.A) {}
@@ -2421,12 +2472,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixConcatRows(const AbstractMatrixReadOnly<Var>& rA, const AbstractMatrixReadOnly<Var>& rB)
 			: A(&rA), B(&rB) {
 			assert(A->Cols() == B->Cols());
@@ -2462,12 +2507,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixConcatRows2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 			: A(&rA), B(&rB) {
 			assert(A->Cols() == B->Cols());
@@ -2506,12 +2545,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixConcatRows(AbstractMatrix<Var>& rA, AbstractMatrix<Var>& rB)
 			: A(&rA), B(&rB) { assert(A->Cols() == B->Cols());	}
 		MatrixConcatRows(const MatrixConcatRows& b) : A(b.A), B(b.B) {}
@@ -2563,12 +2596,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixConcatCols(const AbstractMatrixReadOnly<Var>& rA, const AbstractMatrixReadOnly<Var>& rB)
 			: A(&rA), B(&rB) {
 			assert(A->Rows() == B->Rows());
@@ -2604,12 +2631,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixConcatCols2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 			: A(&rA), B(&rB) {
 			assert(A->Rows() == B->Rows());
@@ -2648,12 +2669,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixConcatCols(AbstractMatrix<Var>& rA, AbstractMatrix<Var>& rB)
 			: A(&rA), B(&rB) { assert(A->Rows() == B->Rows()); }
 		MatrixConcatCols(const MatrixConcatCols& b) : A(b.A), B(b.B) {}
@@ -2705,12 +2720,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return m; }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		ConstMatrixRepack(const AbstractMatrixReadOnly<Var>& rA, enumerator n, enumerator m)
 			: A(&rA), n(n), m(m) { assert(A->Rows() * A->Cols() == n * m); }
 		ConstMatrixRepack(const ConstMatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
@@ -2745,12 +2754,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return m; }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixRepack(AbstractMatrix<Var>& rA, enumerator n, enumerator m)
 			: A(&rA), n(n), m(m) {
 			assert(A->Rows() * A->Cols() == n * m);
@@ -2807,12 +2810,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return M.Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMul(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
@@ -2870,12 +2867,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return M.Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMul(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rA, const AbstractMatrixReadOnly<variable>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
@@ -2955,12 +2946,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return M.Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
@@ -3040,12 +3025,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return M.Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<variable>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
@@ -3130,12 +3109,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMulCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
 			: A(&rA), coef(&rcoef) {}
 		MatrixMulCoef(const MatrixMulCoef& b) : A(b.A), coef(b.coef) {}
@@ -3171,12 +3144,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixDivCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
 			: A(&rA), coef(&rcoef) {}
 		MatrixDivCoef(const MatrixDivCoef& b)
@@ -3213,12 +3180,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixMulShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
 			: A(&rA), coef(rcoef) {}
 		MatrixMulShellCoef(const MatrixMulShellCoef& b) : A(b.A), coef(b.coef) {}
@@ -3254,12 +3215,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		MatrixDivShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
 			: A(&rA), coef(rcoef) {}
 		MatrixDivShellCoef(const MatrixDivShellCoef& b)
@@ -3296,12 +3251,6 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() * B->Cols(); }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
 		KroneckerProduct(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
 			: A(&rA), B(&rB) {}
 		KroneckerProduct(const KroneckerProduct& b) : A(b.A), B(b.B) {}
@@ -4972,6 +4921,311 @@ namespace INMOST
 			}
 		}
 	}
+	
+	template<typename Var>
+	bool AbstractMatrixReadOnly<Var>::cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const
+	{
+		Var cs, eta, f, g, h, q, r, sn, w, x, y, z;
+		int i, j, k, l, m, n, p = 0;
+		std::vector<Var> t, b, c, s;
+		Matrix<Var> A = *this;
+		m = Rows();
+		n = Cols();
+		//data eta / 1.1920929e-07 /
+		//data tol / 1.5e-31 /
+		if (m > n)
+		{
+			bool success = ConjugateTranspose().cSVD(V, Sigma, U);
+			if (success)
+				return true;
+			else return false;
+		}
+		//  Householder reduction.
+		c.resize(n);
+		t.resize(n);
+		s.resize(n);
+		b.resize(n);
+		c[0] = 0.0;
+		k = 0;
+
+		while (true)
+		{
+			// Elimination of A(I, K), I = K + 1, ..., M.
+			z = 0.0;
+			for (i = k; i < m; ++i)
+				z += A(i, k) * conj(A(i, k));
+			b[k] = 0.0;
+
+			if (fabs(get_value(z)))
+			{
+				z = sqrt(z);
+				b[k] = z;
+				w = fabs(A(k, k));
+				q = 1.0;
+				if (fabs(get_value(w))) q = A(k, k) / w;
+				A(k, k) = q * (z + w);
+
+				if (k != n + p - 1)
+				{
+					for (j = k + 1; j < n + p; ++j)
+					{
+						q = 0.0;
+						for (i = k; i < m; ++i)
+							q += conj(A(i, k)) * A(i, j);
+						q = q / (z * (z + w));
+						for (i = k; i < m; ++i)
+							A(i, j) -= q * A(i, k);
+					}
+					//  Phase transformation.
+					q = -conj(A(k, k)) / fabs(A(k, k));
+					for (j = k + 1; j < n + p; ++j)
+						A(k, j) *= q;
+				}
+			}
+			//  Elimination of A(K, J), J = K + 2, ..., N
+			if (k == n - 1) break;
+			z = 0.0;
+			for (j = k + 1; j < n; ++j)
+				z += conj(A(k, j)) * A(k, j);
+			c[k + 1] = 0.0;
+
+			if (fabs(get_value(z)))
+			{
+				z = sqrt(z);
+				c[k + 1] = z;
+				w = fabs(A(k, k + 1));
+				q = 1.0;
+				if (fabs(get_value(w))) q = A(k, k + 1) / w;
+				A(k, k + 1) = q * (z + w);
+				for (i = k + 1; i < m; ++i)
+				{
+					q = 0.0;
+					for (j = k + 1; j < n; ++j)
+						q += conj(A(k, j)) * A(i, j);
+					q = q / (z * (z + w));
+
+					for (j = k + 1; j < n; ++j)
+						A(i, j) -= q * A(k, j);
+				}
+				//  Phase transformation.
+				q = -conj(A(k, k + 1)) / fabs(A(k, k + 1));
+				for (i = k + 1; i < m; ++i)
+					A(i, k + 1) = A(i, k + 1) * q;
+			}
+			k++;
+		}
+		for (k = 0; k < n; k++)
+		{
+			s[k] = b[k];
+			t[k] = c[k];
+		}
+		//  Initialization of U and V.
+		U.Resize(m,m);
+		U.Zero();
+		for(j = 0; j < m; ++j) U(j,j) = 1.0;
+		V.Resize(n,n);
+		V.Zero();
+		for(j = 0; j < n; ++j) V(j,j) = 1.0;
+		//  QR diagonalization.
+		for (k = n - 1; k >= 0; k--)
+		{
+			// Test for split.
+			while (true)
+			{
+				bool skip = false;
+				for (l = k; l >= 0; l--)
+				{
+					if (!fabs(get_value(t[l])))
+					{
+						skip = true;
+						break;
+					}
+					if (!fabs(get_value(s[l - 1]))) break;
+				}
+				//  Cancellation of E(L).
+				if (!skip)
+				{
+					cs = 0.0;
+					sn = 1.0;
+					for (i = l; i <= k; ++i)
+					{
+						f = sn * t[i];
+						t[i] = cs * t[i];
+						if (!fabs(get_value(f))) break;
+						h = s[i];
+						w = sqrt(f * f + h * h);
+						s[i] = w;
+						cs = h / w;
+						sn = -f / w;
+						for (j = 0; j < n; ++j)
+						{
+							x = std::real(U(j, l - 1));
+							y = std::real(U(j, i));
+							U(j, l - 1) = x * cs + y * sn;
+							U(j, i) = y * cs - x * sn;
+						}
+
+						if (p == 0) continue;
+
+						for (j = n; j < n + p; ++j)
+						{
+							q = A(l - 1, j);
+							r = A(i, j);
+							A(l - 1, j) = q * cs + r * sn;
+							A(i, j) = r * cs - q * sn;
+						}
+					}
+				}
+				//  Test for convergence.
+				w = s[k];
+				if (l == k) break;
+				//  Origin shift.
+				x = s[l];
+				y = s[k - 1];
+				g = t[k - 1];
+				h = t[k];
+				f = ((y - w) * (y + w) + (g - h) * (g + h)) / (2.0 * h * y);
+				g = sqrt(f * f + 1.0);
+				if (std::real(get_value(f)) < 0.0) g = -g;
+				f = ((x - w) * (x + w) + (y / (f + g) - h) * h) / x;
+				//  QR step.
+				cs = 1.0;
+				sn = 1.0;
+				for (i = l+1; i <= k; ++i)
+				{
+					g = t[i];
+					y = s[i];
+					h = sn * g;
+					g = cs * g;
+					w = sqrt(h * h + f * f);
+					t[i - 1] = w;
+					cs = f / w;
+					sn = h / w;
+					f = x * cs + g * sn;
+					g = g * cs - x * sn;
+					h = y * sn;
+					y = y * cs;
+					for (j = 0; j < n; ++j)
+					{
+						x = std::real(V(j, i - 1));
+						w = std::real(V(j, i));
+						V(j, i - 1) = x * cs + w * sn;
+						V(j, i) = w * cs - x * sn;
+					}
+					w = sqrt(h * h + f * f);
+					s[i - 1] = w;
+					cs = f / w;
+					sn = h / w;
+					f = cs * g + sn * y;
+					x = cs * y - sn * g;
+					for (j = 0; j < n; ++j)
+					{
+						y = std::real(U(j, i - 1));
+						w = std::real(U(j, i));
+						U(j, i - 1) = y * cs + w * sn;
+						U(j, i) = w * cs - y * sn;
+					}
+					if (p == 0) break;
+					for (j = n; j < n + p; ++j)
+					{
+						q = A(i - 1, j);
+						r = A(i, j);
+						A(i - 1, j) = q * cs + r * sn;
+						A(i, j) = r * cs - q * sn;
+					}
+				}
+				t[l] = 0.0;
+				t[k] = f;
+				s[k] = x;
+			}
+			//  Convergence.
+			if (std::real(get_value(w)) >= 0.0) continue;
+			s[k] = -w;
+			for (j = 0; j < n; ++j) V(j, k) = -V(j, k);
+		}
+		// Sort the singular values.
+		for (k = 0; k < n; ++k)
+		{
+			g = -1.0;
+			j = k;
+			for (i = k; i < n; ++i)
+			{
+				if (std::real(get_value(g)) < std::real(get_value(s[i])))
+				{
+					g = s[i];
+					j = i;
+				}
+			}
+			if (j == k) continue;
+
+			s[j] = s[k];
+			s[k] = g;
+			//  Interchange V(1:N, J) and V(1:N, K).
+			for (i = 0; i < n; ++i)
+			{
+				q = V(i, j);
+				V(i, j) = V(i, k);
+				V(i, k) = q;
+			}
+			//  Interchange U(1:N, J) and U(1:N, K).
+			for (i = 0; i < n; ++i)
+			{
+				q = U(i, j);
+				U(i, j) = U(i, k);
+				U(i, k) = q;
+			}
+			//  Interchange A(J, N1:NP) and A(K, N1:NP).
+			if (p == 0) continue;
+			for (i = n; i < n + p; ++i)
+			{
+				q = A(j, i);
+				A(j, i) = A(k, i);
+				A(k, i) = q;
+			}
+		}
+		//  Back transformation.
+		for (k = n - 1; k >= 0; k--)
+		{
+			if (b[k] == 0.0) continue;
+			q = -A(k, k) / fabs(A(k, k));
+			for (j = 0; j < m; ++j)
+				U(k, j) *= q;
+			for (j = 0; j < m; ++j)
+			{
+				q = 0.0;
+				for (i = k; i < m; ++i)
+					q += conj(A(i, k)) * U(i, j);
+				q = q / (fabs(A(k, k)) * b[k]);
+				for (i = k; i < m; ++i)
+					U(i, j) -= q * A(i, k);
+			}
+		}
+		if (n > 1)
+		{
+			for (k = n - 2; k >= 0; k--)
+			{
+				if (c[k+1] == 0.0) continue;
+				q = -conj(A(k, k+1)) / fabs(A(k, k+1));
+				for (j = 0; j < n; ++j)
+					V(k+1, j) *= q;
+
+				for (j = 0; j < n; ++j)
+				{
+					q = 0.0;
+					for (i = k+1; i < n; ++i)
+						q += A(k, i) * V(i, j);
+					q = q / (fabs(A(k, k+1)) * c[k+1]);
+					for (i = k+1; i < n; ++i)
+						V(i, j) -= q * conj(A(k, i));
+				}
+			}
+		}
+		Sigma.Resize(m, n);
+		Sigma.Zero();
+		for (i = 0; i < n; ++i)
+			Sigma(i, i) = s[i];
+		return true;
+	}
 
 	template<typename Var>
 	bool AbstractMatrixReadOnly<Var>::SVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V, bool order_singular_values, bool nonnegative) const
@@ -5020,22 +5274,24 @@ namespace INMOST
 			if (i < m)
 			{
 				for (k = i; k < m; k++) scale += fabs(U(k, i));
-				if (get_value(scale))
+				if (fabs(get_value(scale)))
 				{
 					for (k = i; k < m; k++)
 					{
 						U(k, i) /= scale;
-						s += U(k, i) * U(k, i);
+						//s += U(k, i) * U(k, i); //original
+						s += U(k, i) * conj(U(k, i)); //for complex
 					}
 					f = U(i, i);
 					g = -sign_func(sqrt(s), f);
 					h = f * g - s;
 					U(i, i) = f - g;
-					if (i != n - 1)
+					if (i != n - 1 && fabs(get_value(h)))
 					{
 						for (j = l; j < n; j++)
 						{
-							for (s = 0.0, k = i; k < m; k++) s += U(k, i) * U(k, j);
+							//for (s = 0.0, k = i; k < m; k++) s += U(k, i) * U(k, j);
+							for (s = 0.0, k = i; k < m; k++) s += conj(U(k, i)) * U(k, j);
 							f = s / h;
 							for (k = i; k < m; k++) U(k, j) += f * U(k, i);
 						}
@@ -5049,12 +5305,13 @@ namespace INMOST
 			if (i < m && i != n - 1)
 			{
 				for (k = l; k < n; k++) scale += fabs(U(i, k));
-				if (get_value(scale))
+				if (fabs(get_value(scale)))
 				{
 					for (k = l; k < n; k++)
 					{
 						U(i, k) = U(i, k) / scale;
-						s += U(i, k) * U(i, k);
+						//s += U(i, k) * U(i, k); //original
+						s += U(i, k) * conj(U(i, k));
 					}
 					f = U(i, l);
 					g = -sign_func(sqrt(s), f);
@@ -5065,7 +5322,7 @@ namespace INMOST
 					{
 						for (j = l; j < m; j++)
 						{
-							for (s = 0.0, k = l; k < n; k++) s += U(j, k) * U(i, k);
+							for (s = 0.0, k = l; k < n; k++) s += conj(U(i, k)) * U(j, k);
 							for (k = l; k < n; k++) U(j, k) += s * rv1[k];
 						}
 					}
@@ -5080,7 +5337,7 @@ namespace INMOST
 		{
 			if (i < (n - 1))
 			{
-				if (get_value(g))
+				if (fabs(get_value(g)))
 				{
 					for (j = l; j < n; j++) V(j, i) = ((U(i, j) / U(i, l)) / g);
 					// double division to avoid underflow
@@ -5105,19 +5362,19 @@ namespace INMOST
 			if (i < (n - 1))
 				for (j = l; j < n; j++)
 					U(i, j) = 0.0;
-			if (get_value(g))
+			if (fabs(get_value(g)))
 			{
 				g = 1.0 / g;
 				if (i != n - 1)
 				{
 					for (j = l; j < n; j++)
 					{
-						for (s = 0.0, k = l; k < m; k++) s += (U(k, i) * U(k, j));
+						for (s = 0.0, k = l; k < m; k++) s += conj(U(k, i)) * U(k, j);
 						f = (s / U(i, i)) * g;
 						for (k = i; k < m; k++) U(k, j) += f * U(k, i);
 					}
 				}
-				for (j = i; j < m; j++) U(j, i) = U(j, i) * g;
+				for (j = i; j < m; j++) U(j, i) *= g;
 			}
 			else for (j = i; j < m; j++) U(j, i) = 0.0;
 			U(i, i) += 1;
@@ -5169,7 +5426,7 @@ namespace INMOST
 				z = Sigma(k, k);
 				if (l == k)
 				{// convergence
-					if (z < 0.0 && nonnegative)
+					if (std::real(get_value(z)) < 0.0 && nonnegative)
 					{// make singular value nonnegative
 						Sigma(k, k) = -z;
 						for (j = 0; j < n; j++) V(j, k) = -V(j, k);
@@ -5217,7 +5474,7 @@ namespace INMOST
 					}
 					z = pythag(f, h);
 					Sigma(j, j) = z;
-					if (get_value(z))
+					if (fabs(get_value(z)))
 					{
 						z = 1.0 / z;
 						c = f * z;
@@ -5246,8 +5503,8 @@ namespace INMOST
 			{
 				k = i;
 				for (j = i + 1; j < n; ++j)
-					if (Sigma(k, k) < Sigma(j, j)) k = j;
-				if (Sigma(k, k) > Sigma(i, i))
+					if (std::real(get_value(Sigma(k, k))) < std::real(get_value(Sigma(j, j)))) k = j;
+				if (std::real(get_value(Sigma(k, k))) > std::real(get_value(Sigma(i, i))))
 				{
 					temp = Sigma(k, k);
 					Sigma(k, k) = Sigma(i, i);
@@ -5278,23 +5535,33 @@ namespace INMOST
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;
 	/// shortcut for matrix of real values.
 	typedef Matrix<INMOST_DATA_REAL_TYPE> rMatrix;
+	/// shortcut for matrix of complex values.
+	typedef Matrix<INMOST_DATA_CPLX_TYPE> cMatrix;
 	/// shortcut for matrix of integer values in existing array.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaMatrix;
 	/// shortcut for matrix of real values in existing array.
 	typedef Matrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raMatrix;
+	/// shortcut for matrix of complex values in existing array.
+	typedef Matrix<INMOST_DATA_CPLX_TYPE, shell<INMOST_DATA_CPLX_TYPE> > caMatrix;
 	/// shortcut for symmetric matrix of integer values.
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE> iSymmetricMatrix;
 	/// shortcut for symmetric matrix of real values.
 	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE> rSymmetricMatrix;
+	/// shortcut for symmetric matrix of complex values.
+	typedef SymmetricMatrix<INMOST_DATA_CPLX_TYPE> cSymmetricMatrix;
 	/// shortcut for matrix of integer values in existing array.
 	typedef SymmetricMatrix<INMOST_DATA_INTEGER_TYPE,shell<INMOST_DATA_INTEGER_TYPE> > iaSymmetricMatrix;
 	/// shortcut for matrix of real values in existing array.
 	typedef SymmetricMatrix<INMOST_DATA_REAL_TYPE,shell<INMOST_DATA_REAL_TYPE> > raSymmetricMatrix;
+	/// shortcut for matrix of real values in existing array.
+	typedef SymmetricMatrix<INMOST_DATA_CPLX_TYPE, shell<INMOST_DATA_CPLX_TYPE> > caSymmetricMatrix;
 	/// return a matrix
 	__INLINE iaMatrix iaMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaMatrix::enumerator n, iaMatrix::enumerator m) {return iaMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*m),n,m);}
 	__INLINE raMatrix raMatrixMake(INMOST_DATA_REAL_TYPE * p, raMatrix::enumerator n, raMatrix::enumerator m) {return raMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*m),n,m);}
+	__INLINE caMatrix caMatrixMake(INMOST_DATA_CPLX_TYPE* p, raMatrix::enumerator n, caMatrix::enumerator m) { return caMatrix(shell<INMOST_DATA_CPLX_TYPE>(p, n * m), n, m); }
 	__INLINE iaSymmetricMatrix iaSymmetricMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaSymmetricMatrix::enumerator n) {return iaSymmetricMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*(n+1)/2),n);}
 	__INLINE raSymmetricMatrix raSymmetricMatrixMake(INMOST_DATA_REAL_TYPE * p, raSymmetricMatrix::enumerator n) {return raSymmetricMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*(n+1)/2),n);}
+	__INLINE caSymmetricMatrix caSymmetricMatrixMake(INMOST_DATA_CPLX_TYPE* p, caSymmetricMatrix::enumerator n) { return caSymmetricMatrix(shell<INMOST_DATA_CPLX_TYPE>(p, n * (n + 1) / 2), n); }
 #if defined(USE_AUTODIFF)
 	/// shortcut for matrix of variables with single unit entry of first order derivative.
 	typedef Matrix<unknown> uMatrix;
