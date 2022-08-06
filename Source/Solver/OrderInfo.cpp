@@ -50,6 +50,7 @@ namespace INMOST
 	
 	void Solver::OrderInfo::PrepareMatrix(Sparse::Matrix &m, INMOST_DATA_ENUM_TYPE overlap)
 	{
+		Sparse::CreateRowEntryType();
 		have_matrix = true;
 		m.isParallel() = true;
 		INMOST_DATA_ENUM_TYPE two[2];

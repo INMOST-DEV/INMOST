@@ -6,21 +6,21 @@ namespace INMOST
 	
 	void Model::AddEntry(std::string name, AbstractEntry & entry)
 	{
-		assert( !isInitialized() ); // do not add new data after initialization
+		//assert( !isInitialized() ); // do not add new data after initialization
 		assert( GetEntry(name) == NULL ); // do not overwrite entry with the same name
 		Entries.push_back(std::make_pair(name,&entry));
 	}
 	
 	void Model::AddFirstEntry(std::string name, AbstractEntry & entry)
 	{
-		assert( !isInitialized() ); // do not add new data after initialization
+		//assert( !isInitialized() ); // do not add new data after initialization
 		assert( GetEntry(name) == NULL ); // do not overwrite entry with the same name
 		Entries.insert(Entries.begin(),std::make_pair(name,&entry));
 	}
 	
 	void Model::AddAfterEntry(std::string name, AbstractEntry & entry, std::string after)
 	{
-		assert( !isInitialized() ); // do not add new data after initialization
+		//assert( !isInitialized() ); // do not add new data after initialization
 		assert( GetEntry(name) == NULL ); // do not overwrite entry with the same name
 		std::vector< std::pair< std::string, AbstractEntry *> >::iterator find = Entries.end();
 		for(std::vector< std::pair< std::string, AbstractEntry *> >::iterator it = Entries.begin(); it != Entries.end(); ++it)
@@ -299,6 +299,12 @@ namespace INMOST
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
 			success &= it->second->PrepareEntries(*this);
+		for (std::vector< std::pair<std::string, AbstractEntry*> >::iterator it = Entries.begin();
+			it != Entries.end(); ++it)
+		{
+			it->second->reg_index = aut.RegisterEntry(*it->second);
+			it->second->SetOffsetTag(aut.GetEntry(it->second->reg_index).GetOffsetTag());
+		}
 		return success;
 	}
 
@@ -314,12 +320,14 @@ namespace INMOST
 			it != Operators.end(); ++it)
 			success &= it->second->Initialize(*this);
 		//third register all the entries
+		/*
 		for(std::vector< std::pair<std::string, AbstractEntry *> >::iterator it = Entries.begin();
 			it != Entries.end(); ++it)
 		{
 			it->second->reg_index = aut.RegisterEntry(*it->second);
 			it->second->SetOffsetTag(aut.GetEntry(it->second->reg_index).GetOffsetTag());
 		}
+		*/
 		//initialize coupling terms
 		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
 			it != CouplingTerms.end(); ++it)
@@ -466,6 +474,42 @@ namespace INMOST
 		return success;
 		
 	}
+
+	bool Model::SetTime(double t)
+	{
+		bool success = true;
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			success &= it->second->SetTime(t);
+
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
+			it != CouplingTerms.end(); ++it)
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->SetTime(t);
+		}
+		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::const_iterator it = ScalarFunctions.begin();
+			it != ScalarFunctions.end(); ++it)
+			success &= it->second->SetTime(t);
+		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::const_iterator it = MatrixFunctions.begin();
+			it != MatrixFunctions.end(); ++it)
+			success &= it->second->SetTime(t);
+		return success;
+	}
+
+	void Model::PrepareOutput()
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->PrepareOutput();
+	}
+
+	void Model::FinishOutput()
+	{
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::const_iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			it->second->FinishOutput();
+	}
 	
 	bool Model::RestoreTimeStep()
 	{
@@ -575,6 +619,7 @@ namespace INMOST
 				Element e;
 				for(Mesh::iteratorElement jt = m->BeginElement(etype); jt != m->EndElement(); ++jt) if( jt->GetStatus() != Element::Ghost )
 				{
+					if (!it->second->isValid(jt->self())) continue;
 					rMatrix err = R.Value(it->second->Index(jt->self()));
 					double block_err = err.FrobeniusNorm();
 					if( block_err > max_err )

@@ -35,6 +35,8 @@ namespace INMOST
 		virtual bool UpdateTimeStep() = 0;
 		/// Provide time step.
 		virtual bool SetTimeStep(double dt) = 0;
+		/// Provide current time.
+		virtual bool SetTime(double t) = 0;
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() = 0;
 		/// Calculate multiplier for update for this model. Can simply return 1.
@@ -67,6 +69,10 @@ namespace INMOST
 		virtual void FaceCoarsening(ElementArray<Face>& old_faces, Face& new_face) { (void)old_faces; (void)new_face; }
 		virtual void EdgeCoarsening(ElementArray<Edge>& old_edges, Edge& new_edge) { (void)old_edges; (void)new_edge; }
 		*/
+		/// Prepare submodel data for output
+		virtual void PrepareOutput() {}
+		/// Remove submodel data for output
+		virtual void FinishOutput() {}
 	};
 
 	/// A class to manage residual fill-in of the coupling between models.
@@ -91,6 +97,8 @@ namespace INMOST
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
 		virtual bool SetTimeStep(double dt) { return true; }
+		/// Provide current time.
+		virtual bool SetTime(double t) { return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this model. Can simply return 1.
@@ -122,6 +130,8 @@ namespace INMOST
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
 		virtual bool SetTimeStep(double dt) { return true; }
+		/// Provide current time.
+		virtual bool SetTime(double t) { return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.
@@ -153,6 +163,8 @@ namespace INMOST
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
 		virtual bool SetTimeStep(double dt) { return true; }
+		/// Provide current time.
+		virtual bool SetTime(double t) { return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.
@@ -177,6 +189,7 @@ namespace INMOST
 		std::map< std::string, bool> activeEntries, activeSubModels; ///< Active entries and models
 
 		bool initialized; ///< Indicates whether a model was initialized.
+		bool setentries; ///< Indicates whether entries were set.
 	public:
 		Model(Automatizator & aut) : aut(aut), initialized(false) {}
 		//todo:
@@ -298,10 +311,14 @@ namespace INMOST
 		bool UpdateTimeStep();
 		/// Provide new time step.
 		bool SetTimeStep(double dt);
+		/// Provide current time.
+		bool SetTime(double t);
 		/// Roll back to previous time step
 		bool RestoreTimeStep();
-		/// Check was the model initialized.
+		/// Check if the model was initialized.
 		bool isInitialized() const {return initialized;}
+		/// Check if the entries were set.
+		bool areEntriesSet() const { return setentries; }
 		/// Update variables  contained in all block of automatizator on ghost elements of the grid.
 		/// For synchronization of data in individual blocks see AbstractEntry::SynhronizeData.
 		void SynchronizeData() { aut.SynchronizeData(); }
@@ -334,6 +351,8 @@ namespace INMOST
 		void EdgeCoarsening(ElementArray<Edge> & old_edges, Edge & new_edge);
 		*/
 		void ReportErrors(const Residual & R) const;
+		void PrepareOutput();
+		void FinishOutput();
 	};
 }
 

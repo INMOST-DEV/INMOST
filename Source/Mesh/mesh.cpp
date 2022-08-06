@@ -711,9 +711,9 @@ namespace INMOST
 				std::cout << "Cannot release memory and window allocated by MPI" << std::endl;
 				std::cout << "since MPI was already finalized. Most likely this" << std::endl;
 				std::cout << "happens when you define class Mesh in main() function" << std::endl;
-				std::cout << "so that destructor get called after Mesh::Finalize()" << std::endl;
+				std::cout << "so that destructor gets called after Mesh::Finalize()" << std::endl;
 				std::cout << "Please enclose area where you use Mesh class" << std::endl;
-				std::cout << "with scopes, so that destructor get called when" << std::endl;
+				std::cout << "with scopes, so that destructor gets called when" << std::endl;
 				std::cout << "execution goes out of the scope or dynamically" << std::endl;
 				std::cout << "allocate and explicitly delete Mesh class." << std::endl;
 				std::cout << "Thank you!" << std::endl;
