@@ -1008,6 +1008,8 @@ namespace INMOST
 		bool start = false;
 		
 		std::map<GeometricData,ElementType> table;
+
+		TagInteger tag_chunk = CreateTag("PMF_CHUNK", DATA_INTEGER, CELL, NONE, 1);
 		
 		BeginModification();
 		
@@ -1287,6 +1289,7 @@ namespace INMOST
 						suggest_nodes.push_back(new_nodes[lid]);
 					}
 					new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
+					tag_chunk[new_cells[i]] = chunks;
 					//new_cells[i] = CreateCell(sub_elements).first->GetHandle();
 					sub_elements.clear();
 					suggest_nodes.clear();
