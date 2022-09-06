@@ -484,8 +484,8 @@ namespace INMOST
 			if (indicator[c]) refine++;
 		}
 		refine = m->Integrate(refine);
-		if (m->GetProcessorRank() == 0)
-			std::cout << __FUNCTION__ << " indicator marked " << refine << "/" << tot << std::endl;
+		//if (m->GetProcessorRank() == 0)
+		//	std::cout << __FUNCTION__ << " indicator marked " << refine << "/" << tot << std::endl;
 		if (!refine) return false;
 		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
@@ -1808,8 +1808,8 @@ namespace INMOST
 				coarse++;
 		}
 		coarse = m->Integrate(coarse);
-		if (m->GetProcessorRank() == 0)
-			std::cout << __FUNCTION__ << " indicator marked " << coarse << "/" << tot << std::endl;
+		//if (m->GetProcessorRank() == 0)
+		//	std::cout << __FUNCTION__ << " indicator marked " << coarse << "/" << tot << std::endl;
 		if (!coarse) return false;
 		m->ExchangeData(indicator, CELL);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)

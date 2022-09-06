@@ -1636,6 +1636,34 @@ namespace INMOST
 			throw NotImplemented;
 		}
 	};
+
+	template<class A>
+	class soft_max_const_expression : public shell_expression<soft_max_const_expression<A> >
+	{
+		const A& left;
+		INMOST_DATA_REAL_TYPE right;
+		INMOST_DATA_REAL_TYPE value, ldmult;
+	public:
+		soft_max_const_expression(const shell_expression<A>& pleft, INMOST_DATA_REAL_TYPE pright, INMOST_DATA_REAL_TYPE tol) : left(pleft), right(pright)
+		{
+			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right;
+			INMOST_DATA_REAL_TYPE diff = lval - rval, root = ::sqrt(diff * diff + tol * tol);
+			value = 0.5 * (lval + rval + root);
+			ldmult = 0.5 * (1 + diff / root);
+		}
+		soft_max_const_expression(const soft_max_const_expression& other)
+			: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult) {}
+		soft_max_const_expression(const soft_max_const_expression& other, const A& pleft, INMOST_DATA_REAL_TYPE pright)
+			: left(pleft), right(pright), value(other.value), ldmult(other.ldmult) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {left.GetJacobian(mult * ldmult, r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const {left.GetJacobian(mult * ldmult, r);}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
+		{
+			(void)multJ, (void)J, (void)multH, (void)H;
+			throw NotImplemented;
+		}
+	};
 	
 	template<class A, class B>
 	class soft_min_expression : public shell_expression<soft_min_expression<A,B> >
@@ -1674,6 +1702,34 @@ namespace INMOST
 		}
 	};
 	
+
+	template<class A>
+	class soft_min_const_expression : public shell_expression<soft_min_const_expression<A> >
+	{
+		const A& left;
+		INMOST_DATA_REAL_TYPE right;
+		INMOST_DATA_REAL_TYPE value, ldmult;
+	public:
+		soft_min_const_expression(const shell_expression<A>& pleft, INMOST_DATA_REAL_TYPE pright, INMOST_DATA_REAL_TYPE tol) : left(pleft), right(pright)
+		{
+			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right.GetValue();
+			INMOST_DATA_REAL_TYPE diff = lval - rval, root = ::sqrt(diff * diff + tol * tol);
+			value = 0.5 * (lval + rval - root);
+			ldmult = 0.5 * (1 - diff / root);
+		}
+		soft_min_const_expression(const soft_min_const_expression& other)
+			: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult) {}
+		soft_min_const_expression(const soft_min_const_expression& other, const A& pleft, INMOST_DATA_REAL_TYPE pright)
+			: left(pleft), right(pright), value(other.value), ldmult(other.ldmult) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {left.GetJacobian(mult * ldmult, r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { left.GetJacobian(mult * ldmult, r);	}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
+		{
+			(void)multJ, (void)J, (void)multH, (void)H;
+			throw NotImplemented;
+		}
+	};
 	
 	template<class A, class B>
 	class multiplication_expression : public shell_expression<multiplication_expression<A,B> >
@@ -2396,20 +2452,24 @@ template<class A>          __INLINE                                           vo
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
 #endif //USE_FP64
-template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_abs_expression<A>(Arg,tol); }
-__INLINE                          INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
-template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_sign_expression<A>(Arg,tol); }
-__INLINE                          INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}
+template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol = 0) { return INMOST::soft_abs_expression<A>(Arg,tol); }
+__INLINE                                                     INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol = 0) {return ::sqrt(Arg*Arg+tol*tol);}
+template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol = 0) { return INMOST::soft_sign_expression<A>(Arg,tol); }
+__INLINE                                                     INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol = 0) {return Arg/::sqrt(Arg*Arg+tol*tol);}
 template<class A, class B> __INLINE        INMOST::multiplication_expression<A, B> operator*(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::multiplication_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE              INMOST::division_expression<A, B> operator/(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::division_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE              INMOST::addition_expression<A, B> operator+(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::addition_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE           INMOST::subtraction_expression<A, B> operator-(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::subtraction_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE                   INMOST::pow_expression<A, B>       pow(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::pow_expression<A, B> (Left, Right); }
 template<class A, class B> __INLINE                   INMOST::atan2_expression<A, B>   atan2(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right) { return INMOST::atan2_expression<A, B> (Left, Right); }
-template<class A, class B> __INLINE              INMOST::soft_max_expression<A, B>  soft_max(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_max_expression<A, B> (Left, Right,tol); }
-__INLINE                          INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
-template<class A, class B> __INLINE              INMOST::soft_min_expression<A, B>  soft_min(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol) { return INMOST::soft_min_expression<A, B> (Left, Right,tol); }
-__INLINE                          INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
+template<class A, class B> __INLINE              INMOST::soft_max_expression<A, B>  soft_max(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_max_expression<A, B> (Left, Right,tol); }
+template<class A>          __INLINE           INMOST::soft_max_const_expression<A>  soft_max(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_max_const_expression<A>(Left, Right, tol); }
+template<class B>          __INLINE           INMOST::soft_max_const_expression<B>  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right, INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_max_const_expression<B>(Right, Left, tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol = 0.0) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
+template<class A, class B> __INLINE              INMOST::soft_min_expression<A, B>  soft_min(INMOST::shell_expression<A> const & Left, INMOST::shell_expression<B> const & Right ,INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_min_expression<A, B> (Left, Right,tol); }
+template<class A>          __INLINE           INMOST::soft_min_const_expression<A>  soft_min(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_min_const_expression<A>(Left, Right, tol); }
+template<class B>          __INLINE           INMOST::soft_min_const_expression<B>  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right, INMOST_DATA_REAL_TYPE tol = 0.0) { return INMOST::soft_min_const_expression<B>(Right, Left, tol); }
+                           __INLINE                          INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol = 0.0) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
 template<class B>          __INLINE                INMOST::const_pow_expression<B>       pow(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_pow_expression<B> (Left, Right); }
 template<class A>          __INLINE                INMOST::pow_const_expression<A>       pow(INMOST::shell_expression<A> const & Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::pow_const_expression<A> (Left, Right); }
 template<class B>          __INLINE     INMOST::const_multiplication_expression<B> operator*(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const & Right) { return INMOST::const_multiplication_expression<B>(Right,Left); }
@@ -2458,8 +2518,8 @@ __INLINE void                  set_value(INMOST_DATA_REAL_TYPE & Arg, INMOST_DAT
 __INLINE INMOST_DATA_REAL_TYPE get_value(INMOST_DATA_REAL_TYPE Arg) {return Arg;}
 __INLINE INMOST_DATA_CPLX_TYPE get_value(INMOST_DATA_CPLX_TYPE Arg) { return Arg; }
 __INLINE INMOST_DATA_REAL_TYPE variation(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE) {return Arg;}
-__INLINE INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return ::sqrt(Arg*Arg+tol*tol);}
-__INLINE INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol) {return Arg/::sqrt(Arg*Arg+tol*tol);}
+__INLINE INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol = 0) {return ::sqrt(Arg*Arg+tol*tol);}
+__INLINE INMOST_DATA_REAL_TYPE soft_sign(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol = 0) {return Arg/::sqrt(Arg*Arg+tol*tol);}
 __INLINE INMOST_DATA_REAL_TYPE  soft_max(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right+::sqrt((Left-Right)*(Left-Right)+tol*tol));}
 __INLINE INMOST_DATA_REAL_TYPE  soft_min(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right, INMOST_DATA_REAL_TYPE tol) {return 0.5*(Left+Right-::sqrt((Left-Right)*(Left-Right)+tol*tol));}
 #endif //USE_AUTODIFF

@@ -48,6 +48,8 @@ namespace INMOST
 		void * pzz;
 		Tag weight_tag;
 		Mesh * m;
+
+		std::set<std::string> sets;
 	public:
 		/// Initialize the use of partitioner.
 		/// @param argc The number of arguments transmitted to the function main.
@@ -64,6 +66,19 @@ namespace INMOST
 		Partitioner(const Partitioner & other);
 		Partitioner & operator =(Partitioner const & other);
 		~Partitioner();
+		/// Account for sets in the partitioner
+		void AddSet(std::string set_name) { sets.insert(set_name); }
+		bool RemSet(std::string set_name)
+		{
+			std::set<std::string>::iterator f = sets.find(set_name);
+			if (f != sets.end())
+			{
+				sets.erase(f);
+				return true;
+			}
+			else return false;
+		}
+		void ClearSets() { sets.clear(); }
 		/// Evaluate the earlier specified partitioner.
 		/// @see Partitioner::SetMethod
 		void Evaluate();

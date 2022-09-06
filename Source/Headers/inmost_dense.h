@@ -9,7 +9,11 @@ namespace INMOST
 {
 	
 	/// Structure that selects desired class, depending on the operation.
+	template<class A> struct SelfPromote;
 	template<class A, class B> struct Promote;
+	template<> struct SelfPromote<INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct SelfPromote<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct SelfPromote<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_CPLX_TYPE type; };
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> {typedef INMOST_DATA_INTEGER_TYPE type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE>    {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_CPLX_TYPE>    {typedef INMOST_DATA_CPLX_TYPE type;};
@@ -37,6 +41,12 @@ namespace INMOST
 	template<> struct Promote<double, double> { typedef double type; };
 #endif
 #if defined(USE_AUTODIFF)
+	template<> struct SelfPromote<unknown> { typedef variable type; };
+	template<> struct SelfPromote<variable> { typedef variable type; };
+	template<> struct SelfPromote<value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct SelfPromote<multivar_expression_reference> { typedef variable type; };
+	template<> struct SelfPromote<hessian_multivar_expression_reference> { typedef hessian_variable type; };
+	template<> struct SelfPromote<hessian_variable> { typedef hessian_variable type; };
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
@@ -414,9 +424,9 @@ namespace INMOST
 		}
 		/// Computes frobenious norm of the matrix.
 		/// @return Frobenius norm of the matrix.
-		Var FrobeniusNorm() const
+		typename SelfPromote<Var>::type FrobeniusNorm() const
 		{
-			Var ret = 0;
+			typename SelfPromote<Var>::type ret = 0;
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
 					ret += (*this)(i, j) * (*this)(i, j);

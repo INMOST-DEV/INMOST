@@ -67,14 +67,14 @@ public:
         std::vector<INMOST_DATA_ENUM_TYPE> lfill;
         lfill.reserve(nnz * 4);
 #endif
-        luv.reserve(nnz * 4);
-        lui.reserve(nnz * 4);
+        luv.reserve(nnz);
+        lui.reserve(nnz);
 
 
         std::vector<INMOST_DATA_REAL_TYPE> rv;
         std::vector<INMOST_DATA_ENUM_TYPE> ri;
-        rv.reserve(nnz * 16);
-        ri.reserve(nnz * 16);
+        rv.reserve(nnz * 4);
+        ri.reserve(nnz * 4);
         INMOST_DATA_ENUM_TYPE mobeg, moend, vlocbeg, vlocend, vbeg, vend, k, r, end, iter, j;
         INMOST_DATA_REAL_TYPE leabs, flin, ldiag, udiag, mva;
         INMOST_DATA_ENUM_TYPE curr, foll;
