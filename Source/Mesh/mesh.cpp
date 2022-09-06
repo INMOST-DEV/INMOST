@@ -346,13 +346,13 @@ namespace INMOST
 #pragma omp single
 		{
 			delete [] tag_private_markers;
-			tag_private_markers = nullptr
+			tag_private_markers = NULL;
 		}
     }
 #else
     DeleteTag(tag_private_markers[0]);
     delete tag_private_markers;
-	tag_private_markers = nullptr;
+	tag_private_markers = NULL;
 #endif
   }
 
