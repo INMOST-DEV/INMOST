@@ -460,7 +460,7 @@ namespace INMOST
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		///             The error may be caused by error in SVD algorithm.
 		/// @return Matrix in power of n.
-		//Matrix<Var> Power(INMOST_DATA_REAL_TYPE n = 1, int * ierr = NULL) const;
+		Matrix<Var> Power(INMOST_DATA_REAL_TYPE n, int * ierr = NULL) const;
 		/// Calculate square root of A matrix by Babylonian method.
 		/// @param iter Number of iterations.
 		/// @param tol  Convergence tolerance.
@@ -4522,25 +4522,26 @@ namespace INMOST
 		}
 		return ret;
 	}
-	/*
 	template<typename Var>
 	Matrix<Var>
-	AbstractMatrix<Var>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
+	AbstractMatrixReadOnly<Var>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
 	{
 		Matrix<Var> ret(Cols(),Rows());
-		Matrix<Var> L,S,iL;
-		bool success = Eigensolver(L,S,iL);
+		Matrix<Var> U, S, V;
+		bool success = SVD(U,S,V);
 		if( !success )
 		{
 			if( ierr )
 			{
-				if( *ierr == -1 ) std::cout << "Failed to compute eigenvalue decomposition of the matrix" << std::endl;
+				if( *ierr == -1 ) 
+					std::cout << "Failed to compute singular value decomposition of the matrix" << std::endl;
 				*ierr = 1;
 				return ret;
 			}
-			else throw MatrixEigensolverFail;
+			else throw MatrixPseudoSolveFail;
 		}
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) S(k,k) = pow(S(k,k),n);
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) 
+			S(k,k) = pow(S(k,k),n);
         if( n >= 0 )
 			ret = U*S*V.Transpose();
 		else
@@ -4548,7 +4549,6 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	*/
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
