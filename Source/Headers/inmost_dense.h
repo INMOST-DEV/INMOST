@@ -4541,7 +4541,7 @@ namespace INMOST
 			else throw MatrixPseudoSolveFail;
 		}
         for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) 
-			S(k,k) = pow(S(k,k),n);
+			if( get_value(S(k,k)) ) S(k,k) = pow(S(k,k),n);
         if( n >= 0 )
 			ret = U*S*V.Transpose();
 		else
