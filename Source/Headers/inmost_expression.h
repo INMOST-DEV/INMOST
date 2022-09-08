@@ -1712,7 +1712,7 @@ namespace INMOST
 	public:
 		soft_min_const_expression(const shell_expression<A>& pleft, INMOST_DATA_REAL_TYPE pright, INMOST_DATA_REAL_TYPE tol) : left(pleft), right(pright)
 		{
-			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right.GetValue();
+			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right;
 			INMOST_DATA_REAL_TYPE diff = lval - rval, root = ::sqrt(diff * diff + tol * tol);
 			value = 0.5 * (lval + rval - root);
 			ldmult = 0.5 * (1 - diff / root);
