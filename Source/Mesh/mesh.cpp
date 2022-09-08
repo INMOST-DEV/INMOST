@@ -332,6 +332,7 @@ namespace INMOST
 
   void Mesh::DeallocatePrivateMarkers()
   {
+	if (!tag_private_markers) return;
 #if defined(USE_OMP)
 #pragma omp parallel
     {
@@ -345,11 +346,13 @@ namespace INMOST
 #pragma omp single
 		{
 			delete [] tag_private_markers;
+			tag_private_markers = NULL;
 		}
     }
 #else
     DeleteTag(tag_private_markers[0]);
     delete tag_private_markers;
+	tag_private_markers = NULL;
 #endif
   }
 
@@ -2758,7 +2761,7 @@ namespace INMOST
 	void Mesh::RemTopologyCheck   (TopologyCheck mask) 
 	{
 		checkset = checkset & ~mask;
-		if( mask & MARK_ON_ERROR ) 
+		if( (mask & MARK_ON_ERROR) && tag_topologyerror.isValid() ) 
 			tag_topologyerror = DeleteTag(tag_topologyerror);
 	}
 
