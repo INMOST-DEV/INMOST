@@ -191,7 +191,7 @@ namespace INMOST
 		bool initialized; ///< Indicates whether a model was initialized.
 		bool setentries; ///< Indicates whether entries were set.
 	public:
-		Model(Automatizator & aut) : aut(aut), initialized(false) {}
+		Model(Automatizator & aut) : aut(aut), initialized(false), setentries(false) {}
 		//todo:
 		//Model(const Model & b) aut(b.aut) {}
 		//todo:
