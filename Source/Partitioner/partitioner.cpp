@@ -190,6 +190,8 @@ namespace INMOST
 	
 	Partitioner::Partitioner(Mesh * _m)
 	{
+		pa = Partition;
+		pt = INNER_KMEANS;
 		m = _m;
 		if( m->GetMeshState() == Mesh::Serial ) m->ResolveShared();
 		pzz = NULL;

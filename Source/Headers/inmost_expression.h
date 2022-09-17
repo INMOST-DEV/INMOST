@@ -1547,7 +1547,7 @@ namespace INMOST
 		{
 			INMOST_DATA_REAL_TYPE lval = arg.GetValue();
 			value = ::sqrt(lval*lval+tol*tol);
-			dmult = lval/value;
+			dmult = value ? lval/value : 0.0;
 		}
 		soft_abs_expression(const soft_abs_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
         soft_abs_expression(const soft_abs_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
@@ -1578,8 +1578,8 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE lval = arg.GetValue(), lval2 = lval*lval;
 			INMOST_DATA_REAL_TYPE div = lval2+tol*tol;
 			INMOST_DATA_REAL_TYPE sdiv = ::sqrt(div);
-			value = lval/sdiv;
-			dmult = (1.0 - lval2/div)/sdiv;
+			value = sdiv ? lval/sdiv : 0.0;
+			dmult = sdiv ? (1.0 - (div ? lval2/div : 0.0))/sdiv : 0.0;
 		}
 		soft_sign_expression(const soft_sign_expression & b) : arg(b.arg), value(b.value), dmult(b.dmult) {}
         soft_sign_expression(const soft_sign_expression & b, const A & parg) : arg(parg), value(b.value), dmult(b.dmult) {}
@@ -1611,8 +1611,12 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right.GetValue();
 			INMOST_DATA_REAL_TYPE diff = lval-rval, root = ::sqrt(diff*diff+tol*tol);
 			value = 0.5*(lval+rval + root);
-			ldmult = 0.5*(1 + diff/root);
-			rdmult = 0.5*(1 - diff/root);
+			if (root)
+			{
+				ldmult = 0.5 * (1 + diff / root);
+				rdmult = 0.5 * (1 - diff / root);
+			}
+			else ldmult = rdmult = 0.5;
 		}
 		soft_max_expression(const soft_max_expression & other)
 		: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
@@ -1649,7 +1653,7 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right;
 			INMOST_DATA_REAL_TYPE diff = lval - rval, root = ::sqrt(diff * diff + tol * tol);
 			value = 0.5 * (lval + rval + root);
-			ldmult = 0.5 * (1 + diff / root);
+			ldmult = 0.5 * (1 + (root ? diff / root : 0.0));
 		}
 		soft_max_const_expression(const soft_max_const_expression& other)
 			: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult) {}
@@ -1677,8 +1681,12 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right.GetValue();
 			INMOST_DATA_REAL_TYPE diff = lval-rval, root = ::sqrt(diff*diff+tol*tol);
 			value = 0.5*(lval+rval - root);
-			ldmult = 0.5*(1 - diff/root);
-			rdmult = 0.5*(1 + diff/root);
+			if (root)
+			{
+				ldmult = 0.5 * (1 - diff / root);
+				rdmult = 0.5 * (1 + diff / root);
+			}
+			else ldmult = rdmult = 0.5;
 		}
 		soft_min_expression(const soft_min_expression & other)
 		: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult), rdmult(other.rdmult) {}
@@ -1715,7 +1723,7 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE lval = left.GetValue(), rval = right;
 			INMOST_DATA_REAL_TYPE diff = lval - rval, root = ::sqrt(diff * diff + tol * tol);
 			value = 0.5 * (lval + rval - root);
-			ldmult = 0.5 * (1 - diff / root);
+			ldmult = 0.5 * (1 - (root ? diff / root : 0.0));
 		}
 		soft_min_const_expression(const soft_min_const_expression& other)
 			: left(other.left), right(other.right), value(other.value), ldmult(other.ldmult) {}
