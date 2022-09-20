@@ -15,7 +15,7 @@ namespace INMOST
 	template<> struct ComplexType<INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
 	template<> struct ComplexType<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct ComplexType<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<typename T> typename ComplexType<T>::type real_part(T const& val) { return std::real(val); }
+	template<typename T> static typename ComplexType<T>::type real_part(T const& val) { return std::real(val); }
 	//template<typename T> typename ComplexType<T>::type imag_part(T const& val) { return std::imag(val); }
 	//template<> typename ComplexType<INMOST_DATA_INTEGER_TYPE>::type real_part(INMOST_DATA_INTEGER_TYPE const& a) { return a; }
 	//template<> typename ComplexType<INMOST_DATA_REAL_TYPE>::type    real_part(INMOST_DATA_REAL_TYPE const& a) { return a; }
@@ -71,18 +71,18 @@ namespace INMOST
 	template<> struct ComplexType< std::complex<multivar_expression_reference> > { typedef multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_multivar_expression_reference> > { typedef hessian_multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_variable> > { typedef hessian_variable type; };
-	template<> typename ComplexType<unknown>::type                                                real_part(unknown const& a) { return a; }
-	template<> typename ComplexType<variable>::type                                               real_part(variable const& a) { return a; }
-	template<> typename ComplexType<value_reference>::type                                        real_part(value_reference const& a) { return a; }
-	template<> typename ComplexType<multivar_expression_reference>::type                          real_part(multivar_expression_reference const& a) { return a; }
-	template<> typename ComplexType<hessian_multivar_expression_reference>::type                  real_part(hessian_multivar_expression_reference const& a) { return a; }
-	template<> typename ComplexType<hessian_variable>::type                                       real_part(hessian_variable const& a) { return a; }
-	template<> typename ComplexType< std::complex<unknown> >::type                                real_part(std::complex<unknown> const& a) { return a.real(); }
-	template<> typename ComplexType< std::complex<variable> >::type                               real_part(std::complex<variable> const& a) { return a.real(); }
-	template<> typename ComplexType< std::complex<value_reference> >::type                        real_part(std::complex<value_reference> const& a) { return a.real(); }
-	template<> typename ComplexType< std::complex<multivar_expression_reference> >::type          real_part(std::complex<multivar_expression_reference> const& a) { return a.real(); }
-	template<> typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  real_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.real(); }
-	template<> typename ComplexType< std::complex<hessian_variable> >::type                       real_part(std::complex<hessian_variable> const& a) { return a.real(); }
+	template<> static typename ComplexType<unknown>::type                                                real_part(unknown const& a) { return a; }
+	template<> static typename ComplexType<variable>::type                                               real_part(variable const& a) { return a; }
+	template<> static typename ComplexType<value_reference>::type                                        real_part(value_reference const& a) { return a; }
+	template<> static typename ComplexType<multivar_expression_reference>::type                          real_part(multivar_expression_reference const& a) { return a; }
+	template<> static typename ComplexType<hessian_multivar_expression_reference>::type                  real_part(hessian_multivar_expression_reference const& a) { return a; }
+	template<> static typename ComplexType<hessian_variable>::type                                       real_part(hessian_variable const& a) { return a; }
+	template<> static typename ComplexType< std::complex<unknown> >::type                                real_part(std::complex<unknown> const& a) { return a.real(); }
+	template<> static typename ComplexType< std::complex<variable> >::type                               real_part(std::complex<variable> const& a) { return a.real(); }
+	template<> static typename ComplexType< std::complex<value_reference> >::type                        real_part(std::complex<value_reference> const& a) { return a.real(); }
+	template<> static typename ComplexType< std::complex<multivar_expression_reference> >::type          real_part(std::complex<multivar_expression_reference> const& a) { return a.real(); }
+	template<> static typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  real_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.real(); }
+	template<> static typename ComplexType< std::complex<hessian_variable> >::type                       real_part(std::complex<hessian_variable> const& a) { return a.real(); }
 	//template<> typename ComplexType<unknown>::type                                                imag_part(unknown const& a) { return 0.0; }
 	//template<> typename ComplexType<variable>::type                                               imag_part(variable const& a) { return 0.0; }
 	//template<> typename ComplexType<value_reference>::type                                        imag_part(value_reference const& a) { return 0.0; }
