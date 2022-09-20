@@ -10,7 +10,19 @@ namespace INMOST
 	
 	/// Structure that selects desired class, depending on the operation.
 	template<class A> struct SelfPromote;
+	template<class A> struct ComplexType;
 	template<class A, class B> struct Promote;
+	template<> struct ComplexType<INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct ComplexType<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct ComplexType<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<typename T> typename ComplexType<T>::type real_part(T const& val) { return std::real(val); }
+	//template<typename T> typename ComplexType<T>::type imag_part(T const& val) { return std::imag(val); }
+	//template<> typename ComplexType<INMOST_DATA_INTEGER_TYPE>::type real_part(INMOST_DATA_INTEGER_TYPE const& a) { return a; }
+	//template<> typename ComplexType<INMOST_DATA_REAL_TYPE>::type    real_part(INMOST_DATA_REAL_TYPE const& a) { return a; }
+	//template<> typename ComplexType<INMOST_DATA_CPLX_TYPE>::type    real_part(INMOST_DATA_CPLX_TYPE const& a) { return a.real(); }
+	//template<> typename ComplexType<INMOST_DATA_INTEGER_TYPE>::type  imag_part(INMOST_DATA_INTEGER_TYPE const& a) { return 0.0; }
+	//template<> typename ComplexType<INMOST_DATA_REAL_TYPE>::type     imag_part(INMOST_DATA_REAL_TYPE const& a) { return 0.0; }
+	//template<> typename ComplexType<INMOST_DATA_CPLX_TYPE>::type     imag_part(INMOST_DATA_CPLX_TYPE const& a) { return a.imag(); }
 	template<> struct SelfPromote<INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
 	template<> struct SelfPromote<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct SelfPromote<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_CPLX_TYPE type; };
@@ -47,6 +59,43 @@ namespace INMOST
 	template<> struct SelfPromote<multivar_expression_reference> { typedef variable type; };
 	template<> struct SelfPromote<hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct SelfPromote<hessian_variable> { typedef hessian_variable type; };
+	template<> struct ComplexType<unknown> { typedef unknown type; };
+	template<> struct ComplexType<variable> { typedef variable type; };
+	template<> struct ComplexType<value_reference> { typedef value_reference type; };
+	template<> struct ComplexType<multivar_expression_reference> { typedef variable type; };
+	template<> struct ComplexType<hessian_multivar_expression_reference> { typedef hessian_variable type; };
+	template<> struct ComplexType<hessian_variable> { typedef hessian_variable type; };
+	template<> struct ComplexType< std::complex<unknown> > { typedef unknown type; };
+	template<> struct ComplexType< std::complex<variable> > { typedef variable type; };
+	template<> struct ComplexType< std::complex<value_reference> > { typedef value_reference type; };
+	template<> struct ComplexType< std::complex<multivar_expression_reference> > { typedef multivar_expression_reference type; };
+	template<> struct ComplexType< std::complex<hessian_multivar_expression_reference> > { typedef hessian_multivar_expression_reference type; };
+	template<> struct ComplexType< std::complex<hessian_variable> > { typedef hessian_variable type; };
+	template<> typename ComplexType<unknown>::type                                                real_part(unknown const& a) { return a; }
+	template<> typename ComplexType<variable>::type                                               real_part(variable const& a) { return a; }
+	template<> typename ComplexType<value_reference>::type                                        real_part(value_reference const& a) { return a; }
+	template<> typename ComplexType<multivar_expression_reference>::type                          real_part(multivar_expression_reference const& a) { return a; }
+	template<> typename ComplexType<hessian_multivar_expression_reference>::type                  real_part(hessian_multivar_expression_reference const& a) { return a; }
+	template<> typename ComplexType<hessian_variable>::type                                       real_part(hessian_variable const& a) { return a; }
+	template<> typename ComplexType< std::complex<unknown> >::type                                real_part(std::complex<unknown> const& a) { return a.real(); }
+	template<> typename ComplexType< std::complex<variable> >::type                               real_part(std::complex<variable> const& a) { return a.real(); }
+	template<> typename ComplexType< std::complex<value_reference> >::type                        real_part(std::complex<value_reference> const& a) { return a.real(); }
+	template<> typename ComplexType< std::complex<multivar_expression_reference> >::type          real_part(std::complex<multivar_expression_reference> const& a) { return a.real(); }
+	template<> typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  real_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.real(); }
+	template<> typename ComplexType< std::complex<hessian_variable> >::type                       real_part(std::complex<hessian_variable> const& a) { return a.real(); }
+	//template<> typename ComplexType<unknown>::type                                                imag_part(unknown const& a) { return 0.0; }
+	//template<> typename ComplexType<variable>::type                                               imag_part(variable const& a) { return 0.0; }
+	//template<> typename ComplexType<value_reference>::type                                        imag_part(value_reference const& a) { return 0.0; }
+	//template<> typename ComplexType<multivar_expression_reference>::type 	                        imag_part(multivar_expression_reference const& a) { return 0.0; }
+	//template<> typename ComplexType<hessian_multivar_expression_reference>::type                  imag_part(hessian_multivar_expression_reference const& a) { return 0.0; }
+	//template<> typename ComplexType<hessian_variable>::type                                       imag_part(hessian_variable const& a) { return 0.0; }
+	//template<> typename ComplexType< std::complex<unknown> >::type                                imag_part(std::complex<unknown> const& a) { return a.imag(); }
+	//template<> typename ComplexType< std::complex<variable> >::type                               imag_part(std::complex<variable> const& a) { return a.imag(); }
+	//template<> typename ComplexType< std::complex<value_reference> >::type                        imag_part(std::complex<value_reference> const& a) { return a.imag(); }
+	//template<> typename ComplexType< std::complex<multivar_expression_reference> >::type          imag_part(std::complex<multivar_expression_reference> const& a) { return a.imag(); }
+	//template<> typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  imag_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.imag(); }
+	//template<> typename ComplexType< std::complex<hessian_variable> >::type                       imag_part(std::complex<hessian_variable> const& a) { return a.imag(); }
+
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
@@ -148,23 +197,26 @@ namespace INMOST
 	template<> struct Promote<double, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, double>  {typedef hessian_variable type;};
 	template<> struct Promote<double, hessian_variable> { typedef hessian_variable type; };
+#endif
+#endif
+	
+	
 
-#endif
-#endif
+
 	template<typename Var>
 	class AbstractMatrixReadOnly
 	{
 	private:
 		/// Sign function for SVD algorithm.
-		static Var sign_func(const Var& a, const Var& b) { return (std::real(get_value(b)) >= 0.0 ? fabs(a) : -fabs(a)); }
+		static Var sign_func(const Var& a, const Var& b) { return (real_part(get_value(b)) >= 0.0 ? fabs(a) : -fabs(a)); }
 		/// Max function for SVD algorithm.
 		static INMOST_DATA_REAL_TYPE max_func(INMOST_DATA_REAL_TYPE x, INMOST_DATA_REAL_TYPE y) { return x > y ? x : y; }
 		/// Function for QR rotation in SVD algorithm.
 		static Var pythag(const Var& a, const Var& b)
 		{
 			Var at = fabs(a), bt = fabs(b), ct;
-			if (std::real(get_value(at)) > std::real(get_value(bt))) { ct = bt / at; return at * sqrt(1.0 + ct * ct); }
-			else if (std::real(get_value(bt)) > 0.0) { ct = at / bt; return bt * sqrt(1.0 + ct * ct); }
+			if (real_part(get_value(at)) > real_part(get_value(bt))) { ct = bt / at; return at * sqrt(1.0 + ct * ct); }
+			else if (real_part(get_value(bt)) > 0.0) { ct = at / bt; return bt * sqrt(1.0 + ct * ct); }
 			else return 0.0;
 			//return sqrt(a * conj(a) + b * conj(b));
 		}
@@ -370,7 +422,7 @@ namespace INMOST
 			{
 				for (enumerator l = 0; l < Cols(); ++l)
 				{
-					//if (__isinf__(std::real(get_value((*this)(k, l)))))
+					//if (__isinf__(real_part(get_value((*this)(k, l)))))
 					//	sout << std::setw(12) << "inf";
 					//else if (std::isnan(get_value((*this)(k, l))))
 					//	sout << std::setw(12) << "nan";
@@ -3870,7 +3922,7 @@ namespace INMOST
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
-			if( (*L)(k,k) < 0.0 )
+			if( real_part((*L)(k,k)) < 0.0 )
 			{
 				if( ierr )
 				{
@@ -4382,7 +4434,7 @@ namespace INMOST
 						break;
 					}
 				}
-				if( ok ) AtA(i,i) = AtA(i,i) < 0.0 ? - 1.0e-12 : 1.0e-12;
+				if( ok ) AtA(i,i) = fabs(AtA(i,i)) < 0.0 ? - 1.0e-12 : 1.0e-12;
 				else
 				{
 					if( ierr )
@@ -4488,12 +4540,13 @@ namespace INMOST
 		}
         for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
 		{
-			if( S(k,k) > tol )
-				S(k,k) = 1.0/S(k,k);
+			if (get_value(fabs(S(k, k))) > tol)
+				S(k, k) = 1.0 / S(k, k);
 			else
-				S(k,k) = 0.0;
+				S(k, k) = 0.0;
 		}
-		ret = V*S*U.Transpose();
+		//ret = V*S*U.Transpose();
+		ret = V.ConjugateTranspose().Transpose() * S * U.ConjugateTranspose();
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
@@ -5069,8 +5122,8 @@ namespace INMOST
 						sn = -f / w;
 						for (j = 0; j < n; ++j)
 						{
-							x = std::real(U(j, l - 1));
-							y = std::real(U(j, i));
+							x = real_part(U(j, l - 1));
+							y = real_part(U(j, i));
 							U(j, l - 1) = x * cs + y * sn;
 							U(j, i) = y * cs - x * sn;
 						}
@@ -5096,7 +5149,7 @@ namespace INMOST
 				h = t[k];
 				f = ((y - w) * (y + w) + (g - h) * (g + h)) / (2.0 * h * y);
 				g = sqrt(f * f + 1.0);
-				if (std::real(get_value(f)) < 0.0) g = -g;
+				if (real_part(get_value(f)) < 0.0) g = -g;
 				f = ((x - w) * (x + w) + (y / (f + g) - h) * h) / x;
 				//  QR step.
 				cs = 1.0;
@@ -5117,8 +5170,8 @@ namespace INMOST
 					y = y * cs;
 					for (j = 0; j < n; ++j)
 					{
-						x = std::real(V(j, i - 1));
-						w = std::real(V(j, i));
+						x = real_part(V(j, i - 1));
+						w = real_part(V(j, i));
 						V(j, i - 1) = x * cs + w * sn;
 						V(j, i) = w * cs - x * sn;
 					}
@@ -5130,8 +5183,8 @@ namespace INMOST
 					x = cs * y - sn * g;
 					for (j = 0; j < n; ++j)
 					{
-						y = std::real(U(j, i - 1));
-						w = std::real(U(j, i));
+						y = real_part(U(j, i - 1));
+						w = real_part(U(j, i));
 						U(j, i - 1) = y * cs + w * sn;
 						U(j, i) = w * cs - y * sn;
 					}
@@ -5149,7 +5202,7 @@ namespace INMOST
 				s[k] = x;
 			}
 			//  Convergence.
-			if (std::real(get_value(w)) >= 0.0) continue;
+			if (real_part(get_value(w)) >= 0.0) continue;
 			s[k] = -w;
 			for (j = 0; j < n; ++j) V(j, k) = -V(j, k);
 		}
@@ -5160,7 +5213,7 @@ namespace INMOST
 			j = k;
 			for (i = k; i < n; ++i)
 			{
-				if (std::real(get_value(g)) < std::real(get_value(s[i])))
+				if (real_part(get_value(g)) < real_part(get_value(s[i])))
 				{
 					g = s[i];
 					j = i;
@@ -5436,7 +5489,7 @@ namespace INMOST
 				z = Sigma(k, k);
 				if (l == k)
 				{// convergence
-					if (std::real(get_value(z)) < 0.0 && nonnegative)
+					if (real_part(get_value(z)) < 0.0 && nonnegative)
 					{// make singular value nonnegative
 						Sigma(k, k) = -z;
 						for (j = 0; j < n; j++) V(j, k) = -V(j, k);
@@ -5513,8 +5566,8 @@ namespace INMOST
 			{
 				k = i;
 				for (j = i + 1; j < n; ++j)
-					if (std::real(get_value(Sigma(k, k))) < std::real(get_value(Sigma(j, j)))) k = j;
-				if (std::real(get_value(Sigma(k, k))) > std::real(get_value(Sigma(i, i))))
+					if (real_part(get_value(Sigma(k, k))) < real_part(get_value(Sigma(j, j)))) k = j;
+				if (real_part(get_value(Sigma(k, k))) > real_part(get_value(Sigma(i, i))))
 				{
 					temp = Sigma(k, k);
 					Sigma(k, k) = Sigma(i, i);
