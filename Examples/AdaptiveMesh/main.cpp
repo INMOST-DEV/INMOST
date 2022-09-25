@@ -43,8 +43,8 @@ int main(int argc, char ** argv)
 			table[CENTROID] = CELL | FACE;
 			m.PrepareGeometricData(table);
 		}
-#if defined(USE_PARTITIONER)
 		std::vector<Storage::integer> nc(m.GetProcessorsNumber());
+#if defined(USE_PARTITIONER)
 		Partitioner p(&m);
 		if( true )
 		{

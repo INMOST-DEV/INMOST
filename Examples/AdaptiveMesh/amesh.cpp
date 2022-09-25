@@ -764,8 +764,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //								if (model) model->NewEdge(f, hanging_edges[kt]);
 //#endif
-								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-									(*it)->NewEdge(f, hanging_edges[kt]);
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+									INMOST::Edge he = hanging_edges[kt];
+									(*it)->NewEdge(f, he);
+								}
 								for (ElementArray<Face>::size_type kt = 0; kt < face_cells.size(); ++kt)
 									tri_hanging_edges[face_cells[kt]].push_back(hanging_edges[kt]);
 							}
@@ -806,8 +808,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //								if (model) model->NewEdge(f, hanging_edges[kt]);
 //#endif
-								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-									(*it)->NewEdge(f, hanging_edges[kt]);
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+									INMOST::Edge he = hanging_edges[kt];
+									(*it)->NewEdge(f, he);
+								}
 							}
 							t2 = Timer(), thanging += t2 - t1, t1 = t2;
 						}
@@ -916,8 +920,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //								if (model) model->NewEdge(c, edges_to_faces[kt]);
 //#endif
-								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-									(*it)->NewEdge(c, edges_to_faces[kt]);
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+									INMOST::Edge e = edges_to_faces[kt];
+									(*it)->NewEdge(c, e);
+								}
 								//for each node other then the hanging node of the face
 								//(this is hanging node on the edge)
 								//we record a pair of edges to reconstruct internal faces
@@ -977,8 +983,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //									if (model) model->NewEdge(c, tri_edges[2]);
 //#endif
-									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-										(*it)->NewEdge(c, tri_edges[2]);
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+										INMOST::Edge e = tri_edges[2];
+										(*it)->NewEdge(c, e);
+									}
 									internal_faces[kt] = m->CreateFace(tri_edges).first;
 								}
 								new_faces++;
@@ -987,8 +995,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //								if (model) model->NewFace(c, internal_faces[kt]);
 //#endif
-								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-									(*it)->NewFace(c, internal_faces[kt]);
+								for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+									INMOST::Face f = internal_faces[kt];
+									(*it)->NewFace(c, f);
+								}
 								//clean up structure, so that other cells can use it
 								edge_hanging_nodes[kt].DelData(internal_face_edges);
 							}
@@ -1006,8 +1016,10 @@ namespace INMOST
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //									if (model) model->NewFace(c, internal_faces.back());
 //#endif
-									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-										(*it)->NewFace(c, internal_faces.back());
+									for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it){
+										INMOST::Face f = internal_faces.back();
+										(*it)->NewFace(c, f);
+									}
 								}
 							}
 							t2 = Timer(), thanging2 += t2 - t1, t1 = t2;

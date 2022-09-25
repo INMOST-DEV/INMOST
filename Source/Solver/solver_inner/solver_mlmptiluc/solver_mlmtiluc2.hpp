@@ -395,8 +395,8 @@ class MLMTILUC_preconditioner : public Method
 					std::vector< std::vector<Sparse::Row::entry> >& U2_Entries,
 					interval<INMOST_DATA_ENUM_TYPE, bool>& Pivot,
 					bool block_pivot,
-					double & NuLout,
-					double & NuUout,
+					INMOST_DATA_REAL_TYPE& NuLout,
+					INMOST_DATA_REAL_TYPE& NuUout,
 					double& testimator);
 
 	void CheckColumnGaps(const Block& b, const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address, const std::vector< std::vector<Sparse::Row::entry> >& A_Entries);
