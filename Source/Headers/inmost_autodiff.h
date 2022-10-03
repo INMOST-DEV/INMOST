@@ -473,7 +473,7 @@ namespace INMOST
 		/// Remove global current automatizator used to set acceleration structures for automatic differentation.
 		static void RemoveCurrent() {CurrentAutomatizator = NULL;}
 		/// Set current global automatizator, so that variable will be optimized with row merger.
-		static void MakeCurrent(Automatizator * aut) {CurrentAutomatizator = aut;}
+		static void MakeCurrent(Automatizator* aut) {} // {CurrentAutomatizator = aut; }
 		/// Check that there is an automatizator.
 		static bool HaveCurrent() {return CurrentAutomatizator != NULL;}
 		/// Retrive the automatizator.

@@ -4434,7 +4434,7 @@ namespace INMOST
 						break;
 					}
 				}
-				if( ok ) AtA(i,i) = fabs(AtA(i,i)) < 0.0 ? - 1.0e-12 : 1.0e-12;
+				if( ok ) AtA(i,i) = real_part(AtA(i,i)) < 0.0 ? - 1.0e-12 : 1.0e-12;
 				else
 				{
 					if( ierr )
