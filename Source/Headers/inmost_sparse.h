@@ -736,7 +736,9 @@ namespace INMOST
 			void RetriveRow(Row & r);
 			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
 			/// Get current number of nonzeros from linked list.
-			INMOST_DATA_ENUM_TYPE Size() {return Nonzeros;}
+			INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}
+			/// Check if linked list is empty.
+			bool Empty() const { return Nonzeros == 0; }
 			/// Retrive/add an entry from/to linked list.
 			/// @param pos Position in the list.
 			INMOST_DATA_REAL_TYPE & operator [] (INMOST_DATA_ENUM_TYPE pos);
