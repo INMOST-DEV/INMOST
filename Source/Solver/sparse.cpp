@@ -917,7 +917,7 @@ namespace INMOST
 					ret(i,j) = data[rows(i,j)];
 			return ret;
 		}
-
+#if defined(USE_AUTODIFF)
 		INMOST::Matrix<value_reference> Vector::operator [](const INMOST::AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows)
 		{
 			INMOST::Matrix<value_reference> ret(rows.Rows(), rows.Cols());
@@ -926,6 +926,7 @@ namespace INMOST
 					new (&ret(i, j)) value_reference(data[rows(i, j)]);
 			return ret;
 		}
+#endif //USE_AUTODIFF
 
 ////////class Matrix
 		void Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y

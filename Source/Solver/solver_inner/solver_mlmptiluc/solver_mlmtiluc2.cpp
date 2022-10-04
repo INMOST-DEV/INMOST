@@ -2902,9 +2902,9 @@ const double apert = 1.0e-8;
 											std::vector< std::vector<Sparse::Row::entry> > & U2_Entries,
 											interval<INMOST_DATA_ENUM_TYPE, bool> & Pivot,
 											bool block_pivot,
-											double& NuLout,
-											double& NuUout,
-											double & testimator)
+											INMOST_DATA_REAL_TYPE& NuLout,
+											INMOST_DATA_REAL_TYPE& NuUout,
+											double& testimator)
 	{
 		double tlocal;
 		INMOST_DATA_ENUM_TYPE swaps = 0, ndrops = 0, nzLU = 0, nzLU2 = 0;
@@ -3230,8 +3230,8 @@ const double apert = 1.0e-8;
 #endif			
 				if (block_pivot)
 				{
-					LineValuesU[k] = std::max(fabs(LineValuesU[k]), tau) * (LineValuesU[k] < 0 ? -1.0 : 1.0);
-					LineValuesL[k] = std::max(fabs(LineValuesL[k]), tau) * (LineValuesL[k] < 0 ? -1.0 : 1.0);
+					LineValuesU[k] = std::max(std::abs(LineValuesU[k]), tau) * (LineValuesU[k] < 0 ? -1.0 : 1.0);
+					LineValuesL[k] = std::max(std::abs(LineValuesL[k]), tau) * (LineValuesL[k] < 0 ? -1.0 : 1.0);
 				}
 				LU_Diag[k] = (LineValuesU[k] + LineValuesL[k]) / 2.0;
 				//if (std::fabs(LineValuesU[k]) < std::fabs(LineValuesL[k]))
@@ -5034,7 +5034,7 @@ const double apert = 1.0e-8;
 											if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 												LineValues[j] -= u;
 #if defined(SCHUR_DROPPING_LF_PREMATURE)
-											else if (fabs(u) > dtol * std::min(LU_Diag[j],1.0))
+											else if (fabs(u) > dtol * std::min(LU_Diag[j],INMOST_DATA_REAL_TYPE(1.0)))
 #else
 											else if (!check_zero(u))
 #endif
@@ -5073,7 +5073,7 @@ const double apert = 1.0e-8;
 											if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 												LineValues[j] -= u;
 #if defined(SCHUR_DROPPING_LF_PREMATURE)
-											else if (fabs(u) > dtol * std::min(LU_Diag[j],1.0))
+											else if (fabs(u) > dtol * std::min(LU_Diag[j],INMOST_DATA_REAL_TYPE(1.0)))
 #else
 											else if (!check_zero(u))
 #endif
@@ -5397,7 +5397,7 @@ const double apert = 1.0e-8;
 										if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 											LineValues[j] -= u;
 #if defined(SCHUR_DROPPING_EU_PREMATURE)
-										else if (fabs(u) > dtol * std::min(LU_Diag[j],1.0))
+										else if (fabs(u) > dtol * std::min(LU_Diag[j],INMOST_DATA_REAL_TYPE(1.0)))
 #else
 										else if (!check_zero(u))
 #endif
@@ -5432,7 +5432,7 @@ const double apert = 1.0e-8;
 										if (LineIndeces[j + 1] != UNDEF) // There is an entry in the list
 											LineValues[j] -= u;
 #if defined(SCHUR_DROPPING_EU_PREMATURE)
-										else if (fabs(u) > dtol * std::min(LU_Diag[j],1.0))
+										else if (fabs(u) > dtol * std::min(LU_Diag[j],INMOST_DATA_REAL_TYPE(1.0)))
 #else
 										else if (!check_zero(u))
 #endif
@@ -5753,7 +5753,7 @@ const double apert = 1.0e-8;
 										INMOST_DATA_REAL_TYPE u = LineValues[Ui];
 										assert(!(u != u));
 #if defined(SCHUR_DROPPING_S)
-										if (fabs(u) >= std::min(Srowmax[k], Scolmax[Ui]) * std::min(std::pow(tau,2),tau2) / NuL / NuU )
+										if (fabs(u) >= std::min(Srowmax[k], Scolmax[Ui]) * std::min(double(std::pow(tau,2)),double(tau2)) / NuL / NuU )
 #else
 										if (!check_zero(u))
 										//if( fabs(u) > std::pow(std::min(pow(tau,2),tau2),1.5) )

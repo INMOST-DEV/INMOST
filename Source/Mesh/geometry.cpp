@@ -179,7 +179,7 @@ namespace INMOST
 		l13 = vec_len(p3,p1,3);
 		l23 = vec_len(p3,p2,3);
 		halfperim = 0.5*(l12+l13+l23);
-		return sqrt(std::max(0.0, halfperim * (halfperim - l12) * (halfperim - l13) * (halfperim - l23)));
+		return sqrt(std::max(Storage::real(0.0), halfperim * (halfperim - l12) * (halfperim - l13) * (halfperim - l23)));
 	}
 
 	__INLINE static bool inside_tet(const Storage::real p1[3], const Storage::real p2[3], const Storage::real p3[3], const Storage::real p4[3], const Storage::real p[3], Storage::real eps)

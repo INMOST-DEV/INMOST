@@ -4449,8 +4449,8 @@ namespace INMOST
 								XF1 += raMatrixMake(Node(this, block_nodes[cur1 * 8 + nodes[d][q] + s])->Coords().data(),3,1);
 								XF2 += raMatrixMake(Node(this, block_nodes[cur2 * 8 + nodes[d][q] + 0])->Coords().data(),3,1);
 							}
-							XF1 *= 0.25;
-							XF2 *= 0.25;
+							XF1 *= INMOST_DATA_REAL_TYPE(0.25);
+							XF2 *= INMOST_DATA_REAL_TYPE(0.25);
 							
 							//compute cell centers
 							X1.Zero();
@@ -4460,8 +4460,8 @@ namespace INMOST
 								X1 += raMatrixMake(Node(this, block_nodes[cur1 * 8 + q])->Coords().data(),3,1);
 								X2 += raMatrixMake(Node(this, block_nodes[cur2 * 8 + q])->Coords().data(),3,1);
 							}
-							X1 *= 0.125;
-							X2 *= 0.125;
+							X1 *= INMOST_DATA_REAL_TYPE(0.125);
+							X2 *= INMOST_DATA_REAL_TYPE(0.125);
 							
 							D1 = XF1 - X1;
 							D2 = X2 - XF2;

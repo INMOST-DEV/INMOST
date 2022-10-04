@@ -2910,7 +2910,7 @@ namespace INMOST
 			return M(i, j);
 		}
 	};
-
+#if defined(USE_AUTODIFF)
 	template<>
 	class MatrixMul<INMOST_DATA_REAL_TYPE, variable, Promote<INMOST_DATA_REAL_TYPE,variable>::type > : public AbstractMatrixReadOnly< Promote<INMOST_DATA_REAL_TYPE, variable>::type >
 	{
@@ -3148,7 +3148,7 @@ namespace INMOST
 			return M(i, j);
 		}
 	};
-
+#endif //USE_AUTODIFF
 	//template<typename VarA, typename VarB, typename VarR>
 	//thread_private< Matrix<VarR> > MatrixMul<VarA, VarB, VarR>::M;
 
@@ -3222,7 +3222,7 @@ namespace INMOST
 			return ret;
 		}
 	};
-
+#if defined(USE_AUTODIFF)
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixMulShellCoef : public AbstractMatrixReadOnly< VarR >
 	{
@@ -3293,7 +3293,7 @@ namespace INMOST
 			return ret;
 		}
 	};
-
+#endif //USE_AUTODIFF
 	template<typename VarA, typename VarB>
 	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
 	{
@@ -3779,6 +3779,7 @@ namespace INMOST
 		*/
 	}
 
+#if defined(USE_AUTODIFF)
 	template<typename Var>
 	template<typename A>
 	MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
@@ -3786,6 +3787,7 @@ namespace INMOST
 	{
 		return MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
 	}
+#endif //USE_AUTODIFF
 	
 	template<typename Var>
 	template<typename typeB>
@@ -3797,7 +3799,7 @@ namespace INMOST
 				assign((*this)(i,j),(*this)(i,j)*coef);
 		return *this;
 	}
-	
+#if defined(USE_AUTODIFF)
 	template<typename Var>
 	template<typename A>
 	MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
@@ -3805,6 +3807,7 @@ namespace INMOST
 	{
 		return MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
 	}
+#endif //USE_AUTODIFF
 
 	template<typename Var>
 	template<typename typeB>
