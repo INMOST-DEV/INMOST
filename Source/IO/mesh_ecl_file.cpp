@@ -2849,7 +2849,7 @@ namespace INMOST
 				std::cout << "Started processing grid defined by TOPS" << std::endl;
 			}
 			std::vector<HandleType> newnodes((dims[0] + 1)*(dims[1] + 1)*(dims[2] + 1));
-			Storage::real x, y, z, node_xyz[3];
+			Storage::real x, y, z, dz, node_xyz[3];
 			x = 0.0;
 			int numnode = 0;
 			for (int i = 0; i < dims[0] + 1; i++)
@@ -2865,12 +2865,15 @@ namespace INMOST
 						tops[ECL_IJK_DATA(pif, pjb, 0)] +
 						tops[ECL_IJK_DATA(pif, pjf, 0)]
 						)*0.25;
-					z -= (
+					/*
+					dz = (
 						xyz[3 * ECL_IJK_DATA(pib, pjb, 0) + 2] +
 						xyz[3 * ECL_IJK_DATA(pib, pjf, 0) + 2] +
 						xyz[3 * ECL_IJK_DATA(pif, pjb, 0) + 2] +
 						xyz[3 * ECL_IJK_DATA(pif, pjf, 0) + 2]
-						)*0.25;
+						) * 0.25;
+					z -= dz;
+					*/
 					for (int k = 0; k < dims[2] + 1; k++)
 					{
 						Storage::integer pkf = std::min<Storage::integer>(dims[2] - 1, k), pkb = std::max(k - 1, 0);
@@ -2942,16 +2945,17 @@ namespace INMOST
 							xyz[3 * ECL_IJK_DATA(pif, pjf, pkb) + 1]
 							)
 							)*0.25;
-						z += (
-							xyz[3 * ECL_IJK_DATA(pib, pjb, pkb) + 2] +
-							xyz[3 * ECL_IJK_DATA(pib, pjf, pkb) + 2] +
-							xyz[3 * ECL_IJK_DATA(pif, pjb, pkb) + 2] +
-							xyz[3 * ECL_IJK_DATA(pif, pjf, pkb) + 2] +
+						dz = (
 							xyz[3 * ECL_IJK_DATA(pib, pjb, pkf) + 2] +
 							xyz[3 * ECL_IJK_DATA(pib, pjf, pkf) + 2] +
 							xyz[3 * ECL_IJK_DATA(pif, pjb, pkf) + 2] +
-							xyz[3 * ECL_IJK_DATA(pif, pjf, pkf) + 2]
-							)*0.125;
+							xyz[3 * ECL_IJK_DATA(pif, pjf, pkf) + 2] //+
+							//xyz[3 * ECL_IJK_DATA(pib, pjb, pkf) + 2] +
+							//xyz[3 * ECL_IJK_DATA(pib, pjf, pkf) + 2] +
+							//xyz[3 * ECL_IJK_DATA(pif, pjb, pkf) + 2] +
+							//xyz[3 * ECL_IJK_DATA(pif, pjf, pkf) + 2]
+							) * 0.25;
+						z += dz;
 					}
 					y += (
 						xyz[3 * ECL_IJK_DATA(pib, pjb, 0) + 1] +
