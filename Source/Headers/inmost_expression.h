@@ -2611,6 +2611,9 @@ __INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val)
 __INLINE bool check_nans_infs(INMOST::var_expression const & e) {return e.check_nans() || e.check_infs();}
 __INLINE bool check_nans_infs(INMOST::multivar_expression const & e) {return e.check_nans() || e.check_infs();}
 __INLINE bool check_nans_infs(INMOST::multivar_expression_reference const & e) {return e.check_nans() || e.check_infs();}
+__INLINE void GetInterval(INMOST_DATA_REAL_TYPE val, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) { (void)val; (void)beg; (void)end; (void)cnt; }
+__INLINE void GetInterval(INMOST_DATA_CPLX_TYPE val, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) { (void)val; (void)beg; (void)end; (void)cnt; }
+__INLINE void GetInterval(const INMOST::basic_expression& expr, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) { expr.GetInterval(beg, end, cnt); }
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
 __INLINE                 INMOST_DATA_REAL_TYPE condition(INMOST_DATA_REAL_TYPE control, INMOST_DATA_REAL_TYPE if_ge_zero, INMOST_DATA_REAL_TYPE if_lt_zero) {return control >= 0.0 ? if_ge_zero : if_lt_zero;}
@@ -2781,6 +2784,8 @@ template<class A>          __INLINE                 INMOST::function_expression<
 }
 __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
 #else //USE_AUTODIFF
+__INLINE void GetInterval(INMOST_DATA_REAL_TYPE val, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) { (void)val; (void)beg; (void)end; (void)cnt; }
+__INLINE void GetInterval(INMOST_DATA_CPLX_TYPE val, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) { (void)val; (void)beg; (void)end; (void)cnt; }
 __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return __isinf__(val);}
 __INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}

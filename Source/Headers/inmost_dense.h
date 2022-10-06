@@ -694,7 +694,15 @@ namespace INMOST
 		}
 		*/
 		/// Destructor
-		virtual ~AbstractMatrixReadOnly() {};
+		virtual ~AbstractMatrixReadOnly() {}
+		/// Retrive interval of indices of derivatives.
+		virtual void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
+				for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
+					GetInterval((*this)(i, j), beg, end, cnt);
+		}
+
 	};
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
@@ -711,6 +719,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly<Var>::Repack;
 		using AbstractMatrixReadOnly<Var>::ConcatRows;
 		using AbstractMatrixReadOnly<Var>::ConcatCols;
+		
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
@@ -859,6 +868,14 @@ namespace INMOST
 		MatrixConcatRows<Var> ConcatRows(AbstractMatrix<Var>& B) { return MatrixConcatRows<Var>(*this, B); }
 		/// Destructor
 		virtual ~AbstractMatrix() {};
+		/// Retrive interval of indices of derivatives.
+		//virtual void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		//{
+		//	for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
+		//		for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
+		//			GetInterval((*this)(i, j), beg, end, cnt);
+		//}
+
 	};
 	
 	
@@ -2184,6 +2201,7 @@ namespace INMOST
 					ret(i,j) = (*this)(i,j);
 			return ret;
 		}
+
 	};
 
 	template<typename Var>
@@ -2208,6 +2226,10 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
 		__INLINE Var operator()(enumerator i, enumerator j) const { return i == j ? c : Var(0.0); }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			GetInterval(c, beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2232,6 +2254,10 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
 		__INLINE Var operator()(enumerator i, enumerator j) const { return c; }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			GetInterval(c, beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2256,6 +2282,10 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return 1; }
 		__INLINE Var operator()(enumerator i, enumerator j) const { return c; }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			GetInterval(c, beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2280,6 +2310,11 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
 		__INLINE Var operator()(enumerator i, enumerator j) const { return i == j ? diag[i] : Var(0.0); }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			for(enumerator k = 0; k < n; ++k)
+				GetInterval(diag[k], beg, end, cnt);
+		}
 	};
 
 	template<typename VarA, typename VarB>
@@ -2316,6 +2351,12 @@ namespace INMOST
 		__INLINE typename Promote<VarA, VarB>::type operator()(enumerator i, enumerator j) const
 		{
 			return (*A)(i,j) + (*B)(i,j);
+		}
+
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2354,6 +2395,11 @@ namespace INMOST
 		{
 			return (*A)(i, j) - (*B)(i, j);
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2383,6 +2429,11 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE Var operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
+
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2412,6 +2463,10 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(j, i)); }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2441,6 +2496,10 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(i, j)); }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2469,6 +2528,10 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE Var operator()(enumerator i, enumerator j) const { return -(*A)(i, j); }
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2513,6 +2576,10 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2547,6 +2614,11 @@ namespace INMOST
 		__INLINE Var operator()(enumerator i, enumerator j) const
 		{
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2585,6 +2657,11 @@ namespace INMOST
 				return (*A)(i, j);
 			else
 				return (*B)(i - A->Rows(), j);
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2637,6 +2714,11 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2671,6 +2753,11 @@ namespace INMOST
 		__INLINE Var operator()(enumerator i, enumerator j) const
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2709,6 +2796,11 @@ namespace INMOST
 				return (*A)(i, j);
 			else
 				return (*B)(i, j - A->Cols());
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2761,6 +2853,11 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename Var>
@@ -2794,6 +2891,10 @@ namespace INMOST
 		{
 			enumerator ind = i * m + j;
 			return (*A)(ind / A->Cols(), ind % A->Cols());
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -2852,6 +2953,10 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<typename VarA, typename VarB, typename VarR>
@@ -2909,16 +3014,12 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			M.GetMatrixInterval(beg, end, cnt);
+		}
 	};
 #if defined(USE_AUTODIFF)
-	inline void GetInterval(const AbstractMatrixReadOnly<variable>& A, INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt)
-	{
-		for (INMOST_DATA_ENUM_TYPE i = 0; i < A.Rows(); ++i)
-			for (INMOST_DATA_ENUM_TYPE j = 0; j < A.Cols(); ++j)
-				A(i, j).GetInterval(beg, end, cnt);
-	}
-
-
 	template<>
 	class MatrixMul<INMOST_DATA_REAL_TYPE, variable, Promote<INMOST_DATA_REAL_TYPE,variable>::type > : public AbstractMatrixReadOnly< Promote<INMOST_DATA_REAL_TYPE, variable>::type >
 	{
@@ -2956,7 +3057,7 @@ namespace INMOST
 			}
 			M.Resize(rA.Rows(), rB.Cols());
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			GetInterval(*pB, beg, end, cnt);
+			pB->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
 			{
 				Sparse::RowMerger merger(beg,end);
@@ -2998,6 +3099,10 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			M.GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<>
@@ -3037,7 +3142,7 @@ namespace INMOST
 			}
 			M.Resize(rA.Rows(), rB.Cols());
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			GetInterval(*pA, beg, end, cnt);
+			pA->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
 			{
 				Sparse::RowMerger merger(beg, end);
@@ -3079,6 +3184,10 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			M.GetMatrixInterval(beg, end, cnt);
+		}
 	};
 
 	template<>
@@ -3118,8 +3227,8 @@ namespace INMOST
 			}
 			M.Resize(rA.Rows(), rB.Cols());
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			GetInterval(*pA, beg, end, cnt);
-			GetInterval(*pB, beg, end, cnt);
+			pA->GetMatrixInterval(beg, end, cnt);
+			pB->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
 			{
 				Sparse::RowMerger merger(beg, end);
@@ -3162,6 +3271,10 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			M.GetMatrixInterval(beg, end, cnt);
+		}
 	};
 #endif //USE_AUTODIFF
 	//template<typename VarA, typename VarB, typename VarR>
@@ -3200,6 +3313,11 @@ namespace INMOST
 			assign(ret, (*A)(i, j) * (*coef));
 			return ret;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			GetInterval(*coef, beg, end, cnt);
+		}
 	};
 
 	template<typename VarA, typename VarB, typename VarR>
@@ -3236,6 +3354,11 @@ namespace INMOST
 			assign(ret, (*A)(i, j) / (*coef));
 			return ret;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			GetInterval(*coef, beg, end, cnt);
+		}
 	};
 #if defined(USE_AUTODIFF)
 	template<typename VarA, typename VarB, typename VarR>
@@ -3270,6 +3393,11 @@ namespace INMOST
 			VarR ret;
 			assign(ret, (*A)(i, j) * coef);
 			return ret;
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			GetInterval(coef, beg, end, cnt);
 		}
 	};
 
@@ -3307,6 +3435,11 @@ namespace INMOST
 			assign(ret, (*A)(i, j) / coef);
 			return ret;
 		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			GetInterval(coef, beg, end, cnt);
+		}
 	};
 #endif //USE_AUTODIFF
 	template<typename VarA, typename VarB>
@@ -3339,6 +3472,11 @@ namespace INMOST
 		__INLINE typename Promote<VarA, VarB>::type operator()(enumerator i, enumerator j) const
 		{
 			return (*A)(i / B->Rows(), j / B->Cols()) * (*B)(i % B->Rows(), j % B->Cols());
+		}
+		void GetMatrixInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end, INMOST_DATA_ENUM_TYPE cnt) const
+		{
+			A->GetMatrixInterval(beg, end, cnt);
+			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
@@ -3645,7 +3783,7 @@ namespace INMOST
 		assert(Rows() == other.Rows());
 		Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(other, beg, end, cnt);
+		other.GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
 		{
 			Sparse::RowMerger merger(beg,end);
@@ -3678,7 +3816,7 @@ namespace INMOST
 		assert(Rows() == other.Rows());
 		Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(*this, beg, end, cnt);
+		GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
 		{
 			Sparse::RowMerger merger(beg,end);
@@ -3711,8 +3849,8 @@ namespace INMOST
 		assert(Rows() == other.Rows());
 		Promote<variable,variable>::type ret = 0.0;
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(*this, beg, end, cnt);
-		GetInterval(other, beg, end, cnt);
+		GetMatrixInterval(beg, end, cnt);
+		other.GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
 		{
 			Sparse::RowMerger merger(beg,end);
@@ -4023,8 +4161,8 @@ namespace INMOST
 		Matrix<Promote<variable,variable>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(A, beg, end, cnt);
-		GetInterval(B, beg, end, cnt);
+		A.GetMatrixInterval(beg, end, cnt);
+		B.GetMatrixInterval(beg, end, cnt);
 		Sparse::RowMerger * pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
@@ -4146,7 +4284,7 @@ namespace INMOST
 		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type> ret(B);
 		SymmetricMatrix<INMOST_DATA_REAL_TYPE> L(A);
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(B, beg, end, cnt);
+		B.GetMatrixInterval(beg, end, cnt);
 		Sparse::RowMerger* pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
@@ -4265,7 +4403,7 @@ namespace INMOST
 		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		GetInterval(A, beg, end, cnt);
+		A.GetMatrixInterval(beg, end, cnt);
 		Sparse::RowMerger* pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
