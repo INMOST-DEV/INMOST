@@ -267,6 +267,8 @@ namespace INMOST
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Value corresponding to the position in the array.
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
+			/// Retrive interval of nonzeroes
+			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
 			iterator                Begin() {return data.begin();}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
@@ -657,26 +659,15 @@ namespace INMOST
 		private:
 			bool Sorted; ///< Contents of linked list should be sorted.
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
-			INMOST_DATA_ENUM_TYPE IntervalBeg; ///< Begin of global interval of owned index interval
-			INMOST_DATA_ENUM_TYPE IntervalEnd;  ///< End of global interval of owned index interval
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
-			std::map< INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE > Nonlocal; ///< Additional space
 		public:
-			/// This function converts global index into local index.
-			/// @param pos Global index.
-			/// @return Local index.
-			__INLINE INMOST_DATA_ENUM_TYPE MapIndex(INMOST_DATA_ENUM_TYPE pos) const { return (pos < IntervalBeg || pos >= IntervalEnd ? ENUMUNDEF : pos); }
-			/// This function converts local index into global index.
-			/// @param pos Local index.
-			/// @return Global index.
-			__INLINE INMOST_DATA_ENUM_TYPE UnmapIndex(INMOST_DATA_ENUM_TYPE pos) const { return pos; }
 			/// Default constructor without size specified.
 			RowMerger();
 			/// Constructor with size specified.
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = false);
 			/// Destructor.
 			~RowMerger();
 			/// Resize linked list for new interval.

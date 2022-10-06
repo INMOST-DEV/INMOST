@@ -25,6 +25,8 @@
 #pragma warning(disable : 4503)
 #endif
 
+#define CNT_USE_MERGER 4
+
 #if defined(USE_AUTODIFF)
 namespace INMOST
 {
@@ -33,41 +35,31 @@ namespace INMOST
 	class basic_expression
 	{
 	public:
-		basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Created" << std::endl;}
-		//basic_expression(const basic_expression & other) {(void)other;};//std::cout << this << " Created from " << &other << std::endl;}
+		basic_expression() {}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
 		virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const = 0;
-		virtual ~basic_expression() {}//if( GetAutodiffPrint() ) std::cout << this << " Destroied" << std::endl;}
+		virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const = 0;
+		virtual ~basic_expression() {}
 	};
-	
-	bool CheckCurrentAutomatizator();
-	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr);
-	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr);
-	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r);
-	Sparse::RowMerger & GetCurrentMerger();
-	//bool GetAutodiffPrint();
-	//void SetAutodiffPrint(bool set);
 	
 	template<class Derived>
 	class shell_expression : virtual public basic_expression
 	{
 	public:
-		shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Created for " << dynamic_cast<basic_expression *>(this) << std::endl;}
-		//shell_expression(const shell_expression & other) {}//std::cout << this << " Shell Created from " << &other << std::endl;}
+		shell_expression() {}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
 		__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
+		__INLINE virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return static_cast<const Derived*>(this)->GetInterval(beg, end, cnt);	}
 		operator Derived & () {return *static_cast<Derived *>(this);}
 		operator const Derived & () const {return *static_cast<const Derived *>(this);}
-		~shell_expression() {}// if( GetAutodiffPrint() ) std::cout << this << " Shell Destroied for " << dynamic_cast<basic_expression *>(this) << std::endl;}
-		//Derived * GetDerived() { return dynamic_cast<Derived *>(this); }
+		~shell_expression() {}
 	};
 	
 	
- 
 	class const_expression : public shell_expression<const_expression>
 	{
 		INMOST_DATA_REAL_TYPE value;
@@ -78,12 +70,12 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {(void)mult; (void)r;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {(void)mult; (void)r;}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {(void)multJ; (void)J; (void)multH; (void)H;}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return; }
 		__INLINE const_expression & operator =(const_expression const & other)
 		{
 			value = other.value;
 			return *this;
 		}
-		//operator INMOST_DATA_REAL_TYPE () {return value;}
 	};
 	
 	
@@ -102,6 +94,15 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);  (void)multH; (void)H;}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			if (index != ENUMUNDEF)
+			{
+				beg = std::min(beg, index);
+				end = std::max(end, index+1);
+				cnt++;
+			}
+		}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE i) const {return index == i? 1.0 : 0.0;}
 		__INLINE var_expression & operator =(var_expression const & other)
 		{
@@ -149,27 +150,36 @@ namespace INMOST
 		multivar_expression(const basic_expression & expr)
 		{
 			value = expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				FromBasicExpression(entries,expr); //Optimized version
-			else expr.GetJacobian(1.0,entries);
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			expr.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
+			{
+				Sparse::RowMerger merger(beg, end);
+				expr.GetJacobian(1.0, merger);
+				merger.RetriveRow(entries);
+			}
+			else expr.GetJacobian(1.0, entries);
 		}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			r.AddRow(mult, entries);
-			//~ for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				//~ r[it->first] += it->second*mult;
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
-			if( CheckCurrentAutomatizator() )
-				FromGetJacobian(*this,mult,r);
-			else
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			r.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
 			{
-				for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-					r[it->first] += it->second*mult;
+				Sparse::RowMerger merger(beg, end);
+				merger.AddRow(mult, entries);
+				merger.AddRow(1.0, r);
+				merger.RetriveRow(r);
 			}
+			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				r[it->first] += it->second * mult;
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
@@ -178,6 +188,10 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H.Clear();
             (void)multH;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const 
+		{ 
+			entries.GetInterval(beg, end, cnt);
 		}
 		__INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -230,12 +244,20 @@ namespace INMOST
 		__INLINE multivar_expression & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(entries,1.0,1.0,expr);
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			expr.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
+			{
+				Sparse::RowMerger merger(beg, end);
+				merger.PushRow(1.0, entries);
+				expr.GetJacobian(1.0, merger);
+				merger.RetriveRow(entries);
+			}
 			else
 			{
 				Sparse::Row tmp(entries);
-				expr.GetJacobian(1.0,tmp);
+				expr.GetJacobian(1.0, tmp);
 				entries.Swap(tmp);
 			}
 			return *this;
@@ -243,12 +265,20 @@ namespace INMOST
 		__INLINE multivar_expression & operator -=(basic_expression const & expr)
 		{
 			value -= expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(entries,1.0,-1.0,expr);
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			expr.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
+			{
+				Sparse::RowMerger merger(beg, end);
+				merger.PushRow(1.0, entries);
+				expr.GetJacobian(-1.0, merger);
+				merger.RetriveRow(entries);
+			}
 			else
 			{
 				Sparse::Row tmp(entries);
-				expr.GetJacobian(-1.0,tmp);
+				expr.GetJacobian(-1.0, tmp);
 				entries.Swap(tmp);
 			}
 			return *this;
@@ -256,13 +286,21 @@ namespace INMOST
 		__INLINE multivar_expression & operator *=(basic_expression const & expr)
 		{
 			INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(entries,rval,lval,expr);
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			expr.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
+			{
+				Sparse::RowMerger merger(beg, end);
+				merger.PushRow(rval, entries);
+				expr.GetJacobian(lval, merger);
+				merger.RetriveRow(entries);
+			}
 			else
 			{
 				Sparse::Row tmp(entries);
-				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
-				expr.GetJacobian(lval,tmp);
+				for (Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+				expr.GetJacobian(lval, tmp);
 				entries.Swap(tmp);
 			}
 			value *= rval;
@@ -273,13 +311,21 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE rval = expr.GetValue();
 			INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
 			value *= reciprocial_rval;
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(entries,reciprocial_rval,-value*reciprocial_rval,expr);
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			expr.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
+			{
+				Sparse::RowMerger merger(beg, end);
+				merger.PushRow(reciprocial_rval, entries);
+				expr.GetJacobian(-value * reciprocial_rval, merger);
+				merger.RetriveRow(entries);
+			}
 			else
 			{
 				Sparse::Row tmp(entries);
-				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
-				expr.GetJacobian(-value*reciprocial_rval,tmp);
+				for (Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+				expr.GetJacobian(-value * reciprocial_rval, tmp);
 				entries.Swap(tmp);
 			}
 			return *this;
@@ -431,13 +477,18 @@ namespace INMOST
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
-			if( CheckCurrentAutomatizator() )
-				FromGetJacobian(*this,mult,r);
-			else
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries.GetInterval(beg, end, cnt);
+			r.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
 			{
-				for(Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-					r[it->first] += it->second*mult;
+				Sparse::RowMerger merger(beg, end);
+				merger.AddRow(mult, entries);
+				merger.AddRow(1.0, r);
+				merger.RetriveRow(r);
 			}
+			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+				r[it->first] += it->second * mult;
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
@@ -446,6 +497,10 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H = hessian_entries;
 			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			entries.GetInterval(beg, end, cnt);
 		}
 		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
 		{
@@ -647,13 +702,18 @@ namespace INMOST
 		{
 			if( entries )
 			{
-				if( CheckCurrentAutomatizator() )
-					FromGetJacobian(*this,mult,r);
-				else
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				entries->GetInterval(beg, end, cnt);
+				r.GetInterval(beg, end, cnt);
+				if (cnt >= CNT_USE_MERGER)
 				{
-					for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-						r[it->first] += it->second*mult;
+					Sparse::RowMerger merger(beg, end);
+					merger.AddRow(mult, *entries);
+					merger.AddRow(1.0, r);
+					merger.RetriveRow(r);
 				}
+				else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
+					r[it->first] += it->second * mult;
 			}
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J,INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
@@ -667,7 +727,11 @@ namespace INMOST
 			}
             (void)multH;
 		}
-		 multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			entries->GetInterval(beg, end, cnt);
+		}
+		multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
 			value = pvalue;
 			entries->Clear();
@@ -677,13 +741,22 @@ namespace INMOST
 		__INLINE multivar_expression_reference & operator = (basic_expression const & expr)
 		{
 			value = expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				FromBasicExpression(*entries,expr);
-			else
+			if (entries)
 			{
-				Sparse::Row tmp;
-				expr.GetJacobian(1.0,tmp);
-				entries->Swap(tmp);
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				expr.GetInterval(beg, end, cnt);
+				if (cnt > 8)
+				{
+					Sparse::RowMerger merger(beg, end);
+					expr.GetJacobian(1.0, merger);
+					merger.RetriveRow(*entries);
+				}
+				else
+				{
+					Sparse::Row tmp;
+					expr.GetJacobian(1.0, tmp);
+					entries->Swap(tmp);
+				}
 			}
 			return *this;
 		}
@@ -708,40 +781,73 @@ namespace INMOST
 		__INLINE multivar_expression_reference & operator +=(basic_expression const & expr)
 		{
 			value += expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(*entries,1.0,1.0,expr);
-			else
+			if (entries)
 			{
-				Sparse::Row tmp(*entries);
-				expr.GetJacobian(1.0,tmp);
-				entries->Swap(tmp);
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				entries->GetInterval(beg, end, cnt);
+				expr.GetInterval(beg, end, cnt);
+				if (cnt >= CNT_USE_MERGER)
+				{
+					Sparse::RowMerger merger(beg, end);
+					merger.PushRow(1.0, *entries);
+					expr.GetJacobian(1.0, merger);
+					merger.RetriveRow(*entries);
+				}
+				else
+				{
+					Sparse::Row tmp(*entries);
+					expr.GetJacobian(1.0, tmp);
+					entries->Swap(tmp);
+				}
 			}
 			return *this;
 		}
 		__INLINE multivar_expression_reference & operator -=(basic_expression const & expr)
 		{
 			value -= expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(*entries,1.0,-1.0,expr);
-			else
+			if (entries)
 			{
-				Sparse::Row tmp(*entries);
-				expr.GetJacobian(-1.0,tmp);
-				entries->Swap(tmp);
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				entries->GetInterval(beg, end, cnt);
+				expr.GetInterval(beg, end, cnt);
+				if (cnt >= CNT_USE_MERGER)
+				{
+					Sparse::RowMerger merger(beg, end);
+					merger.PushRow(1.0, *entries);
+					expr.GetJacobian(-1.0, merger);
+					merger.RetriveRow(*entries);
+				}
+				else
+				{
+					Sparse::Row tmp(*entries);
+					expr.GetJacobian(-1.0, tmp);
+					entries->Swap(tmp);
+				}
 			}
 			return *this;
 		}
 		__INLINE multivar_expression_reference & operator *=(basic_expression const & expr)
 		{
 			INMOST_DATA_REAL_TYPE lval = value, rval = expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(*entries,rval,lval,expr);
-			else
+			if (entries)
 			{
-				Sparse::Row tmp(*entries);
-				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
-				expr.GetJacobian(lval,tmp);
-				entries->Swap(tmp);
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				entries->GetInterval(beg, end, cnt);
+				expr.GetInterval(beg, end, cnt);
+				if (cnt >= CNT_USE_MERGER)
+				{
+					Sparse::RowMerger merger(beg, end);
+					merger.PushRow(rval, *entries);
+					expr.GetJacobian(lval, merger);
+					merger.RetriveRow(*entries);
+				}
+				else
+				{
+					Sparse::Row tmp(*entries);
+					for (Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= rval;
+					expr.GetJacobian(lval, tmp);
+					entries->Swap(tmp);
+				}
 			}
 			value *= rval;
 			return *this;
@@ -751,14 +857,25 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE rval = expr.GetValue();
 			INMOST_DATA_REAL_TYPE reciprocial_rval = 1.0/rval;
 			value *= reciprocial_rval;
-			if( CheckCurrentAutomatizator() )
-				AddBasicExpression(*entries,reciprocial_rval,-value*reciprocial_rval,expr);
-			else
+			if (entries)
 			{
-				Sparse::Row tmp(*entries);
-				for(Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
-				expr.GetJacobian(-value*reciprocial_rval,tmp);
-				entries->Swap(tmp);
+				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+				entries->GetInterval(beg, end, cnt);
+				expr.GetInterval(beg, end, cnt);
+				if (cnt >= CNT_USE_MERGER)
+				{
+					Sparse::RowMerger merger(beg, end);
+					merger.PushRow(reciprocial_rval, *entries);
+					expr.GetJacobian(-value * reciprocial_rval, merger);
+					merger.RetriveRow(*entries);
+				}
+				else
+				{
+					Sparse::Row tmp(*entries);
+					for (Sparse::Row::iterator it = tmp.Begin(); it != tmp.End(); ++it) it->second *= reciprocial_rval;
+					expr.GetJacobian(-value * reciprocial_rval, tmp);
+					entries->Swap(tmp);
+				}
 			}
 			return *this;
 		}
@@ -821,6 +938,7 @@ namespace INMOST
 		/// Retrive derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const {}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const {}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return; }
 		value_reference& operator = (INMOST_DATA_REAL_TYPE pvalue) 
 		{ 
 			value = pvalue; 
@@ -923,13 +1041,18 @@ namespace INMOST
 		/// Retrive derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
-			if( CheckCurrentAutomatizator() )
-				FromGetJacobian(*this,mult,r);
-			else
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
+			entries->GetInterval(beg, end, cnt);
+			r.GetInterval(beg, end, cnt);
+			if (cnt >= CNT_USE_MERGER)
 			{
-				for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-					r[it->first] += it->second*mult;
+				Sparse::RowMerger merger(beg, end);
+				merger.AddRow(mult, *entries);
+				merger.AddRow(1.0, r);
+				merger.RetriveRow(r);
 			}
+			else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
+				r[it->first] += it->second * mult;
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J,INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
@@ -938,6 +1061,10 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H = *hentries;
 			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			entries->GetInterval(beg, end, cnt);
 		}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const {return GetRow().get_safe(index);}
 		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
@@ -1135,6 +1262,10 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ*dmult,J,multH*dmult,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1161,6 +1292,10 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			arg.GetHessian(multJ*dmult,J,multH*dmult,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1191,6 +1326,10 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ*dmult,J,multH*dmult,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1218,6 +1357,10 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ,J,multH,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1244,6 +1387,10 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			arg.GetHessian(-multJ,J,-multH,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1282,6 +1429,10 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(2*value*reciprocial_val*reciprocial_val*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1306,6 +1457,10 @@ namespace INMOST
 		{
 			arg.GetHessian(-multJ,J,-multH,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1329,6 +1484,10 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			arg.GetHessian(multJ,J,multH,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1360,6 +1519,10 @@ namespace INMOST
 			double a = (value == 0 ? (multJ < 0.0 ? -1 : 1) : 1);
 			double b = (value == 0 ? (multH < 0.0 ? -1 : 1) : 1);
 			arg.GetHessian( a * multJ * dmult,J, b*multH * dmult,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1395,6 +1558,10 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(coefJ*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1428,6 +1595,10 @@ namespace INMOST
 			arg.GetHessian(signJ, J, 2*multH*dmult, ArgH); //check
 			Sparse::HessianRow::MergeJacobianHessian(-coefJ*signJ*dmult,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1465,6 +1636,10 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
 			assert(H.isSorted());
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -1497,6 +1672,10 @@ namespace INMOST
 			arg.GetHessian(1,J,1,htmp);
 			Sparse::HessianRow::MergeJacobianHessian(-value*multH,J,J,dmult*multH,htmp,H);
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1534,6 +1713,10 @@ namespace INMOST
 			}
 			//arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	
@@ -1564,6 +1747,10 @@ namespace INMOST
 		{
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1596,6 +1783,10 @@ namespace INMOST
 		{
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1639,6 +1830,11 @@ namespace INMOST
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
+		}
 	};
 
 	template<class A>
@@ -1666,6 +1862,10 @@ namespace INMOST
 		{
 			(void)multJ, (void)J, (void)multH, (void)H;
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1708,6 +1908,11 @@ namespace INMOST
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
+		}
 	};
 	
 
@@ -1736,6 +1941,10 @@ namespace INMOST
 		{
 			(void)multJ, (void)J, (void)multH, (void)H;
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1786,6 +1995,11 @@ namespace INMOST
 			//merge sorted
 			Sparse::HessianRow::MergeJacobianHessian(2.0*multH,JL,JR,right.GetValue()*multH,HL,left.GetValue()*multH,HR,H);
 			assert(H.isSorted());
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1842,6 +2056,14 @@ namespace INMOST
 			//merge sorted
 			Sparse::HessianRow::MergeJacobianHessian(2.0,JL,JR,reciprocal_rval,HL,2*left.GetValue()*multH,HR,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			if (reciprocal_rval)
+			{
+				left.GetInterval(beg, end, cnt);
+				right.GetInterval(beg, end, cnt);
+			}
+		}
 	};
 	
 	template<class A, class B>
@@ -1885,6 +2107,11 @@ namespace INMOST
 			Sparse::HessianRow::MergeSortedRows(multH,HL,multH,HR,H);
 			assert(H.isSorted());
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A, class B>
@@ -1922,6 +2149,11 @@ namespace INMOST
 			right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
 			Sparse::Row::MergeSortedRows(multJ,JL,-multJ,JR,J);
 			Sparse::HessianRow::MergeSortedRows(multH,HL,-multH,HR,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -1969,6 +2201,11 @@ namespace INMOST
 		{
 			throw NotImplemented;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	
@@ -2007,6 +2244,11 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+			right.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -2052,6 +2294,10 @@ namespace INMOST
 			for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
             (void)J;
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			left.GetInterval(beg, end, cnt);
+		}
 	};
 	
 	template<class A>
@@ -2085,6 +2331,10 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			throw NotImplemented;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			right.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -2128,6 +2378,13 @@ namespace INMOST
 				left.GetHessian(multJ,J,multH,H);
 			else
 				right.GetHessian(multJ,J,multH,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			if( cond_value >= 0.0 )
+				left.GetInterval(beg, end, cnt);
+			else
+				right.GetInterval(beg, end, cnt);
 		}
 	};
 	
@@ -2175,6 +2432,13 @@ namespace INMOST
 			else
 				right.GetHessian(multJ,J,multH,H);
 		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			if( cond )
+				left.GetInterval(beg, end, cnt);
+			else
+				right.GetInterval(beg, end, cnt);
+		}
 		void SetCondition(bool _cond)
 		{
 			cond = _cond;
@@ -2221,6 +2485,10 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			arg.GetHessian(multJ*dmult,J,multH*ddmult,H);
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		{
+			arg.GetInterval(beg, end, cnt);
 		}
 		void SetFunctionValue(INMOST_DATA_REAL_TYPE val) {value = val;}
 		void SetFunctionDerivative(INMOST_DATA_REAL_TYPE val) {dmult = val;}

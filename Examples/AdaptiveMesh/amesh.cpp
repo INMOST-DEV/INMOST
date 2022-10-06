@@ -1159,7 +1159,7 @@ namespace INMOST
 								}
 							assert(face_edges.size() == 4);
 							//we need ordered nodes
-							m->FixEdgeOrder(face_edges.data(), face_edges.size());
+							m->FixEdgeOrder(face_edges.data(), (Storage::enumerator)face_edges.size());
 							/*
 							ElementArray<Node> face_nodes(m);
 							face_nodes.Unite(face_edges[0].getNodes());

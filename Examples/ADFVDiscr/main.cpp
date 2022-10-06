@@ -200,7 +200,7 @@ int main(int argc,char ** argv)
 		
 		{
 			Automatizator aut;
-			Automatizator::MakeCurrent(&aut);
+			//Automatizator::MakeCurrent(&aut);
 			INMOST_DATA_ENUM_TYPE iphi = aut.RegisterTag(phi,CELL);
 			aut.EnumerateEntries();
 

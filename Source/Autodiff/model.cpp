@@ -379,7 +379,6 @@ namespace INMOST
 	{
 		bool success = true;
 		R.Clear();
-		Automatizator::MakeCurrent(&aut);
 		double total_time = Timer(), model_time = 0;
 		for(std::vector< std::pair<std::string, AbstractSubModel *> >::const_iterator it = SubModels.begin();
 			it != SubModels.end(); ++it)
@@ -410,7 +409,6 @@ namespace INMOST
 		}
 		total_time = Timer() - total_time;
 		//~ std::cout << "total:" << total_time << std::endl;
-		Automatizator::RemoveCurrent();
 		return success;
 	}
 	

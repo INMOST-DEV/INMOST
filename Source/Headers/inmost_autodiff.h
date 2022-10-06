@@ -391,8 +391,6 @@ namespace INMOST
 	class Automatizator
 	{
 	private:
-		static Automatizator * CurrentAutomatizator; ///< Currently used automatizator for automatic differentiation acceleration structures.
-		std::vector<Sparse::RowMerger> merger; ///< Automatic differentiation acceleration structures.
 		typedef std::vector<AbstractEntry *>       blk_enum; ///< A type for an array of registered tags.
 		typedef std::vector<INMOST_DATA_ENUM_TYPE> del_enum; ///< A type for an array of deleted positions.
 		typedef std::vector<bool>                  act_enum; ///< A type for an array of deactivation flags.
@@ -468,17 +466,6 @@ namespace INMOST
 		AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE ind) {return *reg_blocks[ind];}
 		/// Retive the block from automatizator by index.
 		const AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE ind) const {return *reg_blocks[ind];}
-		/// @return Acceleration structure.
-		__INLINE Sparse::RowMerger & GetMerger() {return merger[OMP_THREAD];}
-		/// Remove global current automatizator used to set acceleration structures for automatic differentation.
-		static void RemoveCurrent() {CurrentAutomatizator = NULL;}
-		/// Set current global automatizator, so that variable will be optimized with row merger.
-		static void MakeCurrent(Automatizator* aut) {} // {CurrentAutomatizator = aut; }
-		/// Check that there is an automatizator.
-		static bool HaveCurrent() {return CurrentAutomatizator != NULL;}
-		/// Retrive the automatizator.
-		/// @return Currently set automatizator.
-		static Automatizator * GetCurrent() {return CurrentAutomatizator;}
 		/// Lists all the indices of registered tags.
 		/// @return An array with indices corresponding to all registered tags.
 		std::vector<INMOST_DATA_ENUM_TYPE> ListRegisteredEntries() const;

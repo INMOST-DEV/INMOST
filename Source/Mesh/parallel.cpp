@@ -3080,7 +3080,7 @@ namespace INMOST
 				mesh_2d_in_3d = true;//GetDimensions() == 3;
 				if( skin_data.size()/2 < 2 ) continue; //only one cell per face - skip boundary face
 				ElementArray<Cell> cells = it->getCells();
-				ncells = cells.size();
+				ncells = (int)cells.size();
 				if( ncells != skin_data.size()/2 ) //some cells are not present on current processor
 				{
 					for(int k = 0; !flag && k < ncells; ++k) if(cells[k].isValid())
@@ -3110,7 +3110,7 @@ namespace INMOST
 			
 			if( flag )
 			{
-				for(int i = 0; i < skin_data.size()/2; i++) //assert checks that there are two cells
+				for(int i = 0; i < (int)skin_data.size()/2; i++) //assert checks that there are two cells
 				{
 					Storage::integer owner = skin_data[i*2+1]; //cell owner
 					assert(owner >= 0 && owner < GetProcessorsNumber());

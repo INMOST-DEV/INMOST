@@ -32,45 +32,6 @@ namespace INMOST
 	template<>
 	Matrix<Demote<hessian_variable>::type >
 	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
-	
-	
-	Automatizator * Automatizator::CurrentAutomatizator = NULL;
-	bool print_ad_ctor = false;
-	bool GetAutodiffPrint() {return print_ad_ctor;}
-	void SetAutodiffPrint(bool set) {print_ad_ctor = set;}
-	bool CheckCurrentAutomatizator() {return Automatizator::HaveCurrent();}
-
-	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr)
-	{
-		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-		expr.GetJacobian(1.0,merger);
-		merger.RetriveRow(entries);
-		merger.Clear();
-	}
-
-	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr)
-	{
-		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-		merger.PushRow(multme,entries);
-		expr.GetJacobian(multit,merger);
-		merger.RetriveRow(entries);
-		merger.Clear();
-	}
-
-	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r)
-	{
-		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
-		expr.GetJacobian(mult,merger);
-		merger.AddRow(1.0,r);
-		merger.RetriveRow(r);
-		merger.Clear();
-	}
-	Sparse::RowMerger & GetCurrentMerger() {return Automatizator::GetCurrent()->GetMerger();}
-#else //USE_MESH
-	bool CheckCurrentAutomatizator() {return false;}
-	void FromBasicExpression(Sparse::Row & entries, const basic_expression & expr) {}
-	void AddBasicExpression(Sparse::Row & entries, INMOST_DATA_REAL_TYPE multme, INMOST_DATA_REAL_TYPE multit, const basic_expression & expr) {}
-	void FromGetJacobian(const basic_expression & expr, INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) {}
 #endif //USE_MESH
 	
 #if defined(USE_MESH)
@@ -314,19 +275,6 @@ namespace INMOST
 #endif
 		//INMOST_DATA_INTEGER_TYPE max_unknowns = m->AggregateMax(static_cast<INMOST_DATA_INTEGER_TYPE>(last_num));
 		//std::cout << "Proc " << m->GetProcessorRank() << " size " << last_num-first_num <<  " pre " << Pre.size() << " post " << Post.size() << " max " << max_unknowns << std::endl;
-#if defined(USE_OMP)
-#pragma omp parallel
-#endif //USE_OMP
-		{
-#if defined(USE_OMP)
-#pragma omp single
-#endif //USE_OMP
-			{
-				merger.resize(MAX_THREADS);
-			}
-			//~ merger[OMP_THREAD].Resize(first_num,last_num,std::vector<INMOST_DATA_ENUM_TYPE>(Pre.begin(),Pre.end()),std::vector<INMOST_DATA_ENUM_TYPE>(Post.begin(),Post.end()),false);
-			merger[OMP_THREAD].Resize(first_num,last_num,false);
-		}
 	}
 	
 	std::vector<INMOST_DATA_ENUM_TYPE> Automatizator::ListRegisteredEntries() const
