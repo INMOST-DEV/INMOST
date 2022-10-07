@@ -59,7 +59,7 @@ namespace INMOST
 
 ////////class RowMerger
 
-		RowMerger::RowMerger() : Sorted(true), Nonzeros(0) {}
+		RowMerger::RowMerger() : Sorted(false), Nonzeros(0) {}
 
 		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos)
 		{
@@ -107,12 +107,24 @@ namespace INMOST
 
 		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted)
 		{
-			LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin));// - NonlocalPre.size()));
-			LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1));// + NonlocalPost.size()));
-			std::fill(LinkedList.begin(),LinkedList.end(),Row::make_entry(UNDEF,0.0));
-			LinkedList.begin()->first = EOL;
-			Nonzeros = 0;
-			Sorted = _Sorted;
+			bool changed = false;
+			if (interval_begin < LinkedList.get_interval_beg())
+			{
+				LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin));
+				changed = true;
+			}
+			if (interval_end + 1 >= LinkedList.get_interval_end())
+			{
+				LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1));
+				changed = true;
+			}
+			if (changed)
+			{
+				std::fill(LinkedList.begin(), LinkedList.end(), Row::make_entry(UNDEF, 0.0));
+				LinkedList.begin()->first = EOL;
+				Nonzeros = 0;
+				Sorted = _Sorted;
+			}
 		}
 
 #if defined(USE_SOLVER)

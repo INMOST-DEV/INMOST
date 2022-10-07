@@ -11,6 +11,9 @@
 
 namespace INMOST
 {
+	thread_private<Sparse::RowMerger> basic_expression::merger = thread_private<Sparse::RowMerger>();
+	thread_private<Sparse::RowMerger> AbstractMatrixBase::merger = thread_private<Sparse::RowMerger>();
+
 #if defined(USE_MESH) //Automatizator class does not exist without mesh	
 	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
 	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}

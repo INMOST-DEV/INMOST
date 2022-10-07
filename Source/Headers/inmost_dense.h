@@ -200,11 +200,15 @@ namespace INMOST
 #endif
 #endif
 	
-	
+	class AbstractMatrixBase
+	{
+	protected:
+		static thread_private<Sparse::RowMerger> merger;
+	};
 
 
 	template<typename Var>
-	class AbstractMatrixReadOnly
+	class AbstractMatrixReadOnly : public AbstractMatrixBase
 	{
 	private:
 		/// Sign function for SVD algorithm.
@@ -3059,8 +3063,10 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 			pB->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if(USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg,end);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3069,11 +3075,11 @@ namespace INMOST
 						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k) * (*pB)(k, j).GetValue();
-							merger.AddRow((*pA)(i, k), (*pB)(k, j).GetRow());
+							merger->AddRow((*pA)(i, k), (*pB)(k, j).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
-						merger.Clear();
+						merger->RetriveRow(M(i, j).GetRow());
+						merger->Clear();
 					}
 				}
 			}
@@ -3144,8 +3150,10 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 			pA->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if(USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg, end);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3154,11 +3162,11 @@ namespace INMOST
 						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k).GetValue() * (*pB)(k, j);
-							merger.AddRow((*pB)(k, j), (*pA)(i, k).GetRow());
+							merger->AddRow((*pB)(k, j), (*pA)(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
-						merger.Clear();
+						merger->RetriveRow(M(i, j).GetRow());
+						merger->Clear();
 					}
 				}
 			}
@@ -3230,8 +3238,10 @@ namespace INMOST
 			pA->GetMatrixInterval(beg, end, cnt);
 			pB->GetMatrixInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if(USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg, end);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3240,12 +3250,12 @@ namespace INMOST
 						for (enumerator k = 0; k < pA->Cols(); ++k)
 						{
 							value += (*pA)(i, k).GetValue() * (*pB)(k, j).GetValue();
-							merger.AddRow((*pA)(i, k).GetValue(), (*pB)(k, j).GetRow());
-							merger.AddRow((*pB)(k, j).GetValue(), (*pA)(i, k).GetRow());
+							merger->AddRow((*pA)(i, k).GetValue(), (*pB)(k, j).GetRow());
+							merger->AddRow((*pB)(k, j).GetValue(), (*pA)(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
-						merger.Clear();
+						merger->RetriveRow(M(i, j).GetRow());
+						merger->Clear();
 					}
 				}
 			}
@@ -3785,18 +3795,20 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		other.GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
+		//if(USE_MERGER)
 		{
-			Sparse::RowMerger merger(beg,end);
+			//Sparse::RowMerger merger;// (beg, end);
+			merger->Resize(beg, end);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
 					value += (*this)(i,j)*other(i,j).GetValue();
-					merger.AddRow((*this)(i,j),other(i,j).GetRow());
+					merger->AddRow((*this)(i,j),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
-			merger.Clear();
+			merger->RetriveRow(ret.GetRow());
+			merger->Clear();
 		}
 		else
 		{
@@ -3818,18 +3830,20 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
+		//if(USE_MERGER)
 		{
-			Sparse::RowMerger merger(beg,end);
+			//Sparse::RowMerger merger;// (beg, end);
+			merger->Resize(beg, end);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
 					value += (*this)(i,j).GetValue()*other(i,j);
-					merger.AddRow(other(i,j),(*this)(i,j).GetRow());
+					merger->AddRow(other(i,j),(*this)(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
-			merger.Clear();
+			merger->RetriveRow(ret.GetRow());
+			merger->Clear();
 		}
 		else
 		{
@@ -3852,19 +3866,21 @@ namespace INMOST
 		GetMatrixInterval(beg, end, cnt);
 		other.GetMatrixInterval(beg, end, cnt);
 		if( cnt >= CNT_USE_MERGER )
+		//if(USE_MERGER)
 		{
-			Sparse::RowMerger merger(beg,end);
+			//Sparse::RowMerger merger;// (beg, end);
+			merger->Resize(beg, end);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
 					value += (*this)(i,j).GetValue()*other(i,j).GetValue();
-					merger.AddRow(other(i,j).GetValue(),(*this)(i,j).GetRow());
-					merger.AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
+					merger->AddRow(other(i,j).GetValue(),(*this)(i,j).GetRow());
+					merger->AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
-			merger.Clear();
+			merger->RetriveRow(ret.GetRow());
+			merger->Clear();
 		}
 		else
 		{
@@ -4163,13 +4179,17 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		A.GetMatrixInterval(beg, end, cnt);
 		B.GetMatrixInterval(beg, end, cnt);
-		Sparse::RowMerger * pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
+		Sparse::RowMerger* pmerger = NULL; 
+		if (cnt >= CNT_USE_MERGER)
+		{
+			merger->Resize(beg, end);
+			pmerger = &(*merger);
+		}
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
 			if( L(k,k).GetValue() < 0.0 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4183,7 +4203,6 @@ namespace INMOST
 			
 			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4210,18 +4229,17 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = Y(i,k).GetValue();
-					merger.PushRow(1.0,Y(i,k).GetRow());
+					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
 						value -= Y(j,k).GetValue()*L(j,i).GetValue();
-						merger.AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
-						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
+						pmerger->AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
+						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4240,19 +4258,18 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = X(i,k).GetValue();
-					merger.PushRow(1.0,X(i,k).GetRow());
+					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{
 						enumerator j = jt-1;
 						value -= X(j,k).GetValue()*L(i,j).GetValue();
-						merger.AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
-						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
+						pmerger->AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
+						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4266,7 +4283,6 @@ namespace INMOST
 			}
 		}
 		if( ierr ) *ierr = 0;
-		if (pmerger) delete pmerger;
 		return ret;
 	}
 
@@ -4285,13 +4301,17 @@ namespace INMOST
 		SymmetricMatrix<INMOST_DATA_REAL_TYPE> L(A);
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		B.GetMatrixInterval(beg, end, cnt);
-		Sparse::RowMerger* pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
+		Sparse::RowMerger* pmerger = NULL;
+		if (cnt >= CNT_USE_MERGER)
+		{
+			merger->Resize(beg, end);
+			pmerger = &(*merger);
+		}
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
 			if( L(k,k) < 0.0 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4305,7 +4325,6 @@ namespace INMOST
 			
 			if( fabs(L(k,k)) < 1.0e-24 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4332,17 +4351,16 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = Y(i,k).GetValue();
-					merger.PushRow(1.0,Y(i,k).GetRow());
+					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
 						value -= Y(j,k).GetValue()*L(j,i);
-						merger.AddRow(-L(j,i),Y(j,k).GetRow());
+						pmerger->AddRow(-L(j,i),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4361,18 +4379,17 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = X(i,k).GetValue();
-					merger.PushRow(1.0,X(i,k).GetRow());
+					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{
 						enumerator j = jt-1;
 						value -= X(j,k).GetValue()*L(i,j);
-						merger.AddRow(-L(i,j),X(j,k).GetRow());
+						pmerger->AddRow(-L(i,j),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4386,7 +4403,6 @@ namespace INMOST
 			}
 		}
 		if( ierr ) *ierr = 0;
-		if (pmerger) delete pmerger;
 		return ret;
 	}
 
@@ -4404,13 +4420,17 @@ namespace INMOST
 		SymmetricMatrix<variable> L(A);
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		A.GetMatrixInterval(beg, end, cnt);
-		Sparse::RowMerger* pmerger = cnt >= CNT_USE_MERGER ? new Sparse::RowMerger(beg, end) : NULL;
+		Sparse::RowMerger* pmerger = NULL;
+		if (cnt >= CNT_USE_MERGER)
+		{
+			merger->Resize(beg, end);
+			pmerger = &(*merger);
+		}
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
 			if( L(k,k).GetValue() < 0.0 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4424,7 +4444,6 @@ namespace INMOST
 			
 			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
 			{
-				if (pmerger) delete pmerger;
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
@@ -4451,18 +4470,17 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = Y(i,k).GetValue();
-					merger.PushRow(1.0,Y(i,k).GetRow());
+					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
 						value -= Y(j,k).GetValue()*L(j,i).GetValue();
-						merger.AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
-						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
+						pmerger->AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
+						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4481,19 +4499,18 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					Sparse::RowMerger & merger = *pmerger;
 					double value = X(i,k).GetValue();
-					merger.PushRow(1.0,X(i,k).GetRow());
+					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{
 						enumerator j = jt-1;
 						value -= X(j,k).GetValue()*L(i,j).GetValue();
-						merger.AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
-						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
+						pmerger->AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
+						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
-					merger.Clear();
+					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->Clear();
 				}
 				else
 				{
@@ -4507,7 +4524,6 @@ namespace INMOST
 			}
 		}
 		if( ierr ) *ierr = 0;
-		if (pmerger) delete pmerger;
 		return ret;
 	}
 #endif //USE_AUTODIFF

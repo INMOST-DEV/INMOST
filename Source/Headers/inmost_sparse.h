@@ -676,18 +676,18 @@ namespace INMOST
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = true);
+			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = false);
 #if defined(USE_SOLVER)
 			/// Constructor that gets sizes from the matrix, including non-local mapping.
 			/// @param A Matrix to get sizes from.
 			/// @param Sorted Result should be sorted.
-			RowMerger(const Matrix & A, bool Sorted = true);
+			RowMerger(const Matrix & A, bool Sorted = false);
 			/// Resize linked list for new matrix, including non-local mapping.
 			/// \warning
 			/// All contents of linked list will be lost after resize.
 			/// @param A Matrix to get sizes from.
 			/// @param Sorted Result should be sorted or not.
-			void Resize(const Matrix & A, bool Sorted = true);
+			void Resize(const Matrix & A, bool Sorted = false);
 #endif //USE_SOLVER
 			/// Clear linked list.
 			void Clear();

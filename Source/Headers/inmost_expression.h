@@ -25,8 +25,10 @@
 #pragma warning(disable : 4503)
 #endif
 
-#define CNT_USE_MERGER 8
+#define CNT_USE_MERGER 4
 //#define CNT_USE_MERGER ENUMUNDEF
+//#define USE_MERGER true
+//#define USE_MERGER false
 
 #if defined(USE_AUTODIFF)
 namespace INMOST
@@ -35,6 +37,8 @@ namespace INMOST
 	
 	class basic_expression
 	{
+	protected:
+		static thread_private<Sparse::RowMerger> merger;
 	public:
 		basic_expression() {}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
@@ -155,9 +159,11 @@ namespace INMOST
 			expr.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg, end);
-				expr.GetJacobian(1.0, merger);
-				merger.RetriveRow(entries);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				expr.GetJacobian(1.0, *merger);
+				merger->RetriveRow(entries);
+				merger->Clear();
 			}
 			else expr.GetJacobian(1.0, entries);
 		}
@@ -174,10 +180,12 @@ namespace INMOST
 			r.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.AddRow(mult, entries);
-				merger.AddRow(1.0, r);
-				merger.RetriveRow(r);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->AddRow(mult, entries);
+				merger->AddRow(1.0, r);
+				merger->RetriveRow(r);
+				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
 				r[it->first] += it->second * mult;
@@ -249,11 +257,14 @@ namespace INMOST
 			entries.GetInterval(beg, end, cnt);
 			expr.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if( USE_MERGER )
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.PushRow(1.0, entries);
-				expr.GetJacobian(1.0, merger);
-				merger.RetriveRow(entries);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->PushRow(1.0, entries);
+				expr.GetJacobian(1.0, *merger);
+				merger->RetriveRow(entries);
+				merger->Clear();
 			}
 			else
 			{
@@ -270,11 +281,14 @@ namespace INMOST
 			entries.GetInterval(beg, end, cnt);
 			expr.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if( USE_MERGER )
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.PushRow(1.0, entries);
-				expr.GetJacobian(-1.0, merger);
-				merger.RetriveRow(entries);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->PushRow(1.0, entries);
+				expr.GetJacobian(-1.0, *merger);
+				merger->RetriveRow(entries);
+				merger->Clear();
 			}
 			else
 			{
@@ -291,11 +305,14 @@ namespace INMOST
 			entries.GetInterval(beg, end, cnt);
 			expr.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if( USE_MERGER )
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.PushRow(rval, entries);
-				expr.GetJacobian(lval, merger);
-				merger.RetriveRow(entries);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->PushRow(rval, entries);
+				expr.GetJacobian(lval, *merger);
+				merger->RetriveRow(entries);
+				merger->Clear();
 			}
 			else
 			{
@@ -316,11 +333,14 @@ namespace INMOST
 			entries.GetInterval(beg, end, cnt);
 			expr.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if( USE_MERGER )
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.PushRow(reciprocial_rval, entries);
-				expr.GetJacobian(-value * reciprocial_rval, merger);
-				merger.RetriveRow(entries);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->PushRow(reciprocial_rval, entries);
+				expr.GetJacobian(-value * reciprocial_rval, *merger);
+				merger->RetriveRow(entries);
+				merger->Clear();
 			}
 			else
 			{
@@ -482,11 +502,14 @@ namespace INMOST
 			entries.GetInterval(beg, end, cnt);
 			r.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if( USE_MERGER )
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.AddRow(mult, entries);
-				merger.AddRow(1.0, r);
-				merger.RetriveRow(r);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->AddRow(mult, entries);
+				merger->AddRow(1.0, r);
+				merger->RetriveRow(r);
+				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
 				r[it->first] += it->second * mult;
@@ -707,11 +730,14 @@ namespace INMOST
 				entries->GetInterval(beg, end, cnt);
 				r.GetInterval(beg, end, cnt);
 				if (cnt >= CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					merger.AddRow(mult, *entries);
-					merger.AddRow(1.0, r);
-					merger.RetriveRow(r);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					merger->AddRow(mult, *entries);
+					merger->AddRow(1.0, r);
+					merger->RetriveRow(r);
+					merger->Clear();
 				}
 				else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
 					r[it->first] += it->second * mult;
@@ -746,11 +772,14 @@ namespace INMOST
 			{
 				INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 				expr.GetInterval(beg, end, cnt);
-				if (cnt > 8)
+				if (cnt > CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					expr.GetJacobian(1.0, merger);
-					merger.RetriveRow(*entries);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					expr.GetJacobian(1.0, *merger);
+					merger->RetriveRow(*entries);
+					merger->Clear();
 				}
 				else
 				{
@@ -788,11 +817,14 @@ namespace INMOST
 				entries->GetInterval(beg, end, cnt);
 				expr.GetInterval(beg, end, cnt);
 				if (cnt >= CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					merger.PushRow(1.0, *entries);
-					expr.GetJacobian(1.0, merger);
-					merger.RetriveRow(*entries);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					merger->PushRow(1.0, *entries);
+					expr.GetJacobian(1.0, *merger);
+					merger->RetriveRow(*entries);
+					merger->Clear();
 				}
 				else
 				{
@@ -812,11 +844,14 @@ namespace INMOST
 				entries->GetInterval(beg, end, cnt);
 				expr.GetInterval(beg, end, cnt);
 				if (cnt >= CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					merger.PushRow(1.0, *entries);
-					expr.GetJacobian(-1.0, merger);
-					merger.RetriveRow(*entries);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					merger->PushRow(1.0, *entries);
+					expr.GetJacobian(-1.0, *merger);
+					merger->RetriveRow(*entries);
+					merger->Clear();
 				}
 				else
 				{
@@ -836,11 +871,14 @@ namespace INMOST
 				entries->GetInterval(beg, end, cnt);
 				expr.GetInterval(beg, end, cnt);
 				if (cnt >= CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					merger.PushRow(rval, *entries);
-					expr.GetJacobian(lval, merger);
-					merger.RetriveRow(*entries);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					merger->PushRow(rval, *entries);
+					expr.GetJacobian(lval, *merger);
+					merger->RetriveRow(*entries);
+					merger->Clear();
 				}
 				else
 				{
@@ -864,11 +902,14 @@ namespace INMOST
 				entries->GetInterval(beg, end, cnt);
 				expr.GetInterval(beg, end, cnt);
 				if (cnt >= CNT_USE_MERGER)
+				//if(USE_MERGER)
 				{
-					Sparse::RowMerger merger(beg, end);
-					merger.PushRow(reciprocial_rval, *entries);
-					expr.GetJacobian(-value * reciprocial_rval, merger);
-					merger.RetriveRow(*entries);
+					//Sparse::RowMerger merger;// (beg, end);
+					merger->Resize(beg, end);
+					merger->PushRow(reciprocial_rval, *entries);
+					expr.GetJacobian(-value * reciprocial_rval, *merger);
+					merger->RetriveRow(*entries);
+					merger->Clear();
 				}
 				else
 				{
@@ -1046,11 +1087,14 @@ namespace INMOST
 			entries->GetInterval(beg, end, cnt);
 			r.GetInterval(beg, end, cnt);
 			if (cnt >= CNT_USE_MERGER)
+			//if(USE_MERGER)
 			{
-				Sparse::RowMerger merger(beg, end);
-				merger.AddRow(mult, *entries);
-				merger.AddRow(1.0, r);
-				merger.RetriveRow(r);
+				//Sparse::RowMerger merger;// (beg, end);
+				merger->Resize(beg, end);
+				merger->AddRow(mult, *entries);
+				merger->AddRow(1.0, r);
+				merger->RetriveRow(r);
+				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
 				r[it->first] += it->second * mult;
