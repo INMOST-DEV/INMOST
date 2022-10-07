@@ -373,7 +373,7 @@ namespace INMOST
 	
 	Matrix<value_reference> MultiEntry::Value(const Storage & e) 
 	{
-		Matrix<value_reference> ret(MatrixSize(e),1);
+		Matrix<value_reference> ret(MatrixSize(e),1,value_reference());
 		unsigned l = 0, r, t;
 		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{

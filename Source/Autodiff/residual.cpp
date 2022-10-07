@@ -103,7 +103,7 @@ namespace INMOST
 	
 	Matrix<multivar_expression_reference> Residual::operator [](const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows)
 	{
-		Matrix<multivar_expression_reference> ret(rows.Rows(),rows.Cols());
+		Matrix<multivar_expression_reference> ret(rows.Rows(),rows.Cols(),multivar_expression_reference());
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
 				new (&ret(i,j)) multivar_expression_reference(residual[rows(i,j)],&jacobian[rows(i,j)]);
@@ -121,7 +121,7 @@ namespace INMOST
 
 	Matrix<value_reference> Residual::Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows)
 	{
-		Matrix<value_reference> ret(rows.Rows(), rows.Cols());
+		Matrix<value_reference> ret(rows.Rows(), rows.Cols(),value_reference());
 		for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
 				new (&ret(i, j)) value_reference(residual[rows(i, j)]);

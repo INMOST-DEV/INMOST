@@ -25,7 +25,8 @@
 #pragma warning(disable : 4503)
 #endif
 
-#define CNT_USE_MERGER 4
+#define CNT_USE_MERGER 8
+//#define CNT_USE_MERGER ENUMUNDEF
 
 #if defined(USE_AUTODIFF)
 namespace INMOST
