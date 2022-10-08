@@ -536,7 +536,7 @@ namespace INMOST
 				tag[e][0] = INT_MAX;
 				tag[e][1] = INT_MAX;
 				ElementArray<Cell> cells = e.getCells();
-				Element::Status stat;
+				Element::Status stat = Element::Any;
 				for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
 					stat |= it->GetStatus();
 				if ((stat & Element::Owned) && (stat & (Element::Shared | Element::Ghost)))
