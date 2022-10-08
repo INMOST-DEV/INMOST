@@ -1570,8 +1570,8 @@ namespace INMOST
 		thread_private() {}
 		~thread_private() {}
 		thread_private(const T & b) {item = b;}
-		thread_private(const thread_private & b) {item = b();}
-		thread_private & operator = (thread_private const & b) {item = b(); return *this;}
+		thread_private(const thread_private & b) {item = b.get();}
+		thread_private & operator = (thread_private const & b) {item = b.get(); return *this;}
 		T & operator *() {return item;}
 		const T & operator *() const {return item;}
 		//operator T & () {return item;}
