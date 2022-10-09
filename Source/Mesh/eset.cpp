@@ -74,11 +74,11 @@ namespace INMOST
 
 	void ElementSet::AddChild(const ElementSet & child) const
 	{
+		assert(isValid());
 		assert(GetElementType() == ESET);
 		assert(child->GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
 		Element::adj_type & parent_hc = m->HighConn(GetHandle());
-		assert(isValid());
 		if(hChild(parent_hc) == InvalidHandle()) 
 		{
 			Element::adj_type & child_hc = m->HighConn(child->GetHandle());
@@ -92,30 +92,35 @@ namespace INMOST
 
 	void ElementSet::AddSibling(const ElementSet & sibling) const
 	{
+		assert(isValid());
 		assert(GetElementType() == ESET);
 		assert(sibling->GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
 		//perform checks
-		Element::adj_type & current_hc = m->HighConn(GetHandle());
-		assert(isValid());
-		assert( hParent(current_hc) != InvalidHandle() ); //no parent for current set
-		if( hSibling(current_hc) == InvalidHandle() ) //no sibling here
+		HandleType h = GetHandle();
+		bool done = false;
+		while(!done)
 		{
-			Element::adj_type & sibling_hc = m->HighConn(sibling->GetHandle());
-			assert( hParent(sibling_hc) == InvalidHandle() );
-			hSibling(current_hc) = sibling->GetHandle(); //connect sibling to me
-			hParent(sibling_hc) = hParent(current_hc); //connect sibling to my parent
+			Element::adj_type & current_hc = m->HighConn(h);
+			assert(hParent(current_hc) != InvalidHandle()); //no parent for current set
+			if (hSibling(current_hc) == InvalidHandle()) //no sibling here
+			{
+				Element::adj_type& sibling_hc = m->HighConn(sibling->GetHandle());
+				assert(hParent(sibling_hc) == InvalidHandle());
+				hSibling(current_hc) = sibling->GetHandle(); //connect sibling to me
+				hParent(sibling_hc) = hParent(current_hc); //connect sibling to my parent
+				done = true;
+			}
+			else h = hSibling(current_hc);
 		}
-		else 
-			ElementSet(m,hSibling(current_hc))->AddSibling(sibling);
 	}
 
 	void ElementSet::RemChild(const ElementSet & child) const
 	{
+		assert(isValid());
 		assert(GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
-		Element::adj_type & parent_hc = m->HighConn(GetHandle());
-		assert(isValid());
+		Element::adj_type& parent_hc = m->HighConn(GetHandle());
 		assert(hChild(parent_hc) != InvalidHandle());
 		if( hChild(parent_hc) == child->GetHandle() )
 		{
@@ -129,19 +134,25 @@ namespace INMOST
 
 	void ElementSet::RemSibling(const ElementSet & sibling) const
 	{
+		assert(isValid());
 		assert(GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
-		Element::adj_type & current_hc = m->HighConn(GetHandle());
-		assert(isValid());
-		assert(hSibling(current_hc) != InvalidHandle());
-		if( hSibling(current_hc) == sibling->GetHandle())
+		HandleType h = GetHandle();
+		bool done = false;
+		while (!done)
 		{
-			Element::adj_type & sibling_hc = m->HighConn(sibling->GetHandle());
-			assert(hParent(sibling_hc) == hParent(current_hc));
-			hParent(sibling_hc) = InvalidHandle(); //remove it's parent
-			hSibling(current_hc) = hSibling(sibling_hc); //get next sibling as my sibling
+			Element::adj_type& current_hc = m->HighConn(h);
+			assert(hSibling(current_hc) != InvalidHandle());
+			if (hSibling(current_hc) == sibling->GetHandle())
+			{
+				Element::adj_type& sibling_hc = m->HighConn(sibling->GetHandle());
+				assert(hParent(sibling_hc) == hParent(current_hc));
+				hParent(sibling_hc) = InvalidHandle(); //remove it's parent
+				hSibling(current_hc) = hSibling(sibling_hc); //get next sibling as my sibling
+				done = true;
+			}
+			else h = hSibling(current_hc);
 		}
-		else ElementSet(m,hSibling(current_hc))->RemSibling(sibling);
 	}
 
 	Storage::enumerator ElementSet::CountChildren() const
