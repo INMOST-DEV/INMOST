@@ -1574,7 +1574,7 @@ namespace INMOST
 												uconv.read_iValue(in,size);
 												name.resize(size);
 												if( !name.empty() ) in.read(&name[0],size);
-												else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+												else std::cout << __FILE__ << ":" << __LINE__ << " Name of the mesh was not specified" << std::endl;
 												arr.at(k).first = GetMesh(std::string(name.begin(),name.end()));
 												if( arr.at(k).first == NULL )
 													std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(),name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;

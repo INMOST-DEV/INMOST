@@ -46,15 +46,15 @@ static const bool cell_node_conn = true;
 
 namespace INMOST
 {
-  static std::vector<Mesh *> allocated_meshes;
+	static std::vector<Mesh *> allocated_meshes;
 
 
 #if defined(USE_PARALLEL_WRITE_TIME)
 	void Mesh::AtExit(void)
 	{
-		while(!allocated_meshes.empty())
+		while (!allocated_meshes.empty())
 		{
-			if( allocated_meshes.back() != NULL )
+			if (allocated_meshes.back() != NULL)
 			{
 				allocated_meshes.back()->FinalizeFile();
 			}
@@ -117,13 +117,21 @@ namespace INMOST
 	{
 		name = new_name;
 	}
+	
 	Mesh * Mesh::GetMesh(std::string name)
 	{
-		for(int q = 0; q < (int)allocated_meshes.size(); ++q)
-			if( allocated_meshes[q]->GetMeshName() == name )
-				return allocated_meshes[q];
+		Mesh* ret = NULL;
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+		{
+			for (int q = 0; q < (int)allocated_meshes.size() && ret == NULL; ++q)
+				if (allocated_meshes[q]->GetMeshName() == name)
+					ret = allocated_meshes[q];
+		}
 		return NULL;
 	}
+	
 
 	const char * TopologyCheckNotifyString(TopologyCheck c)
 	{
@@ -226,7 +234,6 @@ namespace INMOST
 #endif
 
 		ClearFile();
-    allocated_meshes.push_back(this);
   }
 
 	void Mesh::ClearFile()
@@ -246,17 +253,27 @@ namespace INMOST
 	}
 		
 	Mesh::Mesh()
-	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
+		:TagManager(), Storage(NULL, ComposeHandle(MESH, 0))
 	{
-		std::stringstream tmp;
-		tmp << "Mesh" << allocated_meshes.size();
-		name = tmp.str();
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+		{
+			std::stringstream tmp;
+			tmp << "Mesh" << allocated_meshes.size();
+			name = tmp.str();
+			allocated_meshes.push_back(this);
+		}
 		Init(name);
 	}
 
 	Mesh::Mesh(std::string name)
 	:TagManager(), Storage(NULL,ComposeHandle(MESH,0))
 	{
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+		allocated_meshes.push_back(this);
 		Init(name);
 	}
 
@@ -396,6 +413,10 @@ namespace INMOST
 			tmp << other.name << "_copy";
 			name = tmp.str();
 		}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+		allocated_meshes.push_back(this);
 #if defined(CHECKS_MARKERS)
 		check_shared_mrk = other.check_shared_mrk;
 		check_private_mrk = other.check_private_mrk;
@@ -469,7 +490,6 @@ namespace INMOST
 		//this is not needed as it was copied with all the other data
 		//recompute global ids
 		//AssignGlobalID(other.have_global_id);
-		allocated_meshes.push_back(this);
 	}
 	
 	Mesh & Mesh::operator =(Mesh const & other)
@@ -728,6 +748,9 @@ namespace INMOST
 #if defined(USE_PARALLEL_WRITE_TIME)
 		FinalizeFile();
 #endif //USE_PARALLEL_WRITE_TIME
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
 		{
 			for(size_t q = 0; q < allocated_meshes.size(); ++q)
 				if (allocated_meshes[q] == this)
