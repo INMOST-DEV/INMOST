@@ -510,6 +510,7 @@ namespace INMOST
 		/// @return A pseudo-inverse of the matrix.
 		Matrix<Var> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
 		/// Calcuate A^n, where n is some real value.
+		/// \warning Currently works for symmetric matrices only!
 		/// @param n Real value.
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
