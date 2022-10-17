@@ -297,6 +297,8 @@ namespace INMOST
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row.
 			void                    Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			/// Remove last element.
+			void                    Pop() { data.pop_back(); }
 			/// Resize row to specified size.
 			/// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
 			/// that allow for the modification of individual entries.
