@@ -5288,7 +5288,7 @@ namespace INMOST
 					
 					// I have this element and remote processor also has this element, so it should be either in ghost or shared elements
 					new_face = FindSharedGhost(FACE,gid,source,owner);
-					if( new_face == InvalidHandle() ) std::cout << GetProcessorRank() << " face not found by global id " << std::endl;
+					if( new_face == InvalidHandle() ) std::cout << GetProcessorRank() << " face not found by global id " << gid << std::endl;
 					assert(new_face != InvalidHandle());
 				}
 				else
