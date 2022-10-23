@@ -2827,8 +2827,9 @@ namespace INMOST
 			if (nodes.size() > 2)
 			{
 				real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
-				real c[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, ss;
+				real c[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, ss, xf[3] = { 0,0,0 };
 				real_array v0 = coords[nodes[0]], v1, v2;
+				ComputeCentroid(e, coords, xf);
 				for (int i = 1; i < (int)nodes.size() - 1; i++)
 				{
 					v1 = coords[nodes[i]];
@@ -2853,15 +2854,15 @@ namespace INMOST
 					if (ss) ss /= fabs(ss);
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < mdim; ++q)
-						c[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						c[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
 					a += at;
 				}
 				if (a)
 				{
 					for (int q = 0; q < mdim; ++q)
-						ret[q] = c[q] / a;
+						ret[q] = c[q] / a + xf[q];
 				}
-				else ComputeCentroid(e, coords, ret);
+				else for (int q = 0; q < mdim; ++q) ret[q] = xf[q];
 			}
 		}
 		else if (edim == 3)
@@ -2878,7 +2879,7 @@ namespace INMOST
 			real vol = 0, a, at, volp;
 			real x[3] = { 0,0,0 }, nt[3] = { 0,0,0 }, s;
 			real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
-			real n0[3] = { 0,0,0 }, ss, xc[3] = { 0,0,0 };
+			real n0[3] = { 0,0,0 }, ss, xc[3] = { 0,0,0 }, xf[3] = { 0,0,0 };
 			real l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
 			ComputeCentroid(e, coords, xc);
 			for (unsigned j = 0; j < faces.size(); j++)
@@ -2903,6 +2904,7 @@ namespace INMOST
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
+				ComputeCentroid(faces[j], coords, xf);
 				for (int i = 1; i < (int)nodes.size() - 1; i++)
 				{
 					v1 = coords[nodes[i]];
@@ -2918,7 +2920,7 @@ namespace INMOST
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < 3; ++q)
 					{
-						x[q] += at * ((v0[q] - xc[q]) + (v1[q] - xc[q]) + (v2[q] - xc[q])) / 3.0;
+						x[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
 						c[q] += s * nt[q] * (pow((v0[q] - xc[q]) + (v1[q] - xc[q]), 2) + pow((v0[q] - xc[q]) + (v2[q] - xc[q]), 2) + pow((v1[q] - xc[q]) + (v2[q] - xc[q]), 2)) / 24.0;
 					}
 					a += at;
@@ -2926,9 +2928,9 @@ namespace INMOST
 				if (a)
 				{
 					for (int q = 0; q < 3; ++q)
-						x[q] = x[q] / a;
+						x[q] = x[q] / a + xf[q];
 				}
-				else ComputeCentroid(e, coords, x);
+				else for (int q = 0; q < 3; ++q) x[q] = xf[q];
 				volp = s * vec_dot_product(x, n0, 3) / 3.0;
 				vol += volp;
 			}
