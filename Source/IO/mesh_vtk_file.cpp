@@ -2370,6 +2370,8 @@ safe_output:
 		}
 		ReleaseMarker(unused_marker);
 		fclose(f);
+		//this is a system tag that may have bad values leading to crash in parallel
+		if (HaveTag("GLOBAL_ID")) DeleteTag(GetTag("GLOBAL_ID"));
 	}
 }
 

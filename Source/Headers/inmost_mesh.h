@@ -2360,10 +2360,10 @@ namespace INMOST
 #if defined(USE_PARALLEL_WRITE_TIME)
 		int                                 num_exchanges;
 	public:
-		std::fstream                        out_time;
+		mutable std::fstream                        out_time;
 	private:
-		int                                 tab;
-		int                                 func_id;
+		mutable int                                 tab;
+		mutable int                                 func_id;
 #endif
 #if defined(USE_MPI_P2P)
 		INMOST_MPI_Win                      window;
@@ -2396,11 +2396,11 @@ namespace INMOST
 		HandleType                        FindSharedGhost(ElementType etype, Storage::integer global_id, int source_proc, int owner_proc);
 #if defined(USE_PARALLEL_WRITE_TIME)	
 		//this part is needed to test parallel performance
-		void                              Enter              ();
-		void                              Exit               ();
-		int &                             GetFuncID          () {return func_id;}
+		void                              Enter              () const;
+		void                              Exit               () const;
+		int &                             GetFuncID          () const {return func_id;}
 		std::fstream &                    GetStream          ();
-		std::ostream &                    WriteTab           (std::ostream & f);
+		std::ostream &                    WriteTab           (std::ostream & f) const;
 		void                              FinalizeFile       ();
 		static void                       AtExit             (void);
 #endif
@@ -3382,6 +3382,8 @@ namespace INMOST
 		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);
 		/// Let ghost elements send processors list to master elements and see if they match
 		void                              CheckOwners        ();
+		/// Let ghost elements send global ids to master elements and see if they match
+		void                              CheckGIDs();
 		/// Let ghost elements send owner processor to master elements and see if they match
 		void                              CheckProcessors    ();
 		/// Checks that there are no invalid links in sets

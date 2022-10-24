@@ -1,6 +1,34 @@
 #include "inmost.h"
 #if defined(USE_MESH)
 
+#if defined(USE_PARALLEL_WRITE_TIME)
+#define REPORT_STR(x) {m->WriteTab(m->out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
+#define REPORT_VAL(str,x) {m->WriteTab(m->out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
+#define ENTER_FUNC() double all_time = Timer(); {m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();}
+#define ENTER_BLOCK() { double btime = Timer(); m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << ":" << NameSlash(__FILE__) << ":" << __LINE__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();
+#define EXIT_BLOCK() m->WriteTab(m->out_time) << "<TIME>" << Timer() - btime << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC() {m->WriteTab(m->out_time) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#define EXIT_FUNC_DIE() {m->WriteTab(m->out_time) << "<TIME>" << -1 << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->out_time) << "</FUNCTION>" << std::endl;}
+#else
+#define REPORT_STR(x) {}
+#define REPORT_VAL(str,x) {}
+#define ENTER_BLOCK()
+#define EXIT_BLOCK()
+#define ENTER_FUNC() {}
+#define EXIT_FUNC() {}
+#define EXIT_FUNC_DIE()  {}
+#endif
+
+__INLINE std::string NameSlash(std::string input)
+{
+	for (unsigned l = static_cast<unsigned>(input.size()); l > 0; --l)
+		if (input[l - 1] == '/' || input[l - 1] == '\\')
+			return std::string(input.c_str() + l);
+	return input;
+}
+
+
+
 namespace INMOST
 {
 	const char * DataTypeName(DataType t)
@@ -331,13 +359,48 @@ namespace INMOST
 		}
 		return false; //tag not found
 	}
+
+	__INLINE std::string MaskElementTypeName(ElementType mask)
+	{
+		std::string str = "";
+		for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+			if (etype & mask) str += ElementTypeName(etype)[0];
+		return str;
+	}
+
+	__INLINE std::string DefinedElementTypeName(Tag t)
+	{
+		std::string str = "";
+		for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+			if (t.isDefined(etype)) str += ElementTypeName(etype)[0];
+		return str;
+	}
+
+	__INLINE std::string SparseElementTypeName(Tag t)
+	{
+		std::string str = "";
+		for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+			if (t.isDefined(etype)) str += ElementTypeName(etype)[0];
+		return str;
+	}
 	
 	
 	Tag TagManager::CreateTag(Mesh *m, std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size)
 	{
+		ENTER_FUNC();
 		Tag new_tag;
 #if !defined(LAZY_SPARSE_ALLOCATION)
 		bool need_sparse[6] = {false,false,false,false,false,false};
+#endif
+#if defined(USE_PARALLEL_WRITE_TIME)
+		for (tag_array_type::size_type i = 0; i < tags.size(); i++)
+		{
+			REPORT_STR(tags[i].GetTagName() 
+				<< " type " << DataTypeName(tags[i].GetDataType()) 
+				<< " defined " << DefinedElementTypeName(tags[i])
+				<< " sparse " << SparseElementTypeName(tags[i])
+				<< " size " << tags[i].GetSize());
+		}
 #endif
 		for(tag_array_type::size_type i = 0; i < tags.size(); i++)
 		{
@@ -359,6 +422,7 @@ namespace INMOST
 		}
 		if( !new_tag.isValid() )
 		{
+			REPORT_VAL("not found tag ", name);
 			new_tag = Tag(m,name,dtype,size);
 #if defined(USE_OMP)
 #pragma omp critical (change_tags)
@@ -366,6 +430,16 @@ namespace INMOST
 			{
 				tags.push_back(new_tag);
 				std::sort(tags.begin(), tags.end());
+			}
+		}
+		else
+		{
+			REPORT_VAL("found tag ", name);
+			for (ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask)) if (new_tag.isDefined(mask))
+			{
+				REPORT_STR("position on " << ElementTypeName(mask) 
+					<< " is " << new_tag.GetPosition(mask) << " " << (new_tag.isSparse(mask) ? "sparse" : "dense")
+					<< " address " << ((void *)(new_tag.isSparse(mask) ? NULL:&GetDenseData(new_tag.GetPosition(mask)))));
 			}
 		}
 		for(ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask)) if(mask & etype)
@@ -379,6 +453,7 @@ namespace INMOST
 #if !defined(LAZY_SPARSE_ALLOCATION)
 					need_sparse[ElementNum(mask)] = true;
 #endif
+					REPORT_STR("new sparse position on " << ElementTypeName(mask));
 				}
 				else
 				{
@@ -390,13 +465,19 @@ namespace INMOST
 						new_pos = static_cast<INMOST_DATA_ENUM_TYPE>(dense_data.size());
 						if( !empty_dense_data.empty() )
 						{
+							REPORT_STR("dense from empty position");
 							new_pos = empty_dense_data.back();
 							empty_dense_data.pop_back();
 							dense_data[new_pos] = dense_sub_type(new_tag.GetRecordSize());
 						}
-						else dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
+						else
+						{
+							REPORT_STR("new dense record");
+							dense_data.push_back(dense_sub_type(new_tag.GetRecordSize()));
+						}
 					}
 					new_tag.SetPosition(new_pos,mask);
+					REPORT_STR("new position on " << ElementTypeName(mask) << " is " << new_pos);
 					INMOST_DATA_ENUM_TYPE new_size = dynamic_cast<Mesh *>(this)->GetArrayCapacity(ElementNum(mask));
 					if( new_size < 1024 && mask != MESH ) new_size = 1024;
 					if( new_size != 1   && mask == MESH ) new_size = 1;
@@ -404,6 +485,14 @@ namespace INMOST
 				}
 			}
 		}
+		ENTER_BLOCK();
+		for (ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask)) if (new_tag.isDefined(mask))
+		{
+			REPORT_STR("position on " << ElementTypeName(mask) 
+				<< " is " << new_tag.GetPosition(mask) << " " << (new_tag.isSparse(mask) ? "sparse" : "dense")
+				<< " address " << ((void*)(new_tag.isSparse(mask) ? NULL : &GetDenseData(new_tag.GetPosition(mask)))));
+		}
+		EXIT_BLOCK();
 #if !defined(LAZY_SPARSE_ALLOCATION)
 		for(int j = 0; j < 6; j++) 
 			if( need_sparse[j] && sparse_data[j].empty() )
@@ -419,6 +508,7 @@ namespace INMOST
 				}
 			}
 #endif
+		EXIT_FUNC();
 		return new_tag;
 	}
 	Tag TagManager::GetTag(std::string name) const

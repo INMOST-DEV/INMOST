@@ -6,6 +6,7 @@
 
 #include "inmost.h"
 
+//#define DEBUG_UNPACK
 
 #if defined(USE_MESH)
 #include <iostream>
@@ -671,7 +672,7 @@ namespace INMOST
 				{
 					std::cout << "new owner " << tag[c][0] << " dist " << tag[c][1] << " is not among processors ";
 					for(INMOST_DATA_ENUM_TYPE k = 0; k < procs.size();++k) std::cout << procs[k] << " ";
-					std::cout << " for cell " << c.LocalID() << " " << c.GlobalID() << std::endl;
+					std::cout << " for cell " << c.LocalID() << std::endl;
 				}
 #endif
 				c.IntegerDF(tag_owner) = new_owner;
@@ -802,19 +803,29 @@ namespace INMOST
 	//////////////////////////////
 	bool Mesh::HaveGlobalID(ElementType type) const
 	{
+		ENTER_FUNC();
 		assert(OneType(type));
+		REPORT_VAL("test gid on ", ElementTypeName(type));
+		bool ret = false;
 		Tag test;
 		if( GlobalIDTag().isValid() ) test = GlobalIDTag();
+		else
+		{
+			REPORT_STR("gid tag is not valid");
+		}
 		//else if( HaveTag("GLOBAL_ID") ) test = GetTag("GLOBAL_ID") );
+		
 		if( test.isValid() )
 		{
 			//bool ret = true;
 			//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) ) if( etype & types )
 			//	ret &= test.isDefined(etype);
 			//return ret;
-			return test.isDefined(type);
+			ret = test.isDefined(type);
+			REPORT_STR("gid is valid and " << (ret ? "":"not") << " defined " << ElementTypeName(type));
 		}
-		else return false;
+		EXIT_FUNC();
+		return ret;
 	}
 
 
@@ -1440,9 +1451,9 @@ namespace INMOST
 	}
 	
 #if defined(USE_PARALLEL_WRITE_TIME)
-	void Mesh::Enter() { tab++; }
-	void Mesh::Exit() {tab--; }
-	std::ostream & Mesh::WriteTab(std::ostream & f)
+	void Mesh::Enter() const { tab++; }
+	void Mesh::Exit() const {tab--; }
+	std::ostream & Mesh::WriteTab(std::ostream & f) const
 	{
 		for(int i = 0; i < tab; i++)
 			f << "   ";
@@ -2778,14 +2789,18 @@ namespace INMOST
 	
 	void Mesh::AssignGlobalID(ElementType mask)
 	{
-		tag_global_id = CreateTag("GLOBAL_ID",DATA_INTEGER, mask, NONE,1);
 		ENTER_FUNC();
-
+		ENTER_BLOCK();
+		//CheckGIDs();
+		tag_global_id = CreateTag("GLOBAL_ID", DATA_INTEGER, mask, NONE, 1);
+		//CheckGIDs();
+		EXIT_BLOCK();
 #if defined(USE_MPI)
 		if( m_state == Parallel )
 		{
 			INMOST_DATA_ENUM_TYPE number, shift[5] = { 0,0,0,0,0 }, shift_recv[5] = { 0,0,0,0,0 };
 			ENTER_BLOCK();
+			//CheckGIDs();
 			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			//num = ElementNum(currenttype);
 			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if (mask & ElementTypeFromDim(num))
@@ -2801,9 +2816,11 @@ namespace INMOST
 						number++;
 				}
 				shift[num] = number;
+				REPORT_STR("enumerate on " << ElementTypeName(ElementTypeFromDim(num)) << " number " << number);
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
+			//CheckGIDs();
 			{
 				int ierr;
 				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,5,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,GetCommunicator()));
@@ -2811,11 +2828,12 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
+			//CheckGIDs();
 			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			//num = ElementNum(currenttype);
-#if defined(USE_OMP)
-#pragma omp parallel for schedule(dynamic,1)
-#endif
+//#if defined(USE_OMP)
+//#pragma omp parallel for schedule(dynamic,1)
+//#endif
 			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if( mask & ElementTypeFromDim(num) )
 			{
 				INMOST_DATA_ENUM_TYPE local_shift = shift_recv[num] - shift[num];
@@ -2825,9 +2843,11 @@ namespace INMOST
 					if( it->GetStatus() != Element::Ghost )
 						it->IntegerDF(tag_global_id) = local_shift++;
 				}
+				REPORT_STR("shift on " << ElementTypeName(ElementTypeFromDim(num)) << " number " << local_shift);
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
+			//CheckGIDs();
 			if( tag_global_id.isValid() )
 			{
 				Tag exchange = tag_global_id;
@@ -2837,7 +2857,11 @@ namespace INMOST
 				tag_global_id = exchange;
 			}
 			EXIT_BLOCK();
+			ENTER_BLOCK();
+			CheckGIDs();
 			SortParallelStorage(mask);
+			CheckGIDs();
+			EXIT_BLOCK();
 		}
 		else
 		{
@@ -2980,7 +3004,12 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		if( !HaveGlobalID(CELL) ) AssignGlobalID(CELL);
+		CheckGIDs();
+		if (!HaveGlobalID(CELL))
+		{
+			REPORT_STR("assign cell gids");
+			AssignGlobalID(CELL);
+		}
 
 		bool mesh_2d_in_3d = false;
 		int mpirank = GetProcessorRank();
@@ -3216,7 +3245,8 @@ namespace INMOST
 				}
 			}
 			on_skin = DeleteTag(on_skin);
-			REPORT_STR("number of shared elements")
+			REPORT_STR("number of shared elements");
+			CheckGIDs();
 		}
 		EXIT_FUNC();
 		return bridge;
@@ -3890,6 +3920,7 @@ namespace INMOST
 			
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
 			CheckOwners();
+			CheckGIDs();
 			CheckProcessors();
 			//ComputeSharedProcs();
 		}
@@ -4147,17 +4178,17 @@ namespace INMOST
 
 	void Mesh::PackElementsGather(elements_by_type & selems, const elements_by_type & elements, int destination, ElementType mask, MarkerType select, const tag_set & tag_list, bool force_send, bool send_links_to_owner, bool pack_by_gids)
 	{
-		//ENTER_FUNC();
+		ENTER_FUNC();
 		if( !allow_pack_by_gids ) pack_by_gids = false;
 
 		MarkerType busy = CreatePrivateMarker();
 
-		//REPORT_STR("initial number of elements");
-		//REPORT_VAL("NODE",selems[0].size());
-		//REPORT_VAL("EDGE",selems[1].size());
-		//REPORT_VAL("FACE",selems[2].size());
-		//REPORT_VAL("CELL",selems[3].size());
-		//REPORT_VAL("ESET",selems[4].size());
+		REPORT_STR("initial number of elements");
+		REPORT_VAL("NODE",selems[0].size());
+		REPORT_VAL("EDGE",selems[1].size());
+		REPORT_VAL("FACE",selems[2].size());
+		REPORT_VAL("CELL",selems[3].size());
+		REPORT_VAL("ESET",selems[4].size());
 		
 		
 		for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(CELL); ++etypenum) if( !selems[etypenum].empty() )
@@ -4307,12 +4338,12 @@ namespace INMOST
 			}
 		}
 
-		//REPORT_STR("final number of elements");
-		//REPORT_VAL("NODE",selems[0].size());
-		//REPORT_VAL("EDGE",selems[1].size());
-		//REPORT_VAL("FACE",selems[2].size());
-		//REPORT_VAL("CELL",selems[3].size());
-		//REPORT_VAL("ESET",selems[4].size());
+		REPORT_STR("final number of elements");
+		REPORT_VAL("NODE",selems[0].size());
+		REPORT_VAL("EDGE",selems[1].size());
+		REPORT_VAL("FACE",selems[2].size());
+		REPORT_VAL("CELL",selems[3].size());
+		REPORT_VAL("ESET",selems[4].size());
 		
 		
 		
@@ -4321,32 +4352,33 @@ namespace INMOST
 
 		ReleasePrivateMarker(busy);
 
-		//EXIT_FUNC();
+		EXIT_FUNC();
 	}
 	
 	void Mesh::PackElementsData(elements_by_type & selems, buffer_type & buffer, int destination, const tag_set & tag_list, TagInteger arr_position, bool pack_by_gids)
 	{
-		//ENTER_FUNC();
+		ENTER_FUNC();
 		if( !allow_pack_by_gids ) pack_by_gids = false;
-		//REPORT_VAL("dest",destination);
+		REPORT_VAL("dest",destination);
 #if defined(USE_MPI)
-		//REPORT_VAL("buffer size",buffer.size());
+		REPORT_VAL("buffer size",buffer.size());
 		
 		
 		MarkerType pack_tags_mrk = CreatePrivateMarker();
 		//pack nodes coords
-		//ENTER_BLOCK();
+		ENTER_BLOCK();
 		{
 			integer dim = GetDimensions();
 			char have_gids = HaveGlobalID(NODE);
 			std::vector<Storage::integer> global_ids;
 			if( have_gids )
 			{
-				//REPORT_STR("pack nodes global id");
+				REPORT_STR("pack nodes global id");
 				global_ids.reserve(selems[0].size());
 			}
 			size_t marked_for_data = 0, marked_shared = 0, k = 0;
 			std::vector<Storage::real> coords(selems[0].size()*dim);
+			ENTER_BLOCK();
 			for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
 			{
 				assert(!Hidden(*it));
@@ -4354,6 +4386,13 @@ namespace INMOST
 				//REPORT_VAL("packed coords",k << " " << c[0] << " " << c[1] << " " << c[2]);
 				for(integer j = 0; j < dim; j++) coords[k*GetDimensions()+j] = c[j];
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
+				bool flag_shared = false, flag_data = false;
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				std::stringstream pstr;
+				Storage::integer_array proc = IntegerArrayDV(*it, tag_processors);
+				pstr << " stat: " << Element::StatusName(GetStatus(*it)) << " owner: " << owner << " procs: ";
+				for (Storage::integer_array::iterator ip = proc.begin(); ip != proc.end(); ++ip) pstr << *ip << " ";
+#endif
 				{
 					if( owner == GetProcessorRank() )
 					{
@@ -4369,6 +4408,7 @@ namespace INMOST
 								//if( GetStatus(*it) != Element::Owned )
 								//	std::cout << "node " << GetHandleID(*it) << " " << Element::StatusName(GetStatus(*it)) << std::endl;
 								//assert(GetStatus(*it) == Element::Owned);
+								flag_shared = true;
 								++marked_shared;
 								SetStatus(*it, Element::Shared);
 							}
@@ -4378,6 +4418,7 @@ namespace INMOST
 				//TODO: 45
 				if( owner != destination ) 
 				{
+					flag_data = true;
 					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[0].push_back(*it);
@@ -4388,31 +4429,39 @@ namespace INMOST
 					global_ids.push_back(GlobalID(*it));
 					//REPORT_VAL("packed global_id",global_ids.back());
 				}
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				REPORT_STR("pack node " << k << " coords: " << c[0] << " " << c[1] << " " << c[2] 
+						<< " flag: " << (flag_shared ? "shared" : "") << " " << (flag_data ? "data" : "")
+						<< pstr.str());
+#endif
 				k++;
 			}
+			EXIT_BLOCK();
 			pack_data(buffer,selems[0].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data(buffer,have_gids,GetCommunicator());
 			pack_data_vector(buffer,coords,GetCommunicator());
 			pack_data_vector(buffer,global_ids,GetCommunicator());
-			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
-			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
+			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
 		//pack edges
-		//ENTER_BLOCK();
+		ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[1].size());
 			std::vector<Storage::integer> low_conn_nums;
 			low_conn_nums.reserve(selems[1].size()*2);
-			size_t num = 0, k = 0;
+			size_t num = 0, k = 0, shifti = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
-			//pack nodes
+			//pack edges
+			ENTER_BLOCK();
 			for(element_set::iterator it = selems[1].begin(); it != selems[1].end(); it++) 
 			{
 				assert(!Hidden(*it));
 				bool pack_gid = false;
+				shifti = low_conn_nums.size();
 				//check that element is present on remote processor and pack global_id only
 				if( pack_by_gids && HaveGlobalID(EDGE) )
 				{
@@ -4474,7 +4523,15 @@ namespace INMOST
 					*/
 				}
 				//REPORT_VAL("pack edge nodes ",k << " " << low_conn_nums[low_conn_nums.size()-2] << " " << low_conn_nums[low_conn_nums.size()-1]);
+				bool flag_shared = false, flag_data = false;
 				Storage::integer & owner = IntegerDF(*it,tag_owner);
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				std::stringstream pstr;
+				Storage::integer_array proc = IntegerArrayDV(*it, tag_processors);
+				pstr << " stat: " << Element::StatusName(GetStatus(*it)) << " owner: " << owner << " procs: ";
+				for (Storage::integer_array::iterator ip = proc.begin(); ip != proc.end(); ++ip) pstr << *ip << " ";
+#endif
+				//
 				{
 					if( owner == GetProcessorRank() )
 					{
@@ -4487,6 +4544,8 @@ namespace INMOST
 							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 							if (GetStatus(*it) != Element::Shared)
 							{
+								flag_shared = true;
+								//REPORT_STR("edge " << k << " status " << Element::StatusName(GetStatus(*it)) << " now shared");
 								//assert(GetStatus(*it) == Element::Owned);
 								++marked_shared;
 								SetStatus(*it, Element::Shared);
@@ -4496,27 +4555,35 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
+					flag_data = true;
 					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[1].push_back(*it);
 					++marked_for_data;
 				}
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				REPORT_STR("pack edge " << k << " shift: " << shifti
+					<< " nn: " << low_conn_nums[shifti] << " " << low_conn_nums[shifti+1]
+					<< " flag: " << (flag_shared ? "shared" : "") << " " << (flag_data ? "data" : "") 
+					<< pstr.str());
+#endif
 				k++;
 			}
+			EXIT_BLOCK();
 			assert(low_conn_nums.size() == num);
-			//REPORT_VAL("number of edge nodes",num);
-			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
-			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
-			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[1].size());
+			REPORT_VAL("number of edge nodes",num);
+			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
+			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[1].size());
+			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[1].size());
 			pack_data(buffer,selems[1].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
 		//pack faces
-		//ENTER_BLOCK();
+		ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
@@ -4594,20 +4661,20 @@ namespace INMOST
 				}
 				k++;
 			}
-			//REPORT_VAL("number of faces",selems[2].size());
-			//REPORT_VAL("number of face edges",num);
-			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
-			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
-			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[2].size());
+			REPORT_VAL("number of faces",selems[2].size());
+			REPORT_VAL("number of face edges",num);
+			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[2].size());
+			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[2].size());
+			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[2].size());
 			pack_data(buffer,selems[2].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
 		//pack cells
-		//ENTER_BLOCK();
+		ENTER_BLOCK();
 		{
 			bool node_conns = HighConnTag().isDefined(CELL);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[3].size());
@@ -4709,11 +4776,11 @@ namespace INMOST
 				}
 				k++;
 			}
-			//REPORT_VAL("number of cell faces",num);
-			//REPORT_VAL("number of cell nodes", num_high);
-			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
-			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
-			//REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
+			REPORT_VAL("number of cell faces",num);
+			REPORT_VAL("number of cell nodes", num_high);
+			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[3].size());
+			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[3].size());
+			REPORT_VAL("total packed by globalid ", packed_only_gid << " / " << selems[3].size());
 			pack_data(buffer,selems[3].size(),GetCommunicator());
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
@@ -4723,12 +4790,12 @@ namespace INMOST
 				pack_data_vector(buffer, high_conn_size, GetCommunicator());
 				pack_data_vector(buffer, high_conn_nums, GetCommunicator());
 			}
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
         /////////////////////////////////////////
         // pack esets
-		//ENTER_BLOCK();
+		ENTER_BLOCK();
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[4].size()); //store number of elements in set
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(selems[4].size()); // store number of children in set
@@ -4761,7 +4828,7 @@ namespace INMOST
 				Storage::integer & owner = Integer(*it,tag_owner);
 				//if( GetStatus(*it) == Element::Owned || GetStatus(*it) == Element::Any )
 				//	owner = mpirank;
-				//REPORT_STR("set name \"" << set.GetName() << "\" owner " << owner);
+				REPORT_STR("set name \"" << set.GetName() << "\" owner " << owner);
 				
 				if( owner == GetProcessorRank() )
 				{
@@ -4904,12 +4971,12 @@ namespace INMOST
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
 			pack_data_vector(buffer,high_conn_size,GetCommunicator());
 			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
-			//REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
-			//REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
+			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
+			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
 			//REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
 		//for(int etypenum = ElementNum(NODE); etypenum <= ElementNum(ESET); ++etypenum) if( !selems[etypenum].empty() )
 		//	RemMarkerArray(&selems[etypenum][0],selems[etypenum].size(),busy);
 			//for(element_set::iterator it = selems[etypenum].begin(); it != selems[etypenum].end(); ++it) RemMarker(*it,busy);
@@ -4928,19 +4995,19 @@ namespace INMOST
 		//Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 		//if( ip == proc.end() || (*ip) != destination ) proc.insert(ip,destination);		
 		//pack number of tags
-		//ENTER_BLOCK();
-		//REPORT_STR("prepare elements to pack tag data");
+		ENTER_BLOCK();
+		REPORT_STR("prepare elements to pack tag data");
 		{
-			//REPORT_VAL("number of tags",tag_list.size());
+			REPORT_VAL("number of tags",tag_list.size());
 			pack_data(buffer,tag_list.size(),GetCommunicator());
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < tag_list.size(); i++)
 		{
 			//assert(HaveTag(tag_list[i]));
 			const Tag & tag = tag_list[i];
 			//pack tag name
-			//ENTER_BLOCK();
+			ENTER_BLOCK();
 			{
 				std::string name = tag.GetTagName();
 				INMOST_DATA_ENUM_TYPE defined, sparse, datatype, datasize;
@@ -4954,9 +5021,9 @@ namespace INMOST
 					if( tag.isSparse(mask) ) sparse |= mask;
 				}
 				//REPORT_VAL("characters in name",name.size());
-				//REPORT_VAL("name of tag",name);
-				//REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
-				//REPORT_VAL("data size",datasize);
+				REPORT_VAL("name of tag",name);
+				REPORT_VAL("data type",DataTypeName(static_cast<DataType>(datatype)));
+				REPORT_VAL("data size",datasize);
 //#if defined(USE_PARALLEL_WRITE_TIME)
 //				for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
 //				{
@@ -4970,17 +5037,17 @@ namespace INMOST
 				pack_data(buffer,datasize,GetCommunicator());
 				pack_data(buffer,name.size(),GetCommunicator());
 				pack_data_array(buffer,name.c_str(),name.size(),GetCommunicator());
-				//REPORT_VAL("buffer position",buffer.size());
+				REPORT_VAL("buffer position",buffer.size());
 			}
-			//EXIT_BLOCK();
+			EXIT_BLOCK();
 			//TODO 46 old
 			//PackTagData(GetTag(tag_list[i]),pack_tags,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			PackTagData(tag,selems,destination,NODE | EDGE | FACE | CELL | ESET | MESH,pack_tags_mrk,buffer,arr_position);
 			//PackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0,buffer);
 			//std::cout << mpirank << " After pack_tag_data\n" << std::endl;
-			//REPORT_VAL("buffer position",buffer.size());
+			REPORT_VAL("buffer position",buffer.size());
 		}
-		//EXIT_BLOCK();
+		EXIT_BLOCK();
 		
 		for(integer i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( !selems[i].empty() )
 			RemPrivateMarkerArray(&selems[i][0],static_cast<enumerator>(selems[i].size()),pack_tags_mrk);
@@ -4992,8 +5059,8 @@ namespace INMOST
 		(void) destination;
 		(void) tag_list;
 #endif
-		//REPORT_VAL("destination",destination);
-		//EXIT_FUNC();
+		REPORT_VAL("destination",destination);
+		EXIT_FUNC();
 	}
 	
 	
@@ -5023,7 +5090,8 @@ namespace INMOST
 		}
 		if( !old_nodes.empty() )
 		{
-			if( HaveGlobalID(NODE) )
+			bool have_node_gid = HaveGlobalID(NODE);
+			if( have_node_gid )
 			{
 				REPORT_STR("sorted for global id");
 				std::sort(old_nodes.begin(),old_nodes.end(),GlobalIDComparator(this));
@@ -5039,6 +5107,19 @@ namespace INMOST
 				//	REPORT_VAL("coords",itcoords[0] << " " << itcoords[1] << " " << itcoords[2]);
 				//}
 			}
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+			ENTER_BLOCK();
+			for (std::vector<HandleType>::iterator it = old_nodes.begin(); it != old_nodes.end(); ++it)
+			{
+				real_array c = RealArray(*it, tag_coords);
+				integer_array proc = IntegerArray(*it, tag_processors);
+				std::stringstream pstr;
+				pstr << " stat: " << Element::StatusName(GetStatus(*it)) << " owner: " << IntegerDF(*it, tag_owner) << " procs: ";
+				for (integer_array::iterator ip = proc.begin(); ip != proc.end(); ++ip) pstr << *ip << " ";
+				REPORT_STR("node: " << *it << " coords " << c[0] << " " << c[1] << " " << c[2] << " gid " << (have_node_gid ? GlobalID(*it) : -1) << pstr.str());
+			}
+			EXIT_BLOCK();
+#endif
 		}
 		time = Timer() - time;
 		REPORT_STR("gather and sort old nodes");
@@ -5069,10 +5150,12 @@ namespace INMOST
 			//unpack_tags[0].reserve(num);
 			REPORT_STR("creating nodes");
 			size_t found = 0, marked_for_data = 0, marked_ghost = 0;
+			ENTER_BLOCK();
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_node = InvalidHandle();
 				size_t find = static_cast<size_t>(-1);
+				bool flag_found = false, flag_data = false;
 				//TODO 49
 				if( !old_nodes.empty() )
 				{
@@ -5086,6 +5169,7 @@ namespace INMOST
 							//REPORT_VAL("lower bound found",GlobalID(*it));
 							if( global_ids[i] == GlobalID(*it) )
 							{
+								found = true;
 								find = it - old_nodes.begin();
 								found++;
 							}
@@ -5103,6 +5187,7 @@ namespace INMOST
 							//REPORT_VAL("lower bound found",itcoords[0] << " " << itcoords[1] << " " << itcoords[2]);
 							if( CentroidComparator(this).Compare(&coords[i*dim],itcoords.data()) == 0 )
 							{
+								found = true;
 								find = it - old_nodes.begin();
 								found++;
 							}
@@ -5115,6 +5200,7 @@ namespace INMOST
 					new_node = old_nodes[find];
 					if( IntegerDF(new_node,tag_owner) != GetProcessorRank() ) 
 					{
+						flag_data = true;
 						SetMarker(new_node,unpack_tags_mrk);
 						++marked_for_data;
 					}
@@ -5132,6 +5218,7 @@ namespace INMOST
 						IntegerDF(new_node,tag_owner) = -1;
 						//TODO 46 old
 						//unpack_tags[0].push_back(new_node);
+						flag_data = true;
 						SetMarker(new_node,unpack_tags_mrk);
 						++marked_for_data;
 						++marked_ghost;
@@ -5139,13 +5226,20 @@ namespace INMOST
 				}
 				assert(new_node != InvalidHandle());
 				selems[0][i] = new_node;
-//#if defined(USE_PARALLEL_WRITE_TIME)
-//				{
-//					Storage::real_array c = RealArrayDF(new_node,CoordsTag());
-//					REPORT_VAL("unpack coords",i << " " << c[0] << " " << c[1] << " " << c[2]);
-//				}
-//#endif
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				std::stringstream pstr;
+				Storage::integer_array proc = IntegerArrayDV(new_node, tag_processors);
+				pstr << " stat: " << Element::StatusName(GetStatus(new_node)) << " owner: " << IntegerDF(new_node, tag_owner) << " procs: ";
+				for (Storage::integer_array::iterator ip = proc.begin(); ip != proc.end(); ++ip) pstr << *ip << " ";
+				REPORT_STR("unpack node" << i << " coords in " 
+					<< coords[i * dim + 0] << " " << coords[i * dim + 1] << " " << coords[i * dim + 2]
+					<< " got " << RealArray(new_node,tag_coords)[0] << " " << RealArray(new_node, tag_coords)[1] << " " << RealArray(new_node, tag_coords)[2]
+					<< " gid in " << (have_gids ? global_ids[i] : -1) << " got " << (have_gids && HaveGlobalID(NODE) ? GlobalID(new_node) : -1)
+					<< " flag: " << (flag_found ? "found" : "created") << " " << (flag_data ? "data" : "") 
+					<< pstr.str());
+#endif
 			}
+			EXIT_BLOCK();
 			REPORT_VAL("total found", found << " / " << selems[0].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[0].size());
@@ -5180,10 +5274,16 @@ namespace INMOST
 			REPORT_VAL("buffer position",buffer_position);
 			selems[1].reserve(num);
 			
-			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, unpacked_by_gid = 0, shift = 0, shifti = 0;
+			ENTER_BLOCK();
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_edge = InvalidHandle();
+				bool flag_found = false, flag_data = false;
+				shifti = shift;
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				std::stringstream istr;
+#endif
 				if( low_conn_size[i] == ENUMUNDEF )
 				{
 					if( !HaveGlobalID(EDGE) ) std::cout << GetProcessorRank() << " should find edge by global id but it is not defined " << std::endl;
@@ -5196,6 +5296,7 @@ namespace INMOST
 					
 					if( new_edge == InvalidHandle() ) std::cout << GetProcessorRank() << " edge not found by global id " << gid << std::endl;
 					assert(new_edge != InvalidHandle());
+					unpacked_by_gid++;
 				}
 				else
 				{
@@ -5207,9 +5308,17 @@ namespace INMOST
 						assert((size_t)low_conn_nums[shift+j] < selems[0].size());
 						//REPORT_VAL("Unpack node position",low_conn_nums[shift+j]);
 						e_nodes.at(j) = selems[0][low_conn_nums[shift+j]];
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+						istr << " node ( " << low_conn_nums[shift + j] << " id " << e_nodes[j].LocalID() << " "
+							<< e_nodes[j].Coords()[0] << " " << e_nodes[j].Coords()[1] << " " << e_nodes[j].Coords()[2]
+							<< std::endl << "\tedges: ";
+						ElementArray<Edge> edges = e_nodes[j].getEdges();
+						for (ElementArray<Edge>::iterator kt = edges.begin(); kt != edges.end(); ++kt)
+							istr << "\t\t" << kt->LocalID() << " " << kt->getBeg()->LocalID() << "<->" << kt->getEnd()->LocalID() << " stat " << Element::StatusName(kt->GetStatus()) << std::endl;
+						istr << ")";
+#endif
 					}
 					shift+= low_conn_size[i];
-					//REPORT_VAL("unpack edge nodes ",i << " " << low_conn_nums[shift+0] << " " << low_conn_nums[shift+1]);
 					if( !e_nodes.empty() )
 						new_edge = FindSharedAdjacency(e_nodes.data(),static_cast<enumerator>(e_nodes.size()));
 				}
@@ -5223,6 +5332,7 @@ namespace INMOST
 					IntegerDF(new_edge,tag_owner) = -1;
 					//TODO 46 old
 					//unpack_tags[1].push_back(new_edge);
+					flag_data = true;
 					SetMarker(new_edge,unpack_tags_mrk);
 					++marked_for_data;
 					++marked_ghost;
@@ -5231,20 +5341,34 @@ namespace INMOST
 				}
 				else
 				{
+					flag_found = true;
 					if( IntegerDF(new_edge,tag_owner) != GetProcessorRank() )
 					{
 						//TODO 46 old
 						//unpack_tags[1].push_back(new_edge);
+						flag_data = true;
 						SetMarker(new_edge,unpack_tags_mrk);
 						++marked_for_data;
 					}
 					++found;
 				}
+#if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
+				std::stringstream pstr;
+				Storage::integer_array proc = IntegerArrayDV(new_edge, tag_processors);
+				pstr << " stat: " << Element::StatusName(GetStatus(new_edge)) << " owner: " << IntegerDF(new_edge, tag_owner) << " procs: ";
+				for (Storage::integer_array::iterator ip = proc.begin(); ip != proc.end(); ++ip) pstr << *ip << " ";
+				REPORT_STR("unpack edge: " << i << " shift: " << shifti
+					<< " nn: " << low_conn_nums[shifti] << " " << low_conn_nums[shifti + 1]
+					<< " flag: " << (flag_found ? "found" : "created") << " " << (flag_data ? "data" : "") 
+					<< pstr.str() << " info " << istr.str());
+#endif
 				selems[1].push_back(new_edge);
 			}
+			EXIT_BLOCK();
 			REPORT_VAL("total found", found << " / " << selems[1].size());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[1].size());
 			REPORT_VAL("total marked ghost", marked_ghost << " / " << selems[1].size());
+			REPORT_VAL("total unpacked by gid", unpacked_by_gid << " / " << selems[1].size());
 			REPORT_VAL("buffer position",buffer_position);
 			if( marked_for_data != marked_remote )
 			{
@@ -6480,16 +6604,19 @@ namespace INMOST
 		RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
 		
 		CheckGhostSharedCount(__FILE__,__LINE__);
+		CheckOwners();
+		CheckGIDs();
 		CheckCentroids(__FILE__,__LINE__);
-		
 
-		if( action == AGhost ) 
+		if (action == AGhost)
 		{
 			//Probably now owner should send processors_tag data
-			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
-			CheckOwners();
-			CheckProcessors();
+			ExchangeData(tag_processors, ESET | CELL | FACE | EDGE | NODE, 0);
 		}
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		
 		//ComputeSharedProcs();
 		
 		if( action == AMigrate ) 
@@ -6717,11 +6844,93 @@ namespace INMOST
 		}
 	}
 
+	
 	void Mesh::CheckOwners()
 	{
 #if !defined(NDEBUG)
 		ENTER_FUNC();
+		int bad = 0;
+		for (Mesh::iteratorElement it = BeginElement(ESET | CELL | FACE | EDGE | NODE); it != EndElement(); ++it)
+		{
+			integer owner = Integer(*it, tag_owner);
+			Element::Status s = GetStatus(*it);
+			if (owner == GetProcessorRank() && s == Element::Ghost) bad++;
+			if (owner != GetProcessorRank() && (s == Element::Owned || s == Element::Shared)) bad++;
+		}
+		Storage::integer crash = 0;
+		if(bad)
+		{
+			std::cout << "processor " << GetProcessorRank() << " bad owner/status " << bad << std::endl;
+			REPORT_STR("processor " << GetProcessorRank() << " bad owner/status " << bad);
+			crash++;
+		}
+		crash = Integrate(crash);
+		if (crash)
+		{
+			std::cout << "crash " << __FUNCTION__ << std::endl;
+			REPORT_STR("crash from " << __FUNCTION__);
+			exit(-1);
+		}
 		ReduceData(tag_owner,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckOwner);
+		EXIT_FUNC();
+#endif
+	}
+
+	void UnpackCheckGID(const Tag& tag, const Element& element, const INMOST_DATA_BULK_TYPE* data, INMOST_DATA_ENUM_TYPE size)
+	{
+		if (element->Integer(tag) != *(const Storage::integer*)data || size != 1)
+		{
+			if (size != 1)
+				std::cout << __FILE__ << ":" << __LINE__ << " wrong size of array " << std::endl;
+			std::cout << __FILE__ << ":" << __LINE__ << " wrong GID on " << tag.GetMeshLink()->GetProcessorRank();
+			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
+			std::cout << " GID " << element->Integer(tag) << " remote " << *(const Storage::integer*)data;
+			std::cout << std::endl;
+			exit(-1);
+		}
+	}
+
+	void Mesh::CheckGIDs()
+	{
+#if !defined(NDEBUG)
+		ENTER_FUNC();
+		ElementType exch = NONE;
+		int bad = 0;
+		for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+		{
+			if (HaveGlobalID(etype))
+			{
+				exch |= etype;
+				std::vector<integer> gids;
+				gids.reserve(NumberOf(etype));
+				for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+					gids.push_back(it->GlobalID());
+				size_t size0 = gids.size();
+				std::sort(gids.begin(), gids.end());
+				gids.resize(std::unique(gids.begin(), gids.end()) - gids.begin());
+				if (size0 != gids.size())
+				{
+					bad++;
+					std::cout << ElementTypeName(etype) << " on " << GetProcessorRank() << " has duplicate global ids! " << size0 << " != " << gids.size() << std::endl;
+					REPORT_STR("processor " << GetProcessorRank() << " etype " << ElementTypeName(etype) << " on " << GetProcessorRank() << " has duplicate global ids!" << size0 << " != " << gids.size());
+				}
+			}
+		}
+		Storage::integer crash = 0;
+		if (bad)
+		{
+			std::cout << "processor " << GetProcessorRank() << " duplicate gids in element types " << bad << std::endl;
+			REPORT_STR("processor " << GetProcessorRank() << " duplicate gids in element types  " << bad);
+			crash++;
+		}
+		crash = Integrate(crash);
+		if (crash)
+		{
+			std::cout << "crash " << __FUNCTION__ << std::endl;
+			REPORT_STR("crash from " << __FUNCTION__);
+			exit(-1);
+		}
+		if( exch != NONE ) ReduceData(tag_global_id, exch, 0, UnpackCheckGID);
 		EXIT_FUNC();
 #endif
 	}
@@ -6757,6 +6966,39 @@ namespace INMOST
 	{
 #if !defined(NDEBUG)
 		ENTER_FUNC();
+		int bad = 0;
+		for (Mesh::iteratorElement it = BeginElement(ESET | CELL | FACE | EDGE | NODE); it != EndElement(); ++it)
+		{
+			integer_array procs = it->IntegerArray(tag_processors);
+			if (!procs.empty())
+			{
+				integer_array::iterator first, next;
+				first = next = procs.begin();
+				while (++next != procs.end()) 
+				{
+					if (*next <= *first)
+					{
+						bad++;
+						break;
+					}
+					++first;
+				}
+			}
+		}
+		Storage::integer crash = 0;
+		if (bad)
+		{
+			std::cout << "processor " << GetProcessorRank() << " bad processors order " << bad << std::endl;
+			REPORT_STR("processor " << GetProcessorRank() << " bad processors order " << bad);
+			crash++;
+		}
+		crash = Integrate(crash);
+		if (crash)
+		{
+			std::cout << "crash " << __FUNCTION__ << std::endl;
+			REPORT_STR("crash from " << __FUNCTION__);
+			exit(-1);
+		}
 		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
 		EXIT_FUNC();
 #endif
@@ -6802,7 +7044,7 @@ namespace INMOST
 				int k = j / 5;
 				while (k) ++it, --k;
 				REPORT_VAL("processor", it->first);
-				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i)) ? "YES" : "NO")));
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " i " << i << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i)) ? "YES" : "NO")));
 				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)), it->second[i].size());
 			}
 		}
@@ -6849,7 +7091,7 @@ namespace INMOST
 				int k = j / 5;
 				while (k) ++it, --k;
 				REPORT_VAL("processor", it->first);
-				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
+				REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " i " << i << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)), it->second[i].size());
 			}
 		}
@@ -6858,7 +7100,6 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel for schedule(dynamic,1)
 #endif
-
 		for (int j = 0; j < 5 * (int)ghost.size(); ++j)
 		{
 			int i = j % 5;
@@ -6958,6 +7199,11 @@ namespace INMOST
 		Integer(GetHandle(),tag_layers) = layers;
 		Integer(GetHandle(),tag_bridge) = bridge;
 		CheckSetLinks(__FILE__,__LINE__);
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		CheckCentroids(__FILE__, __LINE__);
 		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
 		proc_elements old_layers;
 		proc_elements current_layers;
@@ -7010,6 +7256,10 @@ namespace INMOST
 			ENTER_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
 			CheckGhostSharedCount(__FILE__,__LINE__);
+			CheckOwners();
+			CheckGIDs();
+			CheckProcessors();
+			CheckCentroids(__FILE__, __LINE__);
 			ExchangeMarked();
 			old_layers.swap(current_layers);
 			current_layers.clear();
@@ -7069,6 +7319,11 @@ namespace INMOST
 		{
 			ENTER_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
+			CheckGhostSharedCount(__FILE__, __LINE__);
+			CheckOwners();
+			CheckGIDs();
+			CheckProcessors();
+			CheckCentroids(__FILE__, __LINE__);
 			EXIT_BLOCK();
 			time = Timer();
 			ReduceData(layers_marker,CELL,0,UnpackLayersMarker);
@@ -7106,6 +7361,11 @@ namespace INMOST
 			REPORT_VAL("time",time);
 			RemoveGhostElements(del_ghost);
 			CheckSetLinks(__FILE__,__LINE__);
+			CheckGhostSharedCount(__FILE__, __LINE__);
+			CheckOwners();
+			CheckGIDs();
+			CheckProcessors();
+			CheckCentroids(__FILE__, __LINE__);
 			//Save("after_delete_ghost.pvtk");
 			//exit(-1);
 		}
@@ -7569,6 +7829,15 @@ namespace INMOST
 		DeleteTag(tag_new_owner);
 		DeleteTag(tag_new_processors);
 		EXIT_BLOCK();
+
+
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		CheckCentroids(__FILE__, __LINE__);
+
+		
 		//throw NotImplemented;
 #endif
 		EXIT_FUNC();

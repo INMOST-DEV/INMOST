@@ -765,7 +765,17 @@ namespace INMOST
 	
 	Tag Mesh::CreateTag(std::string name, DataType dtype, ElementType etype,ElementType sparse, INMOST_DATA_ENUM_TYPE size)
 	{
+		ENTER_FUNC();
+		REPORT_VAL("name", name);
+		REPORT_VAL("dtype", DataTypeName(dtype));
+		for (ElementType mask = NODE; mask <= MESH; mask = NextElementType(mask))
+		{
+			if (etype & mask) REPORT_VAL("define on", ElementTypeName(mask));
+			if (sparse & mask) REPORT_VAL("sparse on", ElementTypeName(mask));
+		}
+		REPORT_VAL("size", size);
 		Tag ret = TagManager::CreateTag(this,name,dtype,etype,sparse,size);
+		EXIT_FUNC();
 		return ret;
 	}
 	Tag Mesh::DeleteTag(Tag tag, ElementType type_mask)

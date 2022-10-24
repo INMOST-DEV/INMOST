@@ -999,6 +999,8 @@ namespace INMOST
 
 		ReleaseMarker(unused_marker,FACE|NODE);
 		f.close();
+		//this is a system tag that may have bad values leading to crash in parallel
+		if (HaveTag("GLOBAL_ID")) DeleteTag(GetTag("GLOBAL_ID"));
 	}
 }
 
