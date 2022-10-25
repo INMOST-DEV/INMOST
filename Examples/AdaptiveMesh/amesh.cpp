@@ -1505,7 +1505,7 @@ namespace INMOST
 			schedule_counter--;
 		}
 		m->CheckSetLinks(__FILE__,__LINE__);
-		m->CheckGhostSharedCount(__FILE__,__LINE__)
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
 		m->CheckOwners();
 		m->CheckProcessors();
