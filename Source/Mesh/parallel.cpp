@@ -6783,7 +6783,8 @@ namespace INMOST
 		if( err ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
-			REPORT_STR("crash from " << file << ":" << line)
+			REPORT_STR("crash from " << file << ":" << line);
+			std::cout.flush();
 			exit(-1);
 		}
 #endif //USE_MPI
@@ -6817,7 +6818,8 @@ namespace INMOST
 		if( err ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
-			REPORT_STR("crash from " << file << ":" << line)
+			REPORT_STR("crash from " << file << ":" << line);
+			std::cout.flush();
 			exit(-1);
 		}
 		EXIT_FUNC();
@@ -6846,6 +6848,7 @@ namespace INMOST
 		{
 			std::cout << file << ":" <<line <<  " " << err << " invalid links in sets" << std::endl;
 			REPORT_STR(file << ":" <<line <<  " " << err << " invalid links in sets");
+			std::cout.flush();
 			exit(-1);
 		}
 #endif //NDEBUG
@@ -6873,7 +6876,14 @@ namespace INMOST
 			if( problem )
 			{
 				bad[it->GetElementNum()]++;
-				//std::cout << "bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType()) << ":" << it->LocalID() << " " << cnt[0] << " " << cnt[1] << " " << cnt[2] << " != " << checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] << std::endl;
+				std::cout << "bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType()) 
+					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType())?it->GlobalID():-1) << " "
+					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != " 
+					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] << std::endl;
+				REPORT_STR("bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType())
+					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType()) ? it->GlobalID() : -1) << " "
+					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != "
+					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2]);
 			}
 			total[it->GetElementNum()]++;
 		}
@@ -6889,7 +6899,9 @@ namespace INMOST
 		if( crash ) 
 		{
 			std::cout << "crash from " << file << ":" << line << std::endl;
-			REPORT_STR("crash from " << file << ":" << line)
+			std::cout.flush();
+			REPORT_STR("crash from " << file << ":" << line);
+			std::cout.flush();
 			exit(-1);
 		}
 		EXIT_FUNC();
@@ -6907,6 +6919,7 @@ namespace INMOST
 			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
 			std::cout << " owner " << element->Integer(tag) << " remote " << *(const Storage::integer*)data;
 			std::cout << std::endl;
+			std::cout.flush();
 			exit(-1);
 		}
 	}
@@ -6936,6 +6949,7 @@ namespace INMOST
 		{
 			std::cout << "crash " << __FUNCTION__ << std::endl;
 			REPORT_STR("crash from " << __FUNCTION__);
+			std::cout.flush();
 			exit(-1);
 		}
 		ReduceData(tag_owner,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckOwner);
@@ -6953,6 +6967,7 @@ namespace INMOST
 			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
 			std::cout << " GID " << element->Integer(tag) << " remote " << *(const Storage::integer*)data;
 			std::cout << std::endl;
+			std::cout.flush();
 			exit(-1);
 		}
 	}
@@ -6995,6 +7010,7 @@ namespace INMOST
 		{
 			std::cout << "crash " << __FUNCTION__ << std::endl;
 			REPORT_STR("crash from " << __FUNCTION__);
+			std::cout.flush();
 			exit(-1);
 		}
 		if( exch != NONE ) ReduceData(tag_global_id, exch, 0, UnpackCheckGID);
@@ -7025,6 +7041,7 @@ namespace INMOST
 			std::cout << " remote";
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) std::cout << " " << ((const INMOST_DATA_INTEGER_TYPE *)data)[k];
 			std::cout << std::endl;
+			std::cout.flush();
 			exit(-1);
 		}
 	}
@@ -7064,6 +7081,7 @@ namespace INMOST
 		{
 			std::cout << "crash " << __FUNCTION__ << std::endl;
 			REPORT_STR("crash from " << __FUNCTION__);
+			std::cout.flush();
 			exit(-1);
 		}
 		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
