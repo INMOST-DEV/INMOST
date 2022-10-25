@@ -1906,6 +1906,9 @@ namespace INMOST
 		EXIT_BLOCK();
 		EXIT_FUNC();
 	}
+
+	//from parallel.cpp
+	void DeleteUnpack(const Tag& tag, const Element& e, const INMOST_DATA_BULK_TYPE* data, INMOST_DATA_ENUM_TYPE size);
 	
 	void Mesh::ApplyModification()
 	{
@@ -2002,6 +2005,11 @@ namespace INMOST
 		}
 		*/
 		EXIT_BLOCK();
+		//ENTER_BLOCK();
+		//SwapModification(false);
+		//SwapModification(false);
+		//EXIT_BLOCK();
+		/*
 		ENTER_BLOCK();
 #if defined(USE_PARALLEL_STORAGE)
 		for(parallel_storage::iterator it = shared_elements.begin(); it != shared_elements.end(); it++)
@@ -2028,6 +2036,138 @@ namespace INMOST
 			}
 #endif
 		EXIT_BLOCK();
+		*/
+#if defined(USE_MPI)
+		ENTER_BLOCK();
+		SwapModification(false);
+		MarkerType del = NewMarker();
+		int mpirank = GetProcessorRank();
+		Tag tag_delete = CreateTag("TEMPORARY_DELETE_GHOST_ELEMENTS_TAG", DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
+#if defined(USE_PARALLEL_STORAGE)
+		proc_elements del_shared, del_ghost;
+#endif //USE_PARALLEL_STORAGE
+
+		for (ElementType mask = ESET; mask >= NODE; mask = PrevElementType(mask))
+		{
+			INMOST_DATA_ENUM_TYPE cnt = 0;
+			ENTER_BLOCK();
+			for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				if (it->GetMarker(del) && (GetHandleElementType(*it) & mask) && GetStatus(*it) == Element::Ghost)
+				{
+					Integer(*it, tag_delete) = mpirank;
+					cnt++;
+				}
+			EXIT_BLOCK();
+			if (mask & (ESET | CELL))
+			{
+				cnt = Integrate(cnt);
+				if (!cnt) continue;
+			}
+			ENTER_BLOCK();
+			if (mask & (FACE | EDGE | NODE))
+			{
+				for(Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+				{
+					if (it->Hidden()) continue;
+					Element::Status estat = it->GetStatus();
+					if (estat == Element::Owned || estat == Element::Shared) continue;
+					if (it->nbAdjElements(NextElementType(mask)) == 0) it->Integer(tag_delete) = mpirank;
+				}
+			}
+			EXIT_BLOCK();
+			ReduceData(tag_delete, mask, 0, DeleteUnpack);
+			ExchangeData(tag_delete, mask, 0);
+			ENTER_BLOCK();
+			for (Mesh::iteratorElement it = BeginElement(mask); it != EndElement(); ++it)
+			{
+				if (it->Hidden()) continue;
+				Element::Status estat = it->GetStatus();
+				if (estat == Element::Owned) continue;
+				if (it->HaveData(tag_delete))
+				{
+					Storage::integer_array del_procs = it->IntegerArray(tag_delete);
+					std::sort(del_procs.begin(), del_procs.end());
+
+					if (estat == Element::Ghost && std::binary_search(del_procs.begin(), del_procs.end(), mpirank))
+					{
+#if defined(USE_PARALLEL_STORAGE)
+						del_ghost[it->IntegerDF(tag_owner)].push_back(it->GetHandle());
+#endif //USE_PARALLEL_STORAGE
+					}
+					else
+					{
+						Storage::integer_array procs = it->IntegerArrayDV(tag_processors);
+						std::vector<Storage::integer> result(procs.size());
+#if defined(USE_PARALLEL_STORAGE)
+						if (estat == Element::Shared)
+						{
+							for (Storage::integer_array::iterator vit = del_procs.begin(); vit != del_procs.end(); vit++)
+								del_shared[*vit].push_back(it->GetHandle());
+						}
+#endif	//USE_PARALLEL_STORAGE
+						std::vector<Storage::integer>::iterator end = std::set_difference(procs.begin(), procs.end(), del_procs.begin(), del_procs.end(), result.begin());
+						result.resize(end - result.begin());
+						procs.clear();
+						procs.insert(procs.begin(), result.begin(), result.end());
+
+						if (procs.size() == 1 && procs[0] == mpirank)
+							it->SetStatus(Element::Owned);
+					}
+				}
+			}
+			EXIT_BLOCK();
+			ENTER_BLOCK();
+#if defined(USE_PARALLEL_STORAGE)
+			for (proc_elements::iterator it = del_ghost.begin(); it != del_ghost.end(); it++)
+			{
+				//std::cout << GetProcessorRank() << " ghost delete size " << it->second.size() << std::endl;
+				element_set& ref = ghost_elements[it->first][ElementNum(mask)];
+				if (!it->second.empty())
+				{
+					if (HaveGlobalID(mask))
+						std::sort(it->second.begin(), it->second.end(), GlobalIDComparator(this));
+					else
+						std::sort(it->second.begin(), it->second.end(), CentroidComparator(this));
+				}
+				element_set result(ref.size());
+				element_set::iterator end;
+				if (HaveGlobalID(mask))
+					end = std::set_difference(ref.begin(), ref.end(), it->second.begin(), it->second.end(), result.begin(), GlobalIDComparator(this));
+				else
+					end = std::set_difference(ref.begin(), ref.end(), it->second.begin(), it->second.end(), result.begin(), CentroidComparator(this));
+				result.resize(end - result.begin());
+				ref.swap(result);
+			}
+			del_ghost.clear();
+			for (proc_elements::iterator it = del_shared.begin(); it != del_shared.end(); it++)
+			{
+				//std::cout << GetProcessorRank() << " shared delete size " << it->second.size() << std::endl;
+				element_set& ref = shared_elements[it->first][ElementNum(mask)];
+				if (!it->second.empty())
+				{
+					if (HaveGlobalID(mask))
+						std::sort(it->second.begin(), it->second.end(), GlobalIDComparator(this));
+					else
+						std::sort(it->second.begin(), it->second.end(), CentroidComparator(this));
+				}
+				element_set result(ref.size());
+				element_set::iterator end;
+				if (HaveGlobalID(mask))
+					end = std::set_difference(ref.begin(), ref.end(), it->second.begin(), it->second.end(), result.begin(), GlobalIDComparator(this));
+				else
+					end = std::set_difference(ref.begin(), ref.end(), it->second.begin(), it->second.end(), result.begin(), CentroidComparator(this));
+				result.resize(end - result.begin());
+				ref.swap(result);
+			}
+			del_shared.clear();
+#endif //USE_PARALLEL_STORAGE
+			EXIT_BLOCK();
+		}
+		DeleteTag(tag_delete);
+
+		SwapModification(false);
+		EXIT_BLOCK();
+#endif //USE_MPI
 		/*
 		ENTER_BLOCK();
 		if (UpdateGeometryMarker())
