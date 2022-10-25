@@ -6881,7 +6881,7 @@ namespace INMOST
 		Storage::integer crash = 0;
 		for(int k = 0; k < 4; ++k) if( bad[k] )
 		{
-			std::cout << "processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << " " << (HaveGlobalID(ElementTypeFromDim(k)) ? "have gid" : "no gid") std::endl;
+			std::cout << "processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << " " << (HaveGlobalID(ElementTypeFromDim(k)) ? "have gid" : "no gid") << std::endl;
 			REPORT_STR("processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << " " << (HaveGlobalID(ElementTypeFromDim(k)) ? "have gid" : "no gid"));
 			crash++;
 		}
