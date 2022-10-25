@@ -4371,10 +4371,11 @@ namespace INMOST
 			if( have_gids )
 			{
 				REPORT_STR("pack nodes global id");
-				global_ids.reserve(selems[0].size());
+				global_ids.resize(selems[0].size());
 			}
 			size_t marked_for_data = 0, marked_shared = 0, k = 0;
 			std::vector<Storage::real> coords(selems[0].size()*dim);
+			std::vector<char> flags(selems[0].size(), 0);
 			ENTER_BLOCK();
 			for(element_set::iterator it = selems[0].begin(); it != selems[0].end(); it++)
 			{
@@ -4393,12 +4394,13 @@ namespace INMOST
 				{
 					if( owner == GetProcessorRank() )
 					{
+						assert(GetStatus(*it) != Element::Ghost);
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
 						{
+							Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 							if (GetStatus(*it) != Element::Shared)
 							{
@@ -4415,6 +4417,7 @@ namespace INMOST
 				//TODO: 45
 				if( owner != destination ) 
 				{
+					flags[k] |= 1;
 					flag_data = true;
 					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
@@ -4423,7 +4426,7 @@ namespace INMOST
 				}
 				if( have_gids )
 				{
-					global_ids.push_back(GlobalID(*it));
+					global_ids[k] = GlobalID(*it);
 					//REPORT_VAL("packed global_id",global_ids.back());
 				}
 #if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
@@ -4439,6 +4442,7 @@ namespace INMOST
 			pack_data(buffer,have_gids,GetCommunicator());
 			pack_data_vector(buffer,coords,GetCommunicator());
 			pack_data_vector(buffer,global_ids,GetCommunicator());
+			pack_data_vector(buffer, flags, GetCommunicator());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[0].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[0].size());
 			REPORT_VAL("buffer position",buffer.size());
@@ -4449,6 +4453,7 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[1].size());
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<char> flags(selems[1].size(),0);
 			low_conn_nums.reserve(selems[1].size()*2);
 			size_t num = 0, k = 0, shifti = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
@@ -4532,12 +4537,13 @@ namespace INMOST
 				{
 					if( owner == GetProcessorRank() )
 					{
+						assert(GetStatus(*it) != Element::Ghost);
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
 						{
+							Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 							if (GetStatus(*it) != Element::Shared)
 							{
@@ -4553,6 +4559,7 @@ namespace INMOST
 				if( owner != destination ) 
 				{
 					flag_data = true;
+					flags[k] |= 1;
 					SetPrivateMarker(*it,pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[1].push_back(*it);
@@ -4576,6 +4583,7 @@ namespace INMOST
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			pack_data_vector(buffer,flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -4584,6 +4592,7 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<char> flags(selems[2].size(),0);
 			low_conn_nums.reserve(selems[2].size()*4);
 			size_t num = 0, k = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
@@ -4633,12 +4642,13 @@ namespace INMOST
 				{
 					if( owner == GetProcessorRank() )
 					{
+						assert(GetStatus(*it) != Element::Ghost);
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
 						{
+							Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 							if (GetStatus(*it) != Element::Shared)
 							{
@@ -4651,6 +4661,7 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
+					flags[k] |= 1;
 					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[2].push_back(*it);
@@ -4667,6 +4678,7 @@ namespace INMOST
 			pack_data(buffer,marked_for_data,GetCommunicator());
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
+			pack_data_vector(buffer,flags,GetCommunicator());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -4678,6 +4690,7 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size(node_conns ? selems[3].size() : 0);
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
+			std::vector<char> flags(selems[3].size(),0);
 			low_conn_nums.reserve(selems[3].size() * 6);
 			if( node_conns ) high_conn_nums.reserve(selems[3].size() * 8);
 			size_t num = 0, k = 0, num_high = 0;
@@ -4748,12 +4761,13 @@ namespace INMOST
 				{
 					if( owner == GetProcessorRank() )
 					{
+						assert(GetStatus(*it) != Element::Ghost);
 						Storage::integer_array proc = IntegerArrayDV(*it,tag_processors);
-						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(),proc.end(),destination);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
 						{
+							Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 							if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 							if (GetStatus(*it) != Element::Shared)
 							{
@@ -4766,6 +4780,7 @@ namespace INMOST
 				}
 				if( owner != destination ) 
 				{
+					flags[k] |= 1;
 					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[3].push_back(*it);
@@ -4787,6 +4802,7 @@ namespace INMOST
 				pack_data_vector(buffer, high_conn_size, GetCommunicator());
 				pack_data_vector(buffer, high_conn_nums, GetCommunicator());
 			}
+			pack_data_vector(buffer, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -4800,6 +4816,7 @@ namespace INMOST
 			std::vector<Storage::integer> high_conn_nums;  // array of indexes of parent (-1 if no parent), then all children
 			low_conn_nums.reserve(selems[4].size()*8);
 			high_conn_nums.reserve(selems[4].size()*3);
+			std::vector<char> flags(selems[4].size(), 0);
 			std::vector<char> names_buff;
 			size_t k = 0;
 			size_t marked_for_data = 0, marked_shared = 0;//, packed_only_name = 0;
@@ -4829,12 +4846,13 @@ namespace INMOST
 				
 				if( owner == GetProcessorRank() )
 				{
+					assert(GetStatus(*it) != Element::Ghost);
 					Storage::integer_array proc = IntegerArray(*it, tag_processors);
-					Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 #if defined(USE_OMP)
 #pragma omp critical
 #endif
 					{
+						Storage::integer_array::iterator ip = std::lower_bound(proc.begin(), proc.end(), destination);
 						if (ip == proc.end() || (*ip) != destination) proc.insert(ip, destination);
 						if (GetStatus(*it) != Element::Shared)
 						{
@@ -4849,7 +4867,7 @@ namespace INMOST
 				
 				if( owner != destination )
 				{
-					
+					flags[k] |= 1;
 					SetPrivateMarker(*it, pack_tags_mrk);
 					//TODO 46 old
 					//	pack_tags[3].push_back(*it);
@@ -4968,6 +4986,7 @@ namespace INMOST
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
 			pack_data_vector(buffer,high_conn_size,GetCommunicator());
 			pack_data_vector(buffer,high_conn_nums,GetCommunicator());
+			pack_data_vector(buffer, flags, GetCommunicator());
 			REPORT_VAL("total marked for data", marked_for_data << " / " << selems[4].size());
 			REPORT_VAL("total marked as shared", marked_shared << " / " << selems[4].size());
 			//REPORT_VAL("total packed only name ", packed_only_name << " / " << selems[4].size());
@@ -5130,6 +5149,7 @@ namespace INMOST
 			char have_gids = 0;
 			std::vector<Storage::real> coords;
 			std::vector<Storage::integer> global_ids;
+			std::vector<char> flags;
 			integer dim = GetDimensions();
 			REPORT_STR("unpack number of nodes");
             size_t num = 0, marked_remote = 0;
@@ -5141,6 +5161,8 @@ namespace INMOST
             unpack_data_vector(buffer,buffer_position,coords,GetCommunicator());
             REPORT_STR("unpack nodes global identificators");
             unpack_data_vector(buffer,buffer_position,global_ids,GetCommunicator());
+			REPORT_STR("unpack flags");
+			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[0].resize(num);
 			//TODO 46 old
@@ -5221,6 +5243,13 @@ namespace INMOST
 						++marked_ghost;
 					}
 				}
+				if ((flags[i] & 1 ? true : false) != GetMarker(new_node, unpack_tags_mrk))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for node " << i << " and local expects " << (GetMarker(new_node, unpack_tags_mrk) ? "data" : "no data") << std::endl;
+					REPORT_STR(__FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for node " << i << " and local expects " << (GetMarker(new_node, unpack_tags_mrk) ? "data" : "no data"));
+				}
 				assert(new_node != InvalidHandle());
 				selems[0][i] = new_node;
 #if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
@@ -5262,12 +5291,14 @@ namespace INMOST
 			ElementArray<Node> e_nodes(this,2);
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<char> flags;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of edges",num);
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[1].reserve(num);
 			
@@ -5349,6 +5380,13 @@ namespace INMOST
 					}
 					++found;
 				}
+				if ((flags[i] & 1 ? true : false) != GetMarker(new_edge, unpack_tags_mrk))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for edge " << i << " and local expects " << (GetMarker(new_edge, unpack_tags_mrk) ? "data" : "no data") << std::endl;
+					REPORT_STR(__FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for edge " << i << " and local expects " << (GetMarker(new_edge, unpack_tags_mrk) ? "data" : "no data"));
+				}
 #if defined(USE_PARALLEL_WRITE_TIME) && defined(DEBUG_UNPACK)
 				std::stringstream pstr;
 				Storage::integer_array proc = IntegerArrayDV(new_edge, tag_processors);
@@ -5387,12 +5425,14 @@ namespace INMOST
 			//~ shift = 0;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<char> flags;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
 			REPORT_VAL("number of faces",num);
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
+			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[2].reserve(num);
 			
@@ -5478,7 +5518,14 @@ namespace INMOST
 				// {
 				// 	std::cout << __FILE__ << ":" << __LINE__ << " rank " << GetProcessorRank() << " face " << new_face << " " << (Face(this,new_face).Boundary()?"bnd":"int") << " " << Element::StatusName(Face(this,new_face).GetStatus()) << std::endl;
 				// }
-				
+				if ((flags[i] & 1 ? true : false) != GetMarker(new_face, unpack_tags_mrk))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for face " << i << " and local expects " << (GetMarker(new_face, unpack_tags_mrk) ? "data" : "no data") << std::endl;
+					REPORT_STR(__FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for face " << i << " and local expects " << (GetMarker(new_face, unpack_tags_mrk) ? "data" : "no data"));
+				}
+
 				selems[2].push_back(new_face);
 			}
 			REPORT_VAL("total found", found << " / " << selems[2].size());
@@ -5508,6 +5555,7 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
+			std::vector<char> flags;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
@@ -5519,6 +5567,7 @@ namespace INMOST
 				unpack_data_vector(buffer, buffer_position, high_conn_size, GetCommunicator());
 				unpack_data_vector(buffer, buffer_position, high_conn_nums, GetCommunicator());
 			}
+			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[3].reserve(num);
 			
@@ -5586,6 +5635,16 @@ namespace INMOST
 					}
 					++found;
 				}
+
+				if ((flags[i] & 1 ? true : false) != GetMarker(new_cell, unpack_tags_mrk))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for cell " << i << " and local expects " << (GetMarker(new_cell, unpack_tags_mrk) ? "data" : "no data") << std::endl;
+					REPORT_STR(__FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for cell " << i << " and local expects " << (GetMarker(new_cell, unpack_tags_mrk) ? "data" : "no data"));
+				}
+
+
 				selems[3].push_back(new_cell);
 			}
 			REPORT_VAL("total found", found << " / " << selems[3].size());
@@ -5613,6 +5672,7 @@ namespace INMOST
 			std::vector<INMOST_DATA_ENUM_TYPE> high_conn_size;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_nums;
 			std::vector<Storage::integer> high_conn_nums;
+			std::vector<char> flags;
 			size_t num = 0, marked_remote = 0;
 			unpack_data(buffer,buffer_position,num,GetCommunicator());
 			unpack_data(buffer,buffer_position,marked_remote,GetCommunicator());
@@ -5623,7 +5683,7 @@ namespace INMOST
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,high_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,high_conn_nums,GetCommunicator());
-				
+			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			
 			std::vector<std::string> names;
@@ -5680,6 +5740,15 @@ namespace INMOST
 				//{
 				//	REPORT_VAL("found  old ",set->GetHandle());
 				//}
+
+				if ((flags[i] & 1 ? true : false) != set.GetMarker(unpack_tags_mrk))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for set " << i << " and local expects " << (set.GetMarker(unpack_tags_mrk) ? "data" : "no data") << std::endl;
+					REPORT_STR(__FILE__ << ":" << __LINE__ << " on " << GetProcessorRank() << " remote has " << (flags[i] & 1 ? "data" : "no data")
+						<< " for set " << i << " and local expects " << (set.GetMarker(unpack_tags_mrk) ? "data" : "no data"));
+				}
+
 				
 				selems[4].push_back(set.GetHandle());
 			}
@@ -6812,8 +6881,8 @@ namespace INMOST
 		Storage::integer crash = 0;
 		for(int k = 0; k < 4; ++k) if( bad[k] )
 		{
-			std::cout << "processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << std::endl;
-			REPORT_STR("processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k]);
+			std::cout << "processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << " " << (HaveGlobalID(ElementTypeFromDim(k)) ? "have gid" : "no gid") std::endl;
+			REPORT_STR("processor " << GetProcessorRank() << " on " <<  ElementTypeName(ElementTypeFromDim(k)) << " bad centroids " << bad[k] << "/" << total[k] << " " << (HaveGlobalID(ElementTypeFromDim(k)) ? "have gid" : "no gid"));
 			crash++;
 		}
 		crash = Integrate(crash);
