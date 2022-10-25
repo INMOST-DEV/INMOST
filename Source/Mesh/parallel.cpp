@@ -2791,16 +2791,13 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 		ENTER_BLOCK();
-		//CheckGIDs();
 		tag_global_id = CreateTag("GLOBAL_ID", DATA_INTEGER, mask, NONE, 1);
-		//CheckGIDs();
 		EXIT_BLOCK();
 #if defined(USE_MPI)
 		if( m_state == Parallel )
 		{
 			INMOST_DATA_ENUM_TYPE number, shift[5] = { 0,0,0,0,0 }, shift_recv[5] = { 0,0,0,0,0 };
 			ENTER_BLOCK();
-			//CheckGIDs();
 			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			//num = ElementNum(currenttype);
 			for (int num = ElementNum(NODE); num <= ElementNum(ESET); ++num) if (mask & ElementTypeFromDim(num))
@@ -2820,7 +2817,6 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			//CheckGIDs();
 			{
 				int ierr;
 				REPORT_MPI(ierr = MPI_Scan(shift,shift_recv,5,INMOST_MPI_DATA_ENUM_TYPE,MPI_SUM,GetCommunicator()));
@@ -2828,7 +2824,6 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			//CheckGIDs();
 			//for(ElementType currenttype = NODE; currenttype <= ESET; currenttype = NextElementType(currenttype) )
 			//num = ElementNum(currenttype);
 //#if defined(USE_OMP)
@@ -2847,7 +2842,6 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			//CheckGIDs();
 			if( tag_global_id.isValid() )
 			{
 				Tag exchange = tag_global_id;
@@ -2858,9 +2852,9 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			CheckGIDs();
+			CheckGIDs(mask);
 			SortParallelStorage(mask);
-			CheckGIDs();
+			CheckGIDs(mask);
 			EXIT_BLOCK();
 		}
 		else
@@ -3919,6 +3913,9 @@ namespace INMOST
 			
 			
 			ExchangeData(tag_processors,ESET | CELL | FACE | EDGE | NODE,0);
+
+			CheckGhostSharedCount(__FILE__, __LINE__);
+			CheckCentroids(__FILE__, __LINE__);
 			CheckOwners();
 			CheckGIDs();
 			CheckProcessors();
@@ -6613,6 +6610,7 @@ namespace INMOST
 			//Probably now owner should send processors_tag data
 			ExchangeData(tag_processors, ESET | CELL | FACE | EDGE | NODE, 0);
 		}
+		CheckCentroids(__FILE__, __LINE__);
 		CheckOwners();
 		CheckGIDs();
 		CheckProcessors();
@@ -6890,7 +6888,7 @@ namespace INMOST
 		}
 	}
 
-	void Mesh::CheckGIDs()
+	void Mesh::CheckGIDs(ElementType mask)
 	{
 #if !defined(NDEBUG)
 		ENTER_FUNC();
@@ -6898,7 +6896,7 @@ namespace INMOST
 		int bad = 0;
 		for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
 		{
-			if (HaveGlobalID(etype))
+			if ((etype & mask) && HaveGlobalID(etype))
 			{
 				exch |= etype;
 				std::vector<integer> gids;

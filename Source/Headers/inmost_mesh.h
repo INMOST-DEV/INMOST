@@ -3383,7 +3383,7 @@ namespace INMOST
 		/// Let ghost elements send processors list to master elements and see if they match
 		void                              CheckOwners        ();
 		/// Let ghost elements send global ids to master elements and see if they match
-		void                              CheckGIDs();
+		void                              CheckGIDs(ElementType mask = NODE | EDGE | FACE | CELL | ESET);
 		/// Let ghost elements send owner processor to master elements and see if they match
 		void                              CheckProcessors    ();
 		/// Checks that there are no invalid links in sets

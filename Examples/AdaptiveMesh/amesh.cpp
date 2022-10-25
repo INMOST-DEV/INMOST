@@ -507,6 +507,11 @@ namespace INMOST
 		//EXIT_BLOCK();
 		ENTER_BLOCK();
 		m->CheckSetLinks(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
 		CheckParentSet(__FILE__,__LINE__);
 		EXIT_BLOCK();
 		/*
@@ -634,6 +639,11 @@ namespace INMOST
 
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
 		ENTER_BLOCK();
 		m->BeginModification();
 		while(schedule_counter)
@@ -1495,7 +1505,11 @@ namespace INMOST
 			schedule_counter--;
 		}
 		m->CheckSetLinks(__FILE__,__LINE__);
-		
+		m->CheckGhostSharedCount(__FILE__,__LINE__)
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		//m->CheckGIDs();
 
 #if !defined(NDEBUG)
 		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
@@ -1661,8 +1675,16 @@ namespace INMOST
         //cout << rank << ": Before end " << std::endl;
 		m->EndModification();
 		EXIT_BLOCK();
+
+		ENTER_BLOCK();
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
+		EXIT_BLOCK();
 		
 		//keep links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
@@ -1692,7 +1714,14 @@ namespace INMOST
 		m->ExchangeMarked();
 		EXIT_BLOCK();
 		*/
+		ENTER_BLOCK();
 		CheckParentSet(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
+		EXIT_BLOCK();
 		
 		//m->Save("after_refine"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_refine"+std::to_string(fi)+".pvtk" << std::endl;
@@ -1847,7 +1876,14 @@ namespace INMOST
 		//SynchronizeIndicated(indicator);
 		//EXIT_BLOCK();
 		
+		ENTER_BLOCK();
 		CheckParentSet(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
+		EXIT_BLOCK();
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
 		Storage::integer scheduled = 1, unscheduled = 0; //indicates that at least one element was scheduled on current sweep
@@ -2195,6 +2231,11 @@ namespace INMOST
 		//m->Barrier();
 		ENTER_BLOCK();
 		CheckParentSet(__FILE__,__LINE__);//,indicator);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
 		EXIT_BLOCK();
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
@@ -2622,6 +2663,11 @@ namespace INMOST
 		ENTER_BLOCK();
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
 		EXIT_BLOCK();
 		//restore links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
@@ -2654,6 +2700,11 @@ namespace INMOST
 		*/
 		ENTER_BLOCK();
 		CheckParentSet(__FILE__,__LINE__);
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
 		EXIT_BLOCK();
 		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;
