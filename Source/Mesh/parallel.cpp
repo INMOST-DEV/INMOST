@@ -444,6 +444,13 @@ namespace INMOST
 		static int counter = 0;
 		if( GetProcessorsNumber() == 1 ) return;
 		ENTER_FUNC();
+		ENTER_BLOCK();
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckCentroids(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		EXIT_BLOCK();
 #if defined(USE_MPI)
 		//std::cout << "before_equiv"+std::to_string(counter)+".pvtk" << std::endl;
 		//Save("before_equiv"+std::to_string(counter)+".pvtk");
@@ -639,8 +646,11 @@ namespace INMOST
 		//Save(file);
 		//equiv++;
 		ENTER_BLOCK();
-		CheckGhostSharedCount(__FILE__,__LINE__);
-		CheckCentroids(__FILE__,__LINE__);
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckCentroids(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
 		EXIT_BLOCK();
 		
 		//TagInteger tag_new_owner = CreateTag("TEMPORARY_NEW_OWNER",DATA_INTEGER,CELL,NONE,1);
@@ -2057,6 +2067,13 @@ namespace INMOST
 					ReportParallelStorage();
 					REPORT_STR("Set parallel info for nodes");
 					
+					ENTER_BLOCK();
+					CheckGhostSharedCount(__FILE__, __LINE__);
+					CheckOwners();
+					CheckGIDs();
+					CheckProcessors();
+					CheckCentroids(__FILE__, __LINE__);
+					EXIT_BLOCK();
 					
 					MarkerType new_lc = 0;
 					if( only_new ) new_lc = CreateMarker();
@@ -2398,6 +2415,14 @@ namespace INMOST
 						EXIT_BLOCK();
 						AssignGlobalID(current_mask);
 						ReportParallelStorage();
+
+						ENTER_BLOCK();
+						CheckGhostSharedCount(__FILE__, __LINE__);
+						CheckOwners();
+						CheckGIDs();
+						CheckProcessors();
+						CheckCentroids(__FILE__, __LINE__);
+						EXIT_BLOCK();
 					}
 					EXIT_BLOCK();
 					if( only_new ) ReleaseMarker(new_lc,EDGE|FACE|CELL);
@@ -2416,9 +2441,26 @@ namespace INMOST
 		EXIT_BLOCK();
 		ENTER_BLOCK();
 		ReportParallelStorage();
-		CheckGhostSharedCount(__FILE__,__LINE__);
+		
+		ENTER_BLOCK();
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckCentroids(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		EXIT_BLOCK();
+
+
 		EquilibrateGhost();
-		CheckGhostSharedCount(__FILE__,__LINE__);
+
+		ENTER_BLOCK();
+		CheckGhostSharedCount(__FILE__, __LINE__);
+		CheckCentroids(__FILE__, __LINE__);
+		CheckOwners();
+		CheckGIDs();
+		CheckProcessors();
+		EXIT_BLOCK();
+
 		CheckProcsSorted(__FILE__,__LINE__);
 		EXIT_BLOCK();
 		//RemoveGhost();
