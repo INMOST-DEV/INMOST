@@ -1889,15 +1889,31 @@ namespace INMOST
 						std::sort(sorted_nodes.begin(), sorted_nodes.end(), cmp);
 					//qsort(&sorted_nodes[0],sorted_nodes.size(),sizeof(Element *),CompareElementsCCentroid);
 #if !defined(NDEBUG)
+					bool have_gid = HaveGlobalID(NODE);
 					integer bad = 0;
 					element_set::iterator next = sorted_nodes.begin(), cur = next++;
 					while (next < sorted_nodes.end())
 					{
-						if (cmp.Compare(*next, *cur) == 0) bad++;
+						if (cmp.Compare(*next, *cur) == 0)
+						{
+							real_array c1 = Node(this, *cur).Coords();
+							real_array c2 = Node(this, *next).Coords();
+							real dist = sqrt(pow(c1[0] - c2[0], 2) + pow(c1[1] - c2[1], 2) + pow(c1[2] - c2[2], 2));
+							std::cout << __FILE__ << ":" << __LINE__ << " same "
+								<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
+								<< " and "
+								<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
+								<< " dist " << dist << std::endl;
+							REPORT_STR("same " 
+								<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
+								<< " and "
+								<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
+								<< " dist " << dist);
+							bad++;
+						}
 						cur = next++;
 					}
-					bad = Integrate(bad);
-					if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+					if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate coords " << bad << std::endl;
 #endif
 				}
 				REPORT_STR("Sort nodes");
@@ -7217,11 +7233,9 @@ namespace INMOST
 				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
-					bool done = false;
 					if (HaveGlobalID(ElementTypeFromDim(i)))
 					{
 						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
-						done = true;
 #if !defined(NDEBUG)
 						integer bad = 0;
 						element_set::iterator next = it->second[i].begin(), cur = next++;
@@ -7230,15 +7244,10 @@ namespace INMOST
 							if (GlobalID(*next) == GlobalID(*cur)) bad++;
 							cur = next++;
 						}
-						bad = Integrate(bad);
-						if (bad)
-						{
-							done = false;
-							std::cout << __FILE__ << ":" << __LINE__ << " duplicate global id " << bad << std::endl;
-						}
+						if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate global id " << bad << std::endl;
 #endif
 					}
-					if (!done)
+					else
 					{
 						if (i < 4)
 						{
@@ -7252,8 +7261,7 @@ namespace INMOST
 								if (cmp.Compare(*next,*cur) == 0) bad++;
 								cur = next++;
 							}
-							bad = Integrate(bad);
-							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate coords " << bad << std::endl;
 #endif
 						}
 						else
@@ -7268,8 +7276,7 @@ namespace INMOST
 								if (cmp.Compare(*next, *cur) == 0) bad++;
 								cur = next++;
 							}
-							bad = Integrate(bad);
-							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate set names " << bad << std::endl;
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate set names " << bad << std::endl;
 #endif
 						}
 					}
@@ -7315,7 +7322,6 @@ namespace INMOST
 				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
-					bool done = false;
 					if (HaveGlobalID(ElementTypeFromDim(i)))
 					{
 						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
@@ -7327,15 +7333,10 @@ namespace INMOST
 							if (GlobalID(*next) == GlobalID(*cur)) bad++;
 							cur = next++;
 						}
-						bad = Integrate(bad);
-						if (bad)
-						{
-							done = false;
-							std::cout << __FILE__ << ":" << __LINE__ << " duplicate global id " << bad << std::endl;
-						}
+						if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate global id " << bad << std::endl;
 #endif
 					}
-					if (!done)
+					else
 					{
 						if (i < 4)
 						{
@@ -7349,8 +7350,7 @@ namespace INMOST
 								if (cmp.Compare(*next, *cur) == 0) bad++;
 								cur = next++;
 							}
-							bad = Integrate(bad);
-							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate coords " << bad << std::endl;
 #endif
 						}
 						else
@@ -7365,8 +7365,7 @@ namespace INMOST
 								if (cmp.Compare(*next, *cur) == 0) bad++;
 								cur = next++;
 							}
-							bad = Integrate(bad);
-							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate set names " << bad << std::endl;
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate set names " << bad << std::endl;
 #endif
 						}
 					}
