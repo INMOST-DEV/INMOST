@@ -1657,6 +1657,7 @@ namespace INMOST
 		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,CELL | EDGE | FACE | NODE);
 		integer dim = GetDimensions();
 		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber();
+		REPORT_STR(__FUNCTION__ << " " << (only_new ? "only new" : "all"));
 #if defined(USE_PARALLEL_STORAGE)
 		shared_elements.clear();
 		ghost_elements.clear();
@@ -1711,6 +1712,11 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
+		for (integer k = 0; k < dim; k++)
+		{
+			bbox[k] -= GetEpsilon() * 2;
+			bbox[k + dim] += GetEpsilon() * 2;
+		}
 		REPORT_VAL("dim",dim);
 		assert(dim*2 <= 6);
 		// write down bounding boxes
@@ -2255,8 +2261,8 @@ namespace INMOST
 											{
 												message_send.push_back(GlobalID(*kt));
 												message_send[message_size_pos]++;
-												INMOST_DATA_REAL_TYPE cnt[3];
-												ElementByLocalID(PrevElementType(current_mask), GetHandleID(*kt))->Centroid(cnt);
+												//INMOST_DATA_REAL_TYPE cnt[3];
+												//ElementByLocalID(PrevElementType(current_mask), GetHandleID(*kt))->Centroid(cnt);
 												//REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
 											}
 											//~ message_send[1]++;
