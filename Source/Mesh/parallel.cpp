@@ -6957,20 +6957,29 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE cnt[3];
 			it->Centroid(cnt);
 			bool problem = false;
-			for(int k = 0; k < 3; ++k)
-				if( fabs(cnt[k] - checker[*it][k]) > 1.0e-9 )
+			double dist = 0;
+			for (int k = 0; k < 3; ++k)
+			{
+				if (fabs(cnt[k] - checker[*it][k]) > 1.0e-9)
 					problem = true;
+				dist += pow(cnt[k] - checker[*it][k], 2);
+			}
 			if( problem )
 			{
+				dist = sqrt(dist);
 				bad[it->GetElementNum()]++;
 				std::cout << "bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType()) 
 					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType())?it->GlobalID():-1) << " "
 					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != " 
-					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] << std::endl;
+					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] 
+					<< " diff " << cnt[0] - checker[*it][0] << " " << cnt[1] - checker[*it][1] << " " << cnt[2] - checker[*it][2]
+					<< " dist " << dist << std::endl;
 				REPORT_STR("bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType())
 					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType()) ? it->GlobalID() : -1) << " "
 					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != "
-					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2]);
+					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2]
+					<< " diff " << cnt[0] - checker[*it][0] << " " << cnt[1] - checker[*it][1] << " " << cnt[2] - checker[*it][2] 
+					<< " dist " << dist);
 			}
 			total[it->GetElementNum()]++;
 		}
