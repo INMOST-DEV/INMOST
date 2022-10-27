@@ -1,7 +1,7 @@
 #include "inmost.h"
 #if defined(USE_MESH)
 
-#if defined(USE_PARALLEL_WRITE_TIME)
+#if 0 //defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_STR(x) {m->WriteTab(m->out_time) << "<TEXT><![CDATA[" << x << "]]></TEXT>" << std::endl;}
 #define REPORT_VAL(str,x) {m->WriteTab(m->out_time) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]></CONTENT> <CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
 #define ENTER_FUNC() double all_time = Timer(); {m->WriteTab(m->out_time) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();}
@@ -380,7 +380,7 @@ namespace INMOST
 	{
 		std::string str = "";
 		for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
-			if (t.isDefined(etype)) str += ElementTypeName(etype)[0];
+			if (t.isSparse(etype)) str += ElementTypeName(etype)[0];
 		return str;
 	}
 	
