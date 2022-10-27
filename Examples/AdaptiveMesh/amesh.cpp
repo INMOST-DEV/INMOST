@@ -465,6 +465,13 @@ namespace INMOST
 	{
 		static int fi = 0;
         ENTER_FUNC();
+		ENTER_BLOCK();
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
+		EXIT_BLOCK();
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
@@ -1818,6 +1825,14 @@ namespace INMOST
 	{
 		std::string file;
 		ENTER_FUNC();
+		ENTER_BLOCK();
+		m->CheckGhostSharedCount(__FILE__, __LINE__);
+		m->CheckCentroids(__FILE__, __LINE__);
+		m->CheckOwners();
+		m->CheckProcessors();
+		m->CheckGIDs();
+		EXIT_BLOCK();
+
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
 //#endif
