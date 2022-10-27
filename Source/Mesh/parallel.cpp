@@ -1883,9 +1883,23 @@ namespace INMOST
 				
 				
 				ENTER_BLOCK();
-				if( !sorted_nodes.empty() )
-					std::sort(sorted_nodes.begin(),sorted_nodes.end(),CentroidComparator(this));
+				{
+					CentroidComparator cmp(this);
+					if (!sorted_nodes.empty())
+						std::sort(sorted_nodes.begin(), sorted_nodes.end(), cmp);
 					//qsort(&sorted_nodes[0],sorted_nodes.size(),sizeof(Element *),CompareElementsCCentroid);
+#if !defined(NDEBUG)
+					integer bad = 0;
+					element_set::iterator next = sorted_nodes.begin(), cur = next++;
+					while (next < sorted_nodes.end())
+					{
+						if (cmp.Compare(*next, *cur) == 0) bad++;
+						cur = next++;
+					}
+					bad = Integrate(bad);
+					if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+#endif
+				}
 				REPORT_STR("Sort nodes");
 				EXIT_BLOCK();
 				
@@ -2408,6 +2422,15 @@ namespace INMOST
 						EXIT_BLOCK();
 						RecomputeParallelStorage(current_mask);
 						ENTER_BLOCK();
+
+						ENTER_BLOCK();
+						CheckGhostSharedCount(__FILE__, __LINE__);
+						CheckOwners();
+						CheckGIDs();
+						CheckProcessors();
+						CheckCentroids(__FILE__, __LINE__);
+						EXIT_BLOCK();
+
 						if( !send_reqs.empty() )
 						{
 							REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(send_reqs.size()),&send_reqs[0],MPI_STATUSES_IGNORE));
@@ -7176,29 +7199,80 @@ namespace INMOST
 			}
 		}
 #endif
-		//for(parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
-#if defined(USE_OMP)
-#pragma omp parallel for schedule(dynamic,1)
-#endif
-		for(int j = 0; j < 5 * (int)shared.size(); ++j)
+		
+//#if defined(USE_OMP)
+//#pragma omp parallel for schedule(dynamic,1)
+//#endif
+		//for(int j = 0; j < 5 * (int)shared.size(); ++j)
+		for (parallel_storage::iterator it = shared.begin(); it != shared.end(); it++)
 		{
-			int i = j % 5;
-			if( mask & ElementTypeFromDim(i) )
+			//int i = j % 5;
+			for(int i = 0; i < 5; ++i ) if( mask & ElementTypeFromDim(i) )
 			{
-				parallel_storage::iterator it = shared.begin();
-				int k = j / 5;
-				while (k) ++it, --k;
+				//parallel_storage::iterator it = shared.begin();
+				//int k = j / 5;
+				//while (k) ++it, --k;
 				//REPORT_VAL("processor", it->first);
 				//ENTER_BLOCK();
 				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
+					bool done = false;
 					if (HaveGlobalID(ElementTypeFromDim(i)))
+					{
 						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
-					else if (i < 4)
-						std::sort(it->second[i].begin(), it->second[i].end(), CentroidComparator(this));
-					else
-						std::sort(it->second[4].begin(), it->second[4].end(), SetNameComparator(this));
+						done = true;
+#if !defined(NDEBUG)
+						integer bad = 0;
+						element_set::iterator next = it->second[i].begin(), cur = next++;
+						while(next < it->second[i].end())
+						{
+							if (GlobalID(*next) == GlobalID(*cur)) bad++;
+							cur = next++;
+						}
+						bad = Integrate(bad);
+						if (bad)
+						{
+							done = false;
+							std::cout << __FILE__ << ":" << __LINE__ << " duplicate global id " << bad << std::endl;
+						}
+#endif
+					}
+					if (!done)
+					{
+						if (i < 4)
+						{
+							CentroidComparator cmp(this);
+							std::sort(it->second[i].begin(), it->second[i].end(), cmp);
+#if !defined(NDEBUG)
+							integer bad = 0;
+							element_set::iterator next = it->second[i].begin(), cur = next++;
+							while (next < it->second[i].end())
+							{
+								if (cmp.Compare(*next,*cur) == 0) bad++;
+								cur = next++;
+							}
+							bad = Integrate(bad);
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+#endif
+						}
+						else
+						{
+							SetNameComparator cmp(this);
+							std::sort(it->second[4].begin(), it->second[4].end(), cmp);
+#if !defined(NDEBUG)
+							integer bad = 0;
+							element_set::iterator next = it->second[i].begin(), cur = next++;
+							while (next < it->second[i].end())
+							{
+								if (cmp.Compare(*next, *cur) == 0) bad++;
+								cur = next++;
+							}
+							bad = Integrate(bad);
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate set names " << bad << std::endl;
+#endif
+						}
+					}
 
 				}
 				//REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
@@ -7224,28 +7298,78 @@ namespace INMOST
 		}
 #endif
 		//for(parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
-#if defined(USE_OMP)
-#pragma omp parallel for schedule(dynamic,1)
-#endif
-		for (int j = 0; j < 5 * (int)ghost.size(); ++j)
+//#if defined(USE_OMP)
+//#pragma omp parallel for schedule(dynamic,1)
+//#endif
+//		for (int j = 0; j < 5 * (int)ghost.size(); ++j)
+		for (parallel_storage::iterator it = ghost.begin(); it != ghost.end(); it++)
 		{
-			int i = j % 5;
-			if( mask & ElementTypeFromDim(i) )
+			//int i = j % 5;
+			for(int i = 0; i < 5; ++i) if( mask & ElementTypeFromDim(i) )
 			{
-				parallel_storage::iterator it = ghost.begin();
-				int k = j / 5;
-				while (k) ++it, --k;
+				//parallel_storage::iterator it = ghost.begin();
+				//int k = j / 5;
+				//while (k) ++it, --k;
 				//REPORT_VAL("processor", it->first);
 				//ENTER_BLOCK();
 				//REPORT_STR(ElementTypeName(ElementTypeFromDim(i)) << " have global id " << (!tag_global_id.isValid() ? "invalid" : (tag_global_id.isDefined(ElementTypeFromDim(i))?"YES":"NO")));
 				if( !it->second[i].empty() )
 				{
+					bool done = false;
 					if (HaveGlobalID(ElementTypeFromDim(i)))
+					{
 						std::sort(it->second[i].begin(), it->second[i].end(), GlobalIDComparator(this));
-					else if (i < 4)
-						std::sort(it->second[i].begin(), it->second[i].end(), CentroidComparator(this));
-					else
-						std::sort(it->second[4].begin(), it->second[4].end(), SetNameComparator(this));
+#if !defined(NDEBUG)
+						integer bad = 0;
+						element_set::iterator next = it->second[i].begin(), cur = next++;
+						while (next < it->second[i].end())
+						{
+							if (GlobalID(*next) == GlobalID(*cur)) bad++;
+							cur = next++;
+						}
+						bad = Integrate(bad);
+						if (bad)
+						{
+							done = false;
+							std::cout << __FILE__ << ":" << __LINE__ << " duplicate global id " << bad << std::endl;
+						}
+#endif
+					}
+					if (!done)
+					{
+						if (i < 4)
+						{
+							CentroidComparator cmp(this);
+							std::sort(it->second[i].begin(), it->second[i].end(), cmp);
+#if !defined(NDEBUG)
+							integer bad = 0;
+							element_set::iterator next = it->second[i].begin(), cur = next++;
+							while (next < it->second[i].end())
+							{
+								if (cmp.Compare(*next, *cur) == 0) bad++;
+								cur = next++;
+							}
+							bad = Integrate(bad);
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate coords " << bad << std::endl;
+#endif
+						}
+						else
+						{
+							SetNameComparator cmp(this);
+							std::sort(it->second[4].begin(), it->second[4].end(), cmp);
+#if !defined(NDEBUG)
+							integer bad = 0;
+							element_set::iterator next = it->second[i].begin(), cur = next++;
+							while (next < it->second[i].end())
+							{
+								if (cmp.Compare(*next, *cur) == 0) bad++;
+								cur = next++;
+							}
+							bad = Integrate(bad);
+							if (bad) std::cout << __FILE__ << ":" << __LINE__ << " duplicate set names " << bad << std::endl;
+#endif
+						}
+					}
 				}
 				//REPORT_VAL(ElementTypeName(mask & ElementTypeFromDim(i)),it->second[i].size());
 				//EXIT_BLOCK();

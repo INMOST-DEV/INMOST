@@ -3440,6 +3440,7 @@ namespace INMOST
 			CentroidComparator(const CentroidComparator & other) :m(other.m){}
 			CentroidComparator & operator = (CentroidComparator const & other) { m = other.m; return *this;}
 			int Compare(const real * a, const real * b) const;
+			int Compare(HandleType a, HandleType b) const;
 			bool operator() (HandleType a, HandleType b) const;
 			bool operator() (HandleType a, const real * b) const;
 			bool operator() (const real * a, HandleType b) const;
@@ -3460,14 +3461,14 @@ namespace INMOST
         {
 			Mesh * m;
             public:
-			    SetNameComparator(Mesh * m) :m(m) {}
-                bool operator()(HandleType a, HandleType b) const
-			    {
-                    if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; 
-
-                    return ElementSet(m,a).GetName() < ElementSet(m,b).GetName();
-                }  
-
+			SetNameComparator(Mesh * m) :m(m) {}
+            bool operator()(HandleType a, HandleType b) const
+			{
+                if( a == InvalidHandle() || b == InvalidHandle() ) return a > b; 
+                return ElementSet(m,a).GetName() < ElementSet(m,b).GetName();
+            }
+			int Compare(const std::string& a, const std::string& b) const;
+			int Compare(HandleType a, HandleType b) const;
         };
 
 		class HierarchyComparator

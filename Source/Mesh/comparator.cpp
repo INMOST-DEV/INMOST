@@ -15,6 +15,25 @@ namespace INMOST
 			}
 		return 0;
 	}
+	int Mesh::CentroidComparator::Compare(HandleType a, HandleType b) const
+	{
+		real ca[3] = { 0,0,0 }, cb[3] = { 0,0,0 };
+		m->GetGeometricData(a, CENTROID, ca);
+		m->GetGeometricData(b, CENTROID, cb);
+		return Compare(ca,cb);
+	}
+
+	int Mesh::SetNameComparator::Compare(HandleType a, HandleType b) const
+	{
+		return Compare(ElementSet(m, a).GetName(), ElementSet(m, b).GetName());
+	}
+
+	int Mesh::SetNameComparator::Compare(const std::string& a, const std::string& b) const
+	{
+		if (a > b) return 1;
+		else if (a < b) return -1;
+		else return 0;
+	}
 
 	bool Mesh::CentroidComparator::operator () (HandleType a, HandleType b) const
 	{
