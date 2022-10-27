@@ -813,15 +813,15 @@ namespace INMOST
 	//////////////////////////////
 	bool Mesh::HaveGlobalID(ElementType type) const
 	{
-		ENTER_FUNC();
+		//ENTER_FUNC();
 		assert(OneType(type));
-		REPORT_VAL("test gid on ", ElementTypeName(type));
+		//REPORT_VAL("test gid on ", ElementTypeName(type));
 		bool ret = false;
 		Tag test;
 		if( GlobalIDTag().isValid() ) test = GlobalIDTag();
 		else
 		{
-			REPORT_STR("gid tag is not valid");
+			//REPORT_STR("gid tag is not valid");
 		}
 		//else if( HaveTag("GLOBAL_ID") ) test = GetTag("GLOBAL_ID") );
 		
@@ -832,9 +832,9 @@ namespace INMOST
 			//	ret &= test.isDefined(etype);
 			//return ret;
 			ret = test.isDefined(type);
-			REPORT_STR("gid is valid and " << (ret ? "":"not") << " defined " << ElementTypeName(type));
+			//REPORT_STR("gid is valid and " << (ret ? "":"not") << " defined " << ElementTypeName(type));
 		}
-		EXIT_FUNC();
+		//EXIT_FUNC();
 		return ret;
 	}
 
@@ -6952,6 +6952,7 @@ namespace INMOST
 			it->Centroid(checker[*it].data());
 		ExchangeData(checker,CELL|FACE|EDGE|NODE,0);
 		int bad[4] = {0,0,0,0}, total[4] = {0,0,0,0};
+		bool have_gid[4] = { HaveGlobalID(NODE), HaveGlobalID(EDGE), HaveGlobalID(FACE), HaveGlobalID(CELL) };
 		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
 		{
 			INMOST_DATA_REAL_TYPE cnt[3];
@@ -6969,13 +6970,13 @@ namespace INMOST
 				dist = sqrt(dist);
 				bad[it->GetElementNum()]++;
 				std::cout << "bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType()) 
-					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType())?it->GlobalID():-1) << " "
+					<< ":" << it->LocalID() << " gid " << (have_gid[it->GetElementNum()]?it->GlobalID():-1) << " "
 					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != " 
 					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2] 
 					<< " diff " << cnt[0] - checker[*it][0] << " " << cnt[1] - checker[*it][1] << " " << cnt[2] - checker[*it][2]
 					<< " dist " << dist << std::endl;
 				REPORT_STR("bad centroid on " << GetProcessorRank() << " " << ElementTypeName(it->GetElementType())
-					<< ":" << it->LocalID() << " gid " << (HaveGlobalID(it->GetElementType()) ? it->GlobalID() : -1) << " "
+					<< ":" << it->LocalID() << " gid " << (have_gid[it->GetElementNum()] ? it->GlobalID() : -1) << " "
 					<< cnt[0] << " " << cnt[1] << " " << cnt[2] << " != "
 					<< checker[*it][0] << " " << checker[*it][1] << " " << checker[*it][2]
 					<< " diff " << cnt[0] - checker[*it][0] << " " << cnt[1] - checker[*it][1] << " " << cnt[2] - checker[*it][2] 
