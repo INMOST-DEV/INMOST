@@ -2189,8 +2189,8 @@ namespace INMOST
 							}
 						}
 						
-						REPORT_VAL("predicted owned elements",owned_elems);
-						REPORT_VAL("predicted shared elements",shared_elems);
+						//REPORT_VAL("predicted owned elements",owned_elems);
+						//REPORT_VAL("predicted shared elements",shared_elems);
 						REPORT_STR("Predict processors for elements");
 						EXIT_BLOCK();
 						
