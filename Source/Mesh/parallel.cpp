@@ -2189,8 +2189,8 @@ namespace INMOST
 							}
 						}
 						
-						//REPORT_VAL("predicted owned elements",owned_elems);
-						//REPORT_VAL("predicted shared elements",shared_elems);
+						REPORT_VAL("predicted owned elements",owned_elems);
+						REPORT_VAL("predicted shared elements",shared_elems);
 						REPORT_STR("Predict processors for elements");
 						EXIT_BLOCK();
 						
@@ -2225,23 +2225,24 @@ namespace INMOST
 
 						ENTER_BLOCK();
 						//Gather all possible shared elements and send global ids of their connectivity to the neighbouring proccessors
-						//for(p = procs.begin(); p != procs.end(); p++)
-#if defined(USE_OMP)
-#pragma omp parallel
-#endif
+//#if defined(USE_OMP)
+//#pragma omp parallel
+//#endif
 						{
 							std::vector<integer> message_send;
-#if defined(USE_OMP)
-#pragma omp for schedule(dynamic,1)
-#endif
-							for (int m = 0; m < (int)procs.size(); ++m)
+//#if defined(USE_OMP)
+//#pragma omp for schedule(dynamic,1)
+//#endif
+							for (std::vector<int>::iterator p = procs.begin(); p != procs.end(); p++)
+							//for (int m = 0; m < (int)procs.size(); ++m)
 							{
-								std::vector<int>::iterator p = procs.begin() + m;
-								//REPORT_VAL("for processor", *p);
+								//std::vector<int>::iterator p = procs.begin() + m;
+								int m = static_cast<int>(p - procs.begin());
+								REPORT_VAL("for processor", *p);
 								{
 									message_send.clear();
 									message_send.push_back(0);
-									//ENTER_BLOCK();
+									ENTER_BLOCK();
 									//for(Mesh::iteratorElement it = BeginElement(current_mask); it != EndElement(); it++)
 									for (int i = 0; i < LastLocalID(current_mask); ++i) if (isValidElement(current_mask, i))
 									{
@@ -2255,23 +2256,25 @@ namespace INMOST
 											if (sub.size() == 0) throw Impossible;
 											integer message_size_pos = (integer)message_send.size();
 											message_send.push_back(0);
-											//REPORT_VAL("number of connections",sub.size());
-											//REPORT_STR("element " << ElementTypeName(current_mask) << ":" << it->LocalID());
+											REPORT_VAL("number of connections",sub.size());
+											REPORT_STR("element " << ElementTypeName(current_mask) << ":" << it->LocalID());
 											for (Element::adj_type::iterator kt = sub.begin(); kt != sub.end(); kt++) if (!hm || !GetMarker(*kt, hm))
 											{
 												message_send.push_back(GlobalID(*kt));
 												message_send[message_size_pos]++;
-												//INMOST_DATA_REAL_TYPE cnt[3];
-												//ElementByLocalID(PrevElementType(current_mask), GetHandleID(*kt))->Centroid(cnt);
-												//REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
+#if defined(USE_PARALLEL_WRITE_TIME)
+												INMOST_DATA_REAL_TYPE cnt[3];
+												ElementByLocalID(PrevElementType(current_mask), GetHandleID(*kt))->Centroid(cnt);
+												REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
+#endif
 											}
 											//~ message_send[1]++;
 											message_send[0]++;
 											elements[m].push_back(it->GetHandle());
 										}
 									}
-									//EXIT_BLOCK();
-									//REPORT_VAL("gathered elements", elements[m].size());
+									EXIT_BLOCK();
+									REPORT_VAL("gathered elements", elements[m].size());
 
 									//ENTER_BLOCK();
 									send_buffs[m].first = *p;
@@ -2318,23 +2321,25 @@ namespace INMOST
 						ENTER_BLOCK();
 						//Now find the difference of local elements with given processor number and remote elements
 						//for(p = procs.begin(); p != procs.end(); p++)
-#if defined(USE_OMP)
-#pragma omp parallel for schedule(dynamic,1)
-#endif
-						for(int m = 0; m < (int)procs.size(); ++m)
+//#if defined(USE_OMP)
+//#pragma omp parallel for schedule(dynamic,1)
+//#endif
+//						for(int m = 0; m < (int)procs.size(); ++m)
+						for (std::vector<int>::iterator p = procs.begin(); p != procs.end(); p++)
 						{
-							std::vector<int>::iterator p = procs.begin() + m;
+							//std::vector<int>::iterator p = procs.begin() + m;
+							int m = static_cast<int>(p - procs.begin());
 							//REPORT_VAL("on processor",*p);
 							element_set remote_elements;
 							int pos = 0;
 							if( message_recv[m].empty() ) continue;
 							integer num_remote_elements = message_recv[m][pos++];
-							//REPORT_VAL("number of remote elements",num_remote_elements);
-							//ENTER_BLOCK();
+							REPORT_VAL("number of remote elements",num_remote_elements);
+							ENTER_BLOCK();
 							for(integer i = 0; i < num_remote_elements; i++)
 							{
 								integer conn_size = message_recv[m][pos++], flag = 1;
-								//REPORT_VAL("number of connxections",conn_size);
+								REPORT_VAL("number of connxections",conn_size);
 								std::vector<HandleType> sub_elements;
 								for(integer j = 0; j < conn_size; j++)
 								{
@@ -2345,58 +2350,65 @@ namespace INMOST
 										find = static_cast<integer>(it-mapping.begin());
 									if( find == -1 ) 
 									{
-										//REPORT_STR("global id " << global_id << " local id -1");
+										REPORT_STR("global id " << global_id << " local id -1");
 										flag = 0;
 										pos += conn_size-j-1;
 										break;
 									}
 									integer find_local_id = mapping[find].second;
-									//REPORT_STR("global id " << global_id << " local id " << find_local_id << " " << Element::StatusName(ElementByLocalID(PrevElementType(current_mask), find_local_id)->GetStatus()));
+#if defined(USE_PARALLEL_WRITE_TIME)
+									real cnt[3];
+									ElementByLocalID(PrevElementType(current_mask), find_local_id).Centroid(cnt);
+									REPORT_STR("global id " << global_id 
+										<< " local id " << find_local_id 
+										<< " " << Element::StatusName(ElementByLocalID(PrevElementType(current_mask), find_local_id)->GetStatus())
+										<< " " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
+#endif
 									if( GetMarker(ComposeHandle(PrevElementType(current_mask), find_local_id),hm) ) std::cout << "Found hidden element" << std::endl;
 									sub_elements.push_back(ComposeHandle(PrevElementType(current_mask), find_local_id));
 									
 								}
-								//REPORT_VAL("is element found",flag);
+								REPORT_VAL("is element found",flag);
 								if( flag )
 								{
 									HandleType e = FindSharedAdjacency(sub_elements.data(),static_cast<enumerator>(sub_elements.size()));
-									//REPORT_VAL("found element",e);
+									REPORT_VAL("found element",e);
 									if( e == InvalidHandle() ) continue;
 									remote_elements.push_back(e);
 								}
 							}
-							//REPORT_VAL("number of unpacked remote elements",remote_elements.size());
-							//EXIT_BLOCK();
-							//if( !remote_elements.empty() )
-							//{
-							//	REPORT_VAL("first",remote_elements.front());
-							//	REPORT_VAL("first type",ElementTypeName(GetHandleElementType(remote_elements.front())));
-							//	REPORT_VAL("last",remote_elements.back());
-							//	REPORT_VAL("last type",ElementTypeName(GetHandleElementType(remote_elements.back())));
-							//}
-							//ENTER_BLOCK();
+							REPORT_VAL("number of unpacked remote elements",remote_elements.size());
+							EXIT_BLOCK();
+							if( !remote_elements.empty() )
+							{
+								REPORT_VAL("first",remote_elements.front());
+								REPORT_VAL("first type",ElementTypeName(GetHandleElementType(remote_elements.front())));
+								REPORT_VAL("last",remote_elements.back());
+								REPORT_VAL("last type",ElementTypeName(GetHandleElementType(remote_elements.back())));
+							}
+							ENTER_BLOCK();
 							std::sort(remote_elements.begin(),remote_elements.end());
-							//EXIT_BLOCK();
-							//REPORT_VAL("original elements size",elements[m].size());
-							//if( !elements[m].empty() )
-							//{
-							//	REPORT_VAL("first",elements[m].front());
-							//	REPORT_VAL("first type",ElementTypeName(GetHandleElementType(elements[m].front())));
-							//	REPORT_VAL("last",elements[m].back());
-							//	REPORT_VAL("last type",ElementTypeName(GetHandleElementType(elements[m].back())));
-							//}
-							//ENTER_BLOCK();
+							EXIT_BLOCK();
+							REPORT_VAL("original elements size",elements[m].size());
+							if( !elements[m].empty() )
+							{
+								REPORT_VAL("first",elements[m].front());
+								REPORT_VAL("first type",ElementTypeName(GetHandleElementType(elements[m].front())));
+								REPORT_VAL("last",elements[m].back());
+								REPORT_VAL("last type",ElementTypeName(GetHandleElementType(elements[m].back())));
+							}
+							ENTER_BLOCK();
 							std::sort(elements[m].begin(),elements[m].end());
-							//EXIT_BLOCK();
+							EXIT_BLOCK();
 							element_set result;
 							element_set::iterator set_end;
-							//ENTER_BLOCK();
+							ENTER_BLOCK();
 							result.resize(elements[m].size());
 							set_end = std::set_difference(elements[m].begin(),elements[m].end(),remote_elements.begin(),remote_elements.end(), result.begin());
 							result.resize(set_end-result.begin());
-							//EXIT_BLOCK();
-							//REPORT_VAL("set difference size",result.size());
-							//ENTER_BLOCK();
+							EXIT_BLOCK();
+							REPORT_VAL("set difference size",result.size());
+							ENTER_BLOCK();
 							//elements in result are wrongly marked as ghost
 #if defined(USE_OMP)
 #pragma omp critical
@@ -2407,7 +2419,7 @@ namespace INMOST
 								integer_array::iterator find = std::lower_bound(pr.begin(),pr.end(),*p);
 								pr.erase(find);
 							}
-							//EXIT_BLOCK();
+							EXIT_BLOCK();
 						}
 						
 						
