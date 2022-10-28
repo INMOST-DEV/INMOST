@@ -7154,6 +7154,8 @@ namespace INMOST
 			std::cout << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2];
 			if (element.GetMeshLink()->HaveGlobalID(element->GetElementType()))
 				std::cout << " gid " << element->GlobalID();
+			std::cout << (element->New() ? " new" : " old");
+			std::cout << (element->Hidden() ? " hidden" : "");
 			std::cout << std::endl;
 			std::cout.flush();
 			exit(-1);
