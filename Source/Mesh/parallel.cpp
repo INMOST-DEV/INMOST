@@ -7144,11 +7144,16 @@ namespace INMOST
 			if( size != procs.size() ) 
 				std::cout << __FILE__ << ":" << __LINE__ <<  " wrong size of array " << std::endl;
 			std::cout << __FILE__ << ":" << __LINE__ <<  " on " << tag.GetMeshLink()->GetProcessorRank();
+			INMOST_DATA_REAL_TYPE cnt[3];
+			element->Centroid(cnt);
 			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
 			std::cout << " procs";
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < procs.size(); ++k) std::cout << " " << procs[k];
 			std::cout << " remote";
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) std::cout << " " << ((const INMOST_DATA_INTEGER_TYPE *)data)[k];
+			std::cout << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2];
+			if (element.GetMeshLink()->HaveGlobalID(element->GetElementType()))
+				std::cout << " gid " << element->GlobalID();
 			std::cout << std::endl;
 			std::cout.flush();
 			exit(-1);
