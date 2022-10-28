@@ -7127,6 +7127,8 @@ namespace INMOST
 #endif
 	}
 
+	bool crash_status = 0;
+
 	void UnpackCheckProcessors(const Tag & tag, const Element & element, const INMOST_DATA_BULK_TYPE * data, INMOST_DATA_ENUM_TYPE size)
 	{
 		Storage::integer_array procs = element->IntegerArray(tag);
@@ -7158,7 +7160,23 @@ namespace INMOST
 			std::cout << (element->Hidden() ? " hidden" : "");
 			std::cout << std::endl;
 			std::cout.flush();
-			exit(-1);
+#if defined(USE_PARALLEL_WRITE_TIME)	
+			Mesh* m = element.GetMeshLink();
+			m->WriteTab(m->GetStream()) << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
+			m->WriteTab(m->GetStream()) << " procs";
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < procs.size(); ++k) m->WriteTab(m->GetStream()) << " " << procs[k];
+			m->WriteTab(m->GetStream()) << " remote";
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k) m->WriteTab(m->GetStream()) << " " << ((const INMOST_DATA_INTEGER_TYPE*)data)[k];
+			m->WriteTab(m->GetStream()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2];
+			if (element.GetMeshLink()->HaveGlobalID(element->GetElementType()))
+				m->WriteTab(m->GetStream()) << " gid " << element->GlobalID();
+			m->WriteTab(m->GetStream()) << (element->New() ? " new" : " old");
+			m->WriteTab(m->GetStream()) << (element->Hidden() ? " hidden" : "");
+			m->WriteTab(m->GetStream()) << std::endl;
+			m->GetStream().flush();
+#endif
+			crash_status = 1;
+			//exit(-1);
 		}
 	}
 
@@ -7185,6 +7203,7 @@ namespace INMOST
 				}
 			}
 		}
+		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
 		Storage::integer crash = 0;
 		if (bad)
 		{
@@ -7192,6 +7211,7 @@ namespace INMOST
 			REPORT_STR("processor " << GetProcessorRank() << " bad processors order " << bad);
 			crash++;
 		}
+		crash += crash_status;
 		crash = Integrate(crash);
 		if (crash)
 		{
@@ -7200,7 +7220,6 @@ namespace INMOST
 			std::cout.flush();
 			exit(-1);
 		}
-		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
 		EXIT_FUNC();
 #endif
 	}
