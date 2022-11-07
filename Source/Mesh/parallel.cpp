@@ -6449,6 +6449,18 @@ namespace INMOST
 				retreq.resize(recv_reqs.requests.size(),-1);
 				EXIT_BLOCK();
 				ENTER_BLOCK();
+#if defined(USE_PARALLEL_WRITE_TIME)
+				std::stringstream waitfrom;
+				for (size_t k = 0; k < recv_reqs.requests.size(); ++k)
+					if (recv_reqs.cnt[k])
+					{
+						MPI_Status stat;
+						int flag = 0;
+						MPI_Request_get_status(recv_reqs.requests[k], &flag, &stat);
+						waitfrom << " src " << stat.MPI_SOURCE << " err " << stat.MPI_ERROR << " tag " << stat.MPI_TAG << " " << (flag ? "completed" : "pending") << std::endl;
+					}
+				REPORT_STR(waitfrom.str());
+#endif
 				REPORT_MPI(ierr = MPI_Waitsome(static_cast<INMOST_MPI_SIZE>(recv_reqs.requests.size()),&recv_reqs.requests[0],&outcount,&retreq[0],MPI_STATUSES_IGNORE));
 				if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 				if( outcount == MPI_UNDEFINED ) 
