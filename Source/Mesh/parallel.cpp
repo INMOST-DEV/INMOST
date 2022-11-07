@@ -4521,7 +4521,11 @@ namespace INMOST
 			for (tag_set::const_iterator it = tag_list.begin(); it != tag_list.end() && !found; ++it)
 				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end() && !found; ++jt)
 					if (*it == *jt) found = true;
-			if (found) orient = true;
+			if (found)
+			{
+				orient = true;
+				REPORT_STR("track orientation data");
+			}
 		}
 		//pack nodes coords
 		ENTER_BLOCK();
@@ -4849,7 +4853,11 @@ namespace INMOST
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
 			pack_data_vector(buffer,flags,GetCommunicator());
-			if (orient) pack_data_vector(buffer, normals, GetCommunicator());
+			if (orient)
+			{
+				pack_data_vector(buffer, normals, GetCommunicator());
+				REPORT_VAL("normals array size", normals.size());
+			}
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -5265,7 +5273,11 @@ namespace INMOST
 			for (tag_set::iterator it = tag_recv.begin(); it != tag_recv.end() && !found; ++it)
 				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end() && !found; ++jt)
 					if (*it == *jt) found = true;
-			if( found ) orient = CreateMarker();
+			if (found)
+			{
+				orient = CreateMarker();
+				REPORT_STR("track orientation data");
+			}
 		}
 		//TODO 46 old
 		//elements_by_type unpack_tags;
@@ -5611,8 +5623,12 @@ namespace INMOST
 			REPORT_VAL("number of faces",num);
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
-			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
-			if (orient) unpack_data_vector(buffer, buffer_position, normals, GetCommunicator());
+			unpack_data_vector(buffer,buffer_position,flags,GetCommunicator());
+			if (orient)
+			{
+				unpack_data_vector(buffer, buffer_position, normals, GetCommunicator());
+				REPORT_VAL("normals array size", normals.size());
+			}
 			REPORT_VAL("buffer position",buffer_position);
 			selems[2].reserve(num);
 			
