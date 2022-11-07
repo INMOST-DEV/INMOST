@@ -1651,6 +1651,7 @@ namespace INMOST
 	
 	void Mesh::ResolveShared(bool only_new)
 	{
+		only_new = false;
 		ENTER_FUNC();
 #if defined(USE_MPI)
 		if( m_state == Mesh::Serial ) SetCommunicator(INMOST_MPI_COMM_WORLD);
@@ -7305,6 +7306,7 @@ namespace INMOST
 				}
 			}
 		}
+		/*
 		if (NewMarker()) //add new/old status as the last processor
 		{
 #if defined(USE_PARALLEL_STORAGE)
@@ -7312,7 +7314,9 @@ namespace INMOST
 				it->IntegerArray(tag_processors).push_back(it->New());
 #endif
 		}
+		*/
 		ReduceData(tag_processors,ESET|CELL|FACE|EDGE|NODE,0,UnpackCheckProcessors);
+		/*
 		if (NewMarker()) //rem new/old status as the last processor
 		{
 #if defined(USE_PARALLEL_STORAGE)
@@ -7320,6 +7324,7 @@ namespace INMOST
 				it->IntegerArray(tag_processors).pop_back();
 #endif
 		}
+		*/
 		Storage::integer crash = 0;
 		if (bad)
 		{
