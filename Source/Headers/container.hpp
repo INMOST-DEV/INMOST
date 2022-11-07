@@ -1473,7 +1473,7 @@ namespace INMOST
 		}
 	};
 
-#if defined(_OPENMP)
+
 #define PADDING_SIZE 4096
 	template<typename T>
 	struct thread_private_item
@@ -1489,6 +1489,7 @@ namespace INMOST
 		}
 	};
 
+#if defined(_OPENMP)
 	/// This class is used to replace #pragma omp threadprivate
 	/// Functionality that is not supported on many older systems.
 	template<typename T>
@@ -1566,35 +1567,55 @@ namespace INMOST
 	template<typename T>
 	class thread_private
 	{
-		T* item;
+		//T* item;
+		thread_private_item<T> * item;
 	public:
-		thread_private() {item = new T;}
-		~thread_private() {delete item;}
-		thread_private(const T & b) {*item = b;}
-		thread_private(const thread_private & b) {*item = b.get();}
-		thread_private & operator = (thread_private const & b) {item = b.get(); return *this;}
-		T & operator *() {return *item;}
-		const T & operator *() const {return *item;}
-		//operator T & () {return item;}
-		//operator const T & () const {return item;}
-		//operator T () {return items[omp_get_thread_num()].item;}
-		//operator T () const {return items[omp_get_thread_num()].item;}
+		thread_private() 
+		{
+			item = new thread_private_item<T>;
+		}
+		~thread_private() 
+		{
+			delete item;
+		}
+		thread_private(const T & b) 
+		{
+			item = new thread_private_item<T>;
+			item->item = b;
+		}
+		thread_private(const thread_private & b) 
+		{
+			item = new thread_private_item<T>;
+			item->item = b.get();
+		}
+		thread_private & operator = (thread_private const & b) 
+		{
+			item = new thread_private_item<T>;
+			item->item = b.get();
+			return *this;
+		}
+		T & operator *() {return item->item;}
+		const T & operator *() const {return item->item;}
+		//operator T & () {return item->item;}
+		//operator const T & () const {return item->item;}
+		//operator T () {return item->item;}
+		//operator T () const {return item->item;}
 		//template <typename B>
-		//T & operator = (B const & b) {item = b; return item;}
+		//T & operator = (B const & b) {item->item = b; return item->item;}
 		//template <typename B>
-		//T & operator += (B const & b) {item += b; return item;}
+		//T & operator += (B const & b) {item->item += b; return item->item;}
 		//template <typename B>
-		//T & operator -= (B const & b) {item -= b; return item;}
+		//T & operator -= (B const & b) {item->item -= b; return item->item;}
 		//template <typename B>
-		//T & operator *= (B const & b) {item *= b; return item;}
+		//T & operator *= (B const & b) {item->item *= b; return item->item;}
 		//template <typename B>
-		//T & operator /= (B const & b) {item /= b; return item;}
-		T & get() {return *item;}
-		const T & get() const {return *item;}
-		T & get(int k) {return *item;}
-		const T & get(int k) const {return *item;}
-		T * operator ->() {return item;}
-		const T * operator ->() const {return item;}
+		//T & operator /= (B const & b) {item->item /= b; return item->item;}
+		T & get() {return item->item;}
+		const T & get() const {return item->item;}
+		T & get(int k) {return item->item;}
+		const T & get(int k) const {return item->item;}
+		T * operator ->() {return &(item->item);}
+		const T * operator ->() const {return &(item->item);}
 	};
 #endif //_OPENMP
 }
