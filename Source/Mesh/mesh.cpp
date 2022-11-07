@@ -857,6 +857,42 @@ namespace INMOST
 #endif
 		}
 	}
+
+	void Mesh::OrientTag(Face f, Tag t)
+	{
+		if (t.GetDataType() == DATA_REAL)
+		{
+			real_array v = f.RealArray(t);
+			for (real_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+		}
+		else if (t.GetDataType() == DATA_INTEGER)
+		{
+			integer_array v = f.IntegerArray(t);
+			for (integer_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1;
+		}
+		else if (t.GetDataType() == DATA_BULK)
+		{
+			bulk_array v = f.BulkArray(t);
+			for (bulk_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1;
+		}
+#if defined(USE_AUTODIFF)
+		else if (t.GetDataType() == DATA_VARIABLE)
+		{
+			var_array v = f.VariableArray(t);
+			for (var_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
+		}
+#endif
+	}
+
+	void Mesh::RemOrientedTag(Tag t)
+	{
+		for(tag_set::iterator it = orient_tags.begin(); it != orient_tags.end(); ++it)
+			if (t == *it)
+			{
+				orient_tags.erase(it);
+				break;
+			}
+	}
 	
 	HandleType Mesh::FindSharedAdjacency(const HandleType * arr, enumerator s) const
 	{

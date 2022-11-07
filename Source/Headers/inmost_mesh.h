@@ -1379,8 +1379,12 @@ namespace INMOST
 		Tag                                 tag_processors;
 		/// Add a data tag that follows normal orientation.
 		void                                AddOrientedTag(Tag t) { assert(t.isValid() && t.isDefined(FACE)); orient_tags.push_back(t); }
+		/// Remove a data tag that follows normal orientation.
+		void                                RemOrientedTag(Tag t);
 		/// Swap sign for oriented data
 		void                                OrientTags(Face f);
+		/// Swap sign for oriented data of a single tag
+		void                                OrientTag(Face f, Tag t);
 		/// Go through all elements and detect presence of prescribed element in
 		/// any reference data tag.
 		void                                ReportConnection(HandleType h);
@@ -2607,6 +2611,19 @@ namespace INMOST
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		/// @see Mesh::ReduceData
 		void                              ExchangeData       (const Tag & tag, ElementType mask, MarkerType select = 0);
+		/// This function is similar to ExchangeData, except that it will change the orientation 
+		/// of recieved data upon completion for the exchanged tags, registered through AddOrientedTag.
+		/// The orientation marker is computed using MarkNormalOrientation and could be provided by the user. 
+		/// If marker is provided it is assumed to be consistent. It is computed internally if zero marker is provided.
+		///
+		/// Blocking, Collective point-2-point
+		///
+		/// @param tag tag that represents data
+		/// @param mask bitwise or of element types
+		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
+		/// @param orient set the marker to change the sign of oriented tags, computed internally if zero
+		/// @see Mesh::ExchangeData
+		void                              ExchangeOrientedData(const Tag& tag, ElementType mask, MarkerType select = 0, MarkerType orient = 0);
 		/// Start asynchronous synchronization of data.
 		/// You should define object of type exchange_data that will hold temporary buffers for data.
 		/// every Mesh::ExchangeDataBegin should be matched with Mesh::ExchangeDataEnd with the same
@@ -2644,6 +2661,18 @@ namespace INMOST
 		/// @param mask bitwise or of element types
 		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
 		void                              ExchangeData       (const tag_set & tags, ElementType mask, MarkerType select = 0);
+		/// This function is similar to ExchangeData, except that it will change the orientation 
+		/// of recieved data upon completion for the exchanged tags, registered through AddOrientedTag.
+		/// The orientation marker is computed using MarkNormalOrientation and could be provided by the user. 
+		/// If marker is provided it is assumed to be consistent. It is computed internally if zero marker is provided.
+		/// This function allows to mix oriented and normal data.
+		///
+		/// Blocking, Collective point-2-point
+		///
+		/// @param tags multiple tags that represents data
+		/// @param mask bitwise or of element types
+		/// @param select set the marker to filter elements that perform operation, set 0 to select all elements
+		void                              ExchangeOrientedData(const tag_set& tags, ElementType mask, MarkerType select = 0, MarkerType orient = 0);
 		/// This function will initialize exchange of multiple data tags.
 		/// Using this function may lead to good overlapping between communication and computation.
 		///

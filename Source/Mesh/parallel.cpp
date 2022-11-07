@@ -4103,6 +4103,58 @@ namespace INMOST
 	{
 		ExchangeData(tag_set(1,tag),mask,select);
 	}
+
+	void Mesh::ExchangeOrientedData(const Tag& tag, ElementType mask, MarkerType select, MarkerType orient)
+	{
+		ExchangeOrientedData(tag_set(1, tag), mask, select, orient);
+	}
+
+	void Mesh::ExchangeOrientedData(const tag_set& tags, ElementType mask, MarkerType select, MarkerType orient)
+	{
+		if (m_state == Serial) return;
+		ENTER_FUNC();
+#if defined(USE_MPI)
+#if !defined(USE_PARALLEL_STORAGE)
+		parallel_storage ghost_elements, shared_elements;
+		GatherParallelStorage(ghost_elements, shared_elements, mask);
+#endif //USE_PARALLEL_STORAGE
+		{
+			ReportParallelStorage();
+			exchange_data storage;
+			ExchangeDataInnerBegin(tags, shared_elements, ghost_elements, mask, select, storage);
+			ExchangeDataInnerEnd(tags, shared_elements, ghost_elements, mask, select, DefaultUnpack, storage);
+		}
+		bool clear_marker = false;
+		if (!orient)
+		{
+			orient = CreateMarker();
+			MarkNormalOrientation(orient);
+			clear_marker = true;
+		}
+		for (tag_set::const_iterator it = tags.begin(); it != tags.end(); ++it)
+			for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end(); ++jt)
+				if (*it == *jt)
+				{
+					for (integer kt = 0; kt < FaceLastLocalID(); ++kt) if (isValidFace(kt))
+					{
+						Face f = FaceByLocalID(kt);
+						if (f.GetMarker(orient)) OrientTag(f, *it);
+					}
+					break;
+				}
+		if (clear_marker)
+		{
+			ReleaseMarker(orient, FACE);
+			orient = 0;
+		}
+		EXIT_FUNC();
+#else //USE_MPI
+		(void)tags;
+		(void)mask;
+		(void)select;
+		(void)orient;
+#endif //USE_MPI
+	}
 	
 	void Mesh::ExchangeData(const tag_set & tags, ElementType mask, MarkerType select)
 	{
@@ -4461,6 +4513,16 @@ namespace INMOST
 		
 		
 		MarkerType pack_tags_mrk = CreatePrivateMarker();
+		bool orient = false;
+		if (!orient_tags.empty())
+		{
+			//check if there is any oriented tag to be exchanged
+			bool found = false;
+			for (tag_set::const_iterator it = tag_list.begin(); it != tag_list.end() && !found; ++it)
+				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end() && !found; ++jt)
+					if (*it == *jt) found = true;
+			if (found) orient = true;
+		}
 		//pack nodes coords
 		ENTER_BLOCK();
 		{
@@ -4691,8 +4753,10 @@ namespace INMOST
 		{
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size(selems[2].size());
 			std::vector<Storage::integer> low_conn_nums;
+			std::vector<Storage::real> normals;
 			std::vector<char> flags(selems[2].size(),0);
 			low_conn_nums.reserve(selems[2].size()*4);
+			if (orient) normals.reserve(selems[2].size() * 3);
 			size_t num = 0, k = 0;
 			size_t marked_for_data = 0, marked_shared = 0, packed_only_gid = 0;
 			for(element_set::iterator it = selems[2].begin(); it != selems[2].end(); it++) 
@@ -4765,6 +4829,13 @@ namespace INMOST
 					//TODO 46 old
 					//	pack_tags[2].push_back(*it);
 					++marked_for_data;
+
+					if (orient)
+					{
+						Storage::real nrm[3];
+						GetGeometricData(*it, NORMAL, nrm);
+						normals.insert(normals.end(), nrm, nrm + 3);
+					}
 				}
 				k++;
 			}
@@ -4778,6 +4849,7 @@ namespace INMOST
 			pack_data_vector(buffer,low_conn_size,GetCommunicator());
 			pack_data_vector(buffer,low_conn_nums,GetCommunicator());
 			pack_data_vector(buffer,flags,GetCommunicator());
+			if (orient) pack_data_vector(buffer, normals, GetCommunicator());
 			REPORT_VAL("buffer position",buffer.size());
 		}
 		EXIT_BLOCK();
@@ -5185,9 +5257,16 @@ namespace INMOST
 		REPORT_VAL("source",source);
 #if defined(USE_MPI)
 		MarkerType unpack_tags_mrk = CreateMarker();
-		//MarkerType swap_normal = 0;
-		//if( HaveGeometricData(NORMAL,FACE) )
-		//	swap_normal = CreateMarker();
+		MarkerType orient = 0;
+		if (!orient_tags.empty())
+		{
+			//check if there is any oriented tag to be exchanged
+			bool found = false;
+			for (tag_set::iterator it = tag_recv.begin(); it != tag_recv.end() && !found; ++it)
+				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end() && !found; ++jt)
+					if (*it == *jt) found = true;
+			if( found ) orient = CreateMarker();
+		}
 		//TODO 46 old
 		//elements_by_type unpack_tags;
 		std::vector<HandleType> old_nodes(NumberOfNodes());
@@ -5522,6 +5601,7 @@ namespace INMOST
 		{
 			ElementArray<Edge> f_edges(this);
 			//~ shift = 0;
+			std::vector<Storage::real> normals;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<char> flags;
@@ -5532,10 +5612,11 @@ namespace INMOST
 			unpack_data_vector(buffer,buffer_position,low_conn_size,GetCommunicator());
 			unpack_data_vector(buffer,buffer_position,low_conn_nums,GetCommunicator());
 			unpack_data_vector(buffer, buffer_position, flags, GetCommunicator());
+			if (orient) unpack_data_vector(buffer, buffer_position, normals, GetCommunicator());
 			REPORT_VAL("buffer position",buffer_position);
 			selems[2].reserve(num);
 			
-			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0;
+			size_t found = 0, marked_for_data = 0, marked_ghost = 0, shift = 0, ncnt = 0;
 			for(size_t i = 0; i < num; i++)
 			{
 				HandleType new_face = InvalidHandle();
@@ -5583,7 +5664,7 @@ namespace INMOST
 					//here we should check that remote face orientation match
 					//existing face orientation, otherwise we would need
 					//to swap normal if it is precomputed and comes from remote
-					//processor the worong way
+					//processor the wrong way
 					if( IntegerDF(new_face,tag_owner) != GetProcessorRank() ) 
 					{
 						//TODO 46 old
@@ -5611,6 +5692,18 @@ namespace INMOST
 						
 					}
 					++found;
+				}
+				//if we unpack data for this face,
+				//and there are orientable tags,
+				//then compare local and remote normals and
+				//later change the sign accordingly
+				if (orient && GetMarker(new_face,unpack_tags_mrk))
+				{
+					Storage::real lnrm[3], * rnrm = &normals[ncnt * 3];
+					GetGeometricData(new_face, NORMAL, lnrm);
+					if (lnrm[0] * rnrm[0] + lnrm[1] * rnrm[1] + lnrm[2] * rnrm[2] < 0.0)
+						SetMarker(new_face, orient);
+					ncnt++;
 				}
 
 				// if( !Face(this,new_face).CheckNormalOrientation() )
@@ -6040,27 +6133,25 @@ namespace INMOST
 			}
 			
 		}
+		if (orient)
+		{
+			for (tag_set::iterator it = tag_recv.begin(); it != tag_recv.end(); ++it)
+				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end(); ++jt)
+					if (*it == *jt)
+					{
+						for (enumerator q = 0; q < selems[2].size(); ++q)
+							if (GetMarker(selems[2][q], orient))
+							{
+								assert(GetMarker(selems[2][q],unpack_tags_mrk));//it should also have data marker
+								OrientTag(Face(this, selems[2][q]), *it);
+							}
+					}
+			RemMarkerArray(&selems[2][0], static_cast<enumerator>(selems[2].size()), orient);
+			ReleaseMarker(orient);
+		}
 		for(integer k = ElementNum(NODE); k <= ElementNum(MESH); ++k)
 			if( !selems[k].empty() ) RemMarkerArray(&selems[k][0],static_cast<enumerator>(selems[k].size()),unpack_tags_mrk);
 		ReleaseMarker(unpack_tags_mrk);
-//		if( swap_normal )
-//		{
-//			for(enumerator q = 0; q < selems[2].size(); ++q)
-//			{
-//				if( GetMarker(selems[2][q],swap_normal) )
-//				{
-//					real_array nrm = RealArrayDF(selems[2][q],GetGeometricTag(NORMAL));
-//					std::cout << "Swap normal face " << GetHandleID(selems[2][q]) << " rank " << GetProcessorRank() <<  std::endl;
-//					for(real_array::size_type it = 0; it < nrm.size(); ++it)
-//						nrm[it] = -nrm[it];
-//					RemMarker(selems[2][q],swap_normal);
-//				}
-//				else
-//					std::cout << "No swap normal face " << GetHandleID(selems[2][q]) << " rank " << GetProcessorRank() <<  std::endl;
-//				
-//			}
-//			ReleaseMarker(swap_normal);
-//		}
 		time = Timer() - time;
 		REPORT_STR("unpack tag data");
 		REPORT_VAL("time", time);
