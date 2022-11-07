@@ -4513,7 +4513,7 @@ namespace INMOST
 		
 		
 		MarkerType pack_tags_mrk = CreatePrivateMarker();
-		bool orient = false;
+		char orient = false;
 		if (!orient_tags.empty())
 		{
 			//check if there is any oriented tag to be exchanged
@@ -4527,6 +4527,7 @@ namespace INMOST
 				REPORT_STR("track orientation data");
 			}
 		}
+		pack_data(buffer, orient, GetCommunicator());
 		//pack nodes coords
 		ENTER_BLOCK();
 		{
@@ -5266,18 +5267,12 @@ namespace INMOST
 #if defined(USE_MPI)
 		MarkerType unpack_tags_mrk = CreateMarker();
 		MarkerType orient = 0;
-		if (!orient_tags.empty())
+		char orient_flag = false;
+		unpack_data(buffer,buffer_position,orient_flag, GetCommunicator());
+		if (orient_flag)
 		{
-			//check if there is any oriented tag to be exchanged
-			bool found = false;
-			for (tag_set::iterator it = tag_recv.begin(); it != tag_recv.end() && !found; ++it)
-				for (tag_set::iterator jt = orient_tags.begin(); jt != orient_tags.end() && !found; ++jt)
-					if (*it == *jt) found = true;
-			if (found)
-			{
-				orient = CreateMarker();
-				REPORT_STR("track orientation data");
-			}
+			orient = CreateMarker();
+			REPORT_STR("track orientation data");
 		}
 		//TODO 46 old
 		//elements_by_type unpack_tags;
