@@ -1746,6 +1746,10 @@ namespace INMOST
 		ENTER_BLOCK();
 		{
 			REPORT_STR("check exchange");
+			Storage::real* mbox = &bboxs[mpirank * dim * 2];
+			REPORT_STR("old bbox " << bbox[0] << " " << bbox[1] << " " << bbox[2] << " " << bbox[3] << " " << bbox[4] << " " << bbox[5]);
+			REPORT_STR("exh bbox " << mbox[0] << " " << mbox[1] << " " << mbox[2] << " " << mbox[3] << " " << mbox[4] << " " << mbox[5]);
+			REPORT_STR("dif bbox " << mbox[0]-bbox[0] << " " << mbox[1]-bbox[1] << " " << mbox[2]-bbox[2] << " " << mbox[3]-bbox[3] << " " << mbox[4]-bbox[4] << " " << mbox[5]-bbox[5]);
 			std::vector<char> ploc(mpisize, 0), pglob(mpisize * mpisize, 0);
 			for (std::vector<int>::iterator pt = procs.begin(); pt != procs.end(); ++pt)
 				ploc[*pt] = 1; // fill my line
@@ -1759,7 +1763,12 @@ namespace INMOST
 					if (pglob[i * mpisize + j] != pglob[j * mpisize + j])
 					{
 						if (!mpirank) std::cout << __FILE__ << ":" << __LINE__ << ": no symmetry! " << i << " and " << j << std::endl;
-						REPORT_STR("no symmetry " << i << " " << j);
+						Storage::real* ibox = bboxs[i * dim * 2];
+						Storage::real* jbox = bboxs[j * dim * 2];
+						REPORT_STR("no symmetry i " << i << " j " << j);
+						REPORT_STR("ith bbox " << ibox[0] << " " << ibox[1] << " " << ibox[2] << " " << ibox[3] << " " << ibox[4] << " " << ibox[5]);
+						REPORT_STR("jth bbox " << jbox[0] << " " << jbox[1] << " " << jbox[2] << " " << jbox[3] << " " << jbox[4] << " " << jbox[5]);
+						REPORT_STR("dif bbox " << ibox[0] - jbox[0] << " " << ibox[1] - jbox[1] << " " << ibox[2] - jbox[2] << " " << ibox[3] - jbox[3] << " " << ibox[4] - jbox[4] << " " << ibox[5] - jbox[5]);
 					}
 				}
 				str << std::endl;
