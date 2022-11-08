@@ -2042,7 +2042,7 @@ namespace INMOST
 	public:
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::operator =;
-		typedef typename AbstractMatrix<Var>::enuemrator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		AbstractMatrix<Var> * M;
 		enumerator nrows; //< Number of rows in larger matrix.
