@@ -1763,8 +1763,8 @@ namespace INMOST
 					if (pglob[i * mpisize + j] != pglob[j * mpisize + j])
 					{
 						if (!mpirank) std::cout << __FILE__ << ":" << __LINE__ << ": no symmetry! " << i << " and " << j << std::endl;
-						Storage::real* ibox = bboxs[i * dim * 2];
-						Storage::real* jbox = bboxs[j * dim * 2];
+						Storage::real* ibox = &bboxs[i * dim * 2];
+						Storage::real* jbox = &bboxs[j * dim * 2];
 						REPORT_STR("no symmetry i " << i << " j " << j);
 						REPORT_STR("ith bbox " << ibox[0] << " " << ibox[1] << " " << ibox[2] << " " << ibox[3] << " " << ibox[4] << " " << ibox[5]);
 						REPORT_STR("jth bbox " << jbox[0] << " " << jbox[1] << " " << jbox[2] << " " << jbox[3] << " " << jbox[4] << " " << jbox[5]);
