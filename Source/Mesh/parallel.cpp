@@ -1747,9 +1747,9 @@ namespace INMOST
 		{
 			REPORT_STR("check exchange");
 			Storage::real* mbox = &bboxs[mpirank * dim * 2];
-			REPORT_STR("old bbox " << bbox[0] << " " << bbox[1] << " " << bbox[2] << " " << bbox[3] << " " << bbox[4] << " " << bbox[5]);
-			REPORT_STR("exh bbox " << mbox[0] << " " << mbox[1] << " " << mbox[2] << " " << mbox[3] << " " << mbox[4] << " " << mbox[5]);
-			REPORT_STR("dif bbox " << mbox[0]-bbox[0] << " " << mbox[1]-bbox[1] << " " << mbox[2]-bbox[2] << " " << mbox[3]-bbox[3] << " " << mbox[4]-bbox[4] << " " << mbox[5]-bbox[5]);
+			REPORT_STR("old bbox " << bbox[0] << ":" << bbox[3] << " " << bbox[1] << ":" << bbox[4] << " " << bbox[2] << ":" << bbox[5]);
+			REPORT_STR("exh bbox " << mbox[0] << ":" << mbox[3] << " " << mbox[1] << ":" << mbox[4] << " " << mbox[2] << ":" << mbox[5]);
+			REPORT_STR("dif bbox " << mbox[0]-bbox[0] << " " << mbox[3]-bbox[3] << " " << mbox[1]-bbox[1] << " " << mbox[4]-bbox[4] << " " << mbox[2]-bbox[2] << " " << mbox[5]-bbox[5]);
 			std::vector<char> ploc(mpisize, 0), pglob(mpisize * mpisize, 0);
 			for (std::vector<int>::iterator pt = procs.begin(); pt != procs.end(); ++pt)
 				ploc[*pt] = 1; // fill my line
@@ -1766,9 +1766,16 @@ namespace INMOST
 						Storage::real* ibox = &bboxs[i * dim * 2];
 						Storage::real* jbox = &bboxs[j * dim * 2];
 						REPORT_STR("no symmetry i " << i << " j " << j);
-						REPORT_STR("ith bbox " << ibox[0] << " " << ibox[1] << " " << ibox[2] << " " << ibox[3] << " " << ibox[4] << " " << ibox[5]);
-						REPORT_STR("jth bbox " << jbox[0] << " " << jbox[1] << " " << jbox[2] << " " << jbox[3] << " " << jbox[4] << " " << jbox[5]);
-						REPORT_STR("dif bbox " << ibox[0] - jbox[0] << " " << ibox[1] - jbox[1] << " " << ibox[2] - jbox[2] << " " << ibox[3] - jbox[3] << " " << ibox[4] - jbox[4] << " " << ibox[5] - jbox[5]);
+						REPORT_STR("ith bbox " << ibox[0] << ":" << ibox[3] << " " << ibox[1] << ":" << ibox[4] << " " << ibox[2] << ":" << ibox[5]);
+						REPORT_STR("jth bbox " << jbox[0] << ":" << jbox[3] << " " << jbox[1] << ":" << jbox[4] << " " << jbox[2] << ":" << jbox[5]);
+						REPORT_STR("dif bbox " << ibox[0] - jbox[0] << " " << ibox[3] - jbox[3] << " " << ibox[1] - jbox[1] << " " << ibox[4] - jbox[4] << " " << ibox[2] - jbox[2] << " " << ibox[5] - jbox[5]);
+						bool flag1 = true, flag2 = true;
+						for (integer q = 0; q < dim; q++)
+						{
+							flag1 &= !((ibox[q] > jbox[q + dim]) || (ibox[dim + q] < jbox[q]));
+							flag2 &= !((jbox[q] > ibox[q + dim]) || (jbox[dim + q] < ibox[q]));
+						}
+						REPORT_STR("check intersection: i<->j " << (flag1?"yes":"no") << " j<->i " << (flag2 ? "yes" : "no"));
 					}
 				}
 				str << std::endl;
@@ -2065,7 +2072,7 @@ namespace INMOST
 								CentroidComparator cmp(this);
 								while(it1 != pack_real.end() && it2 != unpack_real.end() )
 								{
-									int res = cmp.Compare(*it1,*it2);
+									int res = cmp.Compare(&*it1,&*it2);
 									/*
 									for(integer k = 0; k < dim; k++)
 										if( ::fabs((*(it1+k))-(*(it2+k))) > epsilon )
