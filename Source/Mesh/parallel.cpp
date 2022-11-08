@@ -1741,6 +1741,32 @@ namespace INMOST
 				if( flag ) procs.push_back(k);
 			}
 		EXIT_BLOCK();
+
+#if !defined(NDEBUG)
+		ENTER_BLOCK();
+		{
+			REPORT_STR("check exchange");
+			std::vector<char> ploc(mpisize, 0), pglob(mpisize * mpisize, 0);
+			for (std::vector<int>::iteator pt = procs.begin(); pt != procs.end(); ++pt)
+				ploc[*pt] = 1; // fill my line
+			REPORT_MPI(MPI_Allgather(&ploc[0], mpisize, MPI_CHAR, &pglob[0], mpisize, MPI_CHAR, comm));
+			std::stringstream str;
+			for (int i = 0; i < mpisize; ++i)
+			{
+				for (int j = 0; j < mpisize; ++j)
+					str << (pglob[i * mpisize + j] == 1 ? '1' : '0') << ' ';
+				str << std::endl;
+				if (pglob[i * mpisize + j] != pglob[j * mpisize + j])
+				{
+					if( !mpirank ) std::cout << __FILE__ << ":" << __LINE__ << ": no symmetry! " << i << " and " << j << std::endl;
+					REPORT_STR("no symmetry " << i << " " << j);
+				}
+			}
+			REPORT_STR(str.str());
+		}
+		EXIT_BLOCK();
+#endif
+
 		REPORT_VAL("neighbour processors",procs.size());
 		EXIT_BLOCK();
 		//~ if( procs.empty() )
