@@ -1760,7 +1760,7 @@ namespace INMOST
 				for (int j = 0; j < mpisize; ++j)
 				{
 					str << (pglob[i * mpisize + j] == 1 ? '1' : '0') << ' ';
-					if (pglob[i * mpisize + j] != pglob[j * mpisize + j])
+					if (pglob[i * mpisize + j] != pglob[j * mpisize + i])
 					{
 						if (!mpirank) std::cout << __FILE__ << ":" << __LINE__ << ": no symmetry! " << i << " and " << j << std::endl;
 						Storage::real* ibox = &bboxs[i * dim * 2];
