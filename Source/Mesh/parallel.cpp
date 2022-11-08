@@ -1737,7 +1737,7 @@ namespace INMOST
 			{
 				bool flag = true;
 				for(integer q = 0; q < dim; q++)
-					flag &= !((bbox[q]-GetEpsilon() > bboxs[(size_t)k*dim*2+q+dim]) || (bbox[dim+q]+GetEpsilon() < bboxs[(size_t)k*dim*2+q]));
+					flag &= !((bbox[q] > bboxs[(size_t)k*dim*2+q+dim]) || (bbox[dim+q] < bboxs[(size_t)k*dim*2+q]));
 				if( flag ) procs.push_back(k);
 			}
 		EXIT_BLOCK();
@@ -2025,9 +2025,11 @@ namespace INMOST
 								size_t buf_pos = 0;
 								unpack_data_vector(recv_buffs[*qt].second,buf_pos,unpack_real,GetCommunicator());
 								std::vector<Storage::real>::iterator it1 = pack_real.begin() , it2 = unpack_real.begin();
+								CentroidComparator cmp(this);
 								while(it1 != pack_real.end() && it2 != unpack_real.end() )
 								{
-									int res = 0;
+									int res = cmp.Compare(*it1,*it2);
+									/*
 									for(integer k = 0; k < dim; k++)
 										if( ::fabs((*(it1+k))-(*(it2+k))) > epsilon )
 										{
@@ -2035,6 +2037,7 @@ namespace INMOST
 											else res = 1;
 											break;
 										}
+									*/
 									if( res < 0 ) 
 										it1 += dim;
 									else if( res > 0 ) 
