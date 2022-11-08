@@ -7280,7 +7280,11 @@ namespace INMOST
 		if( size == procs.size() )
 		{
 			const INMOST_DATA_INTEGER_TYPE * rdata = (const INMOST_DATA_INTEGER_TYPE *)data;
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
+			int skip = 0;
+#if defined(USE_PARALLEL_STORAGE)
+			skip = 1;
+#endif
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < size-skip; ++k)
 				if( procs[k] != rdata[k] )
 					compare = false;
 		}
@@ -7347,7 +7351,7 @@ namespace INMOST
 				}
 			}
 		}
-		
+			
 		if (NewMarker()) //add new/old status as the last processor
 		{
 #if defined(USE_PARALLEL_STORAGE)
