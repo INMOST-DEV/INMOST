@@ -2,7 +2,7 @@
 #include <stack>
 #if defined(USE_MESH)
 
-#define MEASURE_EPS 1.0e-11
+#define MEASURE_EPS 1.0e-9
 //#define NEW_ALGORITHM
 //#define RECORD_PATH
 //#define DEEP_RECURSE

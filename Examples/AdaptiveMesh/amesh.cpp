@@ -894,7 +894,7 @@ namespace INMOST
 						Storage::reference_array cell_hanging_nodes = hanging_nodes[c]; //nodes to be connected
 						Storage::enumerator nedges = tri_hanging_edges.isValid() ? tri_hanging_edges[c].size() : 0;
 						ElementArray<Face> internal_faces(m);
-						if (cell_hanging_nodes.size() == 0 && nedges == 12) //tetrahedron
+						if (skip_tri && cell_hanging_nodes.size() == 0 && nedges == 12) //tetrahedron
 						{
 							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
 							MarkerType mrk = m->CreateMarker();
@@ -1000,7 +1000,7 @@ namespace INMOST
 							}
 							m->ReleaseMarker(mrk);
 						}
-						else if (cell_hanging_nodes.size() == 3 && nedges == 6) //prism
+						else if (skip_tri && cell_hanging_nodes.size() == 3 && nedges == 6) //prism
 						{
 							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
 							MarkerType mrk = m->CreateMarker();
@@ -1114,7 +1114,7 @@ namespace INMOST
 							m->RemMarkerArray(cell_hanging_nodes.data(), cell_hanging_nodes.size(), mrk);
 							m->ReleaseMarker(mrk);
 						}
-						else if (cell_hanging_nodes.size() == 1 && nedges == 12) //pyramid
+						else if (skip_tri && cell_hanging_nodes.size() == 1 && nedges == 12) //pyramid
 						{
 							Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
 							MarkerType mrk = m->CreateMarker();
@@ -1625,7 +1625,7 @@ namespace INMOST
 			if( nbad ) std::cout << __FILE__ << ":" << __LINE__ << " rank " << rank << " nonconvex cells: " << nbad << std::endl;
 			EXIT_BLOCK();
 		}
-		//m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
+		m->SynchronizeMarker(m->NewMarker(),CELL|FACE|EDGE|NODE,SYNC_BIT_OR);
         //ExchangeGhost(3,NODE); // Construct Ghost cells in 2 layers connected via nodes
 		//12. Let the user update their data
 		//todo: call back function for New( cells
