@@ -177,11 +177,16 @@ namespace INMOST
 		while( etype != NONE ) 
 		{
 			lid = m->NextLocalIDIter(etype,lid);
-			if( lid == m->LastLocalID(etype) )
+			if( lid >= m->LastLocalIDThr(etype) )
 			{
 				etype = GetNextType(etype,types);
-				lid = -1;
-				if( !etype ) break;
+				if (etype)
+					lid = m->FirstLocalIDThr(etype) - 1;
+				else
+				{
+					lid = -1;
+					break;
+				}
 			}
 			else break;
 		}
@@ -194,11 +199,12 @@ namespace INMOST
 		while( etype != NONE ) 
 		{
 			lid = m->PrevLocalIDIter(etype,lid);
-			if( lid == -1 )
+			//if( lid == -1 )
+			if( lid < m->FirstLocalIDThr(etype))
 			{
 				etype = GetPrevType(etype,types);
 				if( etype ) 
-					lid = m->LastLocalIDIter(etype);
+					lid = m->LastLocalIDThr(etype);
 				else
 				{
 					lid = -1;
@@ -220,13 +226,13 @@ namespace INMOST
 		if( last )
 		{
 			for(ElementType i = MESH; i >= NODE; i = i >> 1) if( types & i ) {etype = i; break;}
-			lid = m->LastLocalID(etype);
+			lid = m->LastLocalIDThr(etype);
 			operator--();
 		}
 		else
 		{
 			for(ElementType i = NODE; i <= MESH; i = i << 1) if( types & i ) {etype = i; break;}
-			lid = -1;
+			lid = m->FirstLocalIDThr(etype)-1;
 			operator++();
 		}
 	}
@@ -237,6 +243,38 @@ namespace INMOST
 		for(ElementType et = NODE; et != LastElementType(); et = NextElementType(et) ) if( et & types ) std::cout << ElementTypeName(et) << " ";
 		std::cout << std::endl;
 		//printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
+	}
+
+	Storage::integer Mesh::LastLocalIDThr(ElementType etype) const 
+	{ 
+		assert(n >= 0 && n < 6);
+		integer ret = LastLocalID(etype);
+#if defined(USE_OMP)
+		if (omp_in_parallel())
+		{
+			integer beg = FirstLocalID(etype);
+			int nthr = omp_get_num_threads();
+			int ithr = omp_get_thread_num();
+			ret = beg + (ithr + 1) * (ret - beg) / nthr;
+		}
+#endif
+		return ret;
+	}
+
+	Storage::integer Mesh::FirstLocalIDThr(ElementType etype) const
+	{
+		assert(n >= 0 && n < 6);
+		integer ret = FirstLocalID(etype);
+#if defined(USE_OMP)
+		if (omp_in_parallel())
+		{
+			integer tot = LastLocalID(etype);
+			int nthr = omp_get_num_threads();
+			int ithr = omp_get_thread_num();
+			ret = ret + ithr * (tot - ret) / nthr;
+		}
+#endif
+		return ret;
 	}
 
 	Storage::integer Mesh::NextLocalIDIter(ElementType etype, integer lid) const 
@@ -254,6 +292,7 @@ namespace INMOST
 		while(lid > 0 && (links[q][lid] == -1 || Hidden(ComposeHandleNum(q,lid)))) --lid; 
 		return lid;
 	}
+	/*
 	Storage::integer Mesh::FirstLocalIDIter(ElementType etype) const
 	{
 		assert(OneType(etype)); 
@@ -268,7 +307,7 @@ namespace INMOST
 		int ret = LastLocalIDNum(ElementNum(etype));
 		return PrevLocalIDIter(etype,ret);
 	}
-
+	*/
 	Mesh::iteratorStorage Mesh::Begin(ElementType Types)        {return base_iterator<Storage>(Types,this,false);}
 	Mesh::iteratorStorage Mesh::End()                           {return base_iterator<Storage>(this);}
 	Mesh::iteratorElement Mesh::BeginElement(ElementType Types) {return base_iterator<Element>(Types & (NODE | EDGE | FACE | CELL | ESET),this,false);}

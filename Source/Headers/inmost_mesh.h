@@ -3101,8 +3101,11 @@ namespace INMOST
 
 		integer                           NextLocalIDIter    (ElementType etype, integer lid) const;
 		integer                           PrevLocalIDIter    (ElementType etype, integer lid) const;
-		integer                           FirstLocalIDIter   (ElementType etype) const;
-		integer                           LastLocalIDIter    (ElementType etype) const;
+		//integer                           FirstLocalIDIter   (ElementType etype) const;
+		//integer                           LastLocalIDIter    (ElementType etype) const;
+
+		integer                           LastLocalIDThr     (ElementType etype) const;
+		integer                           FirstLocalIDThr     (ElementType etype) const;
 
 		__INLINE integer                  NumberOfSets       () const { return static_cast<integer>(links[4].size() - empty_links[4].size()) - hidden_count[4]; }
 		__INLINE integer                  NumberOfCells      () const { return static_cast<integer>(links[3].size() - empty_links[3].size()) - hidden_count[3];}
