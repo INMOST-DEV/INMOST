@@ -247,7 +247,6 @@ namespace INMOST
 
 	Storage::integer Mesh::LastLocalIDThr(ElementType etype) const 
 	{ 
-		assert(n >= 0 && n < 6);
 		integer ret = LastLocalID(etype);
 #if defined(USE_OMP)
 		if (omp_in_parallel())
@@ -263,7 +262,6 @@ namespace INMOST
 
 	Storage::integer Mesh::FirstLocalIDThr(ElementType etype) const
 	{
-		assert(n >= 0 && n < 6);
 		integer ret = FirstLocalID(etype);
 #if defined(USE_OMP)
 		if (omp_in_parallel())
