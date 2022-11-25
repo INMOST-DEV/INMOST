@@ -59,85 +59,60 @@ namespace INMOST
 
 ////////class RowMerger
 
-		RowMerger::RowMerger() : Sorted(false), Nonzeros(0) {}
+		RowMerger::RowMerger() : First(EOL), Nonzeros(0), Shift(0) {}
 
-		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos)
+		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
 		{
-			if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
-			else
+			ind -= Shift;
+			if( pos[ind] == UNDEF )
 			{
-				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
-				if( Sorted )
-				{
-					next = index;
-					while(next < pos+1)
-					{
-						index = next;
-						next = LinkedList[index].first;
-					}
-					assert(index < pos+1);
-					assert(pos+1 < next);
-					++Nonzeros;
-					LinkedList[index].first = pos+1;
-					LinkedList[pos+1].first = next;
-					return LinkedList[pos+1].second;
-				}
-				else
-				{
-					INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
-					++Nonzeros;
-					LinkedList[pos+1].first = LinkedList[index].first;
-					LinkedList[index].first = pos+1;
-					return LinkedList[pos+1].second;
-				}
+				pos[ind] = Nonzeros;
+				next.push_back(First);
+				vals.push_back(0.0);
+				First = ind;
+				++Nonzeros;
 			}
+			return vals[pos[ind]];
 		}
 
-		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE pos) const
+		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
 		{
-			if( LinkedList[pos+1].first != UNDEF ) return LinkedList[pos+1].second;
+			ind -= Shift;
+			if( pos[ind] != UNDEF ) 
+				return vals[pos[ind]];
 			throw -1;
 		}
 
-		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted)
-				: Sorted(Sorted), Nonzeros(0), LinkedList(interval_begin,interval_end+1,Row::make_entry(UNDEF,0.0))
+		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
+				: Nonzeros(0), First(EOL), Shift(interval_begin)
 		{
-			LinkedList.begin()->first = EOL;
+			pos.resize(interval_end - interval_begin, UNDEF);
+			next.clear();
+			vals.clear();
 		}
 
-		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool _Sorted)
+		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
 		{
-			bool changed = false;
-			if (interval_begin < LinkedList.get_interval_beg())
-			{
-				LinkedList.set_interval_beg(static_cast<INMOST_DATA_ENUM_TYPE>(interval_begin));
-				changed = true;
-			}
-			if (interval_end + 1 >= LinkedList.get_interval_end())
-			{
-				LinkedList.set_interval_end(static_cast<INMOST_DATA_ENUM_TYPE>(interval_end + 1));
-				changed = true;
-			}
-			if (changed)
-			{
-				std::fill(LinkedList.begin(), LinkedList.end(), Row::make_entry(UNDEF, 0.0));
-				LinkedList.begin()->first = EOL;
-				Nonzeros = 0;
-				Sorted = _Sorted;
-			}
+			assert(Nonzeroes == 0);
+			Shift = interval_begin;
+			Nonzeros = 0;
+			First = EOL;
+			pos.resize(interval_end - interval_begin, UNDEF);
+			next.clear();
+			vals.clear();
 		}
 
 #if defined(USE_SOLVER)
-		void RowMerger::Resize(const Matrix & A, bool _Sorted)
+		void RowMerger::Resize(const Matrix & A)
 		{
 			INMOST_DATA_ENUM_TYPE mbeg, mend;
 			A.GetInterval(mbeg,mend);
-			Resize(mbeg,mend,_Sorted);
+			Resize(mbeg,mend);
 		}
 
-		RowMerger::RowMerger(const Matrix & A, bool Sorted) : Sorted(Sorted), Nonzeros(0)
+		RowMerger::RowMerger(const Matrix & A) : Nonzeros(0)
 		{
-			Resize(A,Sorted);
+			Resize(A);
 		}
 #endif
 
@@ -147,103 +122,69 @@ namespace INMOST
 
 		void RowMerger::Clear()
 		{
-			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, j;
-			LinkedList.begin()->first = EOL;
+			INMOST_DATA_ENUM_TYPE i = First, j;
+			First = EOL;
 			while( i != EOL )
 			{
-				j = LinkedList[i].first;
-				LinkedList[i].first = UNDEF;
-				LinkedList[i].second = 0.0;
-				i = j;
+				j = pos[i];
+				pos[i] = UNDEF;
+				i = next[j];
 			}
-			//Nonlocal.clear();
+			vals.clear();
+			next.clear();
 			Nonzeros = 0;
 		}
 
-
-		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
-		{
-			if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
-			PushRow(coef,r);
-		}
-		
 		void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
 		{
-			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first;
+			INMOST_DATA_ENUM_TYPE i = First;
 			while( i != EOL )
 			{
-				LinkedList[i].second *= coef;
-				i = LinkedList[i].first;
+				vals[pos[i]] *= coef;
+				i = next[pos[i]];
 			}
 		}
-
-		
 
 		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
 		{
 			assert(Nonzeros == 0); //Linked list should be empty
-			assert(LinkedList.begin()->first == EOL); //again check that list is empty
+			assert(First == EOL); //again check that list is empty
 			if( coef )
 			{
-				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg();
-				Row::const_iterator it = r.Begin(), jt;
-				while( it != r.End() )
+				next.resize(r.Size());
+				vals.resize(r.Size());
+				Nonzeros = r.Size();
+				INMOST_DATA_ENUM_TYPE k = 0, ind;
+				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
-					INMOST_DATA_ENUM_TYPE pos = it->first;
-					LinkedList[index].first = pos+1;
-					LinkedList[pos+1].first = EOL;
-					LinkedList[pos+1].second = it->second*coef;
-					index = pos+1;
-					++Nonzeros;
-					jt = it;
-					++it;
-					assert(!Sorted || it == r.End() || jt->first < it->first);
+					ind = it->first - Shift;
+					pos[ind] = k;
+					next[k] = First;
+					vals[k] = it->second * coef;
+					First = ind;
+					++k;
 				}
 			}
 		}
 
-		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow)
-		{
-			if( Sorted && PreSortRow ) std::sort(r.Begin(),r.End());
-			AddRow(coef,r);
-		}
-
+		
 		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
 		{
 			if( coef )
 			{
-				INMOST_DATA_ENUM_TYPE index = LinkedList.get_interval_beg(), next;
-				Row::const_iterator it = r.Begin(), itend = r.End(), jt;
-				while( it != itend )
+				INMOST_DATA_ENUM_TYPE ind;
+				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
-					INMOST_DATA_ENUM_TYPE pos = it->first;
-					if( LinkedList[pos+1].first != UNDEF )
-						LinkedList[pos+1].second += coef*it->second;
-					else if( Sorted )
+					ind = it->first - Shift;
+					if (pos[ind] == UNDEF)
 					{
-						next = index;
-						while(next < pos+1)
-						{
-							index = next;
-							next = LinkedList[index].first;
-						}
-						assert(index < pos+1);
-						assert(pos+1 < next);
-						LinkedList[index].first = pos+1;
-						LinkedList[pos+1].first = next;
-						LinkedList[pos+1].second = coef*it->second;
+						pos[ind] = Nonzeros;
+						next.push_back(First);
+						vals.push_back(0.0);
+						First = ind;
 						++Nonzeros;
 					}
-					else
-					{
-						LinkedList[pos+1].first = LinkedList[index].first;
-						LinkedList[pos+1].second = coef*it->second;
-						LinkedList[index].first = pos+1;
-						++Nonzeros;
-					}
-					jt = it;
-					++it;
-					assert(!Sorted || it == itend || jt->first < it->first);
+					vals[pos[ind]] += coef * it->second;
 				}
 			}
 		}
@@ -252,16 +193,16 @@ namespace INMOST
 		void RowMerger::RetriveRow(Row & r)
 		{
             r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros));
-			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;
+			INMOST_DATA_ENUM_TYPE i = First, k = 0;
 			while( i != EOL )
 			{
-				if( LinkedList[i].second )
+				if(vals[pos[i]])
 				{
-					r.GetIndex(k) = i-1;
-					r.GetValue(k) = LinkedList[i].second;
+					r.GetIndex(k) = i + Shift;
+					r.GetValue(k) = vals[pos[i]];
 					++k;
 				}
-				i = LinkedList[i].first;
+				i = next[pos[i]];
 			}
 			r.Resize(k);
 		}

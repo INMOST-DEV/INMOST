@@ -638,29 +638,34 @@ namespace INMOST
 			{
 			private:
 				INMOST_DATA_ENUM_TYPE pos;
-				interval< INMOST_DATA_ENUM_TYPE, Row::entry > * LinkedList; ///< Link to associated storage for linked list.
-				iterator(interval< INMOST_DATA_ENUM_TYPE, Row::entry > * pLinkedList) : pos(pLinkedList->get_interval_beg()), LinkedList(pLinkedList) {}
+				RowMerger * merger; ///< Link to associated storage for linked list.
+				iterator(RowMerger* pmerger) : pos(merger->First), merger(pmerger) {}
+				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : pos(pos), merger(pmerger) {}
 			public:
-				iterator(const iterator & other) : pos(other.pos), LinkedList(other.LinkedList) {}
+				iterator(const iterator & other) : pos(other.pos), merger(other.merger) {}
 				~iterator() {}
-				INMOST_DATA_REAL_TYPE & operator *() {return (*LinkedList)[pos].second;}
-				INMOST_DATA_REAL_TYPE operator *() const {return (*LinkedList)[pos].second;}
-				INMOST_DATA_REAL_TYPE * operator ->() {return &(*LinkedList)[pos].second;}
-				const INMOST_DATA_REAL_TYPE * operator ->() const {return &(*LinkedList)[pos].second;}
-				iterator & operator ++(){ pos = (*LinkedList)[pos].first; return *this;}
-				iterator operator ++(int){ iterator ret(LinkedList); ret.pos = (*LinkedList)[pos].first; return ret; }
-				iterator & operator = (const iterator & other) {LinkedList = other.LinkedList; pos = other.pos; return *this;}
-				bool operator ==(const iterator & other) const {return LinkedList == other.LinkedList && pos == other.pos;}
-				bool operator !=(const iterator & other) const {return LinkedList != other.LinkedList || pos != other.pos;}
-				bool operator < (const iterator & other) const {return LinkedList == other.LinkedList && pos < other.pos;}
-				bool operator <=(const iterator & other) const {return LinkedList == other.LinkedList && pos <= other.pos;}
-				bool operator > (const iterator & other) const {return LinkedList == other.LinkedList && pos > other.pos;}
-				bool operator >=(const iterator & other) const {return LinkedList == other.LinkedList && pos >= other.pos;}
+				INMOST_DATA_REAL_TYPE & operator *() {return merger->vals[merger->pos[pos]];}
+				INMOST_DATA_REAL_TYPE operator *() const {return merger->vals[merger->pos[pos]];}
+				INMOST_DATA_REAL_TYPE * operator ->() {return &merger->vals[merger->pos[pos]];}
+				const INMOST_DATA_REAL_TYPE * operator ->() const {return &merger->vals[merger->pos[pos]];}
+				iterator & operator ++(){ pos = merger->next[pos]; return *this;}
+				iterator operator ++(int) { return iterator(merger->next[pos], merger); }
+				iterator & operator = (const iterator & other) {merger = other.merger; pos = other.pos; return *this;}
+				bool operator ==(const iterator & other) const {return merger == other.merger && pos == other.pos;}
+				bool operator !=(const iterator & other) const {return merger != other.merger || pos != other.pos;}
+				bool operator < (const iterator & other) const {return merger == other.merger && pos < other.pos;}
+				bool operator <=(const iterator & other) const {return merger == other.merger && pos <= other.pos;}
+				bool operator > (const iterator & other) const {return merger == other.merger && pos > other.pos;}
+				bool operator >=(const iterator & other) const {return merger == other.merger && pos >= other.pos;}
 				friend class RowMerger;
 			};
 		private:
-			bool Sorted; ///< Contents of linked list should be sorted.
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
+			INMOST_DATA_ENUM_TYPE First; ///< First position.
+			INMOST_DATA_ENUM_TYPE Shift; //< Shift indices by this value
+			std::vector<INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
+			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
+			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
 		public:
 			/// Default constructor without size specified.
@@ -669,7 +674,7 @@ namespace INMOST
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = false);
+			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
 			/// Destructor.
 			~RowMerger();
 			/// Resize linked list for new interval.
@@ -678,35 +683,21 @@ namespace INMOST
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end, bool Sorted = false);
+			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
 #if defined(USE_SOLVER)
 			/// Constructor that gets sizes from the matrix, including non-local mapping.
 			/// @param A Matrix to get sizes from.
 			/// @param Sorted Result should be sorted.
-			RowMerger(const Matrix & A, bool Sorted = false);
+			RowMerger(const Matrix & A);
 			/// Resize linked list for new matrix, including non-local mapping.
 			/// \warning
 			/// All contents of linked list will be lost after resize.
 			/// @param A Matrix to get sizes from.
 			/// @param Sorted Result should be sorted or not.
-			void Resize(const Matrix & A, bool Sorted = false);
+			void Resize(const Matrix & A);
 #endif //USE_SOLVER
 			/// Clear linked list.
 			void Clear();
-			/// Add a row with a coefficient into empty linked list.
-			/// This routine should be a bit faster then RowMerger::AddRow
-			/// for empty linked list. It may result in an unexpected behavior
-			/// for non-empty linked list, asserts will fire in debug mode.
-			/// @param coef Coefficient to multiply row values.
-			/// @param r A row to be added.
-			/// @param PreSortRow Sort values of the row before adding. Will be activated only for sorted linked lists.
-			void PushRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow);
-			/// Add a row with a coefficient into non-empty linked list.
-			/// Use RowMerger::PushRow for empty linked list.
-			/// @param coef Coefficient to multiply row values.
-			/// @param r A row to be added.
-			/// @param PreSortRow Sort values of the row before adding. Will be activated only for sorted linked lists.
-			void AddRow(INMOST_DATA_REAL_TYPE coef, Row & r, bool PreSortRow);
 			/// Add a row with a coefficient into empty linked list.
 			/// This routine should be a bit faster then RowMerger::AddRow
 			/// for empty linked list. It may result in an unexpected behavior
@@ -758,9 +749,9 @@ namespace INMOST
 				Clear();
 			}
 			///Retrive iterator for the first element.
-			iterator Begin() {return iterator(&LinkedList);}
+			iterator Begin() {return iterator(this);}
 			///Retrive iterator for the position beyond the last element.
-			iterator End() {iterator ret(&LinkedList); ret.pos = EOL; return ret;}
+			iterator End() {iterator ret(this); ret.pos = EOL; return ret;}
 		};
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
 	} //namespace Sparse

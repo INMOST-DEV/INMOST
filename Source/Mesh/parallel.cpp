@@ -1942,29 +1942,32 @@ namespace INMOST
 #if !defined(NDEBUG)
 					bool have_gid = HaveGlobalID(NODE);
 					integer bad = 0;
-					element_set::iterator next = sorted_nodes.begin(), cur = next++;
-					while (next < sorted_nodes.end())
+					if (!sorted_nodes.empty())
 					{
-						if (cmp.Compare(*next, *cur) == 0)
+						element_set::iterator next = sorted_nodes.begin(), cur = next++;
+						while (next < sorted_nodes.end())
 						{
-							real_array c1 = Node(this, *cur).Coords();
-							real_array c2 = Node(this, *next).Coords();
-							real dist = sqrt(pow(c1[0] - c2[0], 2) + pow(c1[1] - c2[1], 2) + pow(c1[2] - c2[2], 2));
-							std::cout << __FILE__ << ":" << __LINE__ << " same "
-								<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
-								<< " and "
-								<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
-								<< " dist " << dist << std::endl;
-							REPORT_STR("same " 
-								<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
-								<< " and "
-								<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
-								<< " dist " << dist);
-							bad++;
+							if (cmp.Compare(*next, *cur) == 0)
+							{
+								real_array c1 = Node(this, *cur).Coords();
+								real_array c2 = Node(this, *next).Coords();
+								real dist = sqrt(pow(c1[0] - c2[0], 2) + pow(c1[1] - c2[1], 2) + pow(c1[2] - c2[2], 2));
+								std::cout << __FILE__ << ":" << __LINE__ << " same "
+									<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
+									<< " and "
+									<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
+									<< " dist " << dist << std::endl;
+								REPORT_STR("same "
+									<< c1[0] << " " << c1[1] << " " << c1[2] << (have_gid ? GlobalID(*cur) : -1)
+									<< " and "
+									<< c2[0] << " " << c2[1] << " " << c2[2] << (have_gid ? GlobalID(*cur) : -1)
+									<< " dist " << dist);
+								bad++;
+							}
+							cur = next++;
 						}
-						cur = next++;
+						if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate coords " << bad << std::endl;
 					}
-					if (bad) std::cout << __FILE__ << ":" << __LINE__ << " " << GetProcessorRank() << " duplicate coords " << bad << std::endl;
 #endif
 				}
 				REPORT_STR("Sort nodes");
