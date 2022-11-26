@@ -20,7 +20,7 @@ using namespace INMOST;
 #define REORDER_RCM
 //#define REORDER_NNZ
 #if defined(USE_SOLVER_METIS)
-#define REORDER_METIS_ND
+//#define REORDER_METIS_ND
 #endif
 #if defined(USE_SOLVER_MONDRIAAN)
 //#define REORDER_MONDRIAAN
@@ -1243,6 +1243,12 @@ using namespace INMOST;
 				//    if( RCM_Comparator(wbeg,xadj)(k,start) )
 				//        start = k;
 				//Ulist[start] = index++;
+				//enumerate unknowns with no connections
+				for (k = wbeg; k < wend; ++k) if (Ulist[k] == ENUMUNDEF)
+				{
+					if (xadj[k + 1 - wbeg] - xadj[k - wbeg] == 0)
+						Ulist[k] = index++;
+				}
 				do
 				{
 					cur = ENUMUNDEF;

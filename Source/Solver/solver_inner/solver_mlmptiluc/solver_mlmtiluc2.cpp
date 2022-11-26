@@ -2741,6 +2741,12 @@ const double apert = 1.0e-8;
 		std::deque<INMOST_DATA_ENUM_TYPE> q;
 		//~ std::vector< std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> > conns;
 		std::vector< INMOST_DATA_ENUM_TYPE > conns;
+		//enumerate elements without connections
+		for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) if (order[k] == ENUMUNDEF)
+		{
+			if (xadj[k + 1 - wbeg] - xadj[k - wbeg] == 0)
+				order[k] = index++;
+		}
 		do
 		{
 			cur = ENUMUNDEF;
