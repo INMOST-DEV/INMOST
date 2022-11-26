@@ -93,7 +93,7 @@ namespace INMOST
 
 		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
 		{
-			assert(Nonzeroes == 0);
+			assert(Nonzeros == 0);
 			Shift = interval_begin;
 			Nonzeros = 0;
 			First = EOL;
