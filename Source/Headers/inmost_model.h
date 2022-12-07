@@ -24,6 +24,8 @@ namespace INMOST
 		virtual bool PrepareEntries(Model& P) = 0;
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
+		/// Setup coupling with unknowns of otheer models
+		virtual bool SetupCoupling(Model& P) { return true; }
 		/// Initialize data needed for FillResidual.
 		/// Called once before nonlinear iterations.
 		virtual bool PrepareIterations() { return true; }
@@ -83,6 +85,8 @@ namespace INMOST
 	public:
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
+		/// Setup coupling with unknowns of otheer models
+		virtual bool SetupCoupling(Model& P) { return true; }
 		/// Fill part of the residual related to my unknowns.
 		virtual bool FillResidual(Residual& R) const = 0;
 		
@@ -114,6 +118,8 @@ namespace INMOST
 	public:
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
+		/// Setup coupling with unknowns of otheer models
+		virtual bool SetupCoupling(Model& P) { return true; }
 		/// The main function provided by operator.
 		/// @param e Element on which operator is evaluated.
 		/// @return scalar value of the coupling function.
@@ -147,6 +153,8 @@ namespace INMOST
 	public:
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
+		/// Setup coupling with unknowns of otheer models
+		virtual bool SetupCoupling(Model& P) { return true; }
 		/// The main function provided by operator.
 		/// @param e Element on which operator is evaluated.
 		/// @return matrix value of the coupling function.
@@ -298,6 +306,8 @@ namespace INMOST
 		bool PrepareEntries();
 		/// Initialze all entries and submodels.
 		bool Initialize();
+		/// Link to all couplings after PrepareEntries and Initialize
+		bool SetupCoupling();
 		/// Initialize data needed for FillResidual.
 		/// Called once before nonlinear iterations.
 		bool PrepareIterations();

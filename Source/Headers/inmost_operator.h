@@ -33,6 +33,8 @@ namespace INMOST
 		virtual bool Initialize(Model & m) = 0;
 		/// Let operator prepare data on the mesh before evaluation.
 		virtual bool PrepareIterations() = 0;
+		/// Setup coupling with unknowns of otheer models
+		virtual bool SetupCoupling(Model& P) { return true; }
 		/// Check, whether we need to compute operator on this element.
 		virtual bool isValid(const Storage & e) const = 0;
 		/// Provides input domain of the operator. (TODO)

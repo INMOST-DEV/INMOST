@@ -346,6 +346,36 @@ namespace INMOST
 		initialized = success;
 		return success;
 	}
+
+	bool Model::SetupCoupling()
+	{
+		bool success = true;
+		//first initialize submodels
+		for (std::vector< std::pair<std::string, AbstractSubModel*> >::iterator it = SubModels.begin();
+			it != SubModels.end(); ++it)
+			success &= it->second->SetupCoupling(*this);
+		//second initialize operators
+		for (std::vector< std::pair<std::string, AbstractOperator*> >::iterator it = Operators.begin();
+			it != Operators.end(); ++it)
+			success &= it->second->SetupCoupling(*this);
+		//third register all the entries
+		//initialize coupling terms
+		for (std::map< AbstractSubModel*, std::vector< std::pair<std::string, AbstractCouplingTerm*> > >::iterator it = CouplingTerms.begin();
+			it != CouplingTerms.end(); ++it)
+		{
+			for (std::vector< std::pair<std::string, AbstractCouplingTerm*> >::iterator jt = it->second.begin(); jt != it->second.end(); ++jt)
+				success &= jt->second->SetupCoupling(*this);
+		}
+		//initialize scalar functions
+		for (std::vector< std::pair<std::string, AbstractScalarFunction*> >::iterator it = ScalarFunctions.begin();
+			it != ScalarFunctions.end(); ++it)
+			success &= it->second->SetupCoupling(*this);
+		//initialize matrix functions
+		for (std::vector< std::pair<std::string, AbstractMatrixFunction*> >::iterator it = MatrixFunctions.begin();
+			it != MatrixFunctions.end(); ++it)
+			success &= it->second->SetupCoupling(*this);
+		return success;
+	}
 	
 	bool Model::PrepareIterations()
 	{
