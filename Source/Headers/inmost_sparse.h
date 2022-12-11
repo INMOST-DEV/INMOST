@@ -632,8 +632,8 @@ namespace INMOST
 		class RowMerger
 		{
 		public:
-			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
-			static const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
+			const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
+			const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
 			class iterator
 			{
 			private:
