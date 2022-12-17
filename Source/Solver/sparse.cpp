@@ -59,6 +59,9 @@ namespace INMOST
 
 ////////class RowMerger
 
+        const INMOST_DATA_ENUM_TYPE RowMerger::EOL = ENUMUNDEF-1; ///< End of linked list.
+        const INMOST_DATA_ENUM_TYPE RowMerger::UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
+
 		RowMerger::RowMerger() : First(EOL), Nonzeros(0), Shift(0) {}
 
 		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
