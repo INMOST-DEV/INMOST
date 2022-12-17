@@ -315,7 +315,7 @@ namespace INMOST
 		/// @param Lambda Diagonal matrix with eigen values.
 		/// @param order_eigen_values Return eigen values in ascending order of their real part.
         bool EigenDecomposition(AbstractMatrix<std::complex<Var>> & V, AbstractMatrix<std::complex<Var>> & Lambda, bool order_eigen_values = true,
-                double abs_eps=1e-8, double rel_eps=1e-8, int max_iters=128) const;
+                double abs_eps=1e-8, double rel_eps=1e-8, int max_iters=256) const;
 
 		/// Transpose current matrix.
 		/// @return Transposed matrix.
@@ -497,6 +497,7 @@ namespace INMOST
 					ret += (*this)(i, j) * (*this)(i, j);
 			return sqrt(ret);
 		}
+
 		/// Computes maximum absolute value of the matrix.
 		/// @return Maximum norm of the matrix.
 		Var MaxNorm() const
@@ -3500,6 +3501,17 @@ namespace INMOST
 		}
 	};
 
+
+    template<>
+    typename SelfPromote<INMOST_DATA_CPLX_TYPE>::type AbstractMatrixReadOnly<INMOST_DATA_CPLX_TYPE>::FrobeniusNorm() const
+    {
+        typename SelfPromote<INMOST_DATA_CPLX_TYPE>::type ret = 0;
+        for (enumerator i = 0; i < Rows(); ++i)
+            for (enumerator j = 0; j < Cols(); ++j)
+                ret += (*this)(i, j) * std::conj((*this)(i, j));
+        return sqrt(fabs(ret));
+    }
+
 	
 	/*
 	template<typename Var>
@@ -5866,10 +5878,7 @@ namespace INMOST
 
             // Единичный вектор first_n_untouched-ой оси.
             Matrix<Var> axis(n_rows,1);
-            //Var first_element = vector(first_n_untouched, 0);
             axis(first_n_untouched, 0) = sign_func(1.0, vector(first_n_untouched, 0));
-            //axis(first_n_untouched, 0) = sign_(vector(first_n_untouched, 0));
-            // TODO: я не понимаю, почему этот код перестал работать с sign_func. Перенёс пока свой sign.
 
             // Вектор рефлектора.
             double projected_norm = projected_vector.FrobeniusNorm();
@@ -5877,7 +5886,7 @@ namespace INMOST
 
             // Если норма рефлектора мала, преобразование почти идентичное тождественному.
             double reflector_norm = reflector.FrobeniusNorm();
-            if (reflector_norm > projected_norm * rel_eps + abs_eps)
+            if (reflector_norm > 0.0)//projected_norm * rel_eps + abs_eps)
             {
                 reflector /= reflector.FrobeniusNorm();
             }
@@ -5993,6 +6002,8 @@ namespace INMOST
             int step = 0;
             for (; step < max_iters; ++step)
             {
+                //H.Print();
+
                 // Дефляция.
                 auto pair_lower_upper = deflate_hessenberg(H, eigenvalues);
                 lower = pair_lower_upper.first;
@@ -6019,9 +6030,11 @@ namespace INMOST
 
                 // Возмущение рефлектором.
                 Matrix<Var> reflector = housholder_reflector(vector);
-                Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
-                H = H - 2.0 * Matrix<Var>(H * outer_product);
-                H = H - 2.0 * Matrix<Var>(outer_product * H);
+                //reflector.Print();
+                //H.Print();
+                //Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
+                H = H - 2.0 * Matrix<Var>((H * reflector) * reflector.Transpose());
+                H = H - 2.0 * Matrix<Var>(reflector * (reflector.Transpose() * H));
 
                 // Возвращение к хессенберговой форме.
                 pair_Q_H = to_hessenberg(H);
@@ -6033,6 +6046,59 @@ namespace INMOST
                 return false;
             }
         }
+
+        // Поиск близких собственных значений.
+        std::vector<std::complex<Var>> processed_eigenvalues;
+        processed_eigenvalues.reserve(n_rows);
+        while (processed_eigenvalues.size() < n_rows)
+        {
+            size_t best_index = 0;
+            std::vector<size_t> best_indices;
+            for (size_t index = 0; index < eigenvalues.size(); ++index)
+            {
+                // Радиус окружности.
+                double radius = abs_eps + rel_eps * std::abs(eigenvalues[index]);
+
+                std::vector<size_t> indices;
+                for (size_t jndex = 0; jndex < eigenvalues.size(); ++jndex)
+                {
+                    // Достаточно ли близко два выбранных собственных числа.
+                    double delta = std::abs(eigenvalues[index] - eigenvalues[jndex]);
+                    if (delta < radius)
+                    { indices.push_back(jndex); }
+                }
+
+                if (indices.size() > best_indices.size())
+                {
+                    best_index = index;
+                    best_indices = indices;
+                }
+            }
+
+            // Если все собственные значения достаточно хорошо различимы, ничего делать не надо.
+            if (best_indices.size() <= 1)
+            {
+                processed_eigenvalues.insert(processed_eigenvalues.begin(), eigenvalues.begin(), eigenvalues.end());
+            }
+            else
+            {
+                // Иначе заменяем часть собственных значений средним.
+                std::complex<Var> average = 0.0;
+                for (ssize_t subindex = best_indices.size() - 1; subindex >= 0; --subindex) // Здесь используется тот факт, что значения в best_indices идут по возрастанию.
+                {
+                    size_t index = best_indices[subindex];
+                    average += eigenvalues[index];
+
+                    // Удалям обработанные собственные значения.
+                    eigenvalues[index] = eigenvalues.back();
+                    eigenvalues.pop_back();
+                }
+                average /= best_indices.size();
+
+                processed_eigenvalues.insert(processed_eigenvalues.end(), best_indices.size(), average);
+            }
+        }
+        eigenvalues = processed_eigenvalues;
 
         // Сортировка собственных значений по действительной части, если требется.
         if (order_eigen_values)
@@ -6058,13 +6124,10 @@ namespace INMOST
             for (size_t index = 0; index < eigenvalues.size();) //; ++index)
             {
                 // Поиск одинаковых СЗ.
-                // TODO: это плохо работает в случаях, когда близкие СЗ оказались в массиве разделены "не близкими".
-                //       Надо сделать поиск близких СЗ "по-настоящему".
-                size_t jndex = index + 1;
+                size_t jndex = index + (eigenvalues[index].imag() > 0 ? 2 : 1);
                 for (; jndex < eigenvalues.size(); ++jndex)
                 {
-                    if (std::abs(eigenvalues[index] - eigenvalues[jndex]) > abs_eps +
-                            rel_eps * (std::abs(eigenvalues[index]) + std::abs(eigenvalues[jndex])))
+                    if (eigenvalues[index] != eigenvalues[jndex])
                     { break; }
                 }
 
