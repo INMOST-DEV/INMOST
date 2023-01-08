@@ -4,6 +4,7 @@
 #include "inmost_expression.h"
 #include <iomanip>
 #include <stdarg.h>
+#include <type_traits>
 
 namespace INMOST
 {
@@ -314,7 +315,7 @@ namespace INMOST
 		/// @param V Eigenvectors matrix.
 		/// @param Lambda Diagonal matrix with eigen values.
 		/// @param order_eigen_values Return eigen values in ascending order of their real part.
-        bool EigenDecomposition(AbstractMatrix<std::complex<Var>> & V, AbstractMatrix<std::complex<Var>> & Lambda, bool order_eigen_values = true,
+        bool EigenDecomposition(AbstractMatrix<INMOST_DATA_CPLX_TYPE> & V, AbstractMatrix<INMOST_DATA_CPLX_TYPE> & Lambda, bool order_eigen_values = true,
                 double abs_eps=1e-8, double rel_eps=1e-8, int max_iters=256) const;
 
 		/// Transpose current matrix.
@@ -489,14 +490,28 @@ namespace INMOST
 		}
 		/// Computes frobenious norm of the matrix.
 		/// @return Frobenius norm of the matrix.
-		typename SelfPromote<Var>::type FrobeniusNorm() const
+        template<typename RealType = Var>
+		typename std::enable_if<!is_complex<RealType>::value, typename SelfPromote<RealType>::type>::type FrobeniusNorm() const
 		{
-			typename SelfPromote<Var>::type ret = 0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret += (*this)(i, j) * (*this)(i, j);
-			return sqrt(ret);
+            typename SelfPromote<RealType>::type ret = 0;
+            for (enumerator i = 0; i < Rows(); ++i)
+                for (enumerator j = 0; j < Cols(); ++j)
+                    ret += (*this)(i, j) * (*this)(i, j);
+            return sqrt(ret);
 		}
+        /// Computes frobenious norm of the matrix.
+		/// @return Frobenius norm of the matrix.
+        template<typename ComplexType = Var>
+		typename std::enable_if<is_complex<ComplexType>::value, typename SelfPromote<typename ComplexType::value_type>::type>::type FrobeniusNorm() const
+		{
+            typename SelfPromote<typename ComplexType::value_type>::type ret = 0;
+            for (enumerator i = 0; i < Rows(); ++i)
+                for (enumerator j = 0; j < Cols(); ++j)
+                    ret += std::real((*this)(i, j) * std::conj((*this)(i, j)));
+            return sqrt(fabs(ret));
+		}
+
+
 
 		/// Computes maximum absolute value of the matrix.
 		/// @return Maximum norm of the matrix.
@@ -3496,12 +3511,13 @@ namespace INMOST
 		}
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
-			A->GetMatrixInterval(beg, end, cnt);
+		
+            A->GetMatrixInterval(beg, end, cnt);
 			B->GetMatrixInterval(beg, end, cnt);
 		}
 	};
 
-
+    /*
     template<>
     typename SelfPromote<INMOST_DATA_CPLX_TYPE>::type AbstractMatrixReadOnly<INMOST_DATA_CPLX_TYPE>::FrobeniusNorm() const
     {
@@ -3511,6 +3527,7 @@ namespace INMOST
                 ret += (*this)(i, j) * std::conj((*this)(i, j));
         return sqrt(fabs(ret));
     }
+    */
 
 	
 	/*
@@ -4789,7 +4806,7 @@ namespace INMOST
 		{
 			ret0 = ret;
 			ret = 0.5*(ret + (*this)*ret.Invert());
-			if( (ret - ret0).FrobeniusNorm() < tol ) return ret; 
+			if( (ret - ret0).FrobeniusNorm() < tol ) return ret;
 		}
 		if( ierr )
 		{
@@ -4810,14 +4827,14 @@ namespace INMOST
 		{
 			if( ierr )
 			{
-				if( *ierr == -1 ) 
+				if( *ierr == -1 )
 					std::cout << "Failed to compute singular value decomposition of the matrix" << std::endl;
 				*ierr = 1;
 				return ret;
 			}
 			else throw MatrixPseudoSolveFail;
 		}
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) 
+        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
 			if( get_value(S(k,k)) ) S(k,k) = pow(S(k,k),n);
         if( n >= 0 )
 			ret = U*S*V.Transpose();
@@ -5820,9 +5837,158 @@ namespace INMOST
 
 
 	template<typename Var>
-	bool AbstractMatrixReadOnly<Var>::EigenDecomposition(AbstractMatrix<std::complex<Var>> & V, AbstractMatrix<std::complex<Var>> & Lambda, bool order_eigen_values,
+	bool AbstractMatrixReadOnly<Var>::EigenDecomposition(AbstractMatrix<INMOST_DATA_CPLX_TYPE> & V, AbstractMatrix<INMOST_DATA_CPLX_TYPE> & Lambda, bool order_eigen_values,
             double abs_eps, double rel_eps, int max_iters) const
     {
+        // Вспомогательная структура.
+        struct FrancisQR
+        {
+            // Получение собственных чисел матрицы 2 на 2.
+            static std::pair<std::complex<double>, std::complex<double>> get_2x2_eigenvalues(double a, double b, double c, double d)
+            {
+                double det = a * d - c * b;
+                double trace_2 = (a + d) / 2.0;
+
+                // Два случая: либо корни действительные, либо комплексные
+                // (и, как следствие, они сопряжены).
+                double gap = trace_2 * trace_2 - det;
+                if (gap >= 0.0)
+                {
+                    gap = std::sqrt(gap);
+                    return std::make_pair(trace_2 + gap, trace_2 - gap);
+                }
+                else
+                {
+                    gap = std::sqrt(-gap);
+                    std::complex<double> eigenvalue = {trace_2, gap};
+                    return std::make_pair(eigenvalue, std::conj(eigenvalue));
+                }
+            }
+
+            // Получение рефлектора Хаусхолдера.
+            static Matrix<Var> housholder_reflector(const AbstractMatrix<Var>& vector, size_t first_n_untouched = 0,
+                    double abs_eps = 1e-12, double rel_eps = 1e-12)
+            {
+                size_t n_rows = vector.Rows();
+                if (first_n_untouched >= n_rows) throw "first_n_untouched must be less than vector size.";
+
+                // Проекция вектора на первые first_n_untouched осей.
+                Matrix<Var> projected_vector(n_rows,1);
+                projected_vector.Zero();
+                for (size_t index = first_n_untouched; index < n_rows; ++index)
+                {
+                    projected_vector(index, 0) = vector(index, 0);
+                }
+
+                // Единичный вектор first_n_untouched-ой оси.
+                Matrix<Var> axis(n_rows,1);
+                axis(first_n_untouched, 0) = sign_func(1.0, vector(first_n_untouched, 0));
+
+                // Вектор рефлектора.
+                double projected_norm = projected_vector.FrobeniusNorm();
+                Matrix<Var> reflector = projected_vector - axis * projected_norm;
+
+                // Если норма рефлектора мала, преобразование почти идентичное тождественному.
+                double reflector_norm = reflector.FrobeniusNorm();
+                if (reflector_norm > 0.0)//projected_norm * rel_eps + abs_eps)
+                {
+                    reflector /= reflector.FrobeniusNorm();
+                }
+                else
+                {
+                    reflector.Zero();
+                }
+
+                return reflector;
+            }
+
+            // Приведение матрицы к хессенберговой форме.
+            static std::pair<Matrix<Var>, Matrix<Var>> to_hessenberg(const AbstractMatrix<Var>& matrix)
+            {
+                size_t dim = matrix.Rows();
+                if (dim != matrix.Cols()) throw "Matrix must be square.";
+
+                // Унитарная матрица.
+                Matrix<Var> Q = Matrix<Var>(Matrix<Var>::Unit(dim));
+
+                // Верхнехессенбергова матрица.
+                Matrix<Var> H = matrix;
+
+                for (size_t step = 0; step + 2 < dim; ++step)
+                {
+                    // Получение отражающего преобразования.
+                    Matrix<Var> vector = H.ExtractSubMatrix(0, dim, step, step + 1);
+                    Matrix<Var> reflector = housholder_reflector(vector, step + 1);
+                    Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
+
+                    // Применение отражающего преобразования.
+                    H = H - 2.0 * Matrix<Var>(H * outer_product);
+                    H = H - 2.0 * Matrix<Var>(outer_product * H);
+                    Q = Matrix<Var>(outer_product * Q);
+                }
+
+                return std::make_pair(Q, H);
+            }
+
+            static std::pair<size_t, size_t> deflate_hessenberg(const AbstractMatrix<Var>& matrix, std::vector<std::complex<double>>& eigenvalues,
+                    double abs_eps, double rel_eps)
+            {
+                size_t dim = matrix.Rows();
+                size_t lower = 0;
+                size_t upper = dim;
+
+                double eps = abs_eps + matrix.FrobeniusNorm() * rel_eps;
+
+                // Верхняя граница.
+                while (upper > 2)
+                {
+                    if (std::abs(matrix(upper-1, upper-2)) < eps)
+                    {
+                        eigenvalues.push_back(matrix(upper-1, upper-1));
+                        --upper;
+                    }
+                    else if (std::abs(matrix(upper-2, upper-3)) < eps)
+                    {
+                        auto evs = get_2x2_eigenvalues(matrix(upper - 2, upper - 2),
+                                matrix(upper - 2, upper - 1),
+                                matrix(upper - 1, upper - 2),
+                                matrix(upper - 1, upper - 1));
+
+                        eigenvalues.push_back(evs.first);
+                        eigenvalues.push_back(evs.second);
+
+                        upper -= 2;
+                    }
+                    else break;
+                }
+
+                // Нижняя граница.
+                while (lower < upper)
+                {
+                    if (std::abs(matrix(lower+1, lower)) < eps)
+                    {
+                        eigenvalues.push_back(matrix(lower, lower));
+                        ++lower;
+                    }
+                    else if (std::abs(matrix(lower+2, lower+1)) < eps)
+                    {
+                        auto evs = get_2x2_eigenvalues(matrix(lower, lower),
+                                matrix(lower, lower + 1),
+                                matrix(lower + 1, lower),
+                                matrix(lower + 1, lower + 1));
+
+                        eigenvalues.push_back(evs.first);
+                        eigenvalues.push_back(evs.second);
+
+                        lower += 2;
+                    }
+                    else break;
+                }
+
+                return std::make_pair(lower, upper);
+            }
+        };
+
         // Проверка квадратности матрицы.
         size_t n_rows    = Rows();
         size_t n_columns = Cols();
@@ -5840,159 +6006,12 @@ namespace INMOST
         // Массив для собственных значений.
         std::vector<std::complex<double>> eigenvalues;
 
-        auto get_2x2_eigenvalues = [](double a, double b, double c, double d) -> std::pair<std::complex<double>, std::complex<double>>
-        {
-            double det = a * d - c * b;
-            double trace_2 = (a + d) / 2.0;
-
-            // Два случая: либо корни действительные, либо комплексные
-            // (и, как следствие, они сопряжены).
-            double gap = trace_2 * trace_2 - det;
-            if (gap >= 0.0)
-            {
-                gap = std::sqrt(gap);
-                return std::make_pair(trace_2 + gap, trace_2 - gap);
-            }
-            else
-            {
-                gap = std::sqrt(-gap);
-                std::complex<double> eigenvalue = {trace_2, gap};
-                return std::make_pair(eigenvalue, std::conj(eigenvalue));
-            }
-        };
-
-
-        auto housholder_reflector = [](const AbstractMatrix<Var>& vector, size_t first_n_untouched = 0,
-            double abs_eps = 1e-12, double rel_eps = 1e-12) -> Matrix<Var>
-        {
-            size_t n_rows = vector.Rows();
-            if (first_n_untouched >= n_rows) throw "first_n_untouched must be less than vector size.";
-
-            // Проекция вектора на первые first_n_untouched осей.
-            Matrix<Var> projected_vector(n_rows,1);
-            projected_vector.Zero();
-            for (size_t index = first_n_untouched; index < n_rows; ++index)
-            {
-                projected_vector(index, 0) = vector(index, 0);
-            }
-
-            // Единичный вектор first_n_untouched-ой оси.
-            Matrix<Var> axis(n_rows,1);
-            axis(first_n_untouched, 0) = sign_func(1.0, vector(first_n_untouched, 0));
-
-            // Вектор рефлектора.
-            double projected_norm = projected_vector.FrobeniusNorm();
-            Matrix<Var> reflector = projected_vector - axis * projected_norm;
-
-            // Если норма рефлектора мала, преобразование почти идентичное тождественному.
-            double reflector_norm = reflector.FrobeniusNorm();
-            if (reflector_norm > 0.0)//projected_norm * rel_eps + abs_eps)
-            {
-                reflector /= reflector.FrobeniusNorm();
-            }
-            else
-            {
-                reflector.Zero();
-            }
-
-            return reflector;
-        };
-
-        // Приведение матрицы к верхнехессенберговой форме.
-        auto to_hessenberg = [housholder_reflector](const AbstractMatrix<Var>& matrix) -> std::pair<Matrix<Var>, Matrix<Var>>
-        {
-            size_t dim = matrix.Rows();
-            if (dim != matrix.Cols()) throw "Matrix must be square.";
-
-            // Унитарная матрица.
-            //Matrix<Var> Q(dim,dim);
-            //set_identity(Q);
-            Matrix<Var> Q = Matrix<Var>(Matrix<Var>::Unit(dim));
-
-            // Верхнехессенбергова матрица.
-            Matrix<Var> H = matrix;
-
-            for (size_t step = 0; step + 2 < dim; ++step)
-            {
-                // Получение отражающего преобразования.
-                Matrix<Var> vector = H.ExtractSubMatrix(0, dim, step, step + 1);
-                Matrix<Var> reflector = housholder_reflector(vector, step + 1);
-                Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
-
-                // Применение отражающего преобразования.
-                H = H - 2.0 * Matrix<Var>(H * outer_product);
-                H = H - 2.0 * Matrix<Var>(outer_product * H);
-                Q = Matrix<Var>(outer_product * Q);
-            }
-
-            return std::make_pair(Q, H);
-        };
-
-        // Дефляция верхнехессенберговой матрицы.
-        auto deflate_hessenberg = [abs_eps, rel_eps, get_2x2_eigenvalues](const AbstractMatrix<Var>& matrix,
-                std::vector<std::complex<double>>& eigenvalues) -> std::pair<size_t, size_t>
-        {
-            size_t dim = matrix.Rows();
-            size_t lower = 0;
-            size_t upper = dim;
-
-            double eps = abs_eps + matrix.FrobeniusNorm() * rel_eps;
-
-            // Верхняя граница.
-            while (upper > 2)
-            {
-                if (std::abs(matrix(upper-1, upper-2)) < eps)
-                {
-                    eigenvalues.push_back(matrix(upper-1, upper-1));
-                    --upper;
-                }
-                else if (std::abs(matrix(upper-2, upper-3)) < eps)
-                {
-                    auto evs = get_2x2_eigenvalues(matrix(upper - 2, upper - 2),
-                            matrix(upper - 2, upper - 1),
-                            matrix(upper - 1, upper - 2),
-                            matrix(upper - 1, upper - 1));
-
-                    eigenvalues.push_back(evs.first);
-                    eigenvalues.push_back(evs.second);
-
-                    upper -= 2;
-                }
-                else break;
-            }
-
-            // Нижняя граница.
-            while (lower < upper)
-            {
-                if (std::abs(matrix(lower+1, lower)) < eps)
-                {
-                    eigenvalues.push_back(matrix(lower, lower));
-                    ++lower;
-                }
-                else if (std::abs(matrix(lower+2, lower+1)) < eps)
-                {
-                    auto evs = get_2x2_eigenvalues(matrix(lower, lower),
-                            matrix(lower, lower + 1),
-                            matrix(lower + 1, lower),
-                            matrix(lower + 1, lower + 1));
-
-                    eigenvalues.push_back(evs.first);
-                    eigenvalues.push_back(evs.second);
-
-                    lower += 2;
-                }
-                else break;
-            }
-
-            return std::make_pair(lower, upper);
-        };
-
         // ПОИСК СОБСТВЕННЫХ ЗНАЧЕНИЙ.
         {
             size_t dim = Rows();
 
             // Приводим матрицу к верхнехессенберговой форме.
-            auto pair_Q_H = to_hessenberg(Matrix<Var>(*this));
+            auto pair_Q_H = FrancisQR::to_hessenberg(Matrix<Var>(*this));
             Matrix<Var> H = pair_Q_H.second;
 
             // Индексы, выделяющие текущую подматрицу.
@@ -6005,7 +6024,7 @@ namespace INMOST
                 //H.Print();
 
                 // Дефляция.
-                auto pair_lower_upper = deflate_hessenberg(H, eigenvalues);
+                auto pair_lower_upper = FrancisQR::deflate_hessenberg(H, eigenvalues, abs_eps, rel_eps);
                 lower = pair_lower_upper.first;
                 upper = pair_lower_upper.second;
 
@@ -6029,7 +6048,7 @@ namespace INMOST
                 Matrix<Var> vector = H * (H * e_1 - trace * e_1) + det * e_1;
 
                 // Возмущение рефлектором.
-                Matrix<Var> reflector = housholder_reflector(vector);
+                Matrix<Var> reflector = FrancisQR::housholder_reflector(vector);
                 //reflector.Print();
                 //H.Print();
                 //Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
@@ -6037,7 +6056,7 @@ namespace INMOST
                 H = H - 2.0 * Matrix<Var>(reflector * (reflector.Transpose() * H));
 
                 // Возвращение к хессенберговой форме.
-                pair_Q_H = to_hessenberg(H);
+                pair_Q_H = FrancisQR::to_hessenberg(H);
                 H = pair_Q_H.second;
             }
 
@@ -6100,20 +6119,21 @@ namespace INMOST
         }
         eigenvalues = processed_eigenvalues;
 
-        // Сортировка собственных значений по действительной части, если требется.
+        // Сортировка собственных значений по действительной части, если требуется.
         if (order_eigen_values)
         {
-            auto complex_comparator = [](const std::complex<Var>& left, const std::complex<Var>& right) -> bool
-            { return std::real(left) == std::real(right) ? std::imag(left) > std::imag(right) : std::real(left) > std::real(right); };
+            struct ComplexComparator
+            {
+                static bool compare(const std::complex<Var>& left, const std::complex<Var>& right)
+                { return std::real(left) == std::real(right) ? std::imag(left) > std::imag(right) : std::real(left) > std::real(right); };
+            };
 
-            std::sort(eigenvalues.begin(), eigenvalues.end(), complex_comparator);
+            std::sort(eigenvalues.begin(), eigenvalues.end(), ComplexComparator::compare);
         }
 
         // Запись собственных значений в диагональную матрицу.
         for (size_t index = 0; index < n_rows; ++index)
-        {
-            Lambda(index,index) = eigenvalues[index];
-        }
+        { Lambda(index,index) = eigenvalues[index]; }
 
         // Поиск собственных векторов.
         {

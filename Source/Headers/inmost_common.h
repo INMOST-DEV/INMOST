@@ -43,7 +43,7 @@
 #endif //INMOST_OPTIONS_CMAKE_INCLUDED
 
 
-// a very expensive check for debug purposes, 
+// a very expensive check for debug purposes,
 // when you release marker checks all the elements
 // that no element is marked by released marker
 // in Mesh::Init function change two variables:
@@ -166,7 +166,7 @@
 #define INMOST_MPI_FLOAT       MPI_FLOAT
 #define INMOST_MPI_UNSIGNED    MPI_UNSIGNED
 #define INMOST_MPI_UNSIGNEDL   MPI_UNSIGNED_LONG
-#define INMOST_MPI_UNSIGNEDLL  MPI_UNSIGNED_LONG_LONG 
+#define INMOST_MPI_UNSIGNEDLL  MPI_UNSIGNED_LONG_LONG
 #define INMOST_MPI_Win         MPI_Win
 #define INMOST_MPI_DATATYPE_NULL MPI_DATATYPE_NULL
 #define INMOST_MPI_GROUP_EMPTY MPI_GROUP_EMPTY
@@ -197,6 +197,9 @@
 __INLINE static INMOST_DATA_REAL_TYPE fabs(const INMOST_DATA_CPLX_TYPE & Arg) { return std::abs(Arg); }
 __INLINE static INMOST_DATA_REAL_TYPE conj(INMOST_DATA_REAL_TYPE Arg) { return Arg; }
 
+template<typename T> struct is_complex : std::false_type {};
+template<typename T> struct is_complex<std::complex<T>> : std::true_type {};
+
 #if defined(USE_INT64)
 #define INMOST_DATA_INTEGER_TYPE   int64_t
 #define INMOST_DATA_ENUM_TYPE      uint64_t
@@ -214,7 +217,7 @@ __INLINE static INMOST_DATA_REAL_TYPE conj(INMOST_DATA_REAL_TYPE Arg) { return A
 #define INMOST_MPI_DATA_ENUM_TYPE      INMOST_MPI_UINT64_T
 #define INMOST_MPI_DATA_BIG_ENUM_TYPE  INMOST_MPI_UINT64_T
 #else //USE_INT64
-#define INMOST_DATA_INTEGER_TYPE    int           
+#define INMOST_DATA_INTEGER_TYPE    int
 #define INMOST_DATA_ENUM_TYPE       unsigned int
 #define INMOST_DATA_BIG_ENUM_TYPE   unsigned long long
 
@@ -242,7 +245,7 @@ namespace INMOST
 	/// If error is detected then "throw" exception is generated.
 	/// The names of the error type are very intuitive and self-explained ones.
 	/// Use "try{...} catch{...}" blocks to implement exception handling.
-	enum ErrorType 
+	enum ErrorType
 	{
 		/// The list of errors connected to mesh consistency.
 		Failure=100,
@@ -253,8 +256,8 @@ namespace INMOST
 		BadBulkType,
 		NoData,
 		TagNotInitialized,
-		TagNotFound, 
-		TagExists, 
+		TagNotFound,
+		TagExists,
 		TagForOtherMesh,
 		ElementForOtherMesh,
 		ImpossibleConn,
@@ -263,13 +266,13 @@ namespace INMOST
 		NoMeshElement,
 		NoEsetElement,
 		DimensionIsFixed,
-		NullInElementSet,		
+		NullInElementSet,
 		NoSpaceForMarker,
 		ElementBelongsToNobody,
 
 		/// The list of general type errors.
 		BadFileName,
-		BadFile,		
+		BadFile,
 		CorruptedIerarchy,
 		CorruptedOrdering,
 		IterForOtherMesh,
@@ -278,7 +281,7 @@ namespace INMOST
 		NoParallelMode,
 		BadParameter,
 		TopologyCheckError,
-		
+
 		/// The list of errors may occur in the Linear Solver.
 		ErrorInSolver = 400,
 		DataCorruptedInSolver,
@@ -296,18 +299,18 @@ namespace INMOST
 		SolverCopyException,
         SolverAssignNullException,
         SolverAssignException,
-		
+
 		/// The list of errors may occur in the Partitioner.
 		ErrorInPartitioner = 500,
 		UnknownWeightSize,
 		DistributionTagWasNotFilled,
-		
+
 		/// The list of errros that may occur in linear algebra
 		MatrixError = 600,
 		MatrixCholeskySolveFail,
 		MatrixSolveFail,
 		MatrixPseudoSolveFail,
-		
+
 		/// The very tail of the errors list.
 		NotImplemented = 1000,
 		Impossible
@@ -343,16 +346,16 @@ namespace INMOST
 
 	template<typename Var>
 	class MatrixRepack;
-	
+
 	template<typename Var>
 	class SubMatrix;
-	
+
 	template<typename Var>
 	class ConstSubMatrix;
-	
+
 	template<typename Var>
 	class BlockOfMatrix;
-	
+
 	template<typename Var>
 	class ConstBlockOfMatrix;
 
@@ -412,10 +415,10 @@ namespace INMOST
 
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixMul;
-	
+
 	template<typename Var, typename Storage = std::vector<Var> >
 	class Matrix;
-	
+
 	template<typename Var, typename Storage = std::vector<Var> >
 	class SymmetricMatrix;
 
