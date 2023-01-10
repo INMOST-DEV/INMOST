@@ -87,7 +87,7 @@ namespace INMOST
 	//template<> typename ComplexType<unknown>::type                                                imag_part(unknown const& a) { return 0.0; }
 	//template<> typename ComplexType<variable>::type                                               imag_part(variable const& a) { return 0.0; }
 	//template<> typename ComplexType<value_reference>::type                                        imag_part(value_reference const& a) { return 0.0; }
-	//template<> typename ComplexType<multivar_expression_reference>::type 	                        imag_part(multivar_expression_reference const& a) { return 0.0; }
+	//template<> typename ComplexType<multivar_expression_reference>::type	                        imag_part(multivar_expression_reference const& a) { return 0.0; }
 	//template<> typename ComplexType<hessian_multivar_expression_reference>::type                  imag_part(hessian_multivar_expression_reference const& a) { return 0.0; }
 	//template<> typename ComplexType<hessian_variable>::type                                       imag_part(hessian_variable const& a) { return 0.0; }
 	//template<> typename ComplexType< std::complex<unknown> >::type                                imag_part(std::complex<unknown> const& a) { return a.imag(); }
@@ -200,7 +200,7 @@ namespace INMOST
 	template<> struct Promote<double, hessian_variable> { typedef hessian_variable type; };
 #endif
 #endif
-	
+
 	class AbstractMatrixBase
 	{
 	protected:
@@ -291,7 +291,7 @@ namespace INMOST
 		/// @param Perm Array for reordering, size of columns of the matrix.
 		/// @param SL Diagonal for rescaling matrix from left, size of columns of the matrix.
 		/// @param SR Diagonal for rescaling matrix from right, size of rows of the matrix.
-		/// \todo 
+		/// \todo
 		/// 1. Test rescaling.
 		/// 2. Test on non-square matrices.
 		void MPT(INMOST_DATA_ENUM_TYPE* Perm, INMOST_DATA_REAL_TYPE* SL = NULL, INMOST_DATA_REAL_TYPE* SR = NULL) const;
@@ -311,12 +311,139 @@ namespace INMOST
 		bool cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const;
 
         /// Eigen decomposition.
-		/// Reconstruct matrix: A = V*Lambda*V.Transpose().
-		/// @param V Eigenvectors matrix.
-		/// @param Lambda Diagonal matrix with eigen values.
-		/// @param order_eigen_values Return eigen values in ascending order of their real part.
+        /// Reconstruct matrix: A = V*Lambda*V.Transpose().
+        /// @param V Eigenvectors matrix.
+        /// @param Lambda Diagonal matrix with eigen values.
+        /// @param order_eigen_values Return eigen values in ascending order of their real part.
         bool EigenDecomposition(AbstractMatrix<INMOST_DATA_CPLX_TYPE> & V, AbstractMatrix<INMOST_DATA_CPLX_TYPE> & Lambda, bool order_eigen_values = true,
                 double abs_eps=1e-8, double rel_eps=1e-8, int max_iters=256) const;
+
+        /// Householder reflector.
+        /// Computes householder reflector for a vector.
+        /// @param first_n_untouched Number of components left intact by the reflector.
+        template<typename RealType = Var>
+		typename std::enable_if<!is_complex<RealType>::value, Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type>>::type HouseholderReflector(enumerator first_n_untouched = 0) const
+        {
+            size_t n_rows = Rows();
+            assert(Cols() == 1);
+            assert(first_n_untouched < n_rows);
+
+            // Проекция вектора на первые first_n_untouched осей.
+            Matrix<Var> projected_vector(n_rows,1);
+            projected_vector.Zero();
+            for (enumerator index = first_n_untouched; index < n_rows; ++index)
+            {
+                projected_vector(index, 0) = (*this)(index, 0);
+            }
+
+            // Единичный вектор first_n_untouched-ой оси.
+            Matrix<Var> axis(n_rows,1);
+            axis(first_n_untouched, 0) = sign_func(1.0, (*this)(first_n_untouched, 0)) * projected_vector.FrobeniusNorm();
+
+            // Вектор рефлектора.
+            Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> reflector = projected_vector - axis;
+            auto reflector_norm = reflector.FrobeniusNorm();
+            if (reflector_norm > 0.0)
+            { reflector /= reflector_norm; }
+
+            return reflector;
+        }
+        template<typename ComplexType = Var>
+		typename std::enable_if<is_complex<ComplexType>::value, Matrix<INMOST_DATA_CPLX_TYPE>>::type HouseholderReflector(enumerator first_n_untouched = 0) const
+        {
+            size_t n_rows = Rows();
+            assert(Cols() == 1);
+            assert(first_n_untouched < n_rows);
+
+            // Проекция вектора на первые first_n_untouched осей.
+            Matrix<Var> projected_vector(n_rows,1);
+            projected_vector.Zero();
+            for (enumerator index = first_n_untouched; index < n_rows; ++index)
+            {
+                projected_vector(index, 0) = (*this)(index, 0);
+            }
+
+            // Фазовый множитель.
+            auto phase_mult = (*this)(first_n_untouched, 0);
+            if (std::norm(phase_mult) > 0.0)
+            { phase_mult /= std::abs(phase_mult); }
+
+            // Единичный вектор first_n_untouched-ой оси.
+            Matrix<Var> axis(n_rows,1);
+            axis(first_n_untouched, 0) = phase_mult * projected_vector.FrobeniusNorm();
+
+            // Вектор рефлектора.
+            Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> reflector = projected_vector - axis;
+            auto reflector_norm = reflector.FrobeniusNorm();
+            if (reflector_norm > 0.0)
+            { reflector /= reflector_norm; }
+
+            return reflector;
+        }
+
+
+        /// Hessenberg form.
+        /// Reconstruct matrix: A = Q*H*Q.T
+        /// @param Q Unitary matrix.
+        /// @param H Hessenberg matrix.
+        bool Hessenberg(AbstractMatrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> & Q,
+                        AbstractMatrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> & H) const
+        {
+            enumerator dim = Rows();
+            if (dim != Cols()) return false;
+
+            // Унитарная матрица.
+            Q = Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type>::Unit(dim);
+
+            // Верхнехессенбергова матрица.
+            H = (*this);
+
+            for (enumerator step = 0; step + 2 < dim; ++step)
+            {
+                // Получение отражающего преобразования.
+                Matrix<Var> reflector = H.ExtractSubMatrix(0, dim, step, step + 1).HouseholderReflector(step + 1);
+                Matrix<Var> outer_product = reflector * reflector.ConjugateTranspose();
+
+                // Применение отражающего преобразования.
+                H = H - 2.0 * H * outer_product;
+                H = H - 2.0 * outer_product * H;
+                Q = Q * (Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type>::Unit(dim) - 2.0 * outer_product);
+            }
+
+            return true;
+        }
+
+
+        /// QR-decomposition.
+        /// Reconstruct matrix: A = Q*R.
+        /// @param Q Unitary matrix.
+        /// @param R Upper triangular matrix.
+        bool QRDecompoition(AbstractMatrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> & Q,
+                            AbstractMatrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type> & R) const
+        {
+            enumerator n_rows = Rows();
+
+            // Унитарная матрица.
+            Q = Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type>::Unit(n_rows);
+
+            // Верхнетреугольная матрица.
+            R = (*this);
+
+            for (enumerator step = 0; step < n_rows; ++step)
+            {
+                // Получение отражающего преобразования.
+                Matrix<Var> reflector = R.ExtractSubMatrix(0, n_rows, step, step + 1).HouseholderReflector(step);
+                Matrix<Var> outer_product = reflector * reflector.ConjugateTranspose();
+
+                // Применение отражающего преобразования.
+                R = R - 2.0 * outer_product * R;
+                Q = Q * (Matrix<typename Promote<Var, INMOST_DATA_REAL_TYPE>::type>::Unit(n_rows) - 2.0 * outer_product);
+            }
+
+            return true;
+        }
+
+
 
 		/// Transpose current matrix.
 		/// @return Transposed matrix.
@@ -440,7 +567,7 @@ namespace INMOST
 					//	sout << std::setw(12) << "inf";
 					//else if (std::isnan(get_value((*this)(k, l))))
 					//	sout << std::setw(12) << "nan";
-					//else 
+					//else
 					if (fabs(get_value((*this)(k, l))) > threshold)
 						sout << std::setw(12) << get_value((*this)(k, l));
 					else
@@ -499,8 +626,6 @@ namespace INMOST
                     ret += (*this)(i, j) * (*this)(i, j);
             return sqrt(ret);
 		}
-        /// Computes frobenious norm of the matrix.
-		/// @return Frobenius norm of the matrix.
         template<typename ComplexType = Var>
 		typename std::enable_if<is_complex<ComplexType>::value, typename SelfPromote<typename ComplexType::value_type>::type>::type FrobeniusNorm() const
 		{
@@ -700,7 +825,7 @@ namespace INMOST
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatCols
 		template<typename VarB>
-		ConstMatrixConcatRows2<Var,VarB,typename Promote<Var,VarB>::type> 
+		ConstMatrixConcatRows2<Var,VarB,typename Promote<Var,VarB>::type>
 			ConcatRows(const AbstractMatrixReadOnly<VarB>& B) const
 		{
 			return ConstMatrixConcatRows2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
@@ -749,7 +874,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly<Var>::Repack;
 		using AbstractMatrixReadOnly<Var>::ConcatRows;
 		using AbstractMatrixReadOnly<Var>::ConcatCols;
-		
+
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
@@ -907,8 +1032,8 @@ namespace INMOST
 		//}
 
 	};
-	
-	
+
+
 	template<typename Var, typename storage_type>
 	class SymmetricMatrix : public AbstractMatrix<Var>
 	{
@@ -1073,7 +1198,7 @@ namespace INMOST
 			if( i > j ) std::swap(i,j);
 			return space[j+n*i-i*(i+1)/2];
 		}
-		
+
 		/// Return raw pointer to matrix data, stored in row-wise format.
 		/// @return Pointer to data.
 		__INLINE Var * data() {return space.data();}
@@ -1236,7 +1361,7 @@ namespace INMOST
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
 		}
-		
+
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -1247,7 +1372,7 @@ namespace INMOST
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
 		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
+
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -1258,10 +1383,10 @@ namespace INMOST
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
 		//::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
+
 		//::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
-	
+
 	/// Class for linear algebra operations on dense matrices.
 	/// Matrix with n rows and m columns.
 	///
@@ -1407,7 +1532,7 @@ namespace INMOST
 			else AbstractMatrix<Var>::Swap(b);
 #else //_CPPRTTI
 			AbstractMatrix<Var>::Swap(b);
-#endif //_CPPRTTI	
+#endif //_CPPRTTI
 		}
 		/// Construct empty matrix.
 		Matrix() : space(), n(0), m(0) {}
@@ -1542,7 +1667,7 @@ namespace INMOST
 			assert(i*m+j < n*m); //overflow check?
 			return space[i*m+j];
 		}
-		
+
 		/// Return raw pointer to matrix data, stored in row-wise format.
 		/// @return Pointer to data.
 		__INLINE Var * data() {return space.data();}
@@ -1795,7 +1920,7 @@ namespace INMOST
 		/// @param c Value to fill the matrix.
 		/// @return Returns a matrix with 1 column.
 		static MatrixCol<Var> Col(enumerator pn, const Var & c = 1.0)
-		{ return MatrixCol<Var>(pn, c); 	}
+		{ return MatrixCol<Var>(pn, c); }
 		/// Joint diagonalization algorithm by Cardoso.
 		/// Source http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
 		/// Current matrix should have size n by n*m
@@ -1883,7 +2008,7 @@ namespace INMOST
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
 		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
+
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -1999,7 +2124,7 @@ namespace INMOST
             (void)cols; (void)rows;
 		}
 	};
-	
+
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var>
 	class ConstSubMatrix : public AbstractMatrixReadOnly<Var>
@@ -2032,7 +2157,7 @@ namespace INMOST
 		ConstSubMatrix(const AbstractMatrixReadOnly<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
 		{}
 		ConstSubMatrix(const ConstSubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
-		
+
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Column index.
@@ -2059,7 +2184,7 @@ namespace INMOST
 			return ret;
 		}
 	};
-	
+
 	/// This class allows to address a matrix as a block of an empty matrix of larger size.
 	template<typename Var>
 	class BlockOfMatrix : public AbstractMatrix<Var>
@@ -2171,7 +2296,7 @@ namespace INMOST
             (void)cols; (void)rows;
 		}
 	};
-	
+
 	/// This class allows to address a matrix as a block of an empty matrix of larger size.
 	template<typename Var>
 	class ConstBlockOfMatrix : public AbstractMatrixReadOnly<Var>
@@ -2367,7 +2492,7 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
 		MatrixSum(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
-			: A(&rA), B(&rB) 
+			: A(&rA), B(&rB)
 		{
 			assert(A->Rows() == B->Rows());
 			assert(A->Cols() == B->Cols());
@@ -2722,8 +2847,8 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const 
-		{ 
+		__INLINE Var operator()(enumerator i, enumerator j) const
+		{
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
 		}
 		/// Access element of the matrix by row and column indices
@@ -2731,8 +2856,8 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var& operator()(enumerator i, enumerator j)  
-		{ 
+		__INLINE Var& operator()(enumerator i, enumerator j)
+		{
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
 		}
 		/// This is a stub function to fulfill abstract
@@ -2870,7 +2995,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var& operator()(enumerator i, enumerator j) 
+		__INLINE Var& operator()(enumerator i, enumerator j)
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
 		}
@@ -2957,22 +3082,22 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const 
-		{ 
+		__INLINE Var operator()(enumerator i, enumerator j) const
+		{
 			enumerator p = i * m + j;
 			return (*A)(p / A->Cols(), p % A->Cols());
-			//return A->data()[i * m + j]; 
+			//return A->data()[i * m + j];
 		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var & operator()(enumerator i, enumerator j) 
-		{ 
+		__INLINE Var & operator()(enumerator i, enumerator j)
+		{
 			enumerator p = i * m + j;
 			return (*A)(p / A->Cols(), p % A->Cols());
-			//return A->data()[i * m + j]; 
+			//return A->data()[i * m + j];
 		}
 		/// This is a stub function to fulfill abstract
 		/// inheritance. BlockOfMatrix cannot change it's size,
@@ -3025,11 +3150,11 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			for (enumerator i = 0; i < pA->Rows(); ++i) 
+			for (enumerator i = 0; i < pA->Rows(); ++i)
 			{
-				for (enumerator  k = 0; k < pB->Cols(); ++k) 
+				for (enumerator  k = 0; k < pB->Cols(); ++k)
 					M(i, k) = (*pA)(i, 0) * (*pB)(0, k);
-				for (enumerator j = 1; j < pA->Cols(); ++j) 
+				for (enumerator j = 1; j < pA->Cols(); ++j)
 					for (enumerator k = 0; k < pB->Cols(); ++k)
 						M(i, k) += (*pA)(i, j) * (*pB)(j, k);
 			}
@@ -3511,7 +3636,6 @@ namespace INMOST
 		}
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
-		
             A->GetMatrixInterval(beg, end, cnt);
 			B->GetMatrixInterval(beg, end, cnt);
 		}
@@ -3529,7 +3653,7 @@ namespace INMOST
     }
     */
 
-	
+
 	/*
 	template<typename Var>
 	Matrix<Var>
@@ -3542,7 +3666,7 @@ namespace INMOST
 		return ret;
 	}
 	*/
-	
+
 	template<typename Var>
 	void
 	AbstractMatrix<Var>::Swap(AbstractMatrix<Var> & b)
@@ -3551,7 +3675,7 @@ namespace INMOST
 		b = (*this);
 		(*this) = tmp;
 	}
-	
+
 	/*
 	template<typename Var>
 	Matrix<Var>
@@ -3582,7 +3706,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -3596,30 +3720,30 @@ namespace INMOST
 		typedef typename Promote<Var,typeB>::type var_t;
 		Matrix<var_t> Q(3,3);
 		var_t x,y,z,w,n,l;
-		
+
 		x = -(B(1,0)*A(2,0) - B(2,0)*A(1,0));
 		y = -(B(2,0)*A(0,0) - B(0,0)*A(2,0));
 		z = -(B(0,0)*A(1,0) - B(1,0)*A(0,0));
 		w = A.FrobeniusNorm()*B.FrobeniusNorm() + A.DotProduct(B);
-		
+
 		l = B.FrobeniusNorm()/A.FrobeniusNorm();
 		n = 2*l/(x*x+y*y+z*z+w*w);
-		
+
 		Q(0,0) = l - (y*y + z*z)*n;
 		Q(0,1) = (x*y - z*w)*n;
 		Q(0,2) = (x*z + y*w)*n;
-		
+
 		Q(1,0) = (x*y + z*w)*n;
 		Q(1,1) = l - (x*x + z*z)*n;
 		Q(1,2) = (y*z - x*w)*n;
-		
+
 		Q(2,0) = (x*z - y*w)*n;
 		Q(2,1) = (y*z + x*w)*n;
 		Q(2,2) = l - (x*x + y*y)*n;
-		
+
 		return Q;
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	//Matrix<typename Promote<Var,typeB>::type>
@@ -3637,7 +3761,7 @@ namespace INMOST
 		return ret;
 		*/
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -3650,7 +3774,7 @@ namespace INMOST
 				assign((*this)(i,j),(*this)(i,j)-other(i,j));
 		return *this;
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	//Matrix<typename Promote<Var,typeB>::type>
@@ -3668,7 +3792,7 @@ namespace INMOST
 		return ret;
 		*/
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -3720,8 +3844,8 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
-	
+
+
 	template<>
 	template<>
 	__INLINE Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type>
@@ -3758,7 +3882,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+
 	template<>
 	template<>
 	__INLINE Matrix<Promote<variable,variable>::type>
@@ -3821,7 +3945,7 @@ namespace INMOST
 		return ret;
 		*/
 	}
-	
+
 #if defined(USE_AUTODIFF)
 	template<>
 	template<>
@@ -3857,7 +3981,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+
 	template<>
 	template<>
 	__INLINE Promote<variable,INMOST_DATA_REAL_TYPE>::type
@@ -3892,7 +4016,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+
 	template<>
 	template<>
 	__INLINE Promote<variable,variable>::type
@@ -3930,9 +4054,9 @@ namespace INMOST
 		return ret;
 	}
 #endif //USE_AUTODIFF
-	
-	
-	
+
+
+
 	/*
 	template<typename Var>
 	template<typename typeB>
@@ -3968,7 +4092,7 @@ namespace INMOST
 		return ret;
 	}
 	*/
-	
+
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -3977,7 +4101,7 @@ namespace INMOST
 		(*this) = (*this)*B;
 		return *this;
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	//Matrix<typename Promote<Var,typeB>::type>
@@ -4003,7 +4127,7 @@ namespace INMOST
 		return MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
 	}
 #endif //USE_AUTODIFF
-	
+
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -4039,7 +4163,7 @@ namespace INMOST
 		return ret;
 		*/
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -4050,7 +4174,7 @@ namespace INMOST
 				assign((*this)(i,j),(*this)(i,j)/coef);
 		return *this;
 	}
-	
+
 	template<typename Var>
 	template<typename typeB>
 	//Matrix<typename Promote<Var,typeB>::type>
@@ -4076,7 +4200,7 @@ namespace INMOST
 		return ret;
 		*/
 	}
-	
+
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::Invert(int * ierr) const
@@ -4085,7 +4209,7 @@ namespace INMOST
 		ret = Solve(MatrixUnit<Var>(Rows()),ierr);
 		return ret;
 	}
-	
+
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::CholeskyInvert(int * ierr) const
@@ -4094,8 +4218,8 @@ namespace INMOST
 		ret = CholeskySolve(MatrixUnit<Var>(Rows()),ierr);
 		return ret;
 	}
-	
-	
+
+
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -4109,7 +4233,7 @@ namespace INMOST
 		Matrix<typename Promote<Var,typeB>::type> ret(B);
 		static thread_private< SymmetricMatrix<Var> > L;// (A);
 		*L = A;
-		
+
 		//SAXPY
 		/*
 		for(enumerator i = 0; i < n; ++i)
@@ -4123,16 +4247,16 @@ namespace INMOST
 				if( print_fail ) std::cout << "Negative diagonal pivot " << get_value(L(i,i)) << std::endl;
 				return ret;
 			}
-			
+
 			L(i,i) = sqrt(L(i,i));
-			
+
 			if( fabs(L(i,i)) < 1.0e-24 )
 			{
 				ret.second = false;
 				if( print_fail ) std::cout << "Diagonal pivot is too small " << get_value(L(i,i)) << std::endl;
 				return ret;
 			}
-			
+
 			for(enumerator j = i+1; j < n; ++j)
 				L(i,j) = L(i,j)/L(i,i);
 		}
@@ -4150,9 +4274,9 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			(*L)(k,k) = sqrt((*L)(k,k));
-			
+
 			if( fabs((*L)(k,k)) < 1.0e-24 )
 			{
 				if( ierr )
@@ -4163,10 +4287,10 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			for(enumerator i = k+1; i < n; ++i)
 				(*L)(i,k) /= (*L)(k,k);
-			
+
 			for(enumerator j = k+1; j < n; ++j)
 			{
 				for(enumerator i = j; i < n; ++i)
@@ -4218,7 +4342,7 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
 		A.GetMatrixInterval(beg, end, cnt);
 		B.GetMatrixInterval(beg, end, cnt);
-		Sparse::RowMerger* pmerger = NULL; 
+		Sparse::RowMerger* pmerger = NULL;
 		if (cnt >= CNT_USE_MERGER)
 		{
 			merger->Resize(beg, end);
@@ -4237,9 +4361,9 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			L(k,k) = sqrt(L(k,k));
-			
+
 			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
 			{
 				if( ierr )
@@ -4250,10 +4374,10 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			for(enumerator i = k+1; i < n; ++i)
 				L(i,k) /= L(k,k);
-			
+
 			for(enumerator j = k+1; j < n; ++j)
 			{
 				for(enumerator i = j; i < n; ++i)
@@ -4359,9 +4483,9 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			L(k,k) = sqrt(L(k,k));
-			
+
 			if( fabs(L(k,k)) < 1.0e-24 )
 			{
 				if( ierr )
@@ -4372,10 +4496,10 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			for(enumerator i = k+1; i < n; ++i)
 				L(i,k) /= L(k,k);
-			
+
 			for(enumerator j = k+1; j < n; ++j)
 			{
 				for(enumerator i = j; i < n; ++i)
@@ -4478,9 +4602,9 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			L(k,k) = sqrt(L(k,k));
-			
+
 			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
 			{
 				if( ierr )
@@ -4491,10 +4615,10 @@ namespace INMOST
 				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
+
 			for(enumerator i = k+1; i < n; ++i)
 				L(i,k) /= L(k,k);
-			
+
 			for(enumerator j = k+1; j < n; ++j)
 			{
 				for(enumerator i = j; i < n; ++i)
@@ -4591,9 +4715,9 @@ namespace INMOST
 		assert(l == AtB.Cols());
 		//enumerator l = AtB.Cols();
         //enumerator n = Rows();
-		
+
 		std::vector<enumerator> order(m);
-		
+
 		Var temp;
 		INMOST_DATA_REAL_TYPE max,v;
 		typename Promote<Var,typeB>::type tempb;
@@ -4724,7 +4848,7 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
+
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
@@ -4748,7 +4872,7 @@ namespace INMOST
 		}
 		return ret;
 	}
-	
+
 	/*
 	template<typename Var>
 	Matrix<Var>
@@ -4871,7 +4995,7 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
+
 	//template<typename Var,typename storage_type>
 	//SubMatrix<Var,storage_type> Matrix<Var,storage_type>::SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	//{
@@ -4899,7 +5023,7 @@ namespace INMOST
 	{
 		return ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
 	}
-	
+
 	template<typename Var>
 	BlockOfMatrix<Var> AbstractMatrix<Var>::BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col)
 	{
@@ -4910,8 +5034,8 @@ namespace INMOST
 	{
 		return ConstBlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
 	}
-	
-	
+
+
 	template<class T> struct make_integer;
 	template<> struct make_integer<float> {typedef int type;};
 	template<> struct make_integer<double> {typedef long long type;};
@@ -4921,14 +5045,14 @@ namespace INMOST
 		return (*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(a)) <=
 			(*reinterpret_cast< make_integer<INMOST_DATA_REAL_TYPE>::type * >(b));
 	}
-	
+
 	class BinaryHeapDense
 	{
 		INMOST_DATA_ENUM_TYPE size_max, size;
 		std::vector<INMOST_DATA_ENUM_TYPE> heap;
 		std::vector<INMOST_DATA_ENUM_TYPE> index;
 		INMOST_DATA_REAL_TYPE * keys;
-		
+
 		void swap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
 		{
 			INMOST_DATA_ENUM_TYPE t = heap[i];
@@ -5002,7 +5126,7 @@ namespace INMOST
 			return index[i] != ENUMUNDEF;
 		}
 	};
-	
+
 	template<typename Var>
 	void AbstractMatrixReadOnly<Var>::MPT(INMOST_DATA_ENUM_TYPE * Perm, INMOST_DATA_REAL_TYPE * SL, INMOST_DATA_REAL_TYPE * SR) const
 	{
@@ -5055,7 +5179,7 @@ namespace INMOST
 				if( u < V[k] ) V[k] = u;
 			}
 		}
-		// Update cost and match 
+		// Update cost and match
 		for(int k = 0; k < n; ++k)
 		{
 			for (int i = 0; i < m; ++i)
@@ -5069,7 +5193,7 @@ namespace INMOST
 				}
 			}
 		}
-		//1-step augmentation 
+		//1-step augmentation
 		for(int k = 0; k < n; ++k)
 		{
 			if( IPerm[k] == ENUMUNDEF ) //unmatched row
@@ -5100,7 +5224,7 @@ namespace INMOST
 				}
 			}
 		}
-		// Weighted bipartite matching 
+		// Weighted bipartite matching
 		for(int k = 0; k < n; ++k)
 		{
 			if( IPerm[k] != ENUMUNDEF )
@@ -5132,7 +5256,7 @@ namespace INMOST
 							Parent[Perm[Lit]] = Li;
 							if( Heap.Contains(Lit) )
 								Heap.DecreaseKey(Lit,l);
-							else 
+							else
 								Heap.PushHeap(Lit,l);
 						}
 					}
@@ -5140,11 +5264,11 @@ namespace INMOST
 
 				INMOST_DATA_ENUM_TYPE pop_heap_pos = Heap.PopHeap();
 				if( pop_heap_pos == ENUMUNDEF ) break;
-			
+
 				Ui = pop_heap_pos;
 				ShortestPath = Dist[Ui];
 
-				if( AugmentPath <= ShortestPath ) 
+				if( AugmentPath <= ShortestPath )
 				{
 					Dist[Ui] = std::numeric_limits<INMOST_DATA_REAL_TYPE>::max();
 					break;
@@ -5155,7 +5279,7 @@ namespace INMOST
 				ColumnBegin = Ui;
 
 				Li = Perm[Ui];
-				
+
 			}
 			if( PathEnd != ENUMUNDEF )
 			{
@@ -5187,16 +5311,16 @@ namespace INMOST
 				Heap.Clear();
 			}
 		}
-		
+
 		if( SL || SR )
 		{
 			for (int k = 0; k < std::min(n,m); ++k)
 			{
 				l = (V[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() ? 1 : exp(V[k]));
 				u = (U[k] == std::numeric_limits<INMOST_DATA_REAL_TYPE>::max() || Cmax[k] == 0 ? 1 : exp(U[k])/Cmax[k]);
-				
+
 				if( l*get_value(A(k,Perm[k]))*u < 0.0 ) l *= -1;
-				
+
 				if( SL ) SL[Perm[k]] = u;
 				if( SR ) SR[k] = l;
 			}
@@ -5225,7 +5349,7 @@ namespace INMOST
 			}
 		}
 	}
-	
+
 	template<typename Var>
 	bool AbstractMatrixReadOnly<Var>::cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const
 	{
@@ -5865,71 +5989,6 @@ namespace INMOST
                 }
             }
 
-            // Получение рефлектора Хаусхолдера.
-            static Matrix<Var> housholder_reflector(const AbstractMatrix<Var>& vector, size_t first_n_untouched = 0,
-                    double abs_eps = 1e-12, double rel_eps = 1e-12)
-            {
-                size_t n_rows = vector.Rows();
-                if (first_n_untouched >= n_rows) throw "first_n_untouched must be less than vector size.";
-
-                // Проекция вектора на первые first_n_untouched осей.
-                Matrix<Var> projected_vector(n_rows,1);
-                projected_vector.Zero();
-                for (size_t index = first_n_untouched; index < n_rows; ++index)
-                {
-                    projected_vector(index, 0) = vector(index, 0);
-                }
-
-                // Единичный вектор first_n_untouched-ой оси.
-                Matrix<Var> axis(n_rows,1);
-                axis(first_n_untouched, 0) = sign_func(1.0, vector(first_n_untouched, 0));
-
-                // Вектор рефлектора.
-                double projected_norm = projected_vector.FrobeniusNorm();
-                Matrix<Var> reflector = projected_vector - axis * projected_norm;
-
-                // Если норма рефлектора мала, преобразование почти идентичное тождественному.
-                double reflector_norm = reflector.FrobeniusNorm();
-                if (reflector_norm > 0.0)//projected_norm * rel_eps + abs_eps)
-                {
-                    reflector /= reflector.FrobeniusNorm();
-                }
-                else
-                {
-                    reflector.Zero();
-                }
-
-                return reflector;
-            }
-
-            // Приведение матрицы к хессенберговой форме.
-            static std::pair<Matrix<Var>, Matrix<Var>> to_hessenberg(const AbstractMatrix<Var>& matrix)
-            {
-                size_t dim = matrix.Rows();
-                if (dim != matrix.Cols()) throw "Matrix must be square.";
-
-                // Унитарная матрица.
-                Matrix<Var> Q = Matrix<Var>(Matrix<Var>::Unit(dim));
-
-                // Верхнехессенбергова матрица.
-                Matrix<Var> H = matrix;
-
-                for (size_t step = 0; step + 2 < dim; ++step)
-                {
-                    // Получение отражающего преобразования.
-                    Matrix<Var> vector = H.ExtractSubMatrix(0, dim, step, step + 1);
-                    Matrix<Var> reflector = housholder_reflector(vector, step + 1);
-                    Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
-
-                    // Применение отражающего преобразования.
-                    H = H - 2.0 * Matrix<Var>(H * outer_product);
-                    H = H - 2.0 * Matrix<Var>(outer_product * H);
-                    Q = Matrix<Var>(outer_product * Q);
-                }
-
-                return std::make_pair(Q, H);
-            }
-
             static std::pair<size_t, size_t> deflate_hessenberg(const AbstractMatrix<Var>& matrix, std::vector<std::complex<double>>& eigenvalues,
                     double abs_eps, double rel_eps)
             {
@@ -6011,8 +6070,11 @@ namespace INMOST
             size_t dim = Rows();
 
             // Приводим матрицу к верхнехессенберговой форме.
-            auto pair_Q_H = FrancisQR::to_hessenberg(Matrix<Var>(*this));
-            Matrix<Var> H = pair_Q_H.second;
+            //auto pair_Q_H = FrancisQR::to_hessenberg(Matrix<Var>(*this));
+            //Matrix<Var> H = pair_Q_H.second;
+            Matrix<Var> Q;
+            Matrix<Var> H;
+            bool success = Hessenberg(Q, H);
 
             // Индексы, выделяющие текущую подматрицу.
             size_t lower = 0;
@@ -6048,16 +6110,17 @@ namespace INMOST
                 Matrix<Var> vector = H * (H * e_1 - trace * e_1) + det * e_1;
 
                 // Возмущение рефлектором.
-                Matrix<Var> reflector = FrancisQR::housholder_reflector(vector);
-                //reflector.Print();
-                //H.Print();
-                //Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
-                H = H - 2.0 * Matrix<Var>((H * reflector) * reflector.Transpose());
-                H = H - 2.0 * Matrix<Var>(reflector * (reflector.Transpose() * H));
+                Matrix<Var> reflector = vector.HouseholderReflector();
+                Matrix<Var> outer_product = Matrix<Var>(reflector * reflector.Transpose());
+                H = H - 2.0 * H * outer_product;
+                H = H - 2.0 * outer_product * H;
 
                 // Возвращение к хессенберговой форме.
-                pair_Q_H = FrancisQR::to_hessenberg(H);
-                H = pair_Q_H.second;
+                //pair_Q_H = FrancisQR::to_hessenberg(H);
+                //H = pair_Q_H.second;
+                Matrix<Var> _H;
+                bool success = H.Hessenberg(Q, _H);
+                H = _H;
             }
 
             if (step == max_iters)
@@ -6159,8 +6222,10 @@ namespace INMOST
                 // Собственный вектор - последний столбец V
                 // (соответствующий наименьшему сингулярному значению).
                 // (в случае большой кратности СЗ берется всё ядро).
-                Matrix<std::complex<Var>> _U, _Sigma, _V;
-                A.SVD(_U, _Sigma, _V);
+                Matrix<INMOST_DATA_CPLX_TYPE> _U, _Sigma, _V;
+                bool success = A.SVD(_U, _Sigma, _V);
+                if (!success) { return false; }
+
                 V(0, n_rows, index, jndex) = _V(0, n_rows, n_rows - (jndex - index), n_rows);
 
                 index = jndex;
@@ -6169,6 +6234,7 @@ namespace INMOST
 
         return true;
     }
+
 
 
 	/// shortcut for matrix of integer values.
@@ -6221,9 +6287,9 @@ namespace INMOST
 	typedef SymmetricMatrix<variable,shell<variable> > vaSymmetricMatrix;
 	/// shortcut for matrix of variables in existing array.
 	typedef SymmetricMatrix<hessian_variable,shell<hessian_variable> > haSymmetricMatrix;
-	
-	
-	
+
+
+
 	__INLINE uaMatrix uaMatrixMake(unknown * p, uaMatrix::enumerator n, uaMatrix::enumerator m) {return uaMatrix(shell<unknown>(p,n*m),n,m);}
 	__INLINE vaMatrix vaMatrixMake(variable * p, vaMatrix::enumerator n, vaMatrix::enumerator m) {return vaMatrix(shell<variable>(p,n*m),n,m);}
 	__INLINE haMatrix vaMatrixMake(hessian_variable * p, haMatrix::enumerator n, haMatrix::enumerator m) {return haMatrix(shell<hessian_variable>(p,n*m),n,m);}
