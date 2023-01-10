@@ -659,6 +659,7 @@ namespace INMOST
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		/// @return A pseudo-inverse of the matrix.
 		Matrix<Var> PseudoInvert(INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
+
 		/// Calcuate A^n, where n is some real value.
 		/// \warning Currently works for symmetric matrices only!
 		/// @param n Real value.
@@ -667,8 +668,18 @@ namespace INMOST
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		///             The error may be caused by error in SVD algorithm.
 		/// @return Matrix in power of n.
+		Matrix<Var> Power(INMOST_DATA_INTEGER_TYPE n, int * ierr = NULL) const;
+
+        /// Calcuate A^n, where n is some integer value.
+		/// @param n Integer value.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
+		///             The error may be caused by error in SVD algorithm.
+		/// @return Matrix in power of n.
 		Matrix<Var> Power(INMOST_DATA_REAL_TYPE n, int * ierr = NULL) const;
-		/// Calculate square root of A matrix by Babylonian method.
+
+        /// Calculate square root of A matrix by Babylonian method.
 		/// @param iter Number of iterations.
 		/// @param tol  Convergence tolerance.
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
@@ -676,6 +687,15 @@ namespace INMOST
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		/// @return Square root of a matrix.
 		Matrix<Var> Root(INMOST_DATA_ENUM_TYPE iter = 25, INMOST_DATA_REAL_TYPE tol = 1.0e-7, int* ierr = NULL) const;
+
+        /// Calculate exponentail of a matrix by Pade approximation method.
+		/// @param tol  Approximation tolerance.
+		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
+		///             If *ierr == -1 on input, then prints out information in case of failure.
+		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
+		/// @return Square root of a matrix.
+        Matrix<Var> Exponential(INMOST_DATA_REAL_TYPE tol = 1.0e-3, int* ierr = NULL) const;
+
 		/// Solves the system of equations of the form A*X=B, with A and B matrices.
 		/// Uses Moore-Penrose pseudo-inverse of the matrix A and calculates X = A^+*B.
 		/// @param B Matrix at the right hand side.
@@ -4940,6 +4960,51 @@ namespace INMOST
 		}
 		return ret;
 	}
+
+    template<typename Var>
+	Matrix<Var>
+	AbstractMatrixReadOnly<Var>::Power(INMOST_DATA_INTEGER_TYPE n, int * ierr) const
+	{
+        enumerator dim = Rows();
+        assert(dim == Cols());
+
+		Matrix<Var> ret(dim, dim);
+
+        // Случай отрицательной степени сводим к случаю положительной.
+        if (n < 0)
+        {
+            Matrix<Var> inverse = Invert(ierr);
+
+            // Если не удалось обратить матрицу.
+            if (ierr)
+            {
+                if( *ierr == -1 )
+                { std::cout << "Failed to compute inverse of the matrix" << std::endl; }
+
+                *ierr = 1;
+                return ret;
+            }
+            else
+            {
+                return inverse.Power(-n, ierr);
+            }
+        }
+
+        // Бинарное возведение в степень.
+        ret = Matrix<Var>::Unit(dim);
+        Matrix<Var> multiplier = (*this);
+        while (n > 0)
+        {
+            if (n % 2)
+            { ret = ret * multiplier; }
+
+            multiplier = multiplier * multiplier;
+            n /= 2;
+        }
+
+		return ret;
+	}
+
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
@@ -4967,6 +5032,52 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
+
+    template<typename Var>
+	Matrix<Var>
+	AbstractMatrixReadOnly<Var>::Exponential(INMOST_DATA_REAL_TYPE tol, int * ierr) const
+	{
+        enumerator dim = Rows();
+        assert(dim == Cols());
+        assert(tol > 0.0);
+
+        Matrix<Var> ret(dim, dim);
+
+        auto norm = FrobeniusNorm();
+        INMOST_DATA_INTEGER_TYPE power = static_cast<INMOST_DATA_INTEGER_TYPE>(std::ceil(norm / std::min(1.0, tol)));
+        Matrix<Var> x = (*this) / static_cast<Var>(power);
+
+        // Аппроксимация Паде (1,1).
+        auto identity = Matrix<Var>::Unit(dim);
+        auto inverted_denominator = (identity - 0.5 * x).Invert(ierr);
+
+        // Если не удалось обратить матрицу (вообще говоря, невозможно при достаточно большом power).
+        if (ierr)
+        {
+            if( *ierr == -1 )
+            { std::cout << "Failed to compute inverse of the matrix" << std::endl; }
+
+            *ierr = 1;
+            return ret;
+        }
+
+		ret = (identity + 0.5 * x) * inverted_denominator;
+
+        ret = ret.Power(power, ierr);
+        // Если не удалось возвести в степень.
+        if (ierr)
+        {
+            if( *ierr == -1 )
+            { std::cout << "Failed to compute power of the matrix" << std::endl; }
+
+            *ierr = 1;
+            return ret;
+        }
+
+        return ret;
+	}
+
+
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -6070,8 +6181,6 @@ namespace INMOST
             size_t dim = Rows();
 
             // Приводим матрицу к верхнехессенберговой форме.
-            //auto pair_Q_H = FrancisQR::to_hessenberg(Matrix<Var>(*this));
-            //Matrix<Var> H = pair_Q_H.second;
             Matrix<Var> Q;
             Matrix<Var> H;
             bool success = Hessenberg(Q, H);
@@ -6116,8 +6225,6 @@ namespace INMOST
                 H = H - 2.0 * outer_product * H;
 
                 // Возвращение к хессенберговой форме.
-                //pair_Q_H = FrancisQR::to_hessenberg(H);
-                //H = pair_Q_H.second;
                 Matrix<Var> _H;
                 bool success = H.Hessenberg(Q, _H);
                 H = _H;
