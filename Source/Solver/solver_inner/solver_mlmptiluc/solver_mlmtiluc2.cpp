@@ -2747,7 +2747,7 @@ const double apert = 1.0e-8;
 			if (xadj[k + 1 - wbeg] - xadj[k - wbeg] == 0)
 				order[k] = index++;
 		}
-		do
+		while (index < wend)
 		{
 			cur = ENUMUNDEF;
 			for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend) && cur == ENUMUNDEF; ++k)
@@ -2792,7 +2792,6 @@ const double apert = 1.0e-8;
 			}
 			
 		}
-		while( index < wend );
 		
 		for(INMOST_DATA_INTEGER_TYPE k = wbeg; k < static_cast<INMOST_DATA_INTEGER_TYPE>(wend); ++k)
 			if( order[k] == ENUMUNDEF-1 ) order[k] = index++;
@@ -2821,7 +2820,13 @@ const double apert = 1.0e-8;
 		INMOST_DATA_ENUM_TYPE cur = ENUMUNDEF;
 		std::deque<INMOST_DATA_ENUM_TYPE> q;
 		std::vector<INMOST_DATA_ENUM_TYPE> conns;
-		do
+		//enumerate elements without connections
+		for (INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k) if (order[k] == ENUMUNDEF)
+		{
+			if (xadj[k + 1 - wbeg] - xadj[k - wbeg] == 0)
+				order[k] = index++;
+		}
+		while (index < wend)
 		{
 			cur = ENUMUNDEF;
 			for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
@@ -2853,7 +2858,6 @@ const double apert = 1.0e-8;
 				conns.clear();
 			}
 		}
-		while( index < wend );
 		//reverse
 		for(INMOST_DATA_ENUM_TYPE k = wbeg; k < wend; ++k)
 			order[k] = wend-(order[k]-wbeg)-1;

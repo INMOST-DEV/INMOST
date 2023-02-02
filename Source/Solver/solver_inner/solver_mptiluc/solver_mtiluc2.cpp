@@ -1249,7 +1249,7 @@ using namespace INMOST;
 					if (xadj[k + 1 - wbeg] - xadj[k - wbeg] == 0)
 						Ulist[k] = index++;
 				}
-				do
+				while (index < wend)
 				{
 					cur = ENUMUNDEF;
 					for(k = wbeg; k < wend && cur == ENUMUNDEF; ++k)
@@ -1281,7 +1281,6 @@ using namespace INMOST;
 						conns.clear();
 					}
 				}
-				while( index < wend );
 
 				for(k = wbeg; k < wend; ++k)
 					Ulist[k] = wend-(Ulist[k]-wbeg)-1;
