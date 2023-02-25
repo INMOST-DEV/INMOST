@@ -1604,7 +1604,7 @@ namespace INMOST
 		/// @param h element handle
 		/// @param tag tag that represents data
 		reference &                         Reference           (HandleType h, const Tag & tag);
-    /// Returns a reference in an inner representation to the first element of array of element remote handles.
+		/// Returns a reference in an inner representation to the first element of array of element remote handles.
 		/// Future recomendation:
 		///   If variable size array was not allocated then this function will generate segmentation fault.
 		///
@@ -1618,8 +1618,8 @@ namespace INMOST
 		///
 		/// @param h element handle
 		/// @param tag tag that represents data
-    /// @see MakeElement
-    /// @see MakeElementRef
+		/// @see MakeElement
+		/// @see MakeElementRef
 		remote_reference &                  RemoteReference     (HandleType h, const Tag & tag);
 		/// Returns an array of real values.
 		/// If you know that data is certanly dense on elements you access then it is faster to use
@@ -1683,17 +1683,17 @@ namespace INMOST
 		/// @see Element::getAsCell
 		/// @see Element::getAsSet
 		reference_array                     ReferenceArray      (HandleType h, const Tag & tag);
-    /// Returns an array of element remote handles.
+		/// Returns an array of element remote handles.
 		///
 		/// If you know that data is certanly sparse or dense on elements you access then it is faster to use
 		/// variants of this function with hint data structure.
 		///
 		/// The class reference_array that is used to represent array of elements stores remote handles 
-    /// inside but accessing them through square scopes [] or by arrow -> in iterator will 
+		/// inside but accessing them through square scopes [] or by arrow -> in iterator will 
 		/// automatically form an object of type Element. If you are not sure that stored handles are valid, you
 		/// should either check that by Element::isValid (involves deep check) or test handle
 		/// against InvalidHandle (simple check). To obtain remote handle you may use remote_reference_array::at 
-    /// function or dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
+		/// function or dereference * operator for iterator. If you need custom object like Node, Edge, Face, Cell
 		/// or ElementSet you may use Element::getAsNode, Element::getAsEdge, Element::getAsFace,
 		/// Element::getAsCell and Element::getAsSet functions.
 		///
@@ -1756,7 +1756,7 @@ namespace INMOST
 		/// @param h element handle
 		/// @param tag tag that represents dense data of fixed size on given handle
 		reference &                         ReferenceDF         (HandleType h, const Tag & tag) {AssertsDF(h,tag,DATA_REFERENCE); return static_cast<reference*>(MGetDenseLink(h,tag))[0];}
-    /// Returns a reference in dense array to the first element of constant size array of element remote handles.
+		/// Returns a reference in dense array to the first element of constant size array of element remote handles.
 		/// If you don't know any hint information about tag data you should not use this function.
 		///
 		/// Asserts will fire in debug mode if assumption that data is dense and fixed is incorrect,
@@ -2284,6 +2284,8 @@ namespace INMOST
 		/// follows definition of chunk_array to estimate current occupancy of arrays
 		INMOST_DATA_ENUM_TYPE             GetArrayCapacity   (integer etypenum);
 	private:
+		/// Synchronize number of dimensions among meshes
+		void                              SyncDimensions     ();
 		/// Move data position to new location
 		void                              MoveStorage        (integer etypenum, integer old_addr, integer new_addr);
 		/// Remove data and link position for destroyed element.
@@ -3215,6 +3217,7 @@ namespace INMOST
 		///                        considered conformal. Default: "FALSE".
 		///   "ECL_PARALLEL_READ"- If "TRUE" then each processor loads part of the eclipse mesh, requires some synchronization.
 		///                        Otherwise if "FALSE" then each processor loads entire mesh. Default: "TRUE".
+		///   "KEEP_GHOST"       - If options is set, the ghost elements are written into files. By default ghost elements are skipped.
 		///   "Tag:TAGNAME"      - Set comma-separated rules for tag with the name TAGNAME, the rules list is:
 		///                        nosave - do not save the tag data into files;
 		///                        noload - do not load the tag data from files;
@@ -3330,14 +3333,14 @@ namespace INMOST
 		void                              RecomputeGeometricData(HandleType e); // Update all stored geometric data, runs automatically on element construction
 		void                              RecomputeGeometricData(HandleType e, GeometricData d);
 		Element::GeometricType            ComputeGeometricType(ElementType element_type, const HandleType * lower_adjacent, INMOST_DATA_ENUM_TYPE lower_adjacent_size);
-		void                              ComputeCentroid(Element e, TagRealArray coords, real x[3]) const;
-		void                              ComputeBarycenter(Element e, TagRealArray coords, real x[3]) const;
-		void                              ComputeNormal(Element e, TagRealArray coords, real n[3]) const;
+		void                              ComputeCentroid(Element e, TagRealArray coords, real * x) const;
+		void                              ComputeBarycenter(Element e, TagRealArray coords, real * x) const;
+		void                              ComputeNormal(Element e, TagRealArray coords, real * n) const;
 		void                              ComputeMeasure(Element e, TagRealArray coords, real & m) const;
 #if defined(USE_AUTODIFF)
-		void                              ComputeCentroid(Element e, TagVariableArray coords, variable x[3]) const;
-		void                              ComputeBarycenter(Element e, TagVariableArray coords, variable x[3]) const;
-		void                              ComputeNormal(Element e, TagVariableArray coords, variable n[3]) const;
+		void                              ComputeCentroid(Element e, TagVariableArray coords, variable * x) const;
+		void                              ComputeBarycenter(Element e, TagVariableArray coords, variable * x) const;
+		void                              ComputeNormal(Element e, TagVariableArray coords, variable * n) const;
 		void                              ComputeMeasure(Element e, TagVariableArray coords, variable & m) const;
 #endif
 

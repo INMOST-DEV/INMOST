@@ -1415,6 +1415,8 @@ namespace INMOST
 		tag_bridge = CreateTag("BRIDGE",DATA_INTEGER,MESH,NONE,1);
 		tag_sendto = CreateTag("PROTECTED_SENDTO",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
 		
+		SyncDimensions();
+
 #if defined(USE_MPI)
 		randomizer = Random();
 		
@@ -1647,6 +1649,13 @@ namespace INMOST
 	public: bool operator () (const std::pair<Storage::integer,Storage::integer> & a, const std::pair<Storage::integer,Storage::integer> & b) {return a.first < b.first;}
 	};
     
+
+	void Mesh::SyncDimensions()
+	{
+#if defined(USE_MPI)
+		MPI_Bcast(&dim, 1, INMOST_MPI_DATA_INTEGER_TYPE, 0, GetCommunicator());
+#endif //USE_MPI
+	}
 	
 	
 	void Mesh::ResolveShared(bool only_new)
@@ -2314,7 +2323,7 @@ namespace INMOST
 												message_send.push_back(GlobalID(*kt));
 												message_send[message_size_pos]++;
 #if defined(USE_PARALLEL_WRITE_TIME)
-												INMOST_DATA_REAL_TYPE cnt[3];
+												INMOST_DATA_REAL_TYPE cnt[3] = { 0,0,0 };
 												ElementByLocalID(PrevElementType(current_mask), GetHandleID(*kt))->Centroid(cnt);
 												REPORT_STR("global id " << GlobalID(*kt) << " local id " << GetHandleID(*kt) << " " << Element::StatusName(Element(this,*kt)->GetStatus()) << " cnt " << cnt[0] << " " << cnt[1] << " " << cnt[2]);
 #endif
@@ -2408,7 +2417,7 @@ namespace INMOST
 									}
 									integer find_local_id = mapping[find].second;
 #if defined(USE_PARALLEL_WRITE_TIME)
-									real cnt[3];
+									real cnt[3] = { 0,0,0 };
 									ElementByLocalID(PrevElementType(current_mask), find_local_id).Centroid(cnt);
 									REPORT_STR("global id " << global_id 
 										<< " local id " << find_local_id 
@@ -4578,6 +4587,7 @@ namespace INMOST
 				REPORT_STR("track orientation data");
 			}
 		}
+		pack_data(buffer, dim, GetCommunicator());
 		pack_data(buffer, orient, GetCommunicator());
 		//pack nodes coords
 		ENTER_BLOCK();
@@ -5318,8 +5328,16 @@ namespace INMOST
 #if defined(USE_MPI)
 		MarkerType unpack_tags_mrk = CreateMarker();
 		MarkerType orient = 0;
+		integer remote_dim;
 		char orient_flag = false;
+		unpack_data(buffer, buffer_position, remote_dim, GetCommunicator());
 		unpack_data(buffer,buffer_position,orient_flag, GetCommunicator());
+		if (remote_dim != dim) //change number of dimensions
+		{
+			if( NumberOfNodes() == 0)
+				dim = remote_dim;
+			else throw Impossible; // Remote has different number of dimensions and local has nodes!!!
+		}
 		if (orient_flag)
 		{
 			orient = CreateMarker();
@@ -7132,7 +7150,7 @@ namespace INMOST
 		bool have_gid[4] = { HaveGlobalID(NODE), HaveGlobalID(EDGE), HaveGlobalID(FACE), HaveGlobalID(CELL) };
 		for(Mesh::iteratorElement it = BeginElement(CELL|FACE|EDGE|NODE); it != EndElement(); ++it) if( it->GetStatus() & (Element::Ghost | Element::Shared) )
 		{
-			INMOST_DATA_REAL_TYPE cnt[3];
+			INMOST_DATA_REAL_TYPE cnt[3] = { 0,0,0 };
 			it->Centroid(cnt);
 			bool problem = false;
 			double dist = 0;
@@ -7315,7 +7333,7 @@ namespace INMOST
 			if( size != procs.size() ) 
 				std::cout << __FILE__ << ":" << __LINE__ <<  " wrong size of array " << std::endl;
 			std::cout << __FILE__ << ":" << __LINE__ <<  " on " << tag.GetMeshLink()->GetProcessorRank();
-			INMOST_DATA_REAL_TYPE cnt[3];
+			INMOST_DATA_REAL_TYPE cnt[3] = { 0,0,0 };
 			element->Centroid(cnt);
 			std::cout << " element " << ElementTypeName(element->GetElementType()) << ":" << element->LocalID();
 			std::cout << " procs";

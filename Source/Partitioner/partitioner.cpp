@@ -1376,7 +1376,7 @@ namespace INMOST
 			for(idx q = 0; q < total_points; ++q)
 			{
 				Cell n = m->CellByLocalID(points_node[q]);
-				real cnt[3];
+				real cnt[3] = { 0,0,0 };
 				n->Centroid(cnt);
 				points_center[q*3+0] = cnt[0];
 				points_center[q*3+1] = cnt[1];
@@ -1424,6 +1424,9 @@ namespace INMOST
 			}
 			m->AggregateMax(pmax,3);
 			m->AggregateMin(pmin,3);
+
+			for (int k = 0; k < 3; ++k)
+				if (pmin[k] > pmax[k]) pmin[k] = pmax[k] = 0.0;
 			
 			real mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
 			mesh_dist /= (real)K*3.0;

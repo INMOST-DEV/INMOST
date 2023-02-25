@@ -24,6 +24,7 @@ namespace INMOST
 			ss << GetProcessorsNumber();
 			numproc=ss.str();
 			FILE  *f=fopen(File.c_str(), "w");
+			if (f == NULL) throw BadFileName;
 			fprintf(f,"%s%s%s", "<File version=\"pvtk-1.0\" dataType=\"vtkUnstructuredGrid\" numberOfPieces=\"", numproc.c_str(),"\">\n");
 			for (int i=0; i<GetProcessorsNumber(); i++)
 			{

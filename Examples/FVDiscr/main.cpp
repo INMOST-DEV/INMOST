@@ -38,14 +38,14 @@ Storage::real transmissibility(Storage::real vec[3], Storage::real K, Storage::r
 Storage::real func(Storage::real x[3], Storage::real tmp)
 {
 //  	return x[0] + 2 * x[1] + 3 * x[2];
-	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
+	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * cos (M_PI * x[2]);
 	(void) tmp;
 }
 
 Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
 {
 //  	return 0;
-	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
+	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * cos (M_PI * x[2]);
 }
 
 int main(int argc,char ** argv)
@@ -79,7 +79,7 @@ int main(int argc,char ** argv)
 
 		if( m->GetProcessorRank() == 0 ) std::cout << "Processors: " << m->GetProcessorsNumber() << std::endl;
 		if( m->GetProcessorRank() == 0 ) std::cout << "Load(MPI_File): " << Timer()-ttt << std::endl;
-
+		
 		//~ double ttt2 = Timer();
 		//~ Mesh t;
 		//~ t.SetCommunicator(INMOST_MPI_COMM_WORLD);
@@ -184,7 +184,7 @@ int main(int argc,char ** argv)
 		//~ BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Prepare geometric data: " << Timer()-ttt << std::endl;
 		
-
+		
 		unsigned idmax = 0, idmin = UINT_MAX;
 		for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 			if( cell->GetStatus() != Element::Ghost )
@@ -210,13 +210,14 @@ int main(int argc,char ** argv)
 		for(Storage::integer fi = 0; fi < m->FaceLastLocalID(); ++fi) if( m->isValidElement(FACE,fi) )
 		{
 			Face face(m,ComposeHandle(FACE,fi));
-			//~ std::cout << face->LocalID() << " / " << m->NumberOfFaces() << std::endl;
 			Element::Status s1 = Element::Any,s2 = Element::Any;
 			Cell r1 = face->BackCell();
 			Cell r2 = face->FrontCell();
 			if( ((!r1->isValid() || (s1 = r1->GetStatus()) == Element::Ghost)?0:1) +
 			    ((!r2->isValid() || (s2 = r2->GetStatus()) == Element::Ghost)?0:1) == 0) continue;
-			Storage::real f_nrm[3], r1_cnt[3], r2_cnt[3], f_cnt[3], d1[3], Coef;
+			Storage::real f_nrm[3] = { 0,0,0 }, f_cnt[3] = { 0,0,0 };
+			Storage::real r1_cnt[3] = { 0,0,0 }, r2_cnt[3] = { 0,0,0 };
+			Storage::real d1[3] = { 0,0,0 }, Coef;
 			Storage::real f_area = face->Area(); // Get the face area
 			Storage::integer id1 = r1->Integer(id), id2;
 			Storage::real K1 = r1->Real(tensor_K), K2, Kav;
@@ -228,7 +229,7 @@ int main(int argc,char ** argv)
 			face->Barycenter(f_cnt); // Get the barycenter of the face
 			if( !r2->isValid() ) // boundary condition
 			{
-				Storage::real bnd_pnt[3], dist;
+				Storage::real bnd_pnt[3] = { 0,0,0 }, dist;
 				make_vec(f_cnt,r1_cnt,d1);
 				dist = dot_prod(f_nrm,d1) / dot_prod(f_nrm,f_nrm);
 				// bnd_pnt is a projection of the cell center to the face
@@ -270,14 +271,19 @@ int main(int argc,char ** argv)
 
 
 		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
+		TagReal tag_rhs = m->CreateTag("FORCE", DATA_REAL, CELL, NONE, 1);
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 		for(Storage::integer ci = 0; ci < m->CellLastLocalID(); ++ci) if( m->isValidElement(CELL,ci) )
 		{
-		  Cell cell(m,ComposeHandle(CELL,ci));
-				if( cell->GetStatus() != Element::Ghost )
-					b[cell->Integer(id)] += cell->Mean(func_rhs, cell->Real(tensor_K)) * cell->Volume();
+			Cell cell(m,ComposeHandle(CELL,ci));
+			if (cell->GetStatus() != Element::Ghost)
+			{
+				double rhs = cell->Mean(func_rhs, cell->Real(tensor_K));
+				b[cell->Integer(id)] += rhs * cell->Volume();
+				tag_rhs[cell] = rhs;
+			}
 		}
 
 		BARRIER
@@ -297,15 +303,15 @@ int main(int argc,char ** argv)
 		ttt = Timer();
 
 		S.SetMatrix(A); // Compute the preconditioner for the original matrix
-		S.Solve(b,x);   // Solve the linear system with the previously computted preconditioner
+		S.Solve(b,x);   // Solve the linear system with the previously computed preconditioner
 
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "\nSolve system: " << Timer()-ttt << std::endl;
 
 		ttt = Timer();
 
-    Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
-
+		Tag error = m->CreateTag("error",DATA_REAL,CELL,NONE,1);
+		
 		Storage::real err_C = 0.0, err_L2 = 0.0;
 		//for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 #if defined(USE_OMP)
@@ -322,7 +328,6 @@ int main(int argc,char ** argv)
 						err_C = err;
 					err_L2 += err * err * cell->Volume();
 					cell->Real(error) = err;
-	// 				x[cell->Integer(id)] = err;
 				}
 		}
 		err_C = m->AggregateMax(err_C); // Compute the maximal C norm for the error
@@ -351,6 +356,7 @@ int main(int argc,char ** argv)
 		else
 			filename += ".pvtk";
 		ttt = Timer();
+		//m->SetFileOption("KEEP_GHOST","");
 		m->Save(filename);
 		BARRIER
 		if( m->GetProcessorRank() == 0 ) std::cout << "Save \"" << filename << "\": " << Timer()-ttt << std::endl;

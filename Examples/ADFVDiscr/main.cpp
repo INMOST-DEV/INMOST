@@ -19,7 +19,7 @@ using namespace INMOST;
 Storage::real func(Storage::real x[3], Storage::real tmp)
 {
 	//  	return x[0] + 2 * x[1] + 3 * x[2];
-	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
+	return sin (M_PI * x[0]) * sin (M_PI * x[1]) * cos (M_PI * x[2]);
 	(void) tmp;
 }
 
@@ -27,7 +27,7 @@ Storage::real func(Storage::real x[3], Storage::real tmp)
 Storage::real func_rhs(Storage::real x[3], Storage::real tmp)
 {
 	//  	return 0;
-	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * sin (M_PI * x[2]);
+	return -3 * tmp * M_PI * M_PI * sin (M_PI * x[0]) * sin (M_PI * x[1]) * cos (M_PI * x[2]);
 }
 
 
@@ -126,7 +126,7 @@ int main(int argc,char ** argv)
 		else
 		{
 			std::cout << "Set boundary conditions" << std::endl;
-			Storage::real x[3];
+			Storage::real x[3] = { 0,0,0 };
 			tag_BC = m->CreateTag("BOUNDARY_CONDITION",DATA_REAL,FACE,FACE,3);
 			for( Mesh::iteratorFace face = m->BeginFace(); face != m->EndFace(); ++face )
 				if( face->Boundary() && !(face->GetStatus() == Element::Ghost) )
@@ -146,15 +146,18 @@ int main(int argc,char ** argv)
 		}
 		else if( makerefsol )
 		{
-			std::cout << "Set rhs" << std::endl;
+			std::cout << "Set rhs " << m->GetProcessorRank() << std::endl;
 			tag_F = m->CreateTag("FORCE",DATA_REAL,CELL,NONE,1); // Create a new tag for external force
-			Storage::real x[3];
+			Storage::real x[3] = { 0,0,0 }, mean = 0, vmean = 0;
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell ) // Loop over mesh cells
 			{
 				cell->Centroid(x);
 				tag_F[*cell] = -func_rhs(x,1);
 				//tag_F[*cell] = -cell->Mean(func_rhs,1);
+				mean += fabs(tag_F[*cell]) * cell->Volume();
+				vmean += cell->Volume();
 			}
+			std::cout << "mean: " << mean << " vmean: " << vmean << " cells " << m->NumberOfCells() << " proc " << m->GetProcessorRank() << std::endl;
 		}
 		
 		if(m->HaveTag("REFERENCE_SOLUTION") )
@@ -162,7 +165,7 @@ int main(int argc,char ** argv)
 		else if( makerefsol )
 		{
 			phi_ref = m->CreateTag("REFRENCE_SOLUTION",DATA_REAL,CELL,NONE,1);
-			Storage::real x[3];
+			Storage::real x[3] = { 0,0,0 };
 			for( Mesh::iteratorCell cell = m->BeginCell(); cell != m->EndCell(); ++cell )
 			{
 				cell->Centroid(x);
@@ -247,6 +250,8 @@ int main(int argc,char ** argv)
 						// pb = (c + bTp1)/(a+bT)
 						// F = T/(a+bT)(c - ap1)
 						T = k1/d1;
+						if (T < 0.0)
+							std::cout << "Negative bnd T " << T << " proc " << m->GetProcessorRank() << std::endl;
 						a = 0;
 						b = 1;
 						c = 0;
@@ -268,6 +273,9 @@ int main(int argc,char ** argv)
 															  tag_K[r2].size(),3)*n);
 						d2 = fabs(n.DotProduct(x2-xf));
 						T = 1.0/(d1/k1 + d2/k2);
+						if (T < 0.0)
+							std::cout << "Negative int T " << T << " proc " << m->GetProcessorRank() << std::endl;
+
 						flux = T* area * (Phi(r2) - Phi(r1));
 						if( s1 != Element::Ghost )
 						{
