@@ -226,14 +226,20 @@ namespace INMOST
 		if( last )
 		{
 			for(ElementType i = MESH; i >= NODE; i = i >> 1) if( types & i ) {etype = i; break;}
-			lid = m->LastLocalIDThr(etype);
-			operator--();
+			if (etype)
+			{
+				lid = m->LastLocalIDThr(etype);
+				operator--();
+			}
 		}
 		else
 		{
 			for(ElementType i = NODE; i <= MESH; i = i << 1) if( types & i ) {etype = i; break;}
-			lid = m->FirstLocalIDThr(etype)-1;
-			operator++();
+			if (etype)
+			{
+				lid = m->FirstLocalIDThr(etype) - 1;
+				operator++();
+			}
 		}
 	}
 	template<typename EType>
