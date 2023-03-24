@@ -666,7 +666,7 @@ namespace INMOST
 				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 				H.Clear();
 			}
-            (void)multH;
+			(void)multH;
 		}
 		 multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -801,6 +801,40 @@ namespace INMOST
 		}
 	};
 
+	class expression_value : public shell_expression<expression_value>
+	{
+		INMOST_DATA_REAL_TYPE value;
+	public:
+		expression_value() : value(0.0) {}
+		expression_value(INMOST_DATA_REAL_TYPE _value) : value(_value) {}
+		expression_value(const expression_value& other)	: value(other.value) {}
+		expression_value(const basic_expression& other) : value(other.GetValue()) {}
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
+		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const {}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const {}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return; }
+		expression_value& operator = (INMOST_DATA_REAL_TYPE pvalue) { value = pvalue; return *this; }
+		__INLINE expression_value& operator = (basic_expression const& expr) { value = expr.GetValue(); return *this; }
+		__INLINE expression_value& operator = (expression_value const& other) { value = other.GetValue(); return *this; }
+		__INLINE Sparse::Row& GetRow() { throw Impossible; }
+		__INLINE const Sparse::Row& GetRow() const { throw Impossible; }
+		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const { return 0.0; }
+		__INLINE expression_value& operator +=(basic_expression const& expr) { value += expr.GetValue(); return *this; }
+		__INLINE expression_value& operator -=(basic_expression const& expr) { value -= expr.GetValue(); return *this; }
+		__INLINE expression_value& operator *=(basic_expression const& expr) { value *= expr.GetValue(); return *this; }
+		__INLINE expression_value& operator /=(basic_expression const& expr) { value /= expr.GetValue(); return *this; }
+		__INLINE expression_value& operator +=(INMOST_DATA_REAL_TYPE right) { value += right; return *this; }
+		__INLINE expression_value& operator -=(INMOST_DATA_REAL_TYPE right) { value -= right; return *this; }
+		__INLINE expression_value& operator *=(INMOST_DATA_REAL_TYPE right) { value *= right; return *this; }
+		__INLINE expression_value& operator /=(INMOST_DATA_REAL_TYPE right) { value /= right; return *this; }
+		bool check_nans() const { if (value != value) return true; return false; }
+		bool check_infs() const { if (__isinf__(value)) return true; return false; }
+		operator double() const { return value; }
+		operator double& () { return value; }
+	};
+
 	class value_reference : public shell_expression<value_reference>
 	{
 		INMOST_DATA_REAL_TYPE& value;
@@ -891,6 +925,8 @@ namespace INMOST
 			if (__isinf__(value)) return true;
 			return false;
 		}
+		operator double() const { return value; }
+                operator double& () { return value; }
 	};
 	
 	
@@ -2355,7 +2391,7 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 template<class A>          __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg, const INMOST::shell_expression<A> & Val) {Arg = (INMOST_DATA_REAL_TYPE)Val.GetValue();}
 template<class A>          __INLINE                                           void    assign(INMOST_DATA_REAL_TYPE & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val.GetValue();}
 template<class A>          __INLINE                                           void    assign(INMOST::multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
-template<class A>          __INLINE                                           void    assign(INMOST::value_reference& Arg, const INMOST::shell_expression<A>& Val) {Arg.SetValue(Val.GetValue());}
+//template<class A>          __INLINE                                           void    assign(INMOST::value_reference& Arg, const INMOST::shell_expression<A>& Val) {Arg.SetValue(Val.GetValue());}
 template<class A>          __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
 template<class A>          __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, const INMOST::shell_expression<A> & Val) {Arg = Val;}
@@ -2366,7 +2402,7 @@ template<class A>          __INLINE                                           vo
                            __INLINE                                           void    assign(INMOST::var_expression & Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression & Arg,                   float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
-						   __INLINE                                           void    assign(INMOST::value_reference& Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
+//			   __INLINE                                           void    assign(INMOST::value_reference& Arg,                        float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, float Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
 #else //USE_FP64
                            __INLINE                                           void    assign(INMOST_DATA_INTEGER_TYPE & Arg,                      double Val) {Arg = (INMOST_DATA_INTEGER_TYPE)Val; }
