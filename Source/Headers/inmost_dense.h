@@ -56,30 +56,35 @@ namespace INMOST
 	template<> struct SelfPromote<unknown> { typedef variable type; };
 	template<> struct SelfPromote<variable> { typedef variable type; };
 	template<> struct SelfPromote<value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct SelfPromote<expression_value> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct SelfPromote<multivar_expression_reference> { typedef variable type; };
 	template<> struct SelfPromote<hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct SelfPromote<hessian_variable> { typedef hessian_variable type; };
 	template<> struct ComplexType<unknown> { typedef unknown type; };
 	template<> struct ComplexType<variable> { typedef variable type; };
 	template<> struct ComplexType<value_reference> { typedef value_reference type; };
+	template<> struct ComplexType<expression_value> { typedef expression_value type; };
 	template<> struct ComplexType<multivar_expression_reference> { typedef variable type; };
 	template<> struct ComplexType<hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct ComplexType<hessian_variable> { typedef hessian_variable type; };
 	template<> struct ComplexType< std::complex<unknown> > { typedef unknown type; };
 	template<> struct ComplexType< std::complex<variable> > { typedef variable type; };
 	template<> struct ComplexType< std::complex<value_reference> > { typedef value_reference type; };
+	template<> struct ComplexType< std::complex<expression_value> > { typedef expression_value type; };
 	template<> struct ComplexType< std::complex<multivar_expression_reference> > { typedef multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_multivar_expression_reference> > { typedef hessian_multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_variable> > { typedef hessian_variable type; };
 	template<> inline typename ComplexType<unknown>::type                                                real_part(unknown const& a) { return a; }
 	template<> inline typename ComplexType<variable>::type                                               real_part(variable const& a) { return a; }
 	template<> inline typename ComplexType<value_reference>::type                                        real_part(value_reference const& a) { return a; }
+	template<> inline typename ComplexType<expression_value>::type                                       real_part(expression_value const& a) { return a; }
 	template<> inline typename ComplexType<multivar_expression_reference>::type                          real_part(multivar_expression_reference const& a) { return a; }
 	template<> inline typename ComplexType<hessian_multivar_expression_reference>::type                  real_part(hessian_multivar_expression_reference const& a) { return a; }
 	template<> inline typename ComplexType<hessian_variable>::type                                       real_part(hessian_variable const& a) { return a; }
 	template<> inline typename ComplexType< std::complex<unknown> >::type                                real_part(std::complex<unknown> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<variable> >::type                               real_part(std::complex<variable> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<value_reference> >::type                        real_part(std::complex<value_reference> const& a) { return a.real(); }
+	template<> inline typename ComplexType< std::complex<expression_value> >::type                       real_part(std::complex<expression_value> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<multivar_expression_reference> >::type          real_part(std::complex<multivar_expression_reference> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  real_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<hessian_variable> >::type                       real_part(std::complex<hessian_variable> const& a) { return a.real(); }
@@ -99,21 +104,24 @@ namespace INMOST
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
-	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef expression_value type; };
+	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, expression_value> { typedef expression_value type; };
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_variable>  {typedef hessian_variable type;};
 	//For INMOST_DATA_REAL_TYPE
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
-	template<> struct Promote<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, value_reference> { typedef expression_value type; };
+	template<> struct Promote<INMOST_DATA_REAL_TYPE, expression_value> { typedef expression_value type; };
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
 	//For INMOST_DATA_CPLX_TYPE
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, unknown> { typedef std::complex<variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, variable> { typedef std::complex<variable> type; };
-	template<> struct Promote<INMOST_DATA_CPLX_TYPE, value_reference> { typedef INMOST_DATA_CPLX_TYPE type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, value_reference> { typedef std::complex<expression_value> type; };
+	template<> struct Promote<INMOST_DATA_CPLX_TYPE, expression_value> { typedef std::complex<expression_value> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, multivar_expression_reference> { typedef std::complex<variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_multivar_expression_reference> { typedef std::complex<hessian_variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_variable> { typedef std::complex<hessian_variable> type; };
@@ -123,24 +131,37 @@ namespace INMOST
 	template<> struct Promote<unknown, unknown>  {typedef variable type;};
 	template<> struct Promote<unknown, variable>  {typedef variable type;};
 	template<> struct Promote<unknown, value_reference> { typedef variable type; };
+	template<> struct Promote<unknown, expression_value> { typedef variable type; };
 	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
 	//for value_reference
-	template<> struct Promote<value_reference, INMOST_DATA_INTEGER_TYPE>  {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, INMOST_DATA_INTEGER_TYPE>  {typedef expression_value type;};
+	template<> struct Promote<value_reference, INMOST_DATA_REAL_TYPE> { typedef expression_value type; };
 	template<> struct Promote<value_reference, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, variable> { typedef variable type; };
-	template<> struct Promote<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, value_reference> { typedef expression_value type; };
+	template<> struct Promote<value_reference, expression_value> { typedef expression_value type; };
 	template<> struct Promote<value_reference, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<value_reference, hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct Promote<value_reference, hessian_variable> { typedef hessian_variable type; };
+	//for expression_value
+	template<> struct Promote<expression_value, INMOST_DATA_INTEGER_TYPE> { typedef expression_value type; };
+	template<> struct Promote<expression_value, INMOST_DATA_REAL_TYPE> { typedef expression_value type; };
+	template<> struct Promote<expression_value, unknown> { typedef variable type; };
+	template<> struct Promote<expression_value, variable> { typedef variable type; };
+	template<> struct Promote<expression_value, value_reference> { typedef expression_value type; };
+	template<> struct Promote<expression_value, expression_value> { typedef expression_value type; };
+	template<> struct Promote<expression_value, multivar_expression_reference> { typedef variable type; };
+	template<> struct Promote<expression_value, hessian_multivar_expression_reference> { typedef hessian_variable type; };
+	template<> struct Promote<expression_value, hessian_variable> { typedef hessian_variable type; };
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, unknown> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, variable> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, value_reference> { typedef variable type; };
+	template<> struct Promote<multivar_expression_reference, expression_value> { typedef variable type; };
 	template<> struct Promote<multivar_expression_reference, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
@@ -150,6 +171,7 @@ namespace INMOST
 	template<> struct Promote<variable, unknown> {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
 	template<> struct Promote<variable, value_reference> { typedef variable type; };
+	template<> struct Promote<variable, expression_value> { typedef variable type; };
 	template<> struct Promote<variable, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<variable, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
@@ -159,6 +181,7 @@ namespace INMOST
 	template<> struct Promote<hessian_multivar_expression_reference, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, value_reference> { typedef hessian_variable type; };
+	template<> struct Promote<hessian_multivar_expression_reference, expression_value> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_multivar_expression_reference, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
@@ -168,14 +191,17 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, value_reference> { typedef hessian_variable type; };
+	template<> struct Promote<hessian_variable, expression_value> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
 #if defined(USE_FP64)
 	template<> struct Promote<unknown, float>  {typedef variable type;};
 	template<> struct Promote<float, unknown> { typedef variable type; };
-	template<> struct Promote<value_reference, float>  {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<float, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, float>  {typedef expression_value type;};
+	template<> struct Promote<float, value_reference> { typedef expression_value type; };
+	template<> struct Promote<expression_value, float> { typedef expression_value type; };
+	template<> struct Promote<float, expression_value> { typedef expression_value type; };
 	template<> struct Promote<multivar_expression_reference, float> { typedef variable type; };
 	template<> struct Promote<float, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<variable, float>  {typedef variable type;};
@@ -187,8 +213,10 @@ namespace INMOST
 #else
 	template<> struct Promote<unknown, double>  {typedef variable type;};
 	template<> struct Promote<double, unknown> { typedef variable type; };
-	template<> struct Promote<value_reference, double>  {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<double, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, double>  {typedef expression_value type;};
+	template<> struct Promote<double, value_reference> { typedef expression_value type; };
+	template<> struct Promote<expression_value, double> { typedef expression_value type; };
+	template<> struct Promote<double, expression_value> { typedef expression_value type; };
 	template<> struct Promote<multivar_expression_reference, double> { typedef variable type; };
 	template<> struct Promote<double, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<variable, double>  {typedef variable type;};
@@ -1014,7 +1042,7 @@ namespace INMOST
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
 		template<typename typeB>
-		SymmetricMatrix & operator =(AbstractMatrix<typeB> const & other)
+		SymmetricMatrix & operator =(AbstractMatrixReadOnly<typeB> const & other)
 		{
 			assert(other.Rows() == other.Cols());
 			if( Rows() != other.Rows() )

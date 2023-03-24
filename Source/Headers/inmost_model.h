@@ -24,7 +24,7 @@ namespace INMOST
 		virtual bool PrepareEntries(Model& P) = 0;
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
-		/// Setup coupling with unknowns of otheer models
+		/// Setup coupling with unknowns of other models
 		virtual bool SetupCoupling(Model& P) { return true; }
 		/// Initialize data needed for FillResidual.
 		/// Called once before nonlinear iterations.
