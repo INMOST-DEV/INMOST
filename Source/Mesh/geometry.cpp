@@ -1502,11 +1502,11 @@ namespace INMOST
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
 				//ElementArray<Edge> edges = cur->getEdges();
-				Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
+				const Element::adj_type * cur_edges = &mesh->LowConn(cur->GetHandle());
 				do
 				{
-					e0 = Edge(mesh, cur_edges[0]);
-					e1 = Edge(mesh, cur_edges[1]);
+					e0 = Edge(mesh, (*cur_edges)[0]);
+					e1 = Edge(mesh, (*cur_edges)[1]);
 					e0b = e0.getBeg();
 					e0e = e0.getEnd();
 					e1b = e1.getBeg();
@@ -1523,11 +1523,11 @@ namespace INMOST
 						n2 = e0e;
 					}
 					//schedule unvisited adjacent faces
-					for (unsigned j = 0; j < cur_edges.size(); j++)
+					for (unsigned j = 0; j < cur_edges->size(); j++)
 					{
 						//schedule face adjacent to considered edge
-						ej = Edge(mesh, cur_edges[j]);
-						en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
+						ej = Edge(mesh, (*cur_edges)[j]);
+						en = Edge(mesh, (*cur_edges)[(j + 1) % cur_edges->size()]);
 						//ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
 						Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
 						for (unsigned q = 0; q < adjacent.size(); ++q)
@@ -1564,9 +1564,9 @@ namespace INMOST
 					stack.pop_front();
 					//retrive edges for new face
 					//edges = r.face->getEdges();
-					Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
-					e0 = Edge(mesh, redges[0]);
-					e1 = Edge(mesh, redges[1]);
+					cur_edges = &mesh->LowConn(r.face->GetHandle());
+					e0 = Edge(mesh, (*cur_edges)[0]);
+					e1 = Edge(mesh, (*cur_edges)[1]);
 					e0b = e0.getBeg();
 					e0e = e0.getEnd();
 					e1b = e1.getBeg();
@@ -1584,10 +1584,10 @@ namespace INMOST
 						n2 = e0e;
 					}
 					//find out common edge orientation
-					for(unsigned j = 0; j < redges.size(); j++)
+					for(unsigned j = 0; j < cur_edges->size(); j++)
 					{
-						ej = Edge(mesh, redges[j]);
-						en = Edge(mesh, redges[(j + 1) % redges.size()]);
+						ej = Edge(mesh, (*cur_edges)[j]);
+						en = Edge(mesh, (*cur_edges)[(j + 1) % cur_edges->size()]);
 						if( ej == r.bridge ) //found the edge
 						{
 							//reverse ordering on this face
@@ -1841,8 +1841,17 @@ namespace INMOST
 					{
 						*ret = 0;
 						real nt[3] = {0,0,0}, l1[3] = {0,0,0}, l2[3] = {0,0,0};
-						real c[3] = {0,0,0}, n0[3] = {0,0,0}, ss;
+						real c[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, ss, xf[3] = { 0,0,0 };
 						real_array v0 = nodes[0].Coords(), v1, v2;
+						for (int i = 0; i < (int)nodes.size(); i++)
+						{
+							v1 = nodes[i].Coords();
+							for(int k = 0; k < mdim; ++k) 
+								xf[k] += v1[k];
+						}
+						for (int k = 0; k < mdim; ++k)
+							xf[k] /= (INMOST_DATA_REAL_TYPE)nodes.size();
+						
 						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							v1 = nodes[i].Coords();
@@ -1867,21 +1876,22 @@ namespace INMOST
 							if( ss ) ss /= fabs(ss);
 							at = sqrt(vec_dot_product(nt,nt,3))*ss;
 							for(int q = 0; q < mdim; ++q)
-								c[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
+								c[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
 							a += at;
 						}
 						if( a )
 						{
 							for(int q = 0; q < mdim; ++q) 
-								ret[q] = c[q]/a;
+								ret[q] = c[q] / a + xf[q];
 						} 
-						else Element(this,e).Centroid(ret);
+						else for (int q = 0; q < mdim; ++q) ret[q] = xf[q];
 					}
 				}
 				else if( edim == 3 )
 				{
 					Cell me = Cell(this,e);
 					ElementArray<Face> faces = me->getFaces();
+					ElementArray<Node> cnodes = Element(this, e)->getNodes();
 					bool ornt = true;//!HaveGeometricData(ORIENTATION,FACE);
 					//bool ornt = !CheckConvexity(faces);
 					//bool ornt = !HaveGeometricData(ORIENTATION,FACE);
@@ -1894,8 +1904,14 @@ namespace INMOST
 					real vol = 0, a, at, volp;
 					real x[3] = {0,0,0}, nt[3] = {0,0,0}, s;
 					real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
-					real n0[3] = { 0,0,0 }, ss;// , xc[3] = { 0,0,0 };
+					real n0[3] = { 0,0,0 }, ss , xc[3] = { 0,0,0 }, xf[3] = { 0,0,0 };
 					real l1[3] = {0,0,0}, l2[3] = {0,0,0};
+					for (int i = 0; i < (int)cnodes.size(); i++)
+					{
+						real_array v1 = cnodes[i].Coords();
+						for (int k = 0; k < mdim; ++k) xc[k] += v1[k];
+					}
+					for (int k = 0; k < mdim; ++k) xc[k] /= (INMOST_DATA_REAL_TYPE)cnodes.size();
 					for(unsigned j = 0; j < faces.size(); j++)
 					{
 						//compute normal to face
@@ -1906,8 +1922,15 @@ namespace INMOST
 							s = faces[j].FaceOrientedOutside(me) ? 1.0 : -1.0;
 						n0[0] = n0[1] = n0[2] = 0;
 						x[0] = x[1] = x[2] = 0;
+						xf[0] = xf[1] = xf[2] = 0;
 						a = 0;
 						real_array v0 = nodes[0].Coords(), v1, v2;
+						for (int i = 0; i < (int)nodes.size(); i++)
+						{
+							v1 = nodes[i].Coords();
+							for (int k = 0; k < mdim; ++k) xf[k] += v1[k];
+						}
+						for (int k = 0; k < mdim; ++k) xf[k] /= (INMOST_DATA_REAL_TYPE)nodes.size();
 						for(int i = 1; i < (int)nodes.size()-1; i++)
 						{
 							v1 = nodes[i].Coords();
@@ -1934,16 +1957,16 @@ namespace INMOST
 							//same as faces[j].Centroid(x)
 							for(int q = 0; q < 3; ++q)
 							{
-								x[q] += at*(v0[q]+v1[q]+v2[q])/3.0;
-								c[q] += s*nt[q]*(pow(v0[q]+v1[q],2)+pow(v1[q]+v2[q],2)+pow(v2[q]+v0[q],2))/24.0;
+								x[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
+								c[q] += s * nt[q] * (pow((v0[q] - xc[q]) + (v1[q] - xc[q]), 2) + pow((v0[q] - xc[q]) + (v2[q] - xc[q]), 2) + pow((v1[q] - xc[q]) + (v2[q] - xc[q]), 2)) / 24.0;
 							}
 							a += at;
 						}
 						if( a )
 						{
-							for(int q = 0; q < 3; ++q) 
-								x[q] = x[q]/a;
-						} else faces[j].Centroid(x);
+							for (int q = 0; q < 3; ++q)
+								x[q] = x[q] / a + xf[q];
+						} else for (int q = 0; q < 3; ++q) x[q] = xf[q];
 						//vec_diff(xc, x, l1, mdim);
 						//volp = s * vec_dot_product(l1, n0, 3) / 3.0;
 						volp = s * vec_dot_product(x, n0, 3) / 3.0;
@@ -1965,17 +1988,11 @@ namespace INMOST
 					if( vol ) 
 					{
 						for (int q = 0; q < mdim; ++q)
-							c[q] = c[q] / vol;// +xc[q];
-						//for (int q = 0; q < mdim; ++q)
-						//	c2[q] /= vol;
-						//real c3[3] = { 0,0,0 };
+							c[q] = c[q] / vol + xc[q];
 						for (int q = 0; q < mdim; ++q)
 							ret[q] = c[q];
-						//me.Centroid(c3);
-//#pragma omp critical
-//						std::cout << "c1 " << c[0] << " " << c[1] << " " << c[2] << " c2 " << c2[0] << " " << c2[1] << " " << c2[2] << " c3 " << c3[0] << " " << c3[1] << " " << c3[2] << std::endl;
 					}
-					else me.Centroid(ret);//for(int q = 0; q < mdim; ++q) ret[q] = cx[q];
+					else for(int q = 0; q < mdim; ++q) ret[q] = xc[q];
 					//std::cout << ret[0] << " " << ret[1] << " " << ret[2] << std::endl;
 				}
 			}
@@ -2183,11 +2200,11 @@ namespace INMOST
 					std::deque< orient_face > stack; //edge and first node and face for visiting
 					//ElementArray<Edge> edges;
 					//edges = cur->getEdges();
-					Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
+					const Element::adj_type * cur_edges = &mesh->LowConn(cur->GetHandle());
 					do
 					{
-						e0 = Edge(mesh, cur_edges[0]);
-						e1 = Edge(mesh, cur_edges[1]);
+						e0 = Edge(mesh, (*cur_edges)[0]);
+						e1 = Edge(mesh, (*cur_edges)[1]);
 						e0b = e0.getBeg();
 						e0e = e0.getEnd();
 						e1b = e1.getBeg();
@@ -2204,11 +2221,11 @@ namespace INMOST
 							n2 = e0e;
 						}
 						//schedule unvisited adjacent faces
-						for(unsigned j = 0; j < cur_edges.size(); j++)
+						for(unsigned j = 0; j < cur_edges->size(); j++)
 						{
 							//schedule face adjacent to considered edge
-							ej = Edge(mesh, cur_edges[j]);
-							en = Edge(mesh, cur_edges[(j + 1) % cur_edges.size()]);
+							ej = Edge(mesh, (*cur_edges)[j]);
+							en = Edge(mesh, (*cur_edges)[(j + 1) % cur_edges->size()]);
 							//ElementArray<Face> adjacent = edges[j]->getFaces(mrk);
 							Element::adj_type const& adjacent = mesh->HighConn(ej->GetHandle());
 							for (unsigned q = 0; q < adjacent.size(); ++q)
@@ -2245,9 +2262,9 @@ namespace INMOST
 						stack.pop_front();
 						//retrive edges for new face
 						//edges = r.face->getEdges();
-						Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
-						e0 = Edge(mesh, redges[0]);
-						e1 = Edge(mesh, redges[1]);
+						cur_edges = &mesh->LowConn(r.face->GetHandle());
+						e0 = Edge(mesh, (*cur_edges)[0]);
+						e1 = Edge(mesh, (*cur_edges)[1]);
 						e0b = e0.getBeg();
 						e0e = e0.getEnd();
 						e1b = e1.getBeg();
@@ -2265,10 +2282,10 @@ namespace INMOST
 							n2 = e0e;
 						}
 						//find out common edge orientation
-						for(unsigned j = 0; j < redges.size(); j++)
+						for(unsigned j = 0; j < cur_edges->size(); j++)
 						{
-							ej = Edge(mesh, redges[j]);
-							en = Edge(mesh, redges[(j + 1) % redges.size()]);
+							ej = Edge(mesh, (*cur_edges)[j]);
+							en = Edge(mesh, (*cur_edges)[(j + 1) % cur_edges->size()]);
 							if( ej == r.bridge ) //found the edge
 							{
 								//reverse ordering on this face
