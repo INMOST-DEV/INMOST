@@ -920,11 +920,11 @@ namespace INMOST
 		{
 			assert(other.Rows() == other.Cols());
 			if( Rows() != other.Rows() )
-				space.resize((other.Rows()+1)*other.Rows()+1);
+				space.resize((other.Rows()+1)*other.Rows()/2);
+			n = other.Rows();
 			for(enumerator i = 0; i < other.Rows(); ++i)
 				for(enumerator j = i; j < other.Cols(); ++j)
 					assign((*this)(i,j),other(i,j));
-			n = other.Rows();
 			return *this;
 		}
 		/// Access element of the matrix by row and column indices.
