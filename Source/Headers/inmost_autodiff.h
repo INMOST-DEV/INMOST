@@ -452,7 +452,7 @@ namespace INMOST
 		/// 1. Have to call Automatizator::EnumerateEntries to recompute indices.
 		void ActivateEntry(INMOST_DATA_ENUM_TYPE ind);
 		/// Set index for every data entry of dynamic tag.
-		void EnumerateEntries();
+		void EnumerateEntries(bool blocks = false);
 		/// Check whether the tag is still registered.
 		/// @param True if tag is still registered.
 		__INLINE bool isRegisteredEntry(INMOST_DATA_ENUM_TYPE ind) const {return reg_blocks[ind] != NULL;}
