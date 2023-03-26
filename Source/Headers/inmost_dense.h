@@ -213,17 +213,29 @@ namespace INMOST
 			const double eps = 1.0e-13;
 			const enumerator n = Rows();
 			Matrix<Var> A(*this);
+			Matrix<Var> row_visited(n,1,-1);
+			Var ret = 1.0, sign, coef;
 			for (enumerator d = 0; d < n; ++d)
-				for (enumerator i = d + 1; i < n; ++i)
+			{
+				enumerator r = 0;
+				sign = 1;
+				// find unvisited row with non-zero value in column d
+				while(row_visited(r,0) != -1 || fabs(get_value(A(r, d))) < eps)
 				{
-					if (std::fabs(get_value(A(d, d))) < eps)
-						A(d, d) = eps;
-					for (enumerator j = 0; j < n; ++j)
-						A(i, j) = A(i, j) - A(i, d) * A(d, j) / A(d, d);
+					if(r == n-1) return Var(0);
+					if(row_visited(r,0) == -1) sign *= -1;
+					++r;
 				}
-			Var ret = 1.0;
-			for (enumerator d = 0; d < n; ++d)
-				ret *= A(d, d);
+				row_visited(r,0) = d;
+				ret *= sign * A(r, d);
+				for (enumerator i = 0; i < n; ++i) if(row_visited(i,0) == -1)
+				{
+					coef = A(i, d) / A(r, d);
+					if(fabs(coef) > eps)
+						for (enumerator j = 0; j < n; ++j)
+							A(i, j) = A(i, j) - coef * A(r, j);
+				}
+			}
 			return ret;
 		}
 		/// Maximum product transversal.

@@ -427,6 +427,41 @@ int main(int argc,char ** argv)
 			(A.PseudoSolve(B)).Transpose().Print();
 		}
 	}
+	else if ( test == 23 ) // determinant1
+	{
+		Storage::real A[] = 
+		{
+			1, 2, 5,  4,
+			1, 1, 3,  2,
+			7, 2, 10, 9,
+			2, 3, 8,  9
+		};
+		raMatrix mA = raMatrixMake(A,4,4);
+		err = mA.Det()-3;
+	}
+	else if ( test == 24 ) // determinant2
+	{
+		Storage::real A[] = 
+		{
+			0, 2, 0, 0,
+			1, 0, 0, 0,
+			0, 0, 3, 0,
+			0, 0, 0, 4
+		};
+		raMatrix mA = raMatrixMake(A,4,4);
+		err = mA.Det() - (-24);
+	}
+	else if ( test == 25 ) // determinant3
+	{
+		Storage::real A[] = 
+		{
+			0,0,0,
+			0,1,0,
+			1,0,0
+		};
+		raMatrix mA = raMatrixMake(A,3,3);
+		err = mA.Det()-(0);
+	}
 #if defined(USE_FP64)
 	if( fabs(err) > 1.0e-10 )
 #else
