@@ -437,7 +437,7 @@ int main(int argc,char ** argv)
 			2, 3, 8,  9
 		};
 		raMatrix mA = raMatrixMake(A,4,4);
-		err = mA.Det()-3;
+		err = mA.Det() - 3;
 	}
 	else if ( test == 24 ) // determinant2
 	{
@@ -460,7 +460,40 @@ int main(int argc,char ** argv)
 			1,0,0
 		};
 		raMatrix mA = raMatrixMake(A,3,3);
-		err = mA.Det()-(0);
+		err = mA.Det() - 0;
+	}
+	else if ( test == 26 ) // determinant4 sin^2(x) + cos^2(x) = 1
+	{
+		unknown x(1.0, 0);
+		variable A[] = 
+		{
+			cos(x) , sin(x),
+			-sin(x), cos(x)
+		};
+		vaMatrix mA = vaMatrixMake(A,2,2);
+		err = (mA.Det() - 1).GetValue();
+	}
+	else if ( test == 27 ) // determinant5 sin(x+y)=sin(x)cos(y)+cos(x)sin(y)
+	{
+		unknown x(6.542, 0), y(4.371, 1);
+		variable A[] = 
+		{
+			sin(x) , cos(x),
+			-sin(y), cos(y)
+		};
+		vaMatrix mA = vaMatrixMake(A,2,2);
+		err = (mA.Det() - sin(x+y)).GetValue();
+	}
+	else if ( test == 28 ) // determinant7 cos(x) - cos(y) = -2sin( (x+y)/2 ) sin ( (x-y)/2 )
+	{
+		unknown x(1.345, 0), y(6.789, 1);
+		variable A[] = 
+		{
+			1, cos(y),
+			1, cos(x)
+		};
+		vaMatrix mA = vaMatrixMake(A,2,2);
+		err = (  mA.Det() - ( -2*sin(0.5*(x+y))*sin(0.5*(x-y)) )   ).GetValue();
 	}
 #if defined(USE_FP64)
 	if( fabs(err) > 1.0e-10 )

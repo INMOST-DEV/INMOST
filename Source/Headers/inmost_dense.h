@@ -214,7 +214,8 @@ namespace INMOST
 			const enumerator n = Rows();
 			Matrix<Var> A(*this);
 			Matrix<Var> row_visited(n,1,-1);
-			Var ret = 1.0, sign, coef;
+			Var ret = 1.0, coef;
+			double sign;
 			for (enumerator d = 0; d < n; ++d)
 			{
 				enumerator r = 0;
