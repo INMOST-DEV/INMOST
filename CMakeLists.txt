@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.2)
 project (INMOST)
 
 
@@ -531,7 +531,7 @@ list(APPEND CONF_LIBRARY_DIRS "${PROJECT_BINARY_DIR}/Examples/GridTools")
 endif( COMPILE_EXAMPLES )
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}/inmost-config.cmake" @ONLY)
 set(CONF_INCLUDE_DIRS "\${inmost_DIR}/include")
-set(CONF_LIBRARY_DIRS "\$")
+set(CONF_LIBRARY_DIRS "\${inmost_DIR}/lib")
 configure_file(inmost-config.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/inmost-config.cmake" @ONLY)
 configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-config-version.cmake" @ONLY)
 
