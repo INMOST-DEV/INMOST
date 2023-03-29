@@ -61,7 +61,74 @@ namespace INMOST
 
 		RowMerger::RowMerger() : First(EOL), Nonzeros(0), Shift(0) {}
 
-		INMOST_DATA_REAL_TYPE & RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
+		
+
+#ifdef USE_UNORDERED_MAP
+		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
+		{
+			ind -= Shift;
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator f
+				= pos.find(ind);
+			if( f != pos.end() )
+				return vals[f->second];
+			throw -1;
+		}
+		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
+		{
+			ind -= Shift;
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator f
+				= pos.find(ind);
+			if (f == pos.end())
+			{
+				pos[ind] = Nonzeros;
+				next.push_back(First);
+				vals.push_back(0.0);
+				First = ind;
+				++Nonzeros;
+				return vals.back();
+			}
+			else return vals[f->second];
+		}
+		void RowMerger::Clear()
+		{
+			First = EOL;
+			pos.clear();
+			vals.clear();
+			next.clear();
+			Nonzeros = 0;
+		}
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+		{
+			if (coef)
+			{
+				INMOST_DATA_ENUM_TYPE ind;
+				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+				{
+					ind = it->first - Shift;
+					std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator f
+						= pos.find(ind);
+					if (f == pos.end())
+					{
+						pos[ind] = Nonzeros;
+						next.push_back(First);
+						vals.push_back(coef * it->second);
+						First = ind;
+						++Nonzeros;
+					}
+					else vals[f->second] += coef * it->second;
+				}
+			}
+		}
+#else
+		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
+		{
+			ind -= Shift;
+			if(pos[ind] != UNDEF )
+				return vals[pos[ind]];
+			throw - 1;
+		}
+
+		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
 		{
 			ind -= Shift;
 			if( pos[ind] == UNDEF )
@@ -75,18 +142,53 @@ namespace INMOST
 			return vals[pos[ind]];
 		}
 
-		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
+		void RowMerger::Clear()
 		{
-			ind -= Shift;
-			if( pos[ind] != UNDEF ) 
-				return vals[pos[ind]];
-			throw -1;
+			INMOST_DATA_ENUM_TYPE i = First, j;
+			First = EOL;
+			while( i != EOL )
+			{
+				j = pos[i];
+				pos[i] = UNDEF;
+				i = next[j];
+			}
+			pos.clear();
+			vals.clear();
+			next.clear();
+			Nonzeros = 0;
 		}
+
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+		{
+			if (coef)
+			{
+				INMOST_DATA_ENUM_TYPE ind;
+				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+				{
+					ind = it->first - Shift;
+					if (pos[ind] == UNDEF)
+					{
+						pos[ind] = Nonzeros;
+						next.push_back(First);
+						vals.push_back(0.0);
+						First = ind;
+						++Nonzeros;
+					}
+					vals[pos[ind]] += coef * it->second;
+				}
+			}
+		}
+#endif
 
 		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
 				: Nonzeros(0), First(EOL), Shift(interval_begin)
 		{
+#ifdef USE_UNORDERED_MAP
+			//pos.reserve(interval_end - interval_begin);
+			pos.clear();
+#else
 			pos.resize(interval_end - interval_begin, UNDEF);
+#endif
 			next.clear();
 			vals.clear();
 		}
@@ -97,7 +199,12 @@ namespace INMOST
 			Shift = interval_begin;
 			Nonzeros = 0;
 			First = EOL;
+#ifdef USE_UNORDERED_MAP
+			//pos.reserve(interval_end - interval_begin);
+			pos.clear();
+#else
 			pos.resize(interval_end - interval_begin, UNDEF);
+#endif
 			next.clear();
 			vals.clear();
 		}
@@ -120,20 +227,7 @@ namespace INMOST
 
 	
 
-		void RowMerger::Clear()
-		{
-			INMOST_DATA_ENUM_TYPE i = First, j;
-			First = EOL;
-			while( i != EOL )
-			{
-				j = pos[i];
-				pos[i] = UNDEF;
-				i = next[j];
-			}
-			vals.clear();
-			next.clear();
-			Nonzeros = 0;
-		}
+		
 
 		void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
 		{
@@ -168,26 +262,7 @@ namespace INMOST
 		}
 
 		
-		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
-		{
-			if( coef )
-			{
-				INMOST_DATA_ENUM_TYPE ind;
-				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-				{
-					ind = it->first - Shift;
-					if (pos[ind] == UNDEF)
-					{
-						pos[ind] = Nonzeros;
-						next.push_back(First);
-						vals.push_back(0.0);
-						First = ind;
-						++Nonzeros;
-					}
-					vals[pos[ind]] += coef * it->second;
-				}
-			}
-		}
+		
 
 
 		void RowMerger::RetriveRow(Row & r)

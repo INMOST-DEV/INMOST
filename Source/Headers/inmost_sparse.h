@@ -1,8 +1,12 @@
 #ifndef INMOST_SPARSE_INCLUDED
 #define INMOST_SPARSE_INCLUDED
 
+#define USE_UNORDERED_MAP
 
 #include "inmost_common.h"
+#ifdef USE_UNORDERED_MAP
+#include <unordered_map> //test in RowMerger
+#endif
 
 namespace INMOST
 {
@@ -663,7 +667,11 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
 			INMOST_DATA_ENUM_TYPE First; ///< First position.
 			INMOST_DATA_ENUM_TYPE Shift; //< Shift indices by this value
+#ifdef USE_UNORDERED_MAP
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
+#else
 			std::vector<INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
+#endif
 			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
 			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
