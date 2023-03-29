@@ -2407,7 +2407,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename const Promote<VarA, VarB>::type & operator()(enumerator i, enumerator j) const
+		__INLINE const typename Promote<VarA, VarB>::type & operator()(enumerator i, enumerator j) const
 		{
 			return *tmp = (*A)(i,j) + (*B)(i,j);
 		}
