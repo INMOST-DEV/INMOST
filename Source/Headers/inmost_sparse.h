@@ -639,7 +639,7 @@ namespace INMOST
 			private:
 				INMOST_DATA_ENUM_TYPE pos;
 				RowMerger * merger; ///< Link to associated storage for linked list.
-				iterator(RowMerger* pmerger) : pos(merger->First), merger(pmerger) {}
+				iterator(RowMerger* pmerger) : pos(pmerger->First), merger(pmerger) {}
 				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : pos(pos), merger(pmerger) {}
 			public:
 				iterator(const iterator & other) : pos(other.pos), merger(other.merger) {}
