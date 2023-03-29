@@ -270,7 +270,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		virtual Var operator () (enumerator i, enumerator j) const = 0;
+		virtual const Var & operator () (enumerator i, enumerator j) const = 0;
 		/// Check all matrix entries for nans.
 		/// Also checks derivatives for matrices of variables.
 		bool CheckNans() const
@@ -1072,7 +1072,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < n);
 			assert(j < n);
@@ -1541,7 +1541,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < n);
 			assert(j < m);
@@ -1975,7 +1975,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
@@ -2044,7 +2044,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
@@ -2132,7 +2132,7 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var & operator()(enumerator i, enumerator j)
 		{
-			static Var zero = 0;
+			static Var zero(0.0);
 			assert(i < Rows());
 			assert(j < Cols());
 			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
@@ -2145,12 +2145,15 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
-			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
-				return Var(0.0);
+			if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
+			{
+				static Var zero(0.0);
+				return zero;
+			}
 			else
 				return (*M)(i-orow,j-ocol);
 		}
@@ -2215,12 +2218,15 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
-			if( i < orow || i >= orow+M->Rows() || j < ocol || j >= ocol+M->Cols() )
-				return Var(0.0);
+			if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
+			{
+				static Var zero(0.0);
+				return zero;
+			}
 			else
 				return (*M)(i-orow,j-ocol);
 		}
@@ -2261,7 +2267,11 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var operator()(enumerator i, enumerator j) const { return i == j ? c : Var(0.0); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const 
+		{
+			static Var zero(0.0);
+			return i == j ? c : zero; 
+		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2291,7 +2301,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var operator()(enumerator i, enumerator j) const { return c; }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return c; }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2321,7 +2331,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return 1; }
-		__INLINE Var operator()(enumerator i, enumerator j) const { return c; }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return c; }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2351,7 +2361,11 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var operator()(enumerator i, enumerator j) const { return i == j ? diag[i] : Var(0.0); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const 
+		{
+			static Var zero(0.0);
+			return i == j ? diag[i] : zero; 
+		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2368,6 +2382,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
 		typedef typename AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type >::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private< typename Promote<VarA, VarB>::type > tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
@@ -2392,9 +2407,9 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type operator()(enumerator i, enumerator j) const
+		__INLINE typename const Promote<VarA, VarB>::type & operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i,j) + (*B)(i,j);
+			return *tmp = (*A)(i,j) + (*B)(i,j);
 		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
@@ -2404,6 +2419,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB>
+	thread_private< typename Promote<VarA, VarB>::type > MatrixSum<VarA,VarB>::tmp;
 
 	template<typename VarA, typename VarB>
 	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
@@ -2412,6 +2429,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
 		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private< typename Promote<VarA, VarB>::type > tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
@@ -2436,9 +2454,9 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type operator()(enumerator i, enumerator j) const
+		__INLINE const typename Promote<VarA, VarB>::type & operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i, j) - (*B)(i, j);
+			return *tmp = (*A)(i, j) - (*B)(i, j);
 		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
@@ -2448,6 +2466,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB>
+	thread_private< typename Promote<VarA, VarB>::type > MatrixDifference<VarA, VarB>::tmp;
 
 	template<typename Var>
 	class ConstMatrixTranspose : public AbstractMatrixReadOnly<Var>
@@ -2475,7 +2495,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2492,10 +2512,11 @@ namespace INMOST
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<Var>* A;
+		static thread_private<Var> tmp;
 	public:
 		/// Check that this matrix does not require calculations for element access.
 		/// The function is used during multiplication.
-		bool TrivialArguments() const { return A->TrivialArguments(); };
+		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Cols(); }
@@ -2510,7 +2531,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(j, i)); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = conj((*A)(j, i)); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2518,6 +2539,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename Var>
+	thread_private<Var> ConstMatrixConjugateTranspose<Var>::tmp;
 
 	template<typename Var>
 	class ConstMatrixConjugate : public AbstractMatrixReadOnly<Var>
@@ -2527,10 +2550,11 @@ namespace INMOST
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
 		const AbstractMatrixReadOnly<Var>* A;
+		static thread_private<Var> tmp;
 	public:
 		/// Check that this matrix does not require calculations for element access.
 		/// The function is used during multiplication.
-		bool TrivialArguments() const { return A->TrivialArguments(); };
+		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -2545,7 +2569,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return conj((*A)(i, j)); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = conj((*A)(i, j)); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2553,6 +2577,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename Var>
+	thread_private<Var> ConstMatrixConjugate<Var>::tmp;
 
 	template<typename Var>
 	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var>
@@ -2561,10 +2587,11 @@ namespace INMOST
 		using AbstractMatrixReadOnly<Var>::operator();
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<Var> tmp;
 		const AbstractMatrixReadOnly<Var>* A;
 	public:
 		/// Consider unary minus is trivial.
-		bool TrivialArguments() const { return A->TrivialArguments(); };
+		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -2579,7 +2606,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return -(*A)(i, j); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = -(*A)(i, j); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -2587,6 +2614,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename Var>
+	thread_private<Var> MatrixUnaryMinus<Var>::tmp;
 
 	template<typename Var>
 	class MatrixTranspose : public AbstractMatrix<Var>
@@ -2614,7 +2643,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
+		__INLINE const Var & operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
@@ -2667,7 +2696,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
 		}
@@ -2687,12 +2716,13 @@ namespace INMOST
 		using AbstractMatrixReadOnly<VarR>::operator();
 		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
 		/// Check that this matrix does not require calculations for element access.
 		/// The function is used during multiplication.
-		bool TrivialArguments() const { return A->TrivialArguments() && B->TrivialArguments(); };
+		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows() + B->Rows(); }
@@ -2709,12 +2739,12 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const
 		{
 			if (i < A->Rows())
-				return (*A)(i, j);
+				return *tmp = (*A)(i, j);
 			else
-				return (*B)(i - A->Rows(), j);
+				return *tmp = (*B)(i - A->Rows(), j);
 		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
@@ -2724,6 +2754,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> ConstMatrixConcatRows2<VarA, VarB, VarR>::tmp;
 
 	template<typename Var>
 	class MatrixConcatRows : public AbstractMatrix<Var>
@@ -2752,7 +2784,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const 
+		__INLINE const Var & operator()(enumerator i, enumerator j) const 
 		{ 
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
 		}
@@ -2812,7 +2844,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
 		}
@@ -2832,12 +2864,13 @@ namespace INMOST
 		using AbstractMatrixReadOnly<VarR>::operator();
 		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
 		/// Check that this matrix does not require calculations for element access.
 		/// The function is used during multiplication.
-		bool TrivialArguments() const { return A->TrivialArguments() && B->TrivialArguments(); };
+		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -2857,9 +2890,9 @@ namespace INMOST
 		__INLINE VarR operator()(enumerator i, enumerator j) const
 		{
 			if (j < A->Cols())
-				return (*A)(i, j);
+				return *tmp = (*A)(i, j);
 			else
-				return (*B)(i, j - A->Cols());
+				return *tmp = (*B)(i, j - A->Cols());
 		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
@@ -2869,6 +2902,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> ConstMatrixConcatCols2<VarA, VarB, VarR>::tmp;
 
 	template<typename Var>
 	class MatrixConcatCols : public AbstractMatrix<Var>
@@ -2897,7 +2932,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
 		}
@@ -2955,7 +2990,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const
+		__INLINE const Var & operator()(enumerator i, enumerator j) const
 		{
 			enumerator ind = i * m + j;
 			return (*A)(ind / A->Cols(), ind % A->Cols());
@@ -2997,7 +3032,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var operator()(enumerator i, enumerator j) const 
+		__INLINE const Var & operator()(enumerator i, enumerator j) const 
 		{ 
 			enumerator p = i * m + j;
 			return (*A)(p / A->Cols(), p % A->Cols());
@@ -3082,7 +3117,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const
 		{
 			return M(i, j);
 		}
@@ -3173,7 +3208,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Promote<INMOST_DATA_REAL_TYPE, variable>::type operator()(enumerator i, enumerator j) const
+		__INLINE const Promote<INMOST_DATA_REAL_TYPE, variable>::type & operator()(enumerator i, enumerator j) const
 		{
 			return M(i, j);
 		}
@@ -3264,7 +3299,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Promote<variable, INMOST_DATA_REAL_TYPE>::type operator()(enumerator i, enumerator j) const
+		__INLINE const Promote<variable, INMOST_DATA_REAL_TYPE>::type & operator()(enumerator i, enumerator j) const
 		{
 			return M(i, j);
 		}
@@ -3357,7 +3392,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Promote<variable, variable>::type operator()(enumerator i, enumerator j) const
+		__INLINE const Promote<variable, variable>::type & operator()(enumerator i, enumerator j) const
 		{
 			return M(i, j);
 		}
@@ -3379,6 +3414,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< VarR >::operator();
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const VarB* coef;
 	public:
@@ -3399,12 +3435,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
-		{
-			VarR ret;
-			assign(ret, (*A)(i, j) * (*coef));
-			return ret;
-		}
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) * (*coef); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -3413,6 +3444,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> MatrixMulCoef<VarA, VarB, VarR>::tmp;
 
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixDivCoef : public AbstractMatrixReadOnly< VarR >
@@ -3421,6 +3454,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< VarR >::operator();
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const VarB* coef;
 	public:
@@ -3442,12 +3476,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
-		{
-			VarR ret;
-			assign(ret, (*A)(i, j) / (*coef));
-			return ret;
-		}
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) / (*coef); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -3456,6 +3485,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> MatrixDivCoef<VarA, VarB, VarR>::tmp;
 #if defined(USE_AUTODIFF)
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixMulShellCoef : public AbstractMatrixReadOnly< VarR >
@@ -3464,6 +3495,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< VarR >::operator();
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const variable coef;
 	public:
@@ -3484,12 +3516,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
-		{
-			VarR ret;
-			assign(ret, (*A)(i, j) * coef);
-			return ret;
-		}
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) * coef; }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -3498,6 +3525,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> MatrixMulShellCoef<VarA, VarB, VarR>::tmp;
 
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixDivShellCoef : public AbstractMatrixReadOnly< VarR >
@@ -3506,6 +3535,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< VarR >::operator();
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private<VarR> tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const variable coef;
 	public:
@@ -3527,12 +3557,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
-		{
-			VarR ret;
-			assign(ret, (*A)(i, j) / coef);
-			return ret;
-		}
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = ((*A)(i, j) / coef); }
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
@@ -3541,6 +3566,8 @@ namespace INMOST
 		}
 		*/
 	};
+	template<typename VarA, typename VarB, typename VarR>
+	thread_private<VarR> MatrixDivShellCoef<VarA, VarB, VarR>::tmp;
 #endif //USE_AUTODIFF
 	template<typename VarA, typename VarB>
 	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
@@ -3549,6 +3576,7 @@ namespace INMOST
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::operator();
 		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		static thread_private< typename Promote<VarA, VarB>::type > tmp;
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
@@ -3569,9 +3597,9 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type operator()(enumerator i, enumerator j) const
+		__INLINE const typename Promote<VarA, VarB>::type & operator()(enumerator i, enumerator j) const
 		{
-			return (*A)(i / B->Rows(), j / B->Cols()) * (*B)(i % B->Rows(), j % B->Cols());
+			return *tmp = (*A)(i / B->Rows(), j / B->Cols()) * (*B)(i % B->Rows(), j % B->Cols());
 		}
 		/*
 		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
@@ -3581,7 +3609,8 @@ namespace INMOST
 		}
 		*/
 	};
-
+	template<typename VarA, typename VarB>
+	thread_private<typename Promote<VarA, VarB>::type> KroneckerProduct<VarA, VarB>::tmp;
 	
 	/*
 	template<typename Var>
@@ -4632,21 +4661,20 @@ namespace INMOST
 	{
 		// for A^T B
 		assert(Rows() == B.Rows());
-		/*
+		
 		if( Rows() != Cols() )
 		{
-			Matrix<Var> At = this->Transpose(); //m by n matrix
-			return (At*(*this)).Solve(At*B,print_fail);
+			ConstMatrixTranspose<Var> At = this->Transpose(); //m by n matrix
+			return (At * (*this)).Solve(At * B, ierr);
 		}
 		Matrix<typeB> AtB = B; //m by l matrix
 		Matrix<Var> AtA = (*this); //m by m matrix
-		 */
 		enumerator l = B.Cols();
 		enumerator m = Cols();
 		Matrix<typename Promote<Var,typeB>::type> ret(m,l);
-		ConstMatrixTranspose<Var> At = this->Transpose(); //m by n matrix
-		Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
-		Matrix<Var> AtA = At*(*this); //m by m matrix
+		//ConstMatrixTranspose<Var> At = this->Transpose(); //m by n matrix
+		//Matrix<typename Promote<Var,typeB>::type> AtB = At*B; //m by l matrix
+		//Matrix<Var> AtA = At*(*this); //m by m matrix
 		assert(l == AtB.Cols());
 		//enumerator l = AtB.Cols();
         //enumerator n = Rows();

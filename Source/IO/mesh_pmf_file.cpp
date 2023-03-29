@@ -434,7 +434,7 @@ namespace INMOST
 			REPORT_STR("Parallel write");
 			int ierr;
 			INMOST_DATA_ENUM_TYPE numprocs = GetProcessorsNumber(),k;
-			INMOST_DATA_BIG_ENUM_TYPE datasize, offset;
+			INMOST_DATA_BIG_ENUM_TYPE datasize;
 			std::vector<INMOST_DATA_BIG_ENUM_TYPE> datasizes(numprocs,0), offsets(numprocs,0);
 			std::string local_data(out.str());
 			datasize = local_data.size();
@@ -475,7 +475,7 @@ namespace INMOST
 						offsets[k] = offsets[k-1] + datasizes[k-1];
 				}
 				else offsets.resize(1,0);
-				
+				INMOST_DATA_BIG_ENUM_TYPE offset;
 				REPORT_MPI(ierr = MPI_Scatter(&offsets[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&offset,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_VAL("local write offset",offset);
