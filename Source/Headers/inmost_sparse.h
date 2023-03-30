@@ -1,12 +1,9 @@
 #ifndef INMOST_SPARSE_INCLUDED
 #define INMOST_SPARSE_INCLUDED
 
-#define USE_UNORDERED_MAP
 
 #include "inmost_common.h"
-#ifdef USE_UNORDERED_MAP
-#include <unordered_map> //test in RowMerger
-#endif
+#include <unordered_map>
 
 namespace INMOST
 {
@@ -272,7 +269,7 @@ namespace INMOST
 			/// @return Value corresponding to the position in the array.
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
 			/// Retrive interval of nonzeroes
-			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const;
+			//void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
 			iterator                Begin() {return data.begin();}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
@@ -666,12 +663,7 @@ namespace INMOST
 		private:
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
 			INMOST_DATA_ENUM_TYPE First; ///< First position.
-			INMOST_DATA_ENUM_TYPE Shift; //< Shift indices by this value
-#ifdef USE_UNORDERED_MAP
 			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
-#else
-			std::vector<INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
-#endif
 			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
 			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
@@ -682,7 +674,7 @@ namespace INMOST
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
+			//RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
 			/// Destructor.
 			~RowMerger();
 			/// Resize linked list for new interval.
@@ -691,7 +683,8 @@ namespace INMOST
 			/// @param interval_begin First index in linked list.
 			/// @param interval_end Last index in linked list.
 			/// @param Sorted Result should be sorted or not.
-			void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
+			//void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
+			void Resize(INMOST_DATA_ENUM_TYPE size);
 #if defined(USE_SOLVER)
 			/// Constructor that gets sizes from the matrix, including non-local mapping.
 			/// @param A Matrix to get sizes from.

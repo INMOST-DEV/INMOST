@@ -16,13 +16,6 @@ namespace INMOST
 	template<> struct ComplexType<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct ComplexType<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<typename T> inline typename ComplexType<T>::type real_part(T const& val) { return std::real(val); }
-	//template<typename T> typename ComplexType<T>::type imag_part(T const& val) { return std::imag(val); }
-	//template<> typename ComplexType<INMOST_DATA_INTEGER_TYPE>::type real_part(INMOST_DATA_INTEGER_TYPE const& a) { return a; }
-	//template<> typename ComplexType<INMOST_DATA_REAL_TYPE>::type    real_part(INMOST_DATA_REAL_TYPE const& a) { return a; }
-	//template<> typename ComplexType<INMOST_DATA_CPLX_TYPE>::type    real_part(INMOST_DATA_CPLX_TYPE const& a) { return a.real(); }
-	//template<> typename ComplexType<INMOST_DATA_INTEGER_TYPE>::type  imag_part(INMOST_DATA_INTEGER_TYPE const& a) { return 0.0; }
-	//template<> typename ComplexType<INMOST_DATA_REAL_TYPE>::type     imag_part(INMOST_DATA_REAL_TYPE const& a) { return 0.0; }
-	//template<> typename ComplexType<INMOST_DATA_CPLX_TYPE>::type     imag_part(INMOST_DATA_CPLX_TYPE const& a) { return a.imag(); }
 	template<> struct SelfPromote<INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
 	template<> struct SelfPromote<INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct SelfPromote<INMOST_DATA_CPLX_TYPE> { typedef INMOST_DATA_CPLX_TYPE type; };
@@ -56,51 +49,34 @@ namespace INMOST
 	template<> struct SelfPromote<unknown> { typedef variable type; };
 	template<> struct SelfPromote<variable> { typedef variable type; };
 	template<> struct SelfPromote<value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct SelfPromote<expression_value> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct SelfPromote<multivar_expression_reference> { typedef variable type; };
 	template<> struct SelfPromote<hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct SelfPromote<hessian_variable> { typedef hessian_variable type; };
 	template<> struct ComplexType<unknown> { typedef unknown type; };
 	template<> struct ComplexType<variable> { typedef variable type; };
 	template<> struct ComplexType<value_reference> { typedef value_reference type; };
-	//template<> struct ComplexType<expression_value> { typedef expression_value type; };
 	template<> struct ComplexType<multivar_expression_reference> { typedef variable type; };
 	template<> struct ComplexType<hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct ComplexType<hessian_variable> { typedef hessian_variable type; };
 	template<> struct ComplexType< std::complex<unknown> > { typedef unknown type; };
 	template<> struct ComplexType< std::complex<variable> > { typedef variable type; };
 	template<> struct ComplexType< std::complex<value_reference> > { typedef value_reference type; };
-	//template<> struct ComplexType< std::complex<expression_value> > { typedef expression_value type; };
 	template<> struct ComplexType< std::complex<multivar_expression_reference> > { typedef multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_multivar_expression_reference> > { typedef hessian_multivar_expression_reference type; };
 	template<> struct ComplexType< std::complex<hessian_variable> > { typedef hessian_variable type; };
 	template<> inline typename ComplexType<unknown>::type                                                real_part(unknown const& a) { return a; }
 	template<> inline typename ComplexType<variable>::type                                               real_part(variable const& a) { return a; }
 	template<> inline typename ComplexType<value_reference>::type                                        real_part(value_reference const& a) { return a; }
-	//template<> inline typename ComplexType<expression_value>::type                                       real_part(expression_value const& a) { return a; }
 	template<> inline typename ComplexType<multivar_expression_reference>::type                          real_part(multivar_expression_reference const& a) { return a; }
 	template<> inline typename ComplexType<hessian_multivar_expression_reference>::type                  real_part(hessian_multivar_expression_reference const& a) { return a; }
 	template<> inline typename ComplexType<hessian_variable>::type                                       real_part(hessian_variable const& a) { return a; }
 	template<> inline typename ComplexType< std::complex<unknown> >::type                                real_part(std::complex<unknown> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<variable> >::type                               real_part(std::complex<variable> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<value_reference> >::type                        real_part(std::complex<value_reference> const& a) { return a.real(); }
-	//template<> inline typename ComplexType< std::complex<expression_value> >::type                       real_part(std::complex<expression_value> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<multivar_expression_reference> >::type          real_part(std::complex<multivar_expression_reference> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  real_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.real(); }
 	template<> inline typename ComplexType< std::complex<hessian_variable> >::type                       real_part(std::complex<hessian_variable> const& a) { return a.real(); }
-	//template<> typename ComplexType<unknown>::type                                                imag_part(unknown const& a) { return 0.0; }
-	//template<> typename ComplexType<variable>::type                                               imag_part(variable const& a) { return 0.0; }
-	//template<> typename ComplexType<value_reference>::type                                        imag_part(value_reference const& a) { return 0.0; }
-	//template<> typename ComplexType<multivar_expression_reference>::type 	                        imag_part(multivar_expression_reference const& a) { return 0.0; }
-	//template<> typename ComplexType<hessian_multivar_expression_reference>::type                  imag_part(hessian_multivar_expression_reference const& a) { return 0.0; }
-	//template<> typename ComplexType<hessian_variable>::type                                       imag_part(hessian_variable const& a) { return 0.0; }
-	//template<> typename ComplexType< std::complex<unknown> >::type                                imag_part(std::complex<unknown> const& a) { return a.imag(); }
-	//template<> typename ComplexType< std::complex<variable> >::type                               imag_part(std::complex<variable> const& a) { return a.imag(); }
-	//template<> typename ComplexType< std::complex<value_reference> >::type                        imag_part(std::complex<value_reference> const& a) { return a.imag(); }
-	//template<> typename ComplexType< std::complex<multivar_expression_reference> >::type          imag_part(std::complex<multivar_expression_reference> const& a) { return a.imag(); }
-	//template<> typename ComplexType< std::complex<hessian_multivar_expression_reference> >::type  imag_part(std::complex<hessian_multivar_expression_reference> const& a) { return a.imag(); }
-	//template<> typename ComplexType< std::complex<hessian_variable> >::type                       imag_part(std::complex<hessian_variable> const& a) { return a.imag(); }
-
+	
 	//For INMOST_DATA_INTEGER_TYPE
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
@@ -121,7 +97,6 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, unknown> { typedef std::complex<variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, variable> { typedef std::complex<variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, value_reference> { typedef std::complex<INMOST_DATA_REAL_TYPE> type; };
-	//template<> struct Promote<INMOST_DATA_CPLX_TYPE, expression_value> { typedef std::complex<expression_value> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, multivar_expression_reference> { typedef std::complex<variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_multivar_expression_reference> { typedef std::complex<hessian_variable> type; };
 	template<> struct Promote<INMOST_DATA_CPLX_TYPE, hessian_variable> { typedef std::complex<hessian_variable> type; };
@@ -131,7 +106,6 @@ namespace INMOST
 	template<> struct Promote<unknown, unknown>  {typedef variable type;};
 	template<> struct Promote<unknown, variable>  {typedef variable type;};
 	template<> struct Promote<unknown, value_reference> { typedef variable type; };
-	//template<> struct Promote<unknown, expression_value> { typedef variable type; };
 	template<> struct Promote<unknown, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
@@ -141,29 +115,15 @@ namespace INMOST
 	template<> struct Promote<value_reference, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, variable> { typedef variable type; };
 	template<> struct Promote<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct Promote<value_reference, expression_value> { typedef expression_value type; };
 	template<> struct Promote<value_reference, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<value_reference, hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct Promote<value_reference, hessian_variable> { typedef hessian_variable type; };
-	//for expression_value
-	/*
-	template<> struct Promote<expression_value, INMOST_DATA_INTEGER_TYPE> { typedef expression_value type; };
-	template<> struct Promote<expression_value, INMOST_DATA_REAL_TYPE> { typedef expression_value type; };
-	template<> struct Promote<expression_value, unknown> { typedef variable type; };
-	template<> struct Promote<expression_value, variable> { typedef variable type; };
-	template<> struct Promote<expression_value, value_reference> { typedef expression_value type; };
-	template<> struct Promote<expression_value, expression_value> { typedef expression_value type; };
-	template<> struct Promote<expression_value, multivar_expression_reference> { typedef variable type; };
-	template<> struct Promote<expression_value, hessian_multivar_expression_reference> { typedef hessian_variable type; };
-	template<> struct Promote<expression_value, hessian_variable> { typedef hessian_variable type; };
-	*/
 	//For multivar_expression_reference
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_INTEGER_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, INMOST_DATA_REAL_TYPE>  {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, unknown> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, variable> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, value_reference> { typedef variable type; };
-	//template<> struct Promote<multivar_expression_reference, expression_value> { typedef variable type; };
 	template<> struct Promote<multivar_expression_reference, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
@@ -173,7 +133,6 @@ namespace INMOST
 	template<> struct Promote<variable, unknown> {typedef variable type;};
 	template<> struct Promote<variable, variable> {typedef variable type;};
 	template<> struct Promote<variable, value_reference> { typedef variable type; };
-	//template<> struct Promote<variable, expression_value> { typedef variable type; };
 	template<> struct Promote<variable, multivar_expression_reference> {typedef variable type;};
 	template<> struct Promote<variable, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<variable, hessian_variable>  {typedef hessian_variable type;};
@@ -183,7 +142,6 @@ namespace INMOST
 	template<> struct Promote<hessian_multivar_expression_reference, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, value_reference> { typedef hessian_variable type; };
-	//template<> struct Promote<hessian_multivar_expression_reference, expression_value> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_multivar_expression_reference, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_multivar_expression_reference, hessian_variable> {typedef hessian_variable type;};
@@ -193,7 +151,6 @@ namespace INMOST
 	template<> struct Promote<hessian_variable, unknown>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, variable>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, value_reference> { typedef hessian_variable type; };
-	//template<> struct Promote<hessian_variable, expression_value> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_variable, multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_multivar_expression_reference> {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, hessian_variable> {typedef hessian_variable type;};
@@ -202,8 +159,6 @@ namespace INMOST
 	template<> struct Promote<float, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, float>  {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<float, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct Promote<expression_value, float> { typedef expression_value type; };
-	//template<> struct Promote<float, expression_value> { typedef expression_value type; };
 	template<> struct Promote<multivar_expression_reference, float> { typedef variable type; };
 	template<> struct Promote<float, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<variable, float>  {typedef variable type;};
@@ -217,8 +172,6 @@ namespace INMOST
 	template<> struct Promote<double, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, double>  {typedef INMOST_DATA_REAL_TYPE type;};
 	template<> struct Promote<double, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct Promote<expression_value, double> { typedef expression_value type; };
-	//template<> struct Promote<double, expression_value> { typedef expression_value type; };
 	template<> struct Promote<multivar_expression_reference, double> { typedef variable type; };
 	template<> struct Promote<double, multivar_expression_reference> { typedef variable type; };
 	template<> struct Promote<variable, double>  {typedef variable type;};
@@ -672,22 +625,6 @@ namespace INMOST
 		{
 			return ConstMatrixConcatCols2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
 		}
-		/*
-		{
-
-			assert(Rows() == B.Rows());
-			Matrix<Var> ret(Rows(),Cols()+B.Cols());
-			const Matrix & A = *this;
-			for(enumerator i = 0; i < Rows(); ++i)
-			{
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = A(i,j);
-				for(enumerator j = 0; j < B.Cols(); ++j)
-					ret(i,j+Cols()) = B(i,j);
-			}
-			return ret;
-		}
-		*/
 		/// Concatenate B matrix as rows of current matrix.
 		/// Assumes that number of colums of current matrix is
 		/// equal to number of columns of B matrix.
@@ -710,35 +647,17 @@ namespace INMOST
 		{
 			return ConstMatrixConcatRows2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
 		}
-		/*
-		{
-			assert(Cols() == B.Cols());
-			Matrix<Var> ret(Rows()+B.Rows(),Cols());
-			const Matrix & A = *this;
-			for(enumerator i = 0; i < Rows(); ++i)
-			{
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = A(i,j);
-			}
-			for(enumerator i = 0; i < B.Rows(); ++i)
-			{
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i+Rows(),j) = B(i,j);
-			}
-			return ret;
-		}
-		*/
 		/// Destructor
 		virtual ~AbstractMatrixReadOnly() {}
-		/// Retrive interval of indices of derivatives.
-		/*
-		__INLINE virtual void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		/// Retrive number of indices of derivatives.
+		__INLINE virtual INMOST_DATA_ENUM_TYPE GetMatrixCount() const
 		{
+			INMOST_DATA_ENUM_TYPE cnt = 0;
 			for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
 				for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
-					GetInterval((*this)(i, j), beg, end, cnt);
+					cnt += GetCount((*this)(i, j));
+			return cnt;
 		}
-		*/
 	};
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
@@ -904,14 +823,15 @@ namespace INMOST
 		MatrixConcatRows<Var> ConcatRows(AbstractMatrix<Var>& B) { return MatrixConcatRows<Var>(*this, B); }
 		/// Destructor
 		virtual ~AbstractMatrix() {};
-		/// Retrive interval of indices of derivatives.
-		//virtual void GetMatrixInterval(INMOST_DATA_ENUM_TYPE & beg, INMOST_DATA_ENUM_TYPE & end, INMOST_DATA_ENUM_TYPE & cnt) const
-		//{
-		//	for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
-		//		for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
-		//			GetInterval((*this)(i, j), beg, end, cnt);
-		//}
-
+		/// Retrive number of indices of derivatives.
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const
+		{
+			INMOST_DATA_ENUM_TYPE cnt = 0;
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
+				for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
+					cnt += GetCount((*this)(i, j));
+			return cnt;
+		}
 	};
 	
 	
@@ -2272,12 +2192,7 @@ namespace INMOST
 			static Var zero(0.0);
 			return i == j ? c : zero; 
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			GetInterval(c, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
 	};
 
 	template<typename Var>
@@ -2302,12 +2217,7 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return c; }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			GetInterval(c, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
 	};
 
 	template<typename Var>
@@ -2332,12 +2242,7 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return 1; }
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return c; }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			GetInterval(c, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
 	};
 
 	template<typename Var>
@@ -2366,13 +2271,13 @@ namespace INMOST
 			static Var zero(0.0);
 			return i == j ? diag[i] : zero; 
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			for(enumerator k = 0; k < n; ++k)
-				GetInterval(diag[k], beg, end, cnt);
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const 
+		{ 
+			INMOST_DATA_ENUM_TYPE cnt = 0;
+			for (enumerator k = 0; k < n; ++k)
+				cnt += GetCount(diag[k]);
+			return cnt; 
 		}
-		*/
 	};
 
 	template<typename VarA, typename VarB>
@@ -2411,13 +2316,7 @@ namespace INMOST
 		{
 			return *tmp = (*A)(i,j) + (*B)(i,j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	template<typename VarA, typename VarB>
 	thread_private< typename Promote<VarA, VarB>::type > MatrixSum<VarA,VarB>::tmp;
@@ -2458,13 +2357,7 @@ namespace INMOST
 		{
 			return *tmp = (*A)(i, j) - (*B)(i, j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	template<typename VarA, typename VarB>
 	thread_private< typename Promote<VarA, VarB>::type > MatrixDifference<VarA, VarB>::tmp;
@@ -2496,12 +2389,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return (*A)(j, i); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
 	template<typename Var>
@@ -2532,12 +2420,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = conj((*A)(j, i)); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 	template<typename Var>
 	thread_private<Var> ConstMatrixConjugateTranspose<Var>::tmp;
@@ -2570,12 +2453,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = conj((*A)(i, j)); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 	template<typename Var>
 	thread_private<Var> ConstMatrixConjugate<Var>::tmp;
@@ -2607,12 +2485,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const Var & operator()(enumerator i, enumerator j) const { return *tmp = -(*A)(i, j); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 	template<typename Var>
 	thread_private<Var> MatrixUnaryMinus<Var>::tmp;
@@ -2659,12 +2532,7 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
 	template<typename Var>
@@ -2700,13 +2568,7 @@ namespace INMOST
 		{
 			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
 	template<typename VarA, typename VarB, typename VarR>
@@ -2746,13 +2608,7 @@ namespace INMOST
 			else
 				return *tmp = (*B)(i - A->Rows(), j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> ConstMatrixConcatRows2<VarA, VarB, VarR>::tmp;
@@ -2806,13 +2662,7 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
 	template<typename Var>
@@ -2848,13 +2698,7 @@ namespace INMOST
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
 	template<typename VarA, typename VarB, typename VarR>
@@ -2887,20 +2731,14 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR operator()(enumerator i, enumerator j) const
+		__INLINE const VarR & operator()(enumerator i, enumerator j) const
 		{
 			if (j < A->Cols())
 				return *tmp = (*A)(i, j);
 			else
 				return *tmp = (*B)(i, j - A->Cols());
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> ConstMatrixConcatCols2<VarA, VarB, VarR>::tmp;
@@ -2954,13 +2792,7 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
 	template<typename Var>
@@ -2995,12 +2827,7 @@ namespace INMOST
 			enumerator ind = i * m + j;
 			return (*A)(ind / A->Cols(), ind % A->Cols());
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
 	template<typename Var>
@@ -3058,12 +2885,7 @@ namespace INMOST
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
 	template<typename VarA, typename VarB, typename VarR>
@@ -3121,12 +2943,7 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			M.GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
 	};
 #if defined(USE_AUTODIFF)
 	template<>
@@ -3165,13 +2982,10 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			//pB->GetMatrixInterval(beg, end, cnt);
-			//if (cnt >= CNT_USE_MERGER)
-			//if(USE_MERGER)
+			INMOST_DATA_ENUM_TYPE cnt = pB->GetMatrixCount();
+			if (cnt >= CNT_USE_MERGER)
 			{
-				//Sparse::RowMerger merger;// (beg, end);
-				merger->Resize(beg, end);
+				merger->Resize(cnt);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3188,7 +3002,6 @@ namespace INMOST
 					}
 				}
 			}
-			/*
 			else
 			{
 				for (enumerator i = 0; i < pA->Rows(); ++i)
@@ -3200,7 +3013,6 @@ namespace INMOST
 							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
 				}
 			}
-			*/
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices
@@ -3212,12 +3024,7 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			M.GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
 	};
 
 	template<>
@@ -3256,13 +3063,10 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			//pA->GetMatrixInterval(beg, end, cnt);
-			//if (cnt >= CNT_USE_MERGER)
-			//if(USE_MERGER)
+			INMOST_DATA_ENUM_TYPE cnt = pA->GetMatrixCount();
+			if (cnt >= CNT_USE_MERGER)
 			{
-				//Sparse::RowMerger merger;// (beg, end);
-				merger->Resize(beg, end);
+				merger->Resize(cnt);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3279,7 +3083,6 @@ namespace INMOST
 					}
 				}
 			}
-			/*
 			else
 			{
 				for (enumerator i = 0; i < pA->Rows(); ++i)
@@ -3291,7 +3094,6 @@ namespace INMOST
 							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
 				}
 			}
-			*/
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices
@@ -3303,12 +3105,7 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			M.GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
 	};
 
 	template<>
@@ -3347,14 +3144,12 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-			//pA->GetMatrixInterval(beg, end, cnt);
-			//pB->GetMatrixInterval(beg, end, cnt);
-			//if (cnt >= CNT_USE_MERGER)
-			//if(USE_MERGER)
+			INMOST_DATA_ENUM_TYPE cnt = 0;
+			cnt += pA->GetMatrixCount();
+			cnt += pB->GetMatrixCount();
+			if (cnt >= CNT_USE_MERGER)
 			{
-				//Sparse::RowMerger merger;// (beg, end);
-				merger->Resize(beg, end);
+				merger->Resize(cnt);
 				for (enumerator i = 0; i < pA->Rows(); ++i)
 				{
 					for (enumerator j = 0; j < pB->Cols(); ++j)
@@ -3372,7 +3167,6 @@ namespace INMOST
 					}
 				}
 			}
-			/*
 			else
 			{
 				for (enumerator i = 0; i < pA->Rows(); ++i)
@@ -3384,7 +3178,6 @@ namespace INMOST
 							M(i, k) += (*pA)(i, j) * (*pB)(j, k);
 				}
 			}
-			*/
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices
@@ -3396,12 +3189,7 @@ namespace INMOST
 		{
 			return M(i, j);
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			M.GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
 	};
 #endif //USE_AUTODIFF
 	//template<typename VarA, typename VarB, typename VarR>
@@ -3436,13 +3224,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) * (*coef); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			GetInterval(*coef, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(*coef); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> MatrixMulCoef<VarA, VarB, VarR>::tmp;
@@ -3477,13 +3259,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) / (*coef); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			GetInterval(*coef, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(*coef); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> MatrixDivCoef<VarA, VarB, VarR>::tmp;
@@ -3517,13 +3293,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = (*A)(i, j) * coef; }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			GetInterval(coef, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(coef); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> MatrixMulShellCoef<VarA, VarB, VarR>::tmp;
@@ -3558,13 +3328,7 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE const VarR & operator()(enumerator i, enumerator j) const { return *tmp = ((*A)(i, j) / coef); }
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			GetInterval(coef, beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(coef); }
 	};
 	template<typename VarA, typename VarB, typename VarR>
 	thread_private<VarR> MatrixDivShellCoef<VarA, VarB, VarR>::tmp;
@@ -3601,29 +3365,10 @@ namespace INMOST
 		{
 			return *tmp = (*A)(i / B->Rows(), j / B->Cols()) * (*B)(i % B->Rows(), j % B->Cols());
 		}
-		/*
-		__INLINE void GetMatrixInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
-		{
-			A->GetMatrixInterval(beg, end, cnt);
-			B->GetMatrixInterval(beg, end, cnt);
-		}
-		*/
+		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	template<typename VarA, typename VarB>
 	thread_private<typename Promote<VarA, VarB>::type> KroneckerProduct<VarA, VarB>::tmp;
-	
-	/*
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::Transpose() const
-	{
-		Matrix<Var> ret(Cols(),Rows());
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				ret(j,i) = (*this)(i,j);
-		return ret;
-	}
-	*/
 	
 	template<typename Var>
 	void
@@ -3634,18 +3379,6 @@ namespace INMOST
 		(*this) = tmp;
 	}
 	
-	/*
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::operator-() const
-	{
-		Matrix<Var> ret(Rows(),Cols());
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				ret(i,j) = -(*this)(i,j);
-		return ret;
-	}
-	*/
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -3704,20 +3437,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	MatrixDifference<Var,typeB>
 	AbstractMatrixReadOnly<Var>::operator-(const AbstractMatrixReadOnly<typeB> & other) const
 	{
 		return MatrixDifference<Var, typeB>(*this, other);
-		/*
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				ret(i,j) = (*this)(i,j)-other(i,j);
-		return ret;
-		*/
 	}
 	
 	template<typename Var>
@@ -3735,20 +3458,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	MatrixSum<Var,typeB>
 	AbstractMatrixReadOnly<Var>::operator+(const AbstractMatrixReadOnly<typeB> & other) const
 	{
 		return MatrixSum<Var, typeB>(*this, other);
-		/*
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				ret(i,j) = (*this)(i,j)+other(i,j);
-		return ret;
-		*/
 	}
 	
 	template<typename Var>
@@ -3764,144 +3477,12 @@ namespace INMOST
 		return *this;
 	}
 
-	/*
-#if defined(USE_AUTODIFF)
-	template<>
-	template<>
-	__INLINE Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type>
-	AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>::operator*<variable>(const AbstractMatrixReadOnly<variable> & other) const
-	{
-		//~ std::cout << __FUNCTION__ << std::endl;
-		assert(Cols() == other.Rows());
-		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type> ret(Rows(),other.Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i) //loop rows
-		{
-			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
-			{
-				if( CheckCurrentAutomatizator() )
-				{
-					Sparse::RowMerger & merger = GetCurrentMerger();
-					double value = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-					{
-						value += (*this)(i,k)*other(k,j).GetValue();
-						merger.AddRow((*this)(i,k),other(k,j).GetRow());
-					}
-					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
-					merger.Clear();
-				}
-				else
-				{
-					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-						ret(i,j) += (*this)(i,k)*other(k,j);
-					//~ ret(i,j) = tmp;
-				}
-			}
-		}
-		return ret;
-	}
-	
-	
-	template<>
-	template<>
-	__INLINE Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type>
-	AbstractMatrixReadOnly<variable>::operator*<INMOST_DATA_REAL_TYPE>(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE> & other) const
-	{
-		//~ std::cout << __FUNCTION__ << std::endl;
-		assert(Cols() == other.Rows());
-		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> ret(Rows(),other.Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i) //loop rows
-		{
-			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
-			{
-				if( CheckCurrentAutomatizator() )
-				{
-					Sparse::RowMerger & merger = GetCurrentMerger();
-					double value = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-					{
-						value += (*this)(i,k).GetValue()*other(k,j);
-						merger.AddRow(other(k,j),(*this)(i,k).GetRow());
-					}
-					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
-					merger.Clear();
-				}
-				else
-				{
-					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-						ret(i,j) += (*this)(i,k)*other(k,j);
-					//~ ret(i,j) = tmp;
-				}
-			}
-		}
-		return ret;
-	}
-	
-	template<>
-	template<>
-	__INLINE Matrix<Promote<variable,variable>::type>
-	AbstractMatrixReadOnly<variable>::operator*<variable>(const AbstractMatrixReadOnly<variable> & other) const
-	{
-		//~ std::cout << __FUNCTION__ << std::endl;
-		assert(Cols() == other.Rows());
-		Matrix<Promote<variable,variable>::type> ret(Rows(),other.Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i) //loop rows
-		{
-			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
-			{
-				if( CheckCurrentAutomatizator() )
-				{
-					Sparse::RowMerger & merger = GetCurrentMerger();
-					double value = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-					{
-						value += (*this)(i,k).GetValue()*other(k,j).GetValue();
-						merger.AddRow(other(k,j).GetValue(),(*this)(i,k).GetRow());
-						merger.AddRow((*this)(i,k).GetValue(),other(k,j).GetRow());
-					}
-					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
-					merger.Clear();
-				}
-				else
-				{
-					//~ typename Promote<INMOST_DATA_REAL_TYPE,variable>::type tmp = 0.0;
-					for(enumerator k = 0; k < Cols(); ++k)
-						ret(i,j) += (*this)(i,k)*other(k,j);
-					//~ ret(i,j) = tmp;
-				}
-			}
-		}
-		return ret;
-	}
-#endif //USE_AUTODIFF
-	*/
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>
 	AbstractMatrixReadOnly<Var>::operator*(const AbstractMatrixReadOnly<typeB> & other) const
 	{
 		return MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>(*this, other);
-		/*
-		assert(Cols() == other.Rows());
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),other.Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i) //loop rows
-		{
-			for(enumerator j = 0; j < other.Cols(); ++j) //loop columns
-			{
-				//~ typename Promote<Var,typeB>::type tmp = 0.0;
-				for(enumerator k = 0; k < Cols(); ++k)
-					ret(i,j) += (*this)(i,k)*other(k,j);
-				//~ ret(i,j) = tmp;
-			}
-		}
-		return ret;
-		*/
 	}
 	
 #if defined(USE_AUTODIFF)
@@ -3913,13 +3494,10 @@ namespace INMOST
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
 		Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//other.GetMatrixInterval(beg, end, cnt);
-		//if( cnt >= CNT_USE_MERGER )
-		//if(USE_MERGER)
+		INMOST_DATA_ENUM_TYPE cnt = other.GetMatrixCount();
+		if( cnt >= CNT_USE_MERGER )
 		{
-			//Sparse::RowMerger merger;// (beg, end);
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3931,14 +3509,12 @@ namespace INMOST
 			merger->RetriveRow(ret.GetRow());
 			merger->Clear();
 		}
-		/*
 		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret += ((*this)(i,j))*other(i,j);
 		}
-		*/
 		return ret;
 	}
 	
@@ -3950,13 +3526,10 @@ namespace INMOST
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
 		Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//GetMatrixInterval(beg, end, cnt);
-		//if( cnt >= CNT_USE_MERGER )
-		//if(USE_MERGER)
+		INMOST_DATA_ENUM_TYPE cnt = GetMatrixCount();
+		if( cnt >= CNT_USE_MERGER )
 		{
-			//Sparse::RowMerger merger;// (beg, end);
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3968,14 +3541,12 @@ namespace INMOST
 			merger->RetriveRow(ret.GetRow());
 			merger->Clear();
 		}
-		/*
 		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret += ((*this)(i,j))*other(i,j);
 		}
-		*/
 		return ret;
 	}
 	
@@ -3987,14 +3558,10 @@ namespace INMOST
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
 		Promote<variable,variable>::type ret = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//GetMatrixInterval(beg, end, cnt);
-		//other.GetMatrixInterval(beg, end, cnt);
-		//if( cnt >= CNT_USE_MERGER )
-		//if(USE_MERGER)
+		INMOST_DATA_ENUM_TYPE cnt = GetMatrixCount() + other.GetMatrixCount();
+		if( cnt >= CNT_USE_MERGER )
 		{
-			//Sparse::RowMerger merger;// (beg, end);
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			double value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -4007,55 +3574,15 @@ namespace INMOST
 			merger->RetriveRow(ret.GetRow());
 			merger->Clear();
 		}
-		/*
 		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 					ret += ((*this)(i,j))*other(i,j);
 		}
-		*/
 		return ret;
 	}
 #endif //USE_AUTODIFF
-	
-	
-	
-	/*
-	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var, typeB>::type>
-	AbstractMatrix<Var>::operator*(const AbstractMatrix<typeB> & other) const
-	{
-		const enumerator b = 32;
-		assert(Cols() == other.Rows());
-		Matrix<typename Promote<Var, typeB>::type> ret(Rows(), other.Cols()); //check RVO
-		for (enumerator i0 = 0; i0 < Rows(); i0+=b) //loop rows
-		{
-			for (enumerator j0 = 0; j0 < other.Cols(); j0 += b) //loop columns
-			{
-				enumerator i0e = std::min(i0+b,Rows());
-				enumerator j0e = std::min(j0+b,other.Cols());
-				for (enumerator i = i0; i < i0e; ++i)
-					for(enumerator j = j0; j < j0e; ++j)
-						ret(i,j) = 0.0;
-				for (enumerator k0 = 0; k0 < Cols(); k0+=b)
-				{
-					enumerator k0e = std::min(k0+b,Cols());
-					for (enumerator i = i0; i < i0e; ++i)
-					{
-						for (enumerator k = k0; k < k0e; ++k)
-						{
-							for(enumerator j = j0; j < j0e; ++j)
-								assign(ret(i, j),ret(i, j)+(*this)(i, k)*other(k, j));
-						}
-					}
-				}
-			}
-		}
-		return ret;
-	}
-	*/
 	
 	template<typename Var>
 	template<typename typeB>
@@ -4068,18 +3595,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>
 	AbstractMatrixReadOnly<Var>::operator*(const typeB& coef) const
 	{
 		return MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
-		/*
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols()); //check RVO
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(ret(i,j),(*this)(i,j)*coef);
-		return ret;
-		*/
 	}
 
 #if defined(USE_AUTODIFF)
@@ -4114,18 +3633,10 @@ namespace INMOST
 
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
 		AbstractMatrixReadOnly<Var>::operator/(const typeB& coef) const
 	{
 		return MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
-		/*
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows(),Cols());
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(ret(i,j),(*this)(i,j)/coef);
-		return ret;
-		*/
 	}
 	
 	template<typename Var>
@@ -4141,28 +3652,10 @@ namespace INMOST
 	
 	template<typename Var>
 	template<typename typeB>
-	//Matrix<typename Promote<Var,typeB>::type>
 	KroneckerProduct<Var,typeB>
 	AbstractMatrixReadOnly<Var>::Kronecker(const AbstractMatrixReadOnly<typeB> & other) const
 	{
 		return KroneckerProduct<Var, typeB>(*this, other);
-		/*
-		Matrix<typename Promote<Var,typeB>::type> ret(Rows()*other.Rows(),Cols()*other.Cols());
-		for(enumerator i = 0; i < Rows(); ++i) //loop rows
-		{
-			for(enumerator j = 0; j < other.Rows(); ++j) //loop columns
-			{
-				for(enumerator k = 0; k < Cols(); ++k)
-				{
-					for(enumerator l = 0; l < other.Cols(); ++l)
-					{
-						assign(ret(i*other.Rows()+j,k*other.Cols()+l),other(j,l)*(*this)(i,k));
-					}
-				}
-			}
-		}
-		return ret;
-		*/
 	}
 	
 	template<typename Var>
@@ -4303,13 +3796,13 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<variable,variable>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//A.GetMatrixInterval(beg, end, cnt);
-		//B.GetMatrixInterval(beg, end, cnt);
+		INMOST_DATA_ENUM_TYPE cnt = 0;
+		cnt += A.GetMatrixCount();
+		cnt += B.GetMatrixCount();
 		Sparse::RowMerger* pmerger = NULL; 
-		//if (cnt >= CNT_USE_MERGER)
+		if (cnt >= CNT_USE_MERGER)
 		{
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
 		//Outer product
@@ -4356,7 +3849,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = Y(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
 					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
@@ -4426,12 +3919,11 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type> ret(B);
 		SymmetricMatrix<INMOST_DATA_REAL_TYPE> L(A);
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//B.GetMatrixInterval(beg, end, cnt);
+		INMOST_DATA_ENUM_TYPE cnt = B.GetMatrixCount();
 		Sparse::RowMerger* pmerger = NULL;
-		//if (cnt >= CNT_USE_MERGER)
+		if (cnt >= CNT_USE_MERGER)
 		{
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
 		//Outer product
@@ -4545,12 +4037,11 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0, cnt = 0;
-		//A.GetMatrixInterval(beg, end, cnt);
+		INMOST_DATA_ENUM_TYPE cnt = A.GetMatrixCount();
 		Sparse::RowMerger* pmerger = NULL;
-		//if (cnt >= CNT_USE_MERGER)
+		if (cnt >= CNT_USE_MERGER)
 		{
-			merger->Resize(beg, end);
+			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
 		//Outer product
@@ -4829,19 +4320,6 @@ namespace INMOST
 		return ret;
 	}
 	
-	/*
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::Repack(enumerator rows, enumerator cols) const
-	{
-		assert(Cols()*Rows()==rows*cols);
-		Matrix<Var> ret(*this);
-		ret.Rows() = rows;
-		ret.Cols() = cols;
-		return ret;
-	}
-	*/
-
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, int * ierr) const
@@ -4871,6 +4349,7 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
+
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::Root(INMOST_DATA_ENUM_TYPE iter, INMOST_DATA_REAL_TYPE tol, int *ierr) const
@@ -4952,23 +4431,6 @@ namespace INMOST
 		return ret;
 	}
 	
-	//template<typename Var,typename storage_type>
-	//SubMatrix<Var,storage_type> Matrix<Var,storage_type>::SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
-	//{
-	//	return ::INMOST::SubMatrix<Var,storage_type>(*this,first_row,last_row,first_col,last_col);
-	//}
-	/*
-	template<typename Var,typename storage_type>
-	SubMatrix<Var> SymmetricMatrix<Var,storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
-	{
-		return ::INMOST::SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
-	}
-	template<typename Var, typename storage_type>
-	ConstSubMatrix<Var> SymmetricMatrix<Var, storage_type>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
-	{
-		return ::INMOST::ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
-	}
-	*/
 	template<typename Var>
 	SubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{

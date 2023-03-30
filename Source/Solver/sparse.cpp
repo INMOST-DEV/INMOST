@@ -59,27 +59,25 @@ namespace INMOST
 
 ////////class RowMerger
 
-		RowMerger::RowMerger() : First(EOL), Nonzeros(0), Shift(0) {}
+		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
 
 		
 
-#ifdef USE_UNORDERED_MAP
 		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
 		{
-			ind -= Shift;
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator f
-				= pos.find(ind);
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator
+				f = pos.find(ind);
 			if( f != pos.end() )
 				return vals[f->second];
 			throw -1;
 		}
 		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
 		{
-			ind -= Shift;
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator f
-				= pos.find(ind);
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+				f = pos.find(ind);
 			if (f == pos.end())
 			{
+				//pos.insert(std::make_pair(ind, Nonzeros));
 				pos[ind] = Nonzeros;
 				next.push_back(First);
 				vals.push_back(0.0);
@@ -104,11 +102,12 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE ind;
 				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
-					ind = it->first - Shift;
-					std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator f
-						= pos.find(ind);
+					ind = it->first;
+					std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+						f = pos.find(ind);
 					if (f == pos.end())
 					{
+						//pos.insert(std::make_pair(ind, Nonzeros));
 						pos[ind] = Nonzeros;
 						next.push_back(First);
 						vals.push_back(coef * it->second);
@@ -119,92 +118,13 @@ namespace INMOST
 				}
 			}
 		}
-#else
-		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
-		{
-			ind -= Shift;
-			if(pos[ind] != UNDEF )
-				return vals[pos[ind]];
-			throw - 1;
-		}
-
-		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
-		{
-			ind -= Shift;
-			if( pos[ind] == UNDEF )
-			{
-				pos[ind] = Nonzeros;
-				next.push_back(First);
-				vals.push_back(0.0);
-				First = ind;
-				++Nonzeros;
-			}
-			return vals[pos[ind]];
-		}
-
-		void RowMerger::Clear()
-		{
-			INMOST_DATA_ENUM_TYPE i = First, j;
-			First = EOL;
-			while( i != EOL )
-			{
-				j = pos[i];
-				pos[i] = UNDEF;
-				i = next[j];
-			}
-			pos.clear();
-			vals.clear();
-			next.clear();
-			Nonzeros = 0;
-		}
-
-		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-		{
-			if (coef)
-			{
-				INMOST_DATA_ENUM_TYPE ind;
-				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-				{
-					ind = it->first - Shift;
-					if (pos[ind] == UNDEF)
-					{
-						pos[ind] = Nonzeros;
-						next.push_back(First);
-						vals.push_back(0.0);
-						First = ind;
-						++Nonzeros;
-					}
-					vals[pos[ind]] += coef * it->second;
-				}
-			}
-		}
-#endif
-
-		RowMerger::RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
-				: Nonzeros(0), First(EOL), Shift(interval_begin)
-		{
-#ifdef USE_UNORDERED_MAP
-			//pos.reserve(interval_end - interval_begin);
-			pos.clear();
-#else
-			pos.resize(interval_end - interval_begin, UNDEF);
-#endif
-			next.clear();
-			vals.clear();
-		}
-
-		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
+		//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
+		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
 		{
 			assert(Nonzeros == 0);
-			Shift = interval_begin;
 			Nonzeros = 0;
 			First = EOL;
-#ifdef USE_UNORDERED_MAP
-			//pos.reserve(interval_end - interval_begin);
-			pos.clear();
-#else
-			pos.resize(interval_end - interval_begin, UNDEF);
-#endif
+			pos.reserve(size);
 			next.clear();
 			vals.clear();
 		}
@@ -212,9 +132,10 @@ namespace INMOST
 #if defined(USE_SOLVER)
 		void RowMerger::Resize(const Matrix & A)
 		{
-			INMOST_DATA_ENUM_TYPE mbeg, mend;
-			A.GetInterval(mbeg,mend);
-			Resize(mbeg,mend);
+			//INMOST_DATA_ENUM_TYPE mbeg, mend;
+			//A.GetInterval(mbeg,mend);
+			//Resize(mbeg,mend);
+			Resize(A.Size());
 		}
 
 		RowMerger::RowMerger(const Matrix & A) : Nonzeros(0)
@@ -251,7 +172,8 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE k = 0, ind;
 				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
-					ind = it->first - Shift;
+					ind = it->first;
+					//pos.insert(std::make_pair(ind, k));
 					pos[ind] = k;
 					next[k] = First;
 					vals[k] = it->second * coef;
@@ -271,13 +193,15 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE i = First, k = 0;
 			while( i != EOL )
 			{
-				if(vals[pos[i]])
+				std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+					f = pos.find(i);
+				if(vals[f->second])
 				{
-					r.GetIndex(k) = i + Shift;
-					r.GetValue(k) = vals[pos[i]];
+					r.GetIndex(k) = i;
+					r.GetValue(k) = vals[f->second];
 					++k;
 				}
-				i = next[pos[i]];
+				i = next[f->second];
 			}
 			r.Resize(k);
 		}
@@ -549,6 +473,7 @@ namespace INMOST
 			return ret;
 		}
 #endif //USE_SOLVER
+		/*
 		void Row::GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
 		{
 			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
@@ -558,6 +483,7 @@ namespace INMOST
 				cnt++;
 			}
 		}
+		*/
 		bool Row::isSorted() const
 		{
 			for(INMOST_DATA_ENUM_TYPE k = 1; k < Size(); ++k)
