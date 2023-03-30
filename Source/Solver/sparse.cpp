@@ -59,10 +59,86 @@ namespace INMOST
 
 ////////class RowMerger
 
-		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
+		RowMerger::RowMerger() {}
+
+		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
+		{
+			container::const_iterator f = data.find(ind);
+			if (f != data.end())
+				return f->second;
+			throw - 1;
+		}
+		
+		
+		//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
+		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
+		{
+			assert(data.empty());
+			data.reserve(size);
+		}
+
+#if defined(USE_SOLVER)
+		void RowMerger::Resize(const Matrix& A)
+		{
+			//INMOST_DATA_ENUM_TYPE mbeg, mend;
+			//A.GetInterval(mbeg,mend);
+			//Resize(mbeg,mend);
+			Resize(A.Size());
+		}
+
+		RowMerger::RowMerger(const Matrix& A)
+		{
+			Resize(A);
+		}
+#endif
+
+		RowMerger::~RowMerger() {}
+
+		void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
+		{
+			for (container::iterator it = data.begin(); it != data.end(); ++it)
+				it->second *= coef;
+		}
+
+		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+		{
+			assert(data.empty()); //Linked list should be empty
+			if (coef)
+			{
+				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+					data[it->first] = it->second * coef;
+			}
+		}
+
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+		{
+			if (coef)
+			{
+				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+					data[it->first] += coef * it->second;
+			}
+		}
+
+		void RowMerger::RetriveRow(Row& r)
+		{
+			r.Resize(Size());
+			INMOST_DATA_ENUM_TYPE k = 0;
+			for (container::iterator it = data.begin(); it != data.end(); ++it)
+			{
+				if (it->second)
+				{
+					r.GetIndex(k) = it->first;
+					r.GetValue(k) = it->second;
+					k++;
+				}
+			}
+			r.Resize(k);
+		}
 
 		
-
+		/*
+		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
+		 
 		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
 		{
 			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator
@@ -209,6 +285,7 @@ namespace INMOST
 			}
 			r.Resize(k);
 		}
+		*/
 ////////class HessianRow
 
 		void   HessianRow::RowVec(INMOST_DATA_REAL_TYPE alpha, const Row & rU, INMOST_DATA_REAL_TYPE beta, Row & rJ) const
