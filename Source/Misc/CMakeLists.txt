@@ -5,6 +5,7 @@ set(SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/base64.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mem.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/judy.c
     PARENT_SCOPE
 )
 
@@ -12,5 +13,6 @@ set(HEADER
         ${HEADER}
         ${CMAKE_CURRENT_SOURCE_DIR}/utils.h
         ${CMAKE_CURRENT_SOURCE_DIR}/base64.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/judy.h
         PARENT_SCOPE
 )

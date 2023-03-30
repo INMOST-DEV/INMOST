@@ -4,6 +4,10 @@
 
 #include "inmost_common.h"
 #include <unordered_map>
+#include "robin_hood.h"
+//#include "judyLArray.h"
+//#include "hopscotch_map.h"
+//#include "bhopscotch_map.h"
 
 namespace INMOST
 {
@@ -663,7 +667,13 @@ namespace INMOST
 		private:
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
 			INMOST_DATA_ENUM_TYPE First; ///< First position.
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
+			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
+			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			map_container pos;  //Position in vals and next array (huge array)
 			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
 			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.

@@ -65,7 +65,8 @@ namespace INMOST
 
 		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
 		{
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator
+			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::const_iterator
+			map_container::const_iterator
 				f = pos.find(ind);
 			if( f != pos.end() )
 				return vals[f->second];
@@ -73,7 +74,8 @@ namespace INMOST
 		}
 		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
 		{
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+			map_container::iterator
 				f = pos.find(ind);
 			if (f == pos.end())
 			{
@@ -103,7 +105,8 @@ namespace INMOST
 				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
 					ind = it->first;
-					std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+					//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+					map_container::iterator
 						f = pos.find(ind);
 					if (f == pos.end())
 					{
@@ -193,7 +196,8 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE i = First, k = 0;
 			while( i != EOL )
 			{
-				std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+				//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>::iterator
+				map_container::iterator
 					f = pos.find(i);
 				if(vals[f->second])
 				{
