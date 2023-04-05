@@ -1045,7 +1045,7 @@ namespace INMOST
 			if( lc[i] != InvalidHandle() && !m->GetPrivateMarker(lc[i],mrk))
 			{
 				ret.push_back(lc[i]);
-				m->SetMarker(ret.atback(),mrk);
+				m->SetPrivateMarker(ret.atback(),mrk);
 			}
 		}
 		other->RemPrivateMarkerElements(mrk);
