@@ -27,7 +27,7 @@ namespace INMOST
 						merger.AddRow((*this)(i,k),other(k,j).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else
@@ -65,7 +65,7 @@ namespace INMOST
 						merger.AddRow(other(k,j),(*this)(i,k).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else
@@ -104,7 +104,7 @@ namespace INMOST
 						merger.AddRow((*this)(i,k).GetValue(),other(k,j).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else

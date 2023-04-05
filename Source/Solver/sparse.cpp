@@ -133,7 +133,7 @@ namespace INMOST
 		void RowMerger::Resize(const Matrix & A, bool _Sorted)
 		{
 			INMOST_DATA_ENUM_TYPE mbeg, mend, k, l, ind;
-			//retrive interval of indices
+			//retrieve interval of indices
 			A.GetInterval(mbeg,mend);
 			//gather non-local mapping from matrix
 			std::set<INMOST_DATA_ENUM_TYPE> Pre, Post;
@@ -294,7 +294,7 @@ namespace INMOST
 		}
 
 
-		void RowMerger::RetriveRow(Row & r)
+		void RowMerger::RetrieveRow(Row & r)
 		{
             r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros+Nonlocal.size()));
 			INMOST_DATA_ENUM_TYPE i = LinkedList.begin()->first, k = 0;

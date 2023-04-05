@@ -382,7 +382,7 @@ namespace INMOST
 		m->RemPrivateMarkerArray(cells.data(), (enumerator)cells.size(), edge_set);
 		assert(cells.size() <= 2);
 		//check is there a topological problem
-		//new face should be adjacent to no more then two cells
+		//new face should be adjacent to no more than two cells
 		if( m->GetTopologyCheck(TRIPLE_SHARED_FACE) && cells.size() > 2 )
 		{
 			m->SetTopologyError(TRIPLE_SHARED_FACE);
@@ -482,12 +482,12 @@ namespace INMOST
 			//find out second node
 			k2 = m->getNext(lc.data(),static_cast<enumerator>(lc.size()),k1,hm);
 			//find out which of the nodes should connect to the next edge
-			//at the begining we can select any of the two
+			//at the beginning we can select any of the two
 			if( lc[k1] != prev ) 
 				prev = lc[k1]; 
 			else 
 				prev = lc[k2];
-			//find out the next edge connected to the privious node
+			//find out the next edge connected to the previous node
 			bool found = false; //detect that edge was found, otherwise there is no loop
 			(void)found;
 			adj_type const & hc = m->HighConn(prev); // edge (prev is node)
@@ -1317,7 +1317,7 @@ namespace INMOST
 		for (size_t it = 0; it < faces.size(); ++it)
 		{
 			adj_type& lc = m->LowConn(faces[it]);
-			//check that that one of the nodes of privious edge match n[0],
+			//check that that one of the nodes of previous edge match n[0],
 			//otherwise we have to insert in reverse
 			const adj_type& phc = m->LowConn(lc[(insert_pos[it] + lc.size() - 1) % lc.size()]);
 			if (phc[0] == n[0] || phc[1] == n[0])
@@ -1613,7 +1613,7 @@ namespace INMOST
 								hc.push_back(cells[k]);
 								m->RecomputeGeometricData(ff.first.GetHandle(), ORIENTATION);
 							}
-						} //FIXME: what if more then 2 connections? have to fire topology exception, unless there are hidden cells
+						} //FIXME: what if more than 2 connections? have to fire topology exception, unless there are hidden cells
 					}
 				}
 			}
@@ -1958,7 +1958,7 @@ namespace INMOST
 		}
 		//the formed above set will be automatically sorted by handles, it does not harm to explicitly indicate that,
 		//in case any algorithm further will use this fact (Subtract currently would not use this fact)
-		//but may use by retriving lower_bound/higher_bound O(log(n)) operations to narrow performed operations
+		//but may use by retrieving lower_bound/higher_bound O(log(n)) operations to narrow performed operations
 		erase->BulkDF(SetComparatorTag()) = ElementSet::HANDLE_COMPARATOR;
 		*/
 
@@ -2326,7 +2326,7 @@ namespace INMOST
 		
 		//if( m->HaveGeometricData(ORIENTATION,FACE) )
 		{
-			//retrive faces
+			//retrieve faces
 			MarkerType hm = m->HideMarker();
 			adj_type & lc = m->LowConn(GetHandle());
 			for( adj_type::size_type it = 0; it < lc.size(); it++) if( !m->GetMarker(lc[it],hm) ) //iterator over unhidden faces
@@ -2456,8 +2456,8 @@ namespace INMOST
 			}
 		}
 		for(k = 0; k < num; k++) m->RemPrivateMarker(adjacent[k],mrk);
-		//if element placed below on ierarhy was modified, then all upper elements
-		//should be also modified, start from lowest elements in ierarchy and go up
+		//if element placed below on hierarchy was modified, then all upper elements
+		//should be also modified, start from lowest elements in hierarchy and go up
 		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype) )
 		{
 			int el_num = ElementNum(etype);
@@ -2608,8 +2608,8 @@ namespace INMOST
 		//}
 		//else 
 		m->RecomputeGeometricData(GetHandle());
-		//if element placed below on ierarhy was modified, then all upper elements
-		//should be also modified, start from lowest elements in ierarchy and go up
+		//if element placed below on hierarchy was modified, then all upper elements
+		//should be also modified, start from lowest elements in hierarchy and go up
 		for (ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
 		{
 			int el_num = ElementNum(etype);

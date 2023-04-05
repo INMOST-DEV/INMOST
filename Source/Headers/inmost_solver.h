@@ -45,14 +45,14 @@ namespace INMOST {
         static const Type   K3BIILU2;       ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
         static const Type   SUPERLU;        ///< external Solver SuperLU @see https://github.com/starseeker/SuperLU
         /// Backward-compatibility access to integer-typed parameters.
-        /// Check Solver::SetParameter for availible parameter names.
+        /// Check Solver::SetParameter for available parameter names.
         /// @param name Name of the parameter.
         /// @param value Value for the parameter.
         /// @see Solver::SetParameter
         void SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value);
 
         /// Backward-compatibility access to real-typed parameters.
-        /// Check Solver::SetParameter for availible parameter names.
+        /// Check Solver::SetParameter for available parameter names.
         /// @param name Name of the parameter.
         /// @param value Value for the parameter.
         /// @see Solver::SetParameter
@@ -89,7 +89,7 @@ namespace INMOST {
             typedef std::vector<INMOST_DATA_ENUM_TYPE> storage_type; ///< A type for storing arrays.
             storage_type                               global_to_proc; ///< Stores ends of all non-overlapping intervals of elements, owned by this processor.
             storage_type                               global_overlap; ///< Stores pairs: [begin,end) of overlapping intervals of rows
-            std::vector<INMOST_DATA_ENUM_TYPE>         vector_exchange_recv; ///< Store packed indices to recieve data. Format: # of processors {proc #, # indices, indices}
+            std::vector<INMOST_DATA_ENUM_TYPE>         vector_exchange_recv; ///< Store packed indices to receive data. Format: # of processors {proc #, # indices, indices}
             std::vector<INMOST_DATA_ENUM_TYPE>         vector_exchange_send; ///< Store packed indices to send data. Format: # of processors {proc #, # indices, indices}
             std::vector<INMOST_DATA_REAL_TYPE>         send_storage; ///< Storage used to send data of the vector.
             std::vector<INMOST_DATA_REAL_TYPE>         recv_storage; ///< Storage used to receive data of the vector.
@@ -202,7 +202,7 @@ namespace INMOST {
             }
             /// Total number of send requests.
             INMOST_DATA_ENUM_TYPE GetSendRequestsSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(send_requests.size()); }
-            /// Total number of posted recieve requests.
+            /// Total number of posted receive requests.
             INMOST_DATA_ENUM_TYPE GetRecvRequestsSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(recv_requests.size()); }
             /// Request raw access to array used to send data.
             INMOST_DATA_ENUM_TYPE *GetSendExchangeArray() {
@@ -211,7 +211,7 @@ namespace INMOST {
             }
             /// Size of the array used to send data.
             INMOST_DATA_ENUM_TYPE GetSendExchangeSize() { return static_cast<INMOST_DATA_ENUM_TYPE>(send_storage.size()); }
-            /// Request raw acces to array used to recieve data.
+            /// Request raw acces to array used to receive data.
             INMOST_DATA_ENUM_TYPE *GetRecvExchangeArray() {
                 assert(!vector_exchange_recv.empty());
                 return &vector_exchange_recv[0];
@@ -376,7 +376,7 @@ namespace INMOST {
         /// - "reuse_tolerance"    - tolerance for reusing values during incomplete factorization,
         ///                          these values are used only during calculation of L and U factors
         ///                          and/or Schur complement and discarded once factorization is done,
-        ///                          value should be less then "drop_tolerance",
+        ///                          value should be less than "drop_tolerance",
         ///                          typical value is drop_tolerance^2,
         ///                          works for:
         ///                          INNER_ILU2, INNER_MPTILU2, INNER_MPTILUC, INNER_MLMPTILUC, INNER_DDPQILUC

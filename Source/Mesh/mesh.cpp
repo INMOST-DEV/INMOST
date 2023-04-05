@@ -142,7 +142,7 @@ namespace INMOST
 			case FACE_ORIENTATION:       return "TOPOLOGY ERROR: bad face orientation";
 			case FACE_PLANARITY:         return "TOPOLOGY ERROR: non-planar face found";
 			case INTERLEAVED_FACES:      return "TOPOLOGY ERROR: interleaving faces found";
-			case TRIPLE_SHARED_FACE:     return "TOPOLOGY ERROR: face have more then two neighbours"; 
+			case TRIPLE_SHARED_FACE:     return "TOPOLOGY ERROR: face have more than two neighbours"; 
 			case FLATTENED_CELL:         return "TOPOLOGY ERROR: flattened cell found"; 
 			case ADJACENT_DUPLICATE:     return "TOPOLOGY ERROR: duplicates in adjacent elements";
 			case ADJACENT_HIDDEN:        return "TOPOLOGY ERROR: hidden element is used as adjacent"; 
@@ -336,7 +336,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp parallel
     {
-		//retrive tag before it was erased
+		//retrieve tag before it was erased
 		Tag del = tag_private_markers[GetLocalProcessorRank()];
 #pragma omp barrier
 		//delete tag, it will erase the tag
@@ -988,7 +988,7 @@ namespace INMOST
 					}
 					if( GetTopologyCheck() & DEGENERATE_FACE )
 					{
-						if(d == 1 && s < 3) // Should not be less then 3 Line or Curve
+						if(d == 1 && s < 3) // Should not be less than 3 Line or Curve
 						{
 							chk |= DEGENERATE_FACE;
 							if( GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(DEGENERATE_FACE) << std::endl;
@@ -1014,7 +1014,7 @@ namespace INMOST
 					}
 					if( GetTopologyCheck(DEGENERATE_FACE) )
 					{
-						if( d == 1 && s < 3 ) //Should not be less then 3 Line
+						if( d == 1 && s < 3 ) //Should not be less than 3 Line
 						{
 							chk |= DEGENERATE_FACE;
 							if( GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(DEGENERATE_FACE) << std::endl;
@@ -1022,7 +1022,7 @@ namespace INMOST
 					}
 					if( GetTopologyCheck(DEGENERATE_CELL) )
 					{
-						if( d == 2 && s < 4 ) //Should not be less then 4 Tri, Quad, Polygon
+						if( d == 2 && s < 4 ) //Should not be less than 4 Tri, Quad, Polygon
 						{
 							chk |= DEGENERATE_CELL;
 							if( GetTopologyCheck(PRINT_NOTIFY) ) std::cerr << TopologyCheckNotifyString(DEGENERATE_CELL) << std::endl;
@@ -2340,7 +2340,7 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE ret = 0;
 			const Sparse::Row::entry * arr = static_cast<const Sparse::Row::entry *>(static_cast<const void *>(adata));
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < size; ++k)
-				ret += variable::RetriveSize(arr+ret);
+				ret += variable::RetrieveSize(arr+ret);
 			return ret*sizeof(Sparse::Row::entry);
 		}
 		else
@@ -2482,7 +2482,7 @@ namespace INMOST
 					const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
 					int k = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-						k += (*arr)[r+shift].Retrive(data+k);
+						k += (*arr)[r+shift].Retrieve(data+k);
 				}
 					break;
 #endif
@@ -2495,7 +2495,7 @@ namespace INMOST
 			var * v = static_cast<var *>(MGetLink(h,tag));
 			int k = 0;
 			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
-				k += v[r+shift].Retrive(data+k);
+				k += v[r+shift].Retrieve(data+k);
 		}
 #endif
 		else memcpy(static_cast<INMOST_DATA_BULK_TYPE *>(adata)+shift*bytes,data_in,size*bytes);

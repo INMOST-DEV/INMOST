@@ -781,7 +781,7 @@ using namespace INMOST;
 				}
 				E_Address.back()->at(k).last = static_cast<INMOST_DATA_ENUM_TYPE>(E_Entries.size());
 				C_Address[k].last = static_cast<INMOST_DATA_ENUM_TYPE>(C_Entries.size());
-				// sort entries added to E, because it will be very usefull later
+				// sort entries added to E, because it will be very useful later
 				std::sort(E_Entries.begin() + E_Address.back()->at(k).first, E_Entries.end());
 				nzEF += E_Address.back()->at(k).Size();
 				nzA += A_Address[k].Size();

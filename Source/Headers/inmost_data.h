@@ -137,7 +137,7 @@ namespace INMOST
 	const char *                          DataTypeName        (DataType t);
 
 
-	///This class is a data container for class Tag, contains all the necessery information to access
+	///This class is a data container for class Tag, contains all the necessary information to access
 	/// mesh data in class TagManager. It is never exposed to the user directly, should be accessed 
 	/// through interface class Tag. Functions are implemented in tag.cpp.
 	class TagMemory 
@@ -194,7 +194,7 @@ namespace INMOST
 	private:
 		///A link to the data for the current instance of the class Tag.
 		TagMemory * mem;
-		///The use of this privite constructor is reserved for TagManager::CreateTag function.
+		///The use of this private constructor is reserved for TagManager::CreateTag function.
 		Tag (Mesh * m,std::string name, DataType _dtype, INMOST_DATA_ENUM_TYPE size); 
 		__INLINE INMOST_DATA_ENUM_TYPE GetRecordSize() const;
 		__INLINE void SetSize(INMOST_DATA_ENUM_TYPE size);
@@ -214,11 +214,11 @@ namespace INMOST
 		__INLINE Tag & operator =(Tag const & other);
 		__INLINE DataType GetDataType() const;
 		__INLINE INMOST_MPI_Type GetBulkDataType() const;
-		/// Amount of bytes necessery to support one record
+		/// Amount of bytes necessary to support one record
 		/// referred by the tag on one element. Used internally
 		/// to allocate, manage and copy data of the mesh.
 		__INLINE INMOST_DATA_ENUM_TYPE GetBytesSize() const;
-		/// Amount of bytes necessery for one record in packed
+		/// Amount of bytes necessary for one record in packed
 		/// form that is used in GetData.
 		INMOST_DATA_ENUM_TYPE GetPackedBytesSize() const;
 		__INLINE INMOST_DATA_ENUM_TYPE GetSize() const;
@@ -259,11 +259,11 @@ namespace INMOST
 		typedef tag_array_type::iterator iteratorTag;
 	public:
 		virtual ~TagManager();
-		/// Check existance of a data tag by it's name.
+		/// Check existence of a data tag by it's name.
 		bool HaveTag(std::string name) const;
-		/// Retrive a data tag by it's name.
+		/// Retrieve a data tag by it's name.
 		Tag GetTag(std::string name) const;
-		/// Retrive names for all the tags present on the mesh.
+		/// Retrieve names for all the tags present on the mesh.
 		void ListTagNames(std::vector<std::string> & list) const;
 		/// Create tag with prescribed attributes.
 		Tag CreateTag(Mesh * m, std::string name, DataType dtype, ElementType etype, ElementType sparse, INMOST_DATA_ENUM_TYPE size = ENUMUNDEF); 
@@ -278,13 +278,13 @@ namespace INMOST
 		void ReallocateData(const Tag & t, INMOST_DATA_INTEGER_TYPE etypenum,INMOST_DATA_ENUM_TYPE new_size);
 		/// Reallocate all the data for all the tags.
 		void ReallocateData(INMOST_DATA_INTEGER_TYPE etypenum, INMOST_DATA_ENUM_TYPE new_size);
-		///Retrive substructure for representation of the sparse data without permission for modification.
+		///Retrieve substructure for representation of the sparse data without permission for modification.
 		__INLINE sparse_sub_type const & GetSparseData(int etypenum, int local_id) const {return sparse_data[etypenum][local_id];}
-		///Retrive substructure for representation of the sparse data.
+		///Retrieve substructure for representation of the sparse data.
 		__INLINE sparse_sub_type & GetSparseData(int etypenum, int local_id) {return sparse_data[etypenum][local_id];}
-		///Retrive substructure for representation of the dense data without permission for modification.
+		///Retrieve substructure for representation of the dense data without permission for modification.
 		__INLINE dense_sub_type const & GetDenseData(int pos) const {return dense_data[pos];}
-		///Retrive substructure for representation of the dense data.
+		///Retrieve substructure for representation of the dense data.
 		__INLINE dense_sub_type & GetDenseData(int pos) {return dense_data[pos];}
 		///Copy data from one element to another.
 		static void CopyData(const Tag & t, void * adata, const void * bdata);
@@ -313,7 +313,7 @@ namespace INMOST
 		typedef INMOST_DATA_REAL_TYPE       real; 
 		/// Storage type for representing integer values.
 		typedef INMOST_DATA_INTEGER_TYPE    integer;
-		/// Storage type for representing one byte of abstact data.
+		/// Storage type for representing one byte of abstract data.
 		typedef INMOST_DATA_BULK_TYPE       bulk;
 		/// type for representing unsigned integer values.
 		typedef INMOST_DATA_ENUM_TYPE       enumerator;
@@ -325,7 +325,7 @@ namespace INMOST
 		typedef shell<real>                 real_array;
 		/// Storage type for representing arrays of integer values.
 		typedef shell<integer>              integer_array;
-		/// Storage type for representing abstact data as a series of bytes.
+		/// Storage type for representing abstract data as a series of bytes.
 		typedef shell<bulk>                 bulk_array;
 #if defined(USE_AUTODIFF)
 		/// Storage type for representing real value with vector of variations
@@ -567,7 +567,7 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE      GetDataSize         (const Tag & tag) const;
 		/// Return the size of the structure required to represent the data on current element.
 		/// This is equal to GetDataSize times Tag::GetBytesSize for all the data types,
-		/// except for DATA_VARIABLE, that requires a larger structure to accomodate derivatives.
+		/// except for DATA_VARIABLE, that requires a larger structure to accommodate derivatives.
 		/// @param tag tag that represents the data
 		/// @see Mesh::GetDataCapacity
 		__INLINE INMOST_DATA_ENUM_TYPE      GetDataCapacity     (const Tag & tag) const;
@@ -582,9 +582,9 @@ namespace INMOST
 		/// Copy part of the associated array or data to the destination memory.
 		/// @param tag Identifying Tag.
 		/// @param shift Starting position of the copied data.
-        /// For abstact data - number of bytes to skip, otherwise number of values to skip.
+        /// For abstract data - number of bytes to skip, otherwise number of values to skip.
 		/// @param size Number of elements to copy.
-        /// For abstact data - number of bytes to copy, otherwise number of values to copy.
+        /// For abstract data - number of bytes to copy, otherwise number of values to copy.
 		/// @param data Destination position to copy data to.
 		/// @see Storage::SetData
 		__INLINE void                       GetData             (const Tag & tag, 

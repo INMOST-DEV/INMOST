@@ -17,7 +17,7 @@ namespace INMOST
 	///    global integrators (div,curl on domain),
 	///    interpolators,
 	///    inter-mesh interpolators.
-	///    Each has it's own functions. Implementation should be
+	///    Each has its own functions. Implementation should be
 	///    flexible enough to prevent limitation.
 	/// 2. Ultimately operators should stack together:
 	///    for staggered incompressible navier-stokes:
@@ -29,7 +29,7 @@ namespace INMOST
 	public:
 		/// Destroy all the data of the operator.
 		virtual ~AbstractOperator() {};
-		/// Initialize all the data necessery to evalute the operator.
+		/// Initialize all the data necessary to evalute the operator.
 		virtual bool Initialize(Model & m) = 0;
 		/// Let operator prepare data on the mesh before evaluation.
 		virtual bool PrepareIterations() = 0;

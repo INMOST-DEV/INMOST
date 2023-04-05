@@ -217,7 +217,7 @@ namespace INMOST
 				case '+':
 					if( stack.size() < 2 )
 					{
-						std::cout << "Less then two arguments in stack for + operand" << std::endl;
+						std::cout << "Less than two arguments in stack for + operand" << std::endl;
 						error_state = true;
 						return 1.0e+20;
 					}
@@ -230,7 +230,7 @@ namespace INMOST
 				case '-':
 					if( stack.size() < 2 )
 					{
-						std::cout << "Less then two arguments in stack for - operand" << std::endl;
+						std::cout << "Less than two arguments in stack for - operand" << std::endl;
 						error_state = true;
 						return 1.0e+20;
 					}
@@ -243,7 +243,7 @@ namespace INMOST
 				case '*':
 					if( stack.size() < 2 ) 
 					{
-						std::cout << "Less then two arguments in stack for * operand" << std::endl;
+						std::cout << "Less than two arguments in stack for * operand" << std::endl;
 						error_state = true;
 						return 1.0e+20;
 					}
@@ -256,7 +256,7 @@ namespace INMOST
 				case '/':
 					if( stack.size() < 2 ) 
 					{
-						std::cout << "Less then two arguments in stack for / operand" << std::endl;
+						std::cout << "Less than two arguments in stack for / operand" << std::endl;
 						error_state = true;
 						return 1.0e+20;
 					}
@@ -1510,7 +1510,7 @@ namespace INMOST
 						attr.name = AttributeName();
 					}
 					if( verbose > 1 ) Report("info: finalized tag reading");
-					ret.finish = ReadCloseTag(); //retrive '>'
+					ret.finish = ReadCloseTag(); //retrieve '>'
 					if( !include.empty() )
 					{
 

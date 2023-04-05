@@ -44,7 +44,7 @@ namespace INMOST
 	{
 		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
 		expr.GetJacobian(1.0,merger);
-		merger.RetriveRow(entries);
+		merger.RetrieveRow(entries);
 		merger.Clear();
 	}
 
@@ -53,7 +53,7 @@ namespace INMOST
 		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
 		merger.PushRow(multme,entries);
 		expr.GetJacobian(multit,merger);
-		merger.RetriveRow(entries);
+		merger.RetrieveRow(entries);
 		merger.Clear();
 	}
 
@@ -62,7 +62,7 @@ namespace INMOST
 		Sparse::RowMerger & merger = Automatizator::GetCurrent()->GetMerger();
 		expr.GetJacobian(mult,merger);
 		merger.AddRow(1.0,r);
-		merger.RetriveRow(r);
+		merger.RetrieveRow(r);
 		merger.Clear();
 	}
 	Sparse::RowMerger & GetCurrentMerger() {return Automatizator::GetCurrent()->GetMerger();}

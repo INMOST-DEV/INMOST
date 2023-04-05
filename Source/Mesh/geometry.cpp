@@ -379,10 +379,10 @@ namespace INMOST
 				for (unsigned k = 0; k < data.size(); ++k)
 					mesh->SetPrivateMarker(data[k], mrk);
 				cur->RemPrivateMarker(mrk);
-				Node n1, n2; //to retrive edge
+				Node n1, n2; //to retrieve edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
+				//todo: can do faster by retrieving edges and going over their nodes
 				//should not use FindSharedAdjacency
 				Element::adj_type const & cur_edges = mesh->LowConn(cur->GetHandle());
 				//ElementArray<Edge> edges = cur->getEdges();
@@ -436,7 +436,7 @@ namespace INMOST
 					orient_face r = stack.front();
 					//remove face from stack
 					stack.pop_front();
-					//retrive edges for new face
+					//retrieve edges for new face
 					//edges = r.face->getEdges();
 					Element::adj_type const & redges = mesh->LowConn(r.face->GetHandle());
 					e0 = Edge(mesh, redges[0]);
@@ -615,10 +615,10 @@ namespace INMOST
 				for (unsigned k = 0; k < data.size(); ++k)
 					mesh->SetPrivateMarker(data[k], mrk);
 				cur->RemPrivateMarker(mrk);
-				Node n1, n2; //to retrive edge
+				Node n1, n2; //to retrieve edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
+				//todo: can do faster by retrieving edges and going over their nodes
 				//should not use FindSharedAdjacency
 				Element::adj_type const& cur_edges = mesh->LowConn(cur->GetHandle());
 				//ElementArray<Edge> edges = cur->getEdges();
@@ -672,7 +672,7 @@ namespace INMOST
 					orient_face r = stack.front();
 					//remove face from stack
 					stack.pop_front();
-					//retrive edges for new face
+					//retrieve edges for new face
 					//edges = r.face->getEdges();
 					Element::adj_type const& redges = mesh->LowConn(r.face->GetHandle());
 					e0 = Edge(mesh, redges[0]);
@@ -966,7 +966,7 @@ namespace INMOST
 				{
 					if( !GetTopologyCheck(NEED_TEST_CLOSURE) ||  TestClosure(lc,size) )
 					{
-						// for simple cells there is no more then one common edge
+						// for simple cells there is no more than one common edge
 						// otherwise the cell should be treated as polyhedron
 						bool check = true;
 						MarkerType common = CreatePrivateMarker();
@@ -1493,12 +1493,12 @@ namespace INMOST
 				Face cur = faces[0];
 				Mesh * mesh = faces.GetMeshLink();
 				//firstly, have to figure out orientation of each face
-				//mark all faces, so that we can perform adjacency retrival
+				//mark all faces, so that we can perform adjacency retrieval
 				MarkerType mrk = mesh->CreatePrivateMarker();
 				//MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
 				faces.SetPrivateMarker(mrk); //0-th face orientation is default
 				cur->RemPrivateMarker(mrk);
-				Node n1,n2; //to retrive edge
+				Node n1,n2; //to retrieve edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
 				//ElementArray<Edge> edges = cur->getEdges();
@@ -1562,7 +1562,7 @@ namespace INMOST
 					orient_face r = stack.front();
 					//remove face from stack
 					stack.pop_front();
-					//retrive edges for new face
+					//retrieve edges for new face
 					//edges = r.face->getEdges();
 					cur_edges = &mesh->LowConn(r.face->GetHandle());
 					e0 = Edge(mesh, (*cur_edges)[0]);
@@ -2184,7 +2184,7 @@ namespace INMOST
 				Element::adj_type const& data = mesh->LowConn(c1.GetHandle());
 				Face cur = *this;
 				//firstly, have to figure out orientation of each face
-				//mark all faces, so that we can perform adjacency retrival
+				//mark all faces, so that we can perform adjacency retrieval
 #if defined(USE_OMP)
 #pragma omp critical (reorder_edges)
 #endif
@@ -2195,7 +2195,7 @@ namespace INMOST
 					for (unsigned k = 0; k < data.size(); ++k)
 						mesh->SetPrivateMarker(data[k], mrk);
 					cur->RemPrivateMarker(mrk);
-					Node n1,n2; //to retrive edge
+					Node n1,n2; //to retrieve edge
 					bool reverse = false; //reverse orientation in considered face
 					std::deque< orient_face > stack; //edge and first node and face for visiting
 					//ElementArray<Edge> edges;
@@ -2260,7 +2260,7 @@ namespace INMOST
 						orient_face r = stack.front();
 						//remove face from stack
 						stack.pop_front();
-						//retrive edges for new face
+						//retrieve edges for new face
 						//edges = r.face->getEdges();
 						cur_edges = &mesh->LowConn(r.face->GetHandle());
 						e0 = Edge(mesh, (*cur_edges)[0]);
@@ -2722,7 +2722,7 @@ namespace INMOST
 										{
 											hits[GetHandle()] = k;
 										}
-										break; //we shouldn't have more then one intersection
+										break; //we shouldn't have more than one intersection
 									}
 								}
 							}

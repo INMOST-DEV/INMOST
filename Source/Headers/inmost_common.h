@@ -71,10 +71,10 @@
 //#define DEBUG_COMPUTE_SHARED_SKIN_SET
 
 // this controls how sparse data will be allocated,
-// when difinition is not commented memory will be always consumed
+// when definition is not commented memory will be always consumed
 // by data structure needed to support sparse data,
 // otherwise data structure will be allocated only when
-// sparse data is presenet
+// sparse data is present
 //#define LAZY_SPARSE_ALLOCATION
 
 // this will force array class to use 12 bytes instead of 16 bytes

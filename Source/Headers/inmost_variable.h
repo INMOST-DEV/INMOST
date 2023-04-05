@@ -223,8 +223,8 @@ namespace INMOST
 		
 		template<typename T>
 		get_variable<T> get_variable() {return get_variable<T>(*var);}
-		abstract_dynamic_variable & retrive_expression() {return *var;}
-		const abstract_dynamic_variable & retrive_expression() const {return *var;}
+		abstract_dynamic_variable & retrieve_expression() {return *var;}
+		const abstract_dynamic_variable & retrieve_expression() const {return *var;}
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable_expression(*this));}
 	};
 	
@@ -531,9 +531,9 @@ namespace INMOST
 				return ArgA[e];
 			else return ArgB[e];
 		}
-		/// Retrive first derivatives of variable expression on provided element e, default approach.
+		/// Retrieve first derivatives of variable expression on provided element e, default approach.
 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-		/// Retrive first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
+		/// Retrieve first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new etype_branch_variable(*this));}
@@ -574,9 +574,9 @@ namespace INMOST
 				return ArgA[e];
 			else return ArgB[e];
 		}
-		/// Retrive first derivatives of variable expression on provided element e, default approach.
+		/// Retrieve first derivatives of variable expression on provided element e, default approach.
 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
-		/// Retrive first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
+		/// Retrieve first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new marker_branch_variable(*this));}

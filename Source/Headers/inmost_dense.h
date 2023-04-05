@@ -316,7 +316,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @return Inverse matrix.
 		/// @see Matrix::PseudoInvert.
 		/// \todo (test) Activate and test implementation with Solve.
@@ -332,7 +332,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @return Inverse matrix,
 		/// @see Matrix::PseudoInvert.
 		/// \warning Number of rows in matrices A and B should match.
@@ -349,7 +349,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @see Matrix::PseudoInvert.
 		/// @return Inverse matrix,
 		template<typename typeB>
@@ -424,7 +424,7 @@ namespace INMOST
 		{
 			return DotProduct(other);
 		}
-		/// Computes frobenious norm of the matrix.
+		/// Computes frobenius norm of the matrix.
 		/// @return Frobenius norm of the matrix.
 		Var FrobeniusNorm() const
 		{
@@ -539,7 +539,7 @@ namespace INMOST
 			operator/(shell_expression<A> const& coef) const;// { return operator/(variable(coef)); }
 #endif //USE_AUTODIFF
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
-		/// Throws exception if matrix is not invertable. See Mesh::PseudoSolve for
+		/// Throws exception if matrix is not invertible. See Mesh::PseudoSolve for
 		/// singular matrices.
 		/// @param other Matrix to be inverted and multiplied from left.
 		/// @return Multiplication of current matrix by inverse of another
@@ -848,9 +848,9 @@ namespace INMOST
 		/// Construct a matrix with provided sizes.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
-		/// \warning The matrix does not necessery have zero entries.
+		/// \warning The matrix does not necessary have zero entries.
 		SymmetricMatrix(enumerator pn) : space(pn*(pn+1)/2), n(pn) {}
-		/// Constract a matrix with provided elements.
+		/// Construct a matrix with provided elements.
 		/// The elements are ordered row-wise starting from the diagonal element.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -897,7 +897,7 @@ namespace INMOST
 		/// Delete matrix.
 		~SymmetricMatrix() {}
 		/// Resize the matrix into different size.
-		/// Number of rows must match number of columns for symmetric matrix.
+		/// Number of rows must match the number of columns for symmetric matrix.
 		/// @param nrows New number of rows.
 		/// @param ncols New number of columns.
 		void Resize(enumerator nrows, enumerator ncols)
@@ -1323,14 +1323,14 @@ namespace INMOST
 		/// Construct a matrix with provided sizes.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
-		/// \warning The matrix does not necessery have zero entries.
+		/// \warning The matrix does not necessary have zero entries.
 		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
 		/// Construct a matrix with provided sizes and fills with value.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
 		/// @param c Value to fill the matrix.
 		Matrix(enumerator pn, enumerator pm, const Var & c) : space(pn*pm,c), n(pn), m(pm) {}
-		/// Constract a matrix with provided elements.
+		/// Construct a matrix with provided elements.
 		/// The elements are ordered row-wise.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -1689,13 +1689,13 @@ namespace INMOST
 		/// Joint diagonalization algorithm by Cardoso.
 		/// Source http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
 		/// Current matrix should have size n by n*m
-		/// And represent concatination of m n by n matrices.
+		/// And represent concatenation of m n by n matrices.
 		/// Current matrix is replaced by diagonalized matrices.
-		/// For correct result requires that input matrices are
-		/// exectly diagonalizable, otherwise the result may be approximate.
+		/// For correct result it is required that input matrices are
+		/// exactly diagonalizable, otherwise the result may be approximate.
 		/// @param threshold Optional small number.
 		/// @return A unitary n by n matrix V used to diagonalize array of
-		/// initial matrices. Current matrix is replaced by concatination of
+		/// initial matrices. Current matrix is replaced by concatenation of
 		/// V^T*A_i*V, a collection of diagonalized matrices.
 		Matrix<Var> JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
 		{
@@ -2930,7 +2930,7 @@ namespace INMOST
 							merger.AddRow((*pA)(i, k), (*pB)(k, j).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
+						merger.RetrieveRow(M(i, j).GetRow());
 						merger.Clear();
 					}
 				}
@@ -3015,7 +3015,7 @@ namespace INMOST
 							merger.AddRow((*pB)(k, j), (*pA)(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
+						merger.RetrieveRow(M(i, j).GetRow());
 						merger.Clear();
 					}
 				}
@@ -3101,7 +3101,7 @@ namespace INMOST
 							merger.AddRow((*pB)(k, j).GetValue(), (*pA)(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger.RetriveRow(M(i, j).GetRow());
+						merger.RetrieveRow(M(i, j).GetRow());
 						merger.Clear();
 					}
 				}
@@ -3507,7 +3507,7 @@ namespace INMOST
 						merger.AddRow((*this)(i,k),other(k,j).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else
@@ -3545,7 +3545,7 @@ namespace INMOST
 						merger.AddRow(other(k,j),(*this)(i,k).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else
@@ -3583,7 +3583,7 @@ namespace INMOST
 						merger.AddRow((*this)(i,k).GetValue(),other(k,j).GetRow());
 					}
 					ret(i,j).SetValue(value);
-					merger.RetriveRow(ret(i,j).GetRow());
+					merger.RetrieveRow(ret(i,j).GetRow());
 					merger.Clear();
 				}
 				else
@@ -3643,7 +3643,7 @@ namespace INMOST
 					merger.AddRow((*this)(i,j),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
+			merger.RetrieveRow(ret.GetRow());
 			merger.Clear();
 		}
 		else
@@ -3674,7 +3674,7 @@ namespace INMOST
 					merger.AddRow(other(i,j),(*this)(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
+			merger.RetrieveRow(ret.GetRow());
 			merger.Clear();
 		}
 		else
@@ -3706,7 +3706,7 @@ namespace INMOST
 					merger.AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger.RetriveRow(ret.GetRow());
+			merger.RetrieveRow(ret.GetRow());
 			merger.Clear();
 		}
 		else
@@ -4058,7 +4058,7 @@ namespace INMOST
 						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
+					merger.RetrieveRow(Y(i,k).GetRow());
 					merger.Clear();
 				}
 				else
@@ -4089,7 +4089,7 @@ namespace INMOST
 						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
+					merger.RetrieveRow(X(i,k).GetRow());
 					merger.Clear();
 				}
 				else
@@ -4174,7 +4174,7 @@ namespace INMOST
 						merger.AddRow(-L(j,i),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
+					merger.RetrieveRow(Y(i,k).GetRow());
 					merger.Clear();
 				}
 				else
@@ -4204,7 +4204,7 @@ namespace INMOST
 						merger.AddRow(-L(i,j),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
+					merger.RetrieveRow(X(i,k).GetRow());
 					merger.Clear();
 				}
 				else
@@ -4289,7 +4289,7 @@ namespace INMOST
 						merger.AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					merger.RetriveRow(Y(i,k).GetRow());
+					merger.RetrieveRow(Y(i,k).GetRow());
 					merger.Clear();
 				}
 				else
@@ -4320,7 +4320,7 @@ namespace INMOST
 						merger.AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					merger.RetriveRow(X(i,k).GetRow());
+					merger.RetrieveRow(X(i,k).GetRow());
 					merger.Clear();
 				}
 				else

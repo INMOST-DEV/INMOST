@@ -20,7 +20,7 @@ namespace INMOST
 	class AbstractSubModel
 	{
 	public:
-		/// Let the submodel introduce it's unknowns
+		/// Let the submodel introduce its unknowns
 		virtual bool PrepareEntries(Model& P) = 0;
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
@@ -44,7 +44,7 @@ namespace INMOST
 		/*
 		/// Adapt the data of the model after the mesh refinement/coarsement.
 		/// No algorithm by default
-		/// If this submodel depends on provided adapted mesh, it should update it's data
+		/// If this submodel depends on provided adapted mesh, it should update its data
 		virtual void Adaptation(Mesh& m) const { (void)m; }
 
 		virtual void PrepareAdaptation(Mesh& m) { (void)m; }
@@ -71,7 +71,7 @@ namespace INMOST
 
 	/// A class to manage residual fill-in of the coupling between models.
 	/// Use this to introduce coupling terms that depends on the data between the models.
-	/// Coupling term does not introduce it's own unknowns and writes to the residual.
+	/// Coupling term does not introduce its own unknowns and writes to the residual.
 	class AbstractCouplingTerm
 	{
 	public:
@@ -190,17 +190,17 @@ namespace INMOST
 		void ActivateEntry(std::string name) { activeEntries[name] = true; }
 		void DeactivateEntry(std::string name) { activeEntries[name] = false; }
 		/// Add an entry of block unknowns to a model.
-		/// The model stores a link to the entry and may modify it contents.
+		/// The model stores a link to the entry and may modify its contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
 		void AddEntry(std::string name, AbstractEntry& entry);
 		/// Add an entry of block unknowns to a model after an entry with certain name.
-		/// The model stores a link to the entry and may modify it contents.
+		/// The model stores a link to the entry and may modify its contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
 		void AddAfterEntry(std::string name, AbstractEntry& entry, std::string after);
 		/// Add an entry of block unknowns to a model as a first entry.
-		/// The model stores a link to the entry and may modify it contents.
+		/// The model stores a link to the entry and may modify its contents.
 		/// The intries should be added from Model::Initialize function,
 		/// either by model or by any of the submodels.
 		void AddFirstEntry(std::string name, AbstractEntry& entry);
@@ -232,58 +232,58 @@ namespace INMOST
 		/// Add an operator to a model.
 		/// \warning A pointer to the original object is stored, thus do not destroy the original object.
 		void AddOperator(std::string name, AbstractOperator & op);
-		/// Retrive an automatizator.
+		/// Retrieve an automatizator.
 		Automatizator & GetAutomatizator() {return aut;}
-		/// Retrive an automatizator.
+		/// Retrieve an automatizator.
 		const Automatizator & GetAutomatizator() const {return aut;}
-		/// Retrive a mesh by name.
+		/// Retrieve a mesh by name.
 		Mesh * GetMesh(std::string);
-		/// Retrive a mesh by name.
+		/// Retrieve a mesh by name.
 		const Mesh * GetMesh(std::string) const;
-		/// Retrive all names of meshes.
+		/// Retrieve all names of meshes.
 		std::vector<std::string> GetMeshesNames() const;
-		/// Retrive an entry that describe unknowns of the model by name.
+		/// Retrieve an entry that describe unknowns of the model by name.
 		AbstractEntry * GetEntry(std::string name);
-		/// Retrive an entry that describe unknowns of the model by name.
+		/// Retrieve an entry that describe unknowns of the model by name.
 		const AbstractEntry * GetEntry(std::string name) const;
-		/// Retrive all names of entries.
+		/// Retrieve all names of entries.
 		std::vector<std::string> GetEntriesNames() const;
-		/// Retrive a submodel of the model by name.
+		/// Retrieve a submodel of the model by name.
 		AbstractSubModel * GetSubModel(std::string name);
-		/// Retrive a submodel of the model by name.
+		/// Retrieve a submodel of the model by name.
 		const AbstractSubModel * GetSubModel(std::string name) const;
-		/// Retrive the name by submodel address
+		/// Retrieve the name by submodel address
 		std::string GetSubModelName(const AbstractSubModel* model) const;
-		/// Retrive all names of submodules.
+		/// Retrieve all names of submodules.
 		std::vector<std::string> GetSubModelsNames() const;
-		/// Retrive a coupling term of the model by name.
+		/// Retrieve a coupling term of the model by name.
 		AbstractCouplingTerm* GetCouplingTerm(std::string submodel, std::string name);
-		/// Retrive a coupling term of the model by name.
+		/// Retrieve a coupling term of the model by name.
 		const AbstractCouplingTerm* GetCouplingTerm(std::string submodel, std::string name) const;
-		/// Retrive all names of coupling terms.
+		/// Retrieve all names of coupling terms.
 		std::vector< std::pair< std::string, std::vector<std::string> > > GetCouplingTermNames() const;
-		/// Retrive a scalar function of the model by name.
+		/// Retrieve a scalar function of the model by name.
 		AbstractScalarFunction* GetScalarFunction(std::string name);
-		/// Retrive a scalar function of the model by name.
+		/// Retrieve a scalar function of the model by name.
 		const AbstractScalarFunction* GetScalarFunction(std::string name) const;
-		/// Retrive all names of scalar functions.
+		/// Retrieve all names of scalar functions.
 		std::vector<std::string> GetScalarFunctionNames() const;
-		/// Retrive a matrix functon of the model by name.
+		/// Retrieve a matrix functon of the model by name.
 		AbstractMatrixFunction* GetMatrixFunction(std::string name);
-		/// Retrive a matrix function of the model by name.
+		/// Retrieve a matrix function of the model by name.
 		const AbstractMatrixFunction* GetMatrixFunction(std::string name) const;
-		/// Retrive all names of matrix functions.
+		/// Retrieve all names of matrix functions.
 		std::vector<std::string> GetMatrixFunctionNames() const;
-		/// Retrive an operator of the model by name.
+		/// Retrieve an operator of the model by name.
 		AbstractOperator * GetOperator(std::string name);
-		/// Retrive an operator of the model by name.
+		/// Retrieve an operator of the model by name.
 		const AbstractOperator * GetOperator(std::string name) const;
-		/// Retrive all names of operators.
+		/// Retrieve all names of operators.
 		std::vector<std::string> GetOperatorsNames() const;
-		/// Each submodel introduces it's unknowns into the model
+		/// Each submodel introduces its unknowns into the model
 		/// so that later it can be accessed
 		bool PrepareEntries();
-		/// Initialze all entries and submodels.
+		/// Initialize all entries and submodels.
 		bool Initialize();
 		/// Initialize data needed for FillResidual.
 		/// Called once before nonlinear iterations.
@@ -300,10 +300,10 @@ namespace INMOST
 		bool SetTimeStep(double dt);
 		/// Roll back to previous time step
 		bool RestoreTimeStep();
-		/// Check was the model initialized.
+		/// Check whether the model was initialized.
 		bool isInitialized() const {return initialized;}
 		/// Update variables  contained in all block of automatizator on ghost elements of the grid.
-		/// For synchronization of data in individual blocks see AbstractEntry::SynhronizeData.
+		/// For synchronization of data in individual blocks see AbstractEntry::SynchronizeData.
 		void SynchronizeData() { aut.SynchronizeData(); }
 		/// Calculate multiplier for update.
 		double UpdateMultiplier(const Sparse::Vector & sol) const;

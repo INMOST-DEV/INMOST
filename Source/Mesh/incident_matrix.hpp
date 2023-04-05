@@ -232,15 +232,15 @@ namespace INMOST
 			else //this is 3d face
 			{
 				//firstly, have to figure out orientation of each face
-				//mark all faces, so that we can perform adjacency retrival
+				//mark all faces, so that we can perform adjacency retrieval
 				MarkerType mrk = mesh->CreatePrivateMarker();
 				MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
 				for(int k = 1; k < data.size(); ++k)
 					data[k]->SetPrivateMarker(mrk); //0-th face orientation is default
-				Node n1,n2; //to retrive edge
+				Node n1,n2; //to retrieve edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
+				//todo: can do faster by retrieving edges and going over their nodes
 				//should not use FindSharedAdjacency
 				ElementArray<Edge> edges = data[0]->getEdges();
 				do
@@ -281,7 +281,7 @@ namespace INMOST
 					orient_face r = stack.front();
 					//remove face from stack
 					stack.pop_front();
-					//retrive edges for new face
+					//retrieve edges for new face
 					edges = r.face->getEdges();
 					reverse = false;
 					//figure out starting node order
@@ -819,15 +819,15 @@ namespace INMOST
 			else //this is 3d face
 			{
 				//firstly, have to figure out orientation of each face
-				//mark all faces, so that we can perform adjacency retrival
+				//mark all faces, so that we can perform adjacency retrieval
 				MarkerType mrk = mesh->CreatePrivateMarker();
 				MarkerType rev = mesh->CreatePrivateMarker(); //reverse orientation
 				for(int k = 1; k < data.size(); ++k)
 					data[k]->SetPrivateMarker(mrk); //0-th face orientation is default
-				Node n1,n2; //to retrive edge
+				Node n1,n2; //to retrieve edge
 				bool reverse = false; //reverse orientation in considered face
 				std::deque< orient_face > stack; //edge and first node and face for visiting
-				//todo: can do faster by retriving edges and going over their nodes
+				//todo: can do faster by retrieving edges and going over their nodes
 				//should not use FindSharedAdjacency
 				ElementArray<Edge> edges = data[0]->getEdges();
 				do
@@ -868,7 +868,7 @@ namespace INMOST
 					orient_face r = stack.front();
 					//remove face from stack
 					stack.pop_front();
-					//retrive edges for new face
+					//retrieve edges for new face
 					edges = r.face->getEdges();
 					reverse = false;
 					//figure out starting node order

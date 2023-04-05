@@ -170,7 +170,7 @@ namespace INMOST {
                 reason = "User requested convergence criteria is satisfied.";
                 break;
             case AZ_param:
-                reason = "User requested option is not availible.";
+                reason = "User requested option is not available.";
                 success = false;
                 break;
             case AZ_breakdown:

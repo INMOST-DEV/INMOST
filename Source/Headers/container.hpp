@@ -1116,7 +1116,7 @@ namespace INMOST
 
 
 		size_type m_size;
-		//This neads static_cast to unsigned to
+		//This needs static_cast to unsigned to
 		__INLINE size_type GetChunkNumber(size_type k) const {return static_cast<uenum>(k) >> block_bits;}
 		__INLINE size_type GetElementNumber(size_type k) const {return (k & block_bits_mask);}
 		__INLINE element * access_block(size_type k) {return chunks[GetChunkNumber(k)];}

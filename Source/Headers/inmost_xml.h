@@ -171,19 +171,19 @@ namespace INMOST
 	  bool BlockData() const {return finish == 4;}
       ///Was not able to read the tag.
       bool Failure() const {return finish == 0;}
-      ///Tag was red and have internal contents, can process the contents.
+      ///Tag was read and have internal contents, can process the contents.
       bool Process() const {return finish == 1;}
-	  ///Tag was red but do not have internal contents.
+	  ///Tag was read but do not have internal contents.
 	  bool Stub() const {return finish == 2;}
       ///Tag was not red, finish of enclosing tag was encountered.
       bool Finalize() const {return finish == 3;}
-	  ///Retrive attribute number n.
+	  ///Retrieve attribute number n.
       const XMLAttrib & GetAttrib(int n) const {return attributes[n];}
-	  ///Retrive attribute number n.
+	  ///Retrieve attribute number n.
       XMLAttrib & GetAttrib(int n) {return attributes[n];}
-	  ///Retrive number of attributes.
+	  ///Retrieve number of attributes.
       int NumAttrib() const {return (int)attributes.size();}
-	  ///Retrive the name of the tag.
+	  ///Retrieve the name of the tag.
 	  std::string GetName() const {return name;}
     };
 
@@ -197,32 +197,32 @@ namespace INMOST
 		std::vector<XMLTree> children; //< Children inside XML tag.
 		std::string contents; //< Text inside of the tag.
 
-		///Return next occurance of XML tag with the specified
+		///Return next occurence of XML tag with the specified
 		///name. Returns NumChildren() if not found.
 		int FindChild(std::string name, int offset = -1) const;
-		///Return next occurance of XML attribute with the specified
+		///Return next occurence of XML attribute with the specified
 		///name. Returns NumAttrib() if not found.
 		int FindAttrib(std::string name, int offset = -1) const;
-		///Retrive a child of current XML tag with number n.
+		///Retrieve a child of current XML tag with number n.
 		const XMLTree & GetChild(int n) const {return children[n];}
-		///Retrive a child of current XML tag with name
+		///Retrieve a child of current XML tag with name
 		///Returns NULL if not found.
 		const XMLTree * GetChild(std::string name) const;
-		///Retrive a child of current XML tag with attribute
+		///Retrieve a child of current XML tag with attribute
 		///Returns NULL if not found.
 		const XMLTree * GetChildWithAttrib(std::string name, std::string value) const;
-		///Retrive number of children.
+		///Retrieve number of children.
 		int NumChildren() const {return (int)children.size();}
-		///Retrive attribute of current XML tag with number n.
+		///Retrieve attribute of current XML tag with number n.
 		const XMLAttrib & GetAttrib(int n) const {return tag.GetAttrib(n);}
-		///Retrive attribute of current XML tag with name.
+		///Retrieve attribute of current XML tag with name.
 		///Returns NULL if not found.
 		const std::string & GetAttrib(std::string name) const;
-		///Retrive number of attributes.
+		///Retrieve number of attributes.
 		int NumAttrib() const {return tag.NumAttrib();}
-		///Retrive the name of the tag.
+		///Retrieve the name of the tag.
 		std::string GetName() const {return tag.GetName();}
-		///Retrive contents of the tag.
+		///Retrieve contents of the tag.
 		const std::string & GetContents() const {return contents;}
 	};
 
@@ -232,7 +232,7 @@ private:
 	int ReadXMLSub(XMLTree & root);
 public:
 	/// Read entire XML file into structure,
-	/// it may be more efficient to read the file incrementially, depending on the size.
+	/// it may be more efficient to read the file incrementally, depending on the size.
 	/// See mesh_xml_file.cpp for incremential read.
 	XMLTree ReadXML();
   };
