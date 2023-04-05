@@ -1138,7 +1138,7 @@ namespace INMOST
 			Element::adj_type & lc = m->LowConn(GetHandle());
 			Element::adj_type merge(lc.size()+other_lc.size());
 			Element::adj_type::iterator it = lc.begin(), iend = lc.begin()+hSorted(hc);
-			Element::adj_type::iterator jt = other_lc.begin(), jend = other_lc.end()+hSorted(other_hc);
+			Element::adj_type::iterator jt = other_lc.begin(), jend = other_lc.begin()+hSorted(other_hc);
 			Element::adj_type::iterator mit = merge.begin(), mitprev = merge.begin();
 			MarkerType mrk = m->CreatePrivateMarker();
 			//now insertion checks for duplicates
@@ -1224,7 +1224,7 @@ namespace INMOST
 		assert(GetElementType() == ESET);
 		Mesh * m = GetMeshLink();
 		Element::adj_type & lc = m->LowConn(GetHandle());
-		Element::adj_type & hc = m->LowConn(GetHandle());
+		Element::adj_type & hc = m->HighConn(GetHandle());
 		MarkerType mrk = m->CreatePrivateMarker();
 		other->SetPrivateMarkerElements(mrk);
 		for(Element::adj_type::size_type i = 0; i < lc.size(); ++i)
@@ -1607,7 +1607,7 @@ namespace INMOST
 	ElementSet::iterator ElementSet::EndSorted() const
 	{
 		assert(GetElementType() == ESET);
-		Element::adj_type & hc = GetMeshLink()->LowConn(GetHandle());
+		Element::adj_type & hc = GetMeshLink()->HighConn(GetHandle());
 		Element::adj_type & lc = GetMeshLink()->LowConn(GetHandle());
 		return ++iterator(GetMeshLink(),&lc,hSorted(hc)-1);
 	}
