@@ -9,8 +9,9 @@
 namespace INMOST
 {
 
-  void Mesh::SavePVTK(std::string File)
-  {
+	void Mesh::SavePVTK(std::string File)
+	{
+		int fail = 0;
 		std::string name=File;
 		std::string::size_type pos=name.rfind(".pvtk");
 		name.erase(pos); 
@@ -24,21 +25,28 @@ namespace INMOST
 			ss << GetProcessorsNumber();
 			numproc=ss.str();
 			FILE  *f=fopen(File.c_str(), "w");
-			if (f == NULL) throw BadFileName;
-			fprintf(f,"%s%s%s", "<File version=\"pvtk-1.0\" dataType=\"vtkUnstructuredGrid\" numberOfPieces=\"", numproc.c_str(),"\">\n");
-			for (int i=0; i<GetProcessorsNumber(); i++)
+			if (f != NULL)
 			{
-				std::stringstream ss;
-				ss << i;//task: leading zeroes
-				std::string end="_"+ss.str()+".vtk";
+				fprintf(f, "%s%s%s", "<File version=\"pvtk-1.0\" dataType=\"vtkUnstructuredGrid\" numberOfPieces=\"", numproc.c_str(), "\">\n");
+				for (int i = 0; i < GetProcessorsNumber(); i++)
+				{
+					std::stringstream ss;
+					ss << i;//task: leading zeroes
+					std::string end = "_" + ss.str() + ".vtk";
 
-				std::string temp=fname;
-				temp.append(end);
-				fprintf(f, "%s%s%s", "<Piece fileName=\"" ,temp.c_str() ,"\"/>\n");
+					std::string temp = fname;
+					temp.append(end);
+					fprintf(f, "%s%s%s", "<Piece fileName=\"", temp.c_str(), "\"/>\n");
+				}
+				fprintf(f, "%s", "</File>");
+				fclose(f);
 			}
-			fprintf(f, "%s", "</File>");
-			fclose(f);
+			else fail = 1;
 		}
+#if defined(USE_MPI)
+		MPI_Bcast(&fail, 1, MPI_INT, 0, GetCommunicator());
+#endif
+		if (fail) throw BadFileName;
 			
 		std::stringstream ss;
 		ss << GetProcessorRank();//task: leading zeroes

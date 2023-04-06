@@ -35,6 +35,7 @@ namespace INMOST
 	
 	void Mesh::SavePVTU(std::string file)
 	{
+		int fail = 0;
 		std::string name=file;
 		std::string::size_type pos=name.rfind(".pvtu");
 		name.erase(pos); 
@@ -50,86 +51,93 @@ namespace INMOST
 			nosave = TagOptions("nosave");
 			saveonly = TagOptions("saveonly");
 			std::ofstream fh(file.c_str());
-			
-			std::map<DataType,std::string> type_name;
-			type_name[DATA_INTEGER] = "Int32";
-			type_name[DATA_BULK] = "Int8";
-			type_name[DATA_REAL] = "Float64";
+			if (!fh.fail())
+			{
+				std::map<DataType, std::string> type_name;
+				type_name[DATA_INTEGER] = "Int32";
+				type_name[DATA_BULK] = "Int8";
+				type_name[DATA_REAL] = "Float64";
 #if defined(USE_AUTODIFF)
-			type_name[DATA_VARIABLE] = "Float64";
+				type_name[DATA_VARIABLE] = "Float64";
 #endif
-		
-			fh << "<VTKFile type=\"PUnstructuredGrid\">" << std::endl;
-			fh << "\t<PUnstructuredGrid GhostLevel=\"0\">" << std::endl;
-			fh << "\t\t<PPointData>" << std::endl;
-			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
-			{
-				//SKIPHERE
-				if( it->GetSize() == ENUMUNDEF ) continue;
-				if( it->GetDataType() == DATA_REFERENCE ) continue;
-				if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
-				if( *it == MarkersTag() ) continue; 
-				if( *it == HighConnTag() ) continue;
-				if( *it == LowConnTag() ) continue;
-				if( *it == CoordsTag() ) continue;
-				if( *it == SetNameTag() ) continue;
-				if( !it->isDefined(NODE) ) continue;
-				if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
-				if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
-					continue;
+
+				fh << "<VTKFile type=\"PUnstructuredGrid\">" << std::endl;
+				fh << "\t<PUnstructuredGrid GhostLevel=\"0\">" << std::endl;
+				fh << "\t\t<PPointData>" << std::endl;
+				for (Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+				{
+					//SKIPHERE
+					if (it->GetSize() == ENUMUNDEF) continue;
+					if (it->GetDataType() == DATA_REFERENCE) continue;
+					if (it->GetDataType() == DATA_REMOTE_REFERENCE) continue;
+					if (*it == MarkersTag()) continue;
+					if (*it == HighConnTag()) continue;
+					if (*it == LowConnTag()) continue;
+					if (*it == CoordsTag()) continue;
+					if (*it == SetNameTag()) continue;
+					if (!it->isDefined(NODE)) continue;
+					if (it->GetTagName().substr(0, 9) == "PROTECTED") continue;
+					if (CheckSaveSkip(it->GetTagName(), nosave, saveonly))
+						continue;
+					fh << "\t\t\t<PDataArray";
+					fh << " type=\"" << type_name[it->GetDataType()] << "\"";
+					fh << " Name=\"" << it->GetTagName() << "\"";
+					fh << " Format=\"ascii\"";
+					fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
+					fh << "/>" << std::endl;
+				}
+				fh << "\t\t</PPointData>" << std::endl;
+				fh << "\t\t<PCellData>" << std::endl;
+				for (Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
+				{
+					//SKIPHERE
+					if (it->GetSize() == ENUMUNDEF) continue;
+					if (it->GetDataType() == DATA_REFERENCE) continue;
+					if (it->GetDataType() == DATA_REMOTE_REFERENCE) continue;
+					if (*it == MarkersTag()) continue;
+					if (*it == HighConnTag()) continue;
+					if (*it == LowConnTag()) continue;
+					if (*it == CoordsTag()) continue;
+					if (*it == SetNameTag()) continue;
+					if (!it->isDefined(CELL)) continue;
+					if (it->GetTagName().substr(0, 9) == "PROTECTED") continue;
+					if (CheckSaveSkip(it->GetTagName(), nosave, saveonly))
+						continue;
+					fh << "\t\t\t<PDataArray";
+					fh << " type=\"" << type_name[it->GetDataType()] << "\"";
+					fh << " Name=\"" << it->GetTagName() << "\"";
+					fh << " Format=\"ascii\"";
+					fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
+					fh << "/>" << std::endl;
+				}
+				fh << "\t\t</PCellData>" << std::endl;
+				fh << "\t\t<PPoints>" << std::endl;
 				fh << "\t\t\t<PDataArray";
-				fh << " type=\"" << type_name[it->GetDataType()] << "\"";
-				fh << " Name=\"" << it->GetTagName() << "\"";
+				fh << " type=\"Float64\"";
+				fh << " NumberOfComponents=\"" << GetDimensions() << "\"";
 				fh << " Format=\"ascii\"";
-				fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
 				fh << "/>" << std::endl;
+				fh << "\t\t</PPoints>" << std::endl;
+				for (int k = 0; k < GetProcessorsNumber(); ++k)
+				{
+					std::stringstream filename;
+					filename << fname << 'p';
+					for (int q = getdigits(k + 1); q < getdigits(GetProcessorsNumber()); ++q)
+						filename << '0'; //leading zeros
+					filename << (k + 1);
+					filename << ".vtu";
+					fh << "\t\t<Piece Source=\"" << filename.str() << "\"/>" << std::endl;
+				}
+				fh << "\t</PUnstructuredGrid>" << std::endl;
+				fh << "</VTKFile>" << std::endl;
 			}
-			fh << "\t\t</PPointData>" << std::endl;
-			fh << "\t\t<PCellData>" << std::endl;
-			for(Mesh::iteratorTag it = BeginTag(); it != EndTag(); it++)
-			{
-				//SKIPHERE
-				if( it->GetSize() == ENUMUNDEF ) continue;
-				if( it->GetDataType() == DATA_REFERENCE ) continue;
-				if( it->GetDataType() == DATA_REMOTE_REFERENCE ) continue;
-				if( *it == MarkersTag() ) continue; 
-				if( *it == HighConnTag() ) continue;
-				if( *it == LowConnTag() ) continue;
-				if( *it == CoordsTag() ) continue;
-				if( *it == SetNameTag() ) continue;
-				if( !it->isDefined(CELL) ) continue;
-				if( it->GetTagName().substr(0,9) == "PROTECTED" ) continue;
-				if( CheckSaveSkip(it->GetTagName(),nosave,saveonly) )
-					continue;
-				fh << "\t\t\t<PDataArray";
-				fh << " type=\"" << type_name[it->GetDataType()] << "\"";
-				fh << " Name=\"" << it->GetTagName() << "\"";
-				fh << " Format=\"ascii\"";
-				fh << " NumberOfComponents=\"" << it->GetSize() << "\"";
-				fh << "/>" << std::endl;
-			}
-			fh << "\t\t</PCellData>" << std::endl;
-			fh << "\t\t<PPoints>" << std::endl;
-			fh << "\t\t\t<PDataArray";
-			fh << " type=\"Float64\"";
-			fh << " NumberOfComponents=\"" << GetDimensions() << "\"";
-			fh << " Format=\"ascii\"";
-			fh << "/>" << std::endl;
-			fh << "\t\t</PPoints>" << std::endl;
-			for(int k = 0; k < GetProcessorsNumber(); ++k)
-			{
-				std::stringstream filename;
-				filename << fname << 'p';
-				for(int q = getdigits(k+1); q < getdigits(GetProcessorsNumber()); ++q) 
-					filename << '0'; //leading zeros
-				filename << (k+1);
-				filename << ".vtu";
-				fh << "\t\t<Piece Source=\"" << filename.str() << "\"/>" << std::endl; 
-			}
-			fh << "\t</PUnstructuredGrid>" << std::endl;
-			fh << "</VTKFile>" << std::endl;
+			else fail = 1;
 		}
 		
+#if defined(USE_MPI)
+		MPI_Bcast(&fail, 1, MPI_INT, 0, GetCommunicator());
+#endif
+		if (fail) throw BadFileName;
 		
 		{
 			std::stringstream filename;
