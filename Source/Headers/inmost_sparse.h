@@ -14,7 +14,7 @@ namespace INMOST
 	namespace Sparse
 	{
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
-		/// Retrive MPI type for row entry type.
+		/// Retrieve MPI type for row entry type.
 		INMOST_MPI_Type GetRowEntryType();
 		/// Create MPI type for row entry type.
 		void CreateRowEntryType();
@@ -53,14 +53,14 @@ namespace INMOST
 			/// @param beg The first row of the local matrix.
 			/// @param end The last row of the local matrix.
 			void                   SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end) { text.set_interval_beg(beg); text.set_interval_end(end); }
-			/// Retrive interval of the local matrix.
+			/// Retrieve interval of the local matrix.
 			/// @param start Record the first row of the local matrix into this variable.
 			/// @param end Record the last row of the local matrix into this variable.
 			void                   GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const {start = text.get_interval_beg(); end = text.get_interval_end();}
-			/// Retrive the text corresponding to a certain row of the matrix.
+			/// Retrieve the text corresponding to a certain row of the matrix.
 			/// @param row Row of the matrix.
 			std::string &          GetAnnotation(INMOST_DATA_ENUM_TYPE row) {assert(!text.empty()); return text[row];}
-			/// Retrive the text corresponding to a certain row of the matrix without right of modification.
+			/// Retrieve the text corresponding to a certain row of the matrix without right of modification.
 			/// @param row Row of the matrix.
 			const std::string &    GetAnnotation(INMOST_DATA_ENUM_TYPE row) const {assert(!text.empty()); return text[row];}
 			/// Specify the text to a certain row of the matrix.
@@ -256,19 +256,19 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			/// Checks are there any nonzero entries in the row.
 			bool                    Empty() const { return data.empty(); }
-			/// Retrive an index corresponding to certain position in the array of pairs of index and value.
+			/// Retrieve an index corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Index corresponding to the position in the array.
 			INMOST_DATA_ENUM_TYPE & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->first;}
-			/// Retrive a value corresponding to certain position in the array of pairs of index and value.
+			/// Retrieve a value corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Value corresponding to the position in the array.
 			INMOST_DATA_REAL_TYPE & GetValue(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->second;}
-			/// Retrive an index corresponding to certain position in the array of pairs of index and value.
+			/// Retrieve an index corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Index corresponding to the position in the array.
 			INMOST_DATA_ENUM_TYPE   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->first;}
-			/// Retrive a value corresponding to certain position in the array of pairs of index and value.
+			/// Retrieve a value corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Value corresponding to the position in the array.
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
@@ -737,20 +737,16 @@ namespace INMOST
 			/// If you want contents of the row to be added
 			/// use AddRow with this row in advance.
 			/// @param r A row to be filled.
-			void RetriveRow(Row & r);
+			void RetrieveRow(Row & r);
 			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
 			/// Get current number of nonzeros from linked list.
-			INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}
-			//INMOST_DATA_ENUM_TYPE Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+			INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}// { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			/// Check if linked list is empty.
 			bool Empty() const { return Nonzeros == 0; }
 			//bool Empty() const { return data.empty(); }
 			/// Retrive/add an entry from/to linked list.
 			/// @param pos Position in the list.
-			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE pos);
-			//{ 
-			//	return data[pos]; 
-			//} 
+			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE pos); //{ return data[pos]; } 
 			/// Retrive an entry from linked list.
 			/// \warning
 			/// Will fire an exception if there is no entry.
@@ -768,7 +764,7 @@ namespace INMOST
 			{
 				PushRow(alpha,a);
 				AddRow(beta,b);
-				RetriveRow(c);
+				RetrieveRow(c);
 				Clear();
 			}
 			///Retrive iterator for the first element.

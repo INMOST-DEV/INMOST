@@ -814,7 +814,7 @@ namespace INMOST
 				{
 					if( !GetTopologyCheck(NEED_TEST_CLOSURE) ||  TestClosure(lc,size) )
 					{
-						// for simple cells there is no more then one common edge
+						// for simple cells there is no more than one common edge
 						// otherwise the cell should be treated as polyhedron
 						bool check = true;
 						MarkerType common = CreatePrivateMarker();
@@ -2435,7 +2435,7 @@ namespace INMOST
 										{
 											hits[GetHandle()] = k;
 										}
-										break; //we shouldn't have more then one intersection
+										break; //we shouldn't have more than one intersection
 									}
 								}
 							}

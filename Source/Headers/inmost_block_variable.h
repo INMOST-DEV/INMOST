@@ -78,8 +78,8 @@ namespace INMOST
 		
 		template<typename T>
 		get_variable<T> get_variable() {return get_variable<T>(*var);}
-		abstract_dynamic_block_variable & retrive_expression() {return *var;}
-		const abstract_dynamic_block_variable & retrive_expression() const {return *var;}
+		abstract_dynamic_block_variable & retrieve_expression() {return *var;}
+		const abstract_dynamic_block_variable & retrieve_expression() const {return *var;}
 		abstract_dynamic_block_variable * Copy() const {return static_cast<abstract_dynamic_block_variable *>(new stored_block_variable_expression(*this));}
 		/// Checks that the stored expresison was defined.
 		bool isDefined() const {return var != NULL;}

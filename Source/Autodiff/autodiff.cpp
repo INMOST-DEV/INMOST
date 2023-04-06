@@ -2,19 +2,11 @@
 
 #if defined(USE_AUTODIFF)
 
-#if defined(USE_AUTODIFF_ASMJIT)
-#include "asmjit.h"
-#endif
-
-
-
-
 namespace INMOST
 {
 	thread_private<Sparse::RowMerger> basic_expression::merger = thread_private<Sparse::RowMerger>();
 	thread_private<Sparse::RowMerger> AbstractMatrixBase::merger = thread_private<Sparse::RowMerger>();
 
-#if defined(USE_MESH) //Automatizator class does not exist without mesh	
 	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
 	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
 	template<> Demote<unknown>::type                  AbstractEntry::Access<unknown>                 (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Unknown(e,pos);}
@@ -35,8 +27,7 @@ namespace INMOST
 	template<>
 	Matrix<Demote<hessian_variable>::type >
 	AbstractEntry::Access<hessian_variable>(const Storage& e) const {return Unknown(e);}
-#endif //USE_MESH
-	
+
 #if defined(USE_MESH)
 	Automatizator::Automatizator(const Automatizator & b) : name(b.name+"_copy")
 	{

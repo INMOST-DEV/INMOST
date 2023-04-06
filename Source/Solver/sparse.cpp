@@ -245,7 +245,7 @@ namespace INMOST
 		
 
 
-		void RowMerger::RetriveRow(Row & r)
+		void RowMerger::RetrieveRow(Row & r)
 		{
             r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros));
 			INMOST_DATA_ENUM_TYPE i = First, k = 0;

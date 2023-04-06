@@ -469,7 +469,7 @@ namespace INMOST
 				  pass_tag = true;
 			  }
 
-			  if( matchntags && ntags != tags.size() ) reader.Report("Number %d of XML tags Tag red do not match to the specified number %d",tags.size(),ntags);
+			  if( matchntags && ntags != tags.size() ) reader.Report("Number %d of XML tags Tag read do not match to the specified number %d",tags.size(),ntags);
 		  }
           else if( TagSetsData.name == "Sets" )
           {

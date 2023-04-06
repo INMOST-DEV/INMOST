@@ -297,7 +297,7 @@ namespace INMOST
 		//For each node create several new ones that will be used in open fracture
 		for (Mesh::iteratorNode it = m->BeginNode(); it != m->EndNode(); ++it)
 		{
-			ElementArray<Face> n_faces = it->getFaces(); //retrive all faces joining at the node
+			ElementArray<Face> n_faces = it->getFaces(); //retrieve all faces joining at the node
 			INMOST_DATA_ENUM_TYPE num_frac_faces = 0;
 			for (size_t k = 0; k < n_faces.size(); ++k) if (n_faces[k].GetMarker(frac_markers)) num_frac_faces++;
 			if (num_frac_faces)
@@ -3178,7 +3178,7 @@ namespace INMOST
 						for (int l = 0; l < num; ++l) rtemporary[l] = pillar_node_depth[l];
 						for (int l = 0; l < num; ++l) pillar_node_depth[l] = rtemporary[indices_sort[l]];
 						//assert(std::is_sorted(&pillar_node_depth[0],&pillar_node_depth[num]));
-						//retrive pillar info
+						//retrieve pillar info
 						xmin = xyz[ECL_IJK_COORDS(i, j, 0, 0)];
 						xmax = xyz[ECL_IJK_COORDS(i, j, 1, 0)];
 						ymin = xyz[ECL_IJK_COORDS(i, j, 0, 1)];
@@ -3196,7 +3196,7 @@ namespace INMOST
 							node_xyz[0] = xmin + mean_alpha * (xmax - xmin);
 							node_xyz[1] = ymin + mean_alpha * (ymax - ymin);
 							node_xyz[2] = mean_depth;
-							//search node among priviously existed nodes, create if not found
+							//search node among previously existed nodes, create if not found
 							int find = -1;
 							if (!old_nodes.empty())
 							{
@@ -3426,7 +3426,7 @@ namespace INMOST
 					//on front side of the pillar
 					std::vector< ElementArray<Edge> > pillar_block_edges_front(dims[2], ElementArray<Edge>(this));
 					std::vector<bool> skip_blocks_back(dims[2], false);
-					//mark edges on pillar for adjacency retrival
+					//mark edges on pillar for adjacency retrieval
 					MarkerType mrk = CreatePrivateMarker();
 					//mark original edges of each block face, so that we know outer boundary on constructed interface
 					MarkerType outer = CreatePrivateMarker();
@@ -3773,7 +3773,7 @@ namespace INMOST
 								if (print_bedges) std::cout << (m ? "front " : "back ") << " column of blocks: " << blocki[m] << "," << blockj[m] << std::endl;
 								for (int k = 0; k < dims[2]; ++k)  if (actnum.empty() || actnum[ECL_IJK_DATA(blocki[m], blockj[m], k)]) //go down the piller
 								{
-									//retrive edge for the side
+									//retrieve edge for the side
 									ElementArray<Edge> & bedges = pillar_block_edges[m]->at(k);
 									if (bedges.empty()) continue;
 									//remove any duplicates
@@ -3782,7 +3782,7 @@ namespace INMOST
 									std::set<int> outer_edge_number;
 									for (size_t l = 0; l < bedges.size(); ++l) //loop through edges of the block
 									{
-										//retrive block numbers of edges
+										//retrieve block numbers of edges
 										Storage::integer_array bn = bedges[l]->IntegerArray(block_number);
 										Storage::integer_array en = bedges[l]->IntegerArray(edge_number);
 										for (int r = 0; r < (int)bn.size(); ++r)
@@ -4107,7 +4107,7 @@ namespace INMOST
 								};
 								//array of ordered edges, first dimension - top or bottom, second dimension - edge number
 								std::vector<HandleType> edges[2][4];
-								//retrive set of edges of the block
+								//retrieve set of edges of the block
 								ElementArray<Edge> & cbe = block_edges[cur];
 								for (ElementArray<Edge>::size_type q = 0; q < cbe.size(); ++q)
 								{
@@ -4186,7 +4186,7 @@ namespace INMOST
 
 														if (!was_split)
 														{
-															std::cout << "Cannot detect how the face was priviously split" << std::endl;
+															std::cout << "Cannot detect how the face was previously split" << std::endl;
 															std::cout << "edge:  " << e->getBeg()->GetHandle() << " <-> " << e->getEnd()->GetHandle() << std::endl;
 															std::cout << "SE-NW: " << block_nodes[cur * 8 + 0 + q * 4] << " <-> " << block_nodes[cur * 8 + 3 + q * 4] << std::endl;
 															std::cout << "SW-NE: " << block_nodes[cur * 8 + 1 + q * 4] << " <-> " << block_nodes[cur * 8 + 2 + q * 4] << std::endl;
@@ -4425,7 +4425,7 @@ namespace INMOST
 						{
 							//compute axis direction
 							if( (i1 != i2 ? 1 : 0) + (j1 != j2 ? 1 : 0) + (k1 != k2 ? 1 : 0) != 1 )
-								std::cout << "face connects faces (" << i1 << "," << j1 << "," << k1 << ") and (" << i2 << "," << j2 << "," << k2 << ") which has difference in more then one index" << std::endl;
+								std::cout << "face connects faces (" << i1 << "," << j1 << "," << k1 << ") and (" << i2 << "," << j2 << "," << k2 << ") which has difference in more than one index" << std::endl;
 							if( i1 > i2 || j1 > j2 || k1 > k2 ) 
 							{
 								std::swap(c1,c2);

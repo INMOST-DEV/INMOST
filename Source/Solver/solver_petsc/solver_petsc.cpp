@@ -388,7 +388,7 @@ const char *SolverConvergedReasonPetsc(KSP *ksp)
             break;
         case KSP_CONVERGED_ATOL:
         case KSP_CONVERGED_ATOL_NORMAL:
-            strcpy(reason_str, "norm less then absolute tolerance");
+            strcpy(reason_str, "norm less than absolute tolerance");
             break;
         case KSP_CONVERGED_ITS:
             strcpy(reason_str, "converged by direct solver");

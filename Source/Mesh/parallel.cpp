@@ -3192,7 +3192,14 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
-		REPORT_STR("number of ghosted or shared faces");
+		REPORT_STR("number of ghost or shared faces");
+#if defined(USE_PARALLEL_WRITE_TIME)
+		for(std::map<int,int>::iterator it = numfacesperproc.begin(); it != numfacesperproc.end(); ++it)
+		{
+			REPORT_VAL("processor",it->first);
+			REPORT_VAL("skin faces",it->second);
+		}
+#endif
 
 		REPORT_STR("reducing cell's global identificators information")
 
@@ -6416,7 +6423,7 @@ namespace INMOST
 				{
 					REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(recv_bufs.size()),&reqs[0],MPI_STATUSES_IGNORE));
 				}
-				REPORT_VAL("recieved buffers size",recv_bufs.size());
+				REPORT_VAL("received buffers size",recv_bufs.size());
 				for(i = 0; i < recv_bufs.size(); i++)
 				{
 					REPORT_VAL("origin",recv_bufs[i].first);
@@ -6826,7 +6833,7 @@ namespace INMOST
 		REPORT_STR("Ended recv");
 		EXIT_BLOCK();
 				
-		if( action == AGhost ) //second round to inform owner about ghosted elements
+		if( action == AGhost ) //second round to inform owner about ghost elements
 		{
 			ENTER_BLOCK();
 			REPORT_STR("Second round for ghost exchange");

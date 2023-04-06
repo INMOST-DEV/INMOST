@@ -23,7 +23,7 @@ namespace INMOST
 	/// it should be registered with and managed by class Automatizator.
 	/// \todo
 	/// 1. Is there a need for layout on how matrices are returned?
-	/// 2. Is there a need for layout on how unknowns and equations are arrenged?
+	/// 2. Is there a need for layout on how unknowns and equations are arranged?
 	/// 3. Function for update of variables.
 	/// 4. Function for synchronization of variables.
 	class AbstractEntry
@@ -36,19 +36,19 @@ namespace INMOST
 	public:
 		AbstractEntry(ElementType etype = NONE, MarkerType mask = 0, bool inverse = false)
 		: reg_index(ENUMUNDEF), offset_tag(Tag()), mask(mask), inverse_mask(inverse), etype(etype) {}
-		/// Retrive mask of the block.
+		/// Retrieve mask of the block.
 		MarkerType GetMask() const {return mask;}
-		/// Retrive if the mask is inverted
+		/// Retrieve if the mask is inverted
 		bool GetMaskInverse() const {return inverse_mask;}
 		/// Set mask for the block.
 		void SetMask(MarkerType _mask, bool inverse = false) {mask = _mask; inverse_mask = inverse;}
-		/// Retrive element type of the block.
+		/// Retrieve element type of the block.
 		ElementType GetElementType() const {return etype;}
 		/// Set element type for the block.
 		void SetElementType(ElementType _etype) {etype = _etype;}
-		/// Retrive tag that stores enumeration offset on each element.
+		/// Retrieve tag that stores enumeration offset on each element.
 		TagInteger GetOffsetTag() const {return offset_tag;}
-		/// Retrive tag that stores enumeration offset on each element.
+		/// Retrieve tag that stores enumeration offset on each element.
 		void SetOffsetTag(TagInteger tag) {offset_tag = tag;}
 		/// Check that the block is valid on given element.
 		bool isValid(const Storage & e) const {return reg_index != ENUMUNDEF && offset_tag.isDefined(e.GetElementType()) && (e.GetElementType() & etype) && (mask == 0 || (e->GetMarker(mask) ^ inverse_mask));}
@@ -96,18 +96,18 @@ namespace INMOST
 		/// each block when enumerated by Automatizator::EnumerateEntries.
 		/// See also MatrixSize.
 		virtual INMOST_DATA_ENUM_TYPE Size(const Storage & e) const = 0;
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
 		virtual INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const = 0;
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
 		virtual TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const = 0;
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		virtual Mesh * GetMeshLink() const = 0;
 		/// Make a copy of the object
 		virtual AbstractEntry * Copy() const = 0;
-		/// Retrive a registration index.
+		/// Retrieve a registration index.
 		INMOST_DATA_ENUM_TYPE GetRegistrationIndex() const {return reg_index;}
 		/// Update variables  contained in block on ghost elements of the grid.
-		/// For synchronization of data in all blocks see Automatizator::SynhronizeData.
+		/// For synchronization of data in all blocks see Automatizator::SynchronizeData.
 		void SynchronizeData();
 		/// Destructor.
 		virtual ~AbstractEntry() {}
@@ -163,16 +163,16 @@ namespace INMOST
 				if( e.HaveData(unknown_tags[k]) )	ret++;
 			return ret;
 		}
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
 		TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {return unknown_tags[unk];}
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tags.back().GetMeshLink();}
 		/// Make a copy of the object
 		AbstractEntry * Copy() const {BlockEntry * ret = new BlockEntry(GetElementType(),GetMask(),GetMaskInverse()); for(unsigned k = 0; k < Size(); ++k) ret->AddTag(unknown_tags[k],unknown_comp[k]); return ret; }
 	};
-	/// This class is used to organize a single unknown,
+	/// This class is used to organize a single unknown
 	class SingleEntry : public AbstractEntry
 	{
 		TagRealArray          unknown_tag;
@@ -208,16 +208,16 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
         INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {(void)e; return e.HaveData(unknown_tag) ? 1 : 0;}
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_comp;}
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
         TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk == 0); return unknown_tag;}
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
 		AbstractEntry * Copy() const {return new SingleEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag,unknown_comp);}
 	};
-	/// This class is used to organize multiple unknowns resided on single tag of variable or static size,
+	/// This class is used to organize multiple unknowns resided on single tag of variable or static size
 	class VectorEntry : public AbstractEntry
 	{
 		TagRealArray          unknown_tag;
@@ -252,11 +252,11 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Size() const {return 1;}
 		/// Number of entries for each tag in the block.
 		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {return e.HaveData(unknown_tag) ? (INMOST_DATA_ENUM_TYPE)unknown_tag[e].size() : 0;}
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
         INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return ENUMUNDEF;}
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
         TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {(void)unk; assert(unk==0); return unknown_tag;}
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tag.GetMeshLink();}
 		/// Make a copy of the object
 		AbstractEntry * Copy() const {return new VectorEntry(GetElementType(),GetMask(),GetMaskInverse(),unknown_tag);}
@@ -312,18 +312,18 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Size() const {return (INMOST_DATA_ENUM_TYPE)unknown_tags.size();}
 		/// Number of entries for each tag in the block.
 		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const;
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const {return unknown_comp[unk];}
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
 		TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const {return unknown_tags[unk];}
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		Mesh * GetMeshLink() const {return unknown_tags.back().GetMeshLink();}
 		/// Make a copy of the object
 		AbstractEntry * Copy() const;
 	};
 	/// Stack together multiple objects of AbstractEntry class.
 	/// This may help enumerate together variable-sized and constant-sized entries or blocks.
-	/// Essentially can replace BlockEntry but may proove to be less efficient.
+	/// Essentially can replace BlockEntry but it may be less efficient.
 	/// \todo
 	/// 1. Check it works
 	/// 2. Check if it crashes with different combinations of entries on different element types or different masks.
@@ -337,9 +337,9 @@ namespace INMOST
 		~MultiEntry() {for(unsigned k = 0; k < entries.size(); ++k) delete entries[k];}
 		///Add entry into block of entries.
 		void AddEntry(const AbstractEntry & entry);
-		///Retirve entry from block of entries.
+		///Retrieve entry from block of entries.
 		AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE k) {return *entries[k];}
-		///Retirve entry from block of entries.
+		///Retrieve entry from block of entries.
 		const AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE k) const {return *entries[k];}
 		///Total number of entries.
 		INMOST_DATA_ENUM_TYPE NumEntries() const {return (INMOST_DATA_ENUM_TYPE)entries.size();}
@@ -367,11 +367,11 @@ namespace INMOST
 		INMOST_DATA_ENUM_TYPE Size() const {INMOST_DATA_ENUM_TYPE ret = 0; for(unsigned k = 0; k < entries.size(); ++k) ret += entries[k]->Size(); return ret;}
 		/// Number of entries for each tag in the block.
 		INMOST_DATA_ENUM_TYPE Size(const Storage & e) const {INMOST_DATA_ENUM_TYPE ret = 0; for(unsigned k = 0; k < entries.size(); ++k) ret += entries[k]->Size(e); return ret;}
-		/// Retrive component of the tag related to unknown.
+		/// Retrieve component of the tag related to unknown.
 		INMOST_DATA_ENUM_TYPE GetValueComp(INMOST_DATA_ENUM_TYPE unk) const;
-		/// Retrive tag related to unknown value.
+		/// Retrieve tag related to unknown value.
 		TagRealArray GetValueTag(INMOST_DATA_ENUM_TYPE unk) const;
-		/// Retrive mesh pointer.
+		/// Retrieve mesh pointer.
 		Mesh * GetMeshLink() const {assert(!entries.empty()); return entries.back()->GetMeshLink();}
 		/// Make a copy of the object
 		AbstractEntry * Copy() const;
@@ -417,9 +417,9 @@ namespace INMOST
 		/// Destructor for the automatizator, deletes all the tags corresponding to indices from
 		/// respective meshes.
 		~Automatizator();
-		/// Retrive first index of unknowns, local to the processor.
+		/// Retrieve first index of unknowns, local to the processor.
 		__INLINE INMOST_DATA_ENUM_TYPE GetFirstIndex() const { return first_num; }
-		/// Retrive last index of unknowns, local to the processor.
+		/// Retrieve last index of unknowns, local to the processor.
 		__INLINE INMOST_DATA_ENUM_TYPE GetLastIndex() const { return last_num; }
 		/// Set data of tag t defined on domain_mask to be dynamic data.
 		/// @param t Tag of DATA_REAL that represents independent data of the model.
@@ -462,15 +462,15 @@ namespace INMOST
 		INMOST_DATA_REAL_TYPE GetValue(const Storage & e, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE pos = 0) const {return GetEntry(reg_index).Value(e,pos);}
 		/// Get unknown associated with the entry on element.
 		unknown GetUnknown(const Storage & e, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE pos = 0) const {return GetEntry(reg_index).Unknown(e,pos);}
-		/// Retive the block from automatizator by index.
+		/// Retrieve the block from automatizator by index.
 		AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE ind) {return *reg_blocks[ind];}
-		/// Retive the block from automatizator by index.
+		/// Retrieve the block from automatizator by index.
 		const AbstractEntry & GetEntry(INMOST_DATA_ENUM_TYPE ind) const {return *reg_blocks[ind];}
 		/// Lists all the indices of registered tags.
 		/// @return An array with indices corresponding to all registered tags.
 		std::vector<INMOST_DATA_ENUM_TYPE> ListRegisteredEntries() const;
 		/// Update variables  contained in all block of automatizator on ghost elements of the grid.
-		/// For synchronization of data in individual blocks see AbstractEntry::SynhronizeData.
+		/// For synchronization of data in individual blocks see AbstractEntry::SynchronizeData.
 		void SynchronizeData();
 	};
 } //namespace INMOST

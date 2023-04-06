@@ -150,7 +150,7 @@ namespace INMOST
 			{
 				merger->Resize(cnt);
 				expr.GetJacobian(1.0, *merger);
-				merger->RetriveRow(entries);
+				merger->RetrieveRow(entries);
 				merger->Clear();
 			}
 			//else expr.GetJacobian(1.0, entries);
@@ -169,7 +169,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->AddRow(mult, entries);
 				merger->AddRow(1.0, r);
-				merger->RetriveRow(r);
+				merger->RetrieveRow(r);
 				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
@@ -241,7 +241,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->PushRow(1.0, entries);
 				expr.GetJacobian(1.0, *merger);
-				merger->RetriveRow(entries);
+				merger->RetrieveRow(entries);
 				merger->Clear();
 			}
 			//else expr.GetJacobian(1.0, entries);
@@ -256,7 +256,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->PushRow(1.0, entries);
 				expr.GetJacobian(-1.0, *merger);
-				merger->RetriveRow(entries);
+				merger->RetrieveRow(entries);
 				merger->Clear();
 			}
 			//else expr.GetJacobian(-1.0, entries);
@@ -271,7 +271,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->PushRow(rval, entries);
 				expr.GetJacobian(lval, *merger);
-				merger->RetriveRow(entries);
+				merger->RetrieveRow(entries);
 				merger->Clear();
 			}
 			//else
@@ -294,7 +294,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->PushRow(reciprocial_rval, entries);
 				expr.GetJacobian(-value * reciprocial_rval, *merger);
-				merger->RetriveRow(entries);
+				merger->RetrieveRow(entries);
 				merger->Clear();
 			}
 			//else
@@ -365,11 +365,11 @@ namespace INMOST
 		{
 			return 1 + entries.Size();
 		}
-		/// Retrive variable from array of entries.
-		/// Size of array without retrival can be determined via RetriveSize.
+		/// Retrieve variable from array of entries.
+		/// Size of array without retrieval can be determined via RetrieveSize.
 		/// @param v Array of entries that will store data of the variable.
 		/// @return Number of entries red.
-		INMOST_DATA_ENUM_TYPE Retrive(const Sparse::Row::entry * v)
+		INMOST_DATA_ENUM_TYPE Retrieve(const Sparse::Row::entry * v)
 		{
 			int k = 0;
 			value = v[k].second;
@@ -384,7 +384,7 @@ namespace INMOST
 			return k;
 		}
 		/// Number of entries used.
-		static INMOST_DATA_ENUM_TYPE RetriveSize(const Sparse::Row::entry * v)
+		static INMOST_DATA_ENUM_TYPE RetrieveSize(const Sparse::Row::entry * v)
 		{
 			return 1 + v[0].first;
 		}
@@ -458,7 +458,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->AddRow(mult, entries);
 				merger->AddRow(1.0, r);
-				merger->RetriveRow(r);
+				merger->RetrieveRow(r);
 				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
@@ -654,11 +654,11 @@ namespace INMOST
 		/// Copy constructor from multivar_expression, sets links to the same reference of value and entries
 		multivar_expression_reference(multivar_expression & other)
 		: value(other.value), entries(&other.entries) {}
-		/// Retrive value
+		/// Retrieve value
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		/// Set value without changing derivatives
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
-		/// Retrive derivatives with multiplier into Sparse::RowMerger structure.
+		/// Retrieve derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			if( entries )
@@ -668,7 +668,7 @@ namespace INMOST
 					//~ r[it->first] += it->second*mult;
 			}
 		}
-		/// Retrive derivatives with multiplier into Sparse::Row structure.
+		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			if( entries )
@@ -679,7 +679,7 @@ namespace INMOST
 					merger->Resize(cnt);
 					merger->AddRow(mult, *entries);
 					merger->AddRow(1.0, r);
-					merger->RetriveRow(r);
+					merger->RetrieveRow(r);
 					merger->Clear();
 				}
 				else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
@@ -695,7 +695,7 @@ namespace INMOST
 				for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 				H.Clear();
 			}
-            (void)multH;
+			(void)multH;
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries->Size(); }
 		multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
@@ -715,7 +715,7 @@ namespace INMOST
 				{
 					merger->Resize(cnt);
 					expr.GetJacobian(1.0, *merger);
-					merger->RetriveRow(*entries);
+					merger->RetrieveRow(*entries);
 					merger->Clear();
 				}
 				//else
@@ -755,7 +755,7 @@ namespace INMOST
 					merger->Resize(cnt);
 					merger->PushRow(1.0, *entries);
 					expr.GetJacobian(1.0, *merger);
-					merger->RetriveRow(*entries);
+					merger->RetrieveRow(*entries);
 					merger->Clear();
 				}
 				//else expr.GetJacobian(1.0, *entries);
@@ -773,7 +773,7 @@ namespace INMOST
 					merger->Resize(cnt);
 					merger->PushRow(1.0, *entries);
 					expr.GetJacobian(-1.0, *merger);
-					merger->RetriveRow(*entries);
+					merger->RetrieveRow(*entries);
 					merger->Clear();
 				}
 				//else expr.GetJacobian(-1.0, *entries);
@@ -791,7 +791,7 @@ namespace INMOST
 					merger->Resize(cnt);
 					merger->PushRow(rval, *entries);
 					expr.GetJacobian(lval, *merger);
-					merger->RetriveRow(*entries);
+					merger->RetrieveRow(*entries);
 					merger->Clear();
 				}
 				//else
@@ -817,7 +817,7 @@ namespace INMOST
 					merger->Resize(cnt);
 					merger->PushRow(reciprocial_rval, *entries);
 					expr.GetJacobian(-value * reciprocial_rval, *merger);
-					merger->RetriveRow(*entries);
+					merger->RetrieveRow(*entries);
 					merger->Clear();
 				}
 				//else
@@ -884,15 +884,15 @@ namespace INMOST
 			value = pvalue; 
 			return *this; 
 		}
-		__INLINE value_reference& operator = (basic_expression const& expr)
-		{
-			value = expr.GetValue();
-			return *this;
-		}
-
 		__INLINE value_reference& operator = (value_reference const& other)
 		{
 			value = other.value;
+			return *this;
+		}
+		/*
+		__INLINE value_reference& operator = (basic_expression const& expr)
+		{
+			value = expr.GetValue();
 			return *this;
 		}
 		__INLINE value_reference& operator +=(basic_expression const& expr)
@@ -915,6 +915,7 @@ namespace INMOST
 			value /= expr.GetValue();
 			return *this;
 		}
+		*/
 		__INLINE value_reference& operator +=(INMOST_DATA_REAL_TYPE right)
 		{
 			value += right;
@@ -945,8 +946,8 @@ namespace INMOST
 			if (__isinf__(value)) return true;
 			return false;
 		}
-		operator double() const { return value; }
-		operator double& () { return value; }
+		operator INMOST_DATA_REAL_TYPE() const { return value; }
+		operator INMOST_DATA_REAL_TYPE& () { return value; }
 	};
 	
 	
@@ -966,18 +967,18 @@ namespace INMOST
 		/// Copy constructor from hessian_multivar_expression, sets links to the same reference of value and entries
 		hessian_multivar_expression_reference(hessian_multivar_expression & other)
 		: value(other.value), entries(&other.entries), hentries(&other.hessian_entries) {}
-		/// Retrive value
+		/// Retrieve value
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		/// Set value without changing derivatives
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
-		/// Retrive derivatives with multiplier into Sparse::RowMerger structure.
+		/// Retrieve derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			r.AddRow(mult,*entries);
 			//~ for(Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 				//~ r[it->first] += it->second*mult;
 		}
-		/// Retrive derivatives with multiplier into Sparse::Row structure.
+		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			INMOST_DATA_ENUM_TYPE cnt = entries->Size() + r.Size();
@@ -986,7 +987,7 @@ namespace INMOST
 				merger->Resize(cnt);
 				merger->AddRow(mult, *entries);
 				merger->AddRow(1.0, r);
-				merger->RetriveRow(r);
+				merger->RetrieveRow(r);
 				merger->Clear();
 			}
 			else for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
@@ -1851,10 +1852,10 @@ namespace INMOST
 			// (F*G)'' = (F'G+G'F)' = (F''G + F'G' + G''F + G'F') = (F''G + G''F + 2F'G')
 			Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
 			Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+			left.GetHessian(1,JL,1,HL); //retrieve jacobian row and hessian matrix of the left expression
 			assert(JL.isSorted());
 			assert(HL.isSorted());
-			right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+			right.GetHessian(1,JR,1,HR); //retrieve jacobian row and hessian matrix of the right expression
 			assert(JR.isSorted());
 			assert(HR.isSorted());
 			//assume rows are sorted (this is to be ensured by corresponding GetHessian functions)
@@ -1913,8 +1914,8 @@ namespace INMOST
 			throw NotImplemented;
 			Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
 			Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-			left.GetHessian(multJ,JL,multH,HL); //retrive jacobian row and hessian matrix of the left expression
-			right.GetHessian(multJ,JR,multH,HR); //retrive jacobian row and hessian matrix of the right expression
+			left.GetHessian(multJ,JL,multH,HL); //retrieve jacobian row and hessian matrix of the left expression
+			right.GetHessian(multJ,JR,multH,HR); //retrieve jacobian row and hessian matrix of the right expression
 			//assume rows are sorted (this is to be ensured by corresponding GetHessian functions)
 			//preallocate J to JL.Size+JR.Size
 			//perform merging of two sorted arrays
@@ -1957,10 +1958,10 @@ namespace INMOST
 		{
 			Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
 			Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+			left.GetHessian(1,JL,1,HL); //retrieve jacobian row and hessian matrix of the left expression
 			assert(JL.isSorted());
 			assert(HL.isSorted());
-			right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+			right.GetHessian(1,JR,1,HR); //retrieve jacobian row and hessian matrix of the right expression
 			assert(JR.isSorted());
 			assert(HR.isSorted());
 			Sparse::Row::MergeSortedRows(multJ,JL,multJ,JR,J);
@@ -2002,8 +2003,8 @@ namespace INMOST
 			//(F-G)'' = (F'-G')' = (F''-G'')
 			Sparse::Row JL, JR; //temporary jacobian rows from left and right expressions
 			Sparse::HessianRow HL, HR; //temporary hessian rows form left and right expressions
-			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
-			right.GetHessian(1,JR,1,HR); //retrive jacobian row and hessian matrix of the right expression
+			left.GetHessian(1,JL,1,HL); //retrieve jacobian row and hessian matrix of the left expression
+			right.GetHessian(1,JR,1,HR); //retrieve jacobian row and hessian matrix of the right expression
 			Sparse::Row::MergeSortedRows(multJ,JL,-multJ,JR,J);
 			Sparse::HessianRow::MergeSortedRows(multH,HL,-multH,HR,H);
 		}
@@ -2134,7 +2135,7 @@ namespace INMOST
 			//(g(x)^n)'' = n g(x)^(n - 2) (g(x) g''(x) + (n - 1) g'(x)^2)
 			Sparse::Row JL;
 			Sparse::HessianRow HL;
-			left.GetHessian(1,JL,1,HL); //retrive jacobian row and hessian matrix of the left expression
+			left.GetHessian(1,JL,1,HL); //retrieve jacobian row and hessian matrix of the left expression
 			Sparse::HessianRow::MergeJacobianHessian(multH*ldmult2,JL,JL,multH*ldmult,HL,H);
 			for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
             (void)J;

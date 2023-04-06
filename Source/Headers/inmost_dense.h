@@ -81,7 +81,6 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, variable>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct Promote<INMOST_DATA_INTEGER_TYPE, expression_value> { typedef expression_value type; };
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_INTEGER_TYPE, hessian_variable>  {typedef hessian_variable type;};
@@ -89,7 +88,6 @@ namespace INMOST
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, unknown>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, variable>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-	//template<> struct Promote<INMOST_DATA_REAL_TYPE, expression_value> { typedef expression_value type; };
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, multivar_expression_reference>  {typedef variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<INMOST_DATA_REAL_TYPE, hessian_variable>  {typedef hessian_variable type;};
@@ -110,8 +108,6 @@ namespace INMOST
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
 	//for value_reference
-	template<> struct Promote<value_reference, INMOST_DATA_INTEGER_TYPE>  {typedef INMOST_DATA_REAL_TYPE type;};
-	template<> struct Promote<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct Promote<value_reference, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, variable> { typedef variable type; };
 	template<> struct Promote<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
@@ -237,17 +233,30 @@ namespace INMOST
 			const double eps = 1.0e-13;
 			const enumerator n = Rows();
 			Matrix<Var> A(*this);
+			Matrix<Var> row_visited(n,1,-1);
+			Var ret = 1.0, coef;
+			double sign;
 			for (enumerator d = 0; d < n; ++d)
-				for (enumerator i = d + 1; i < n; ++i)
+			{
+				enumerator r = 0;
+				sign = 1;
+				// find unvisited row with non-zero value in column d
+				while(row_visited(r,0) != -1 || fabs(get_value(A(r, d))) < eps)
 				{
-					if (fabs(get_value(A(d, d))) < eps)
-						A(d, d) = eps;
-					for (enumerator j = 0; j < n; ++j)
-						A(i, j) = A(i, j) - A(i, d) * A(d, j) / A(d, d);
+					if(r == n-1) return Var(0);
+					if(row_visited(r,0) == -1) sign *= -1;
+					++r;
 				}
-			Var ret = 1.0;
-			for (enumerator d = 0; d < n; ++d)
-				ret *= A(d, d);
+				row_visited(r,0) = d;
+				ret *= sign * A(r, d);
+				for (enumerator i = 0; i < n; ++i) if(row_visited(i,0) == -1)
+				{
+					coef = A(i, d) / A(r, d);
+					if(fabs(coef) > eps)
+						for (enumerator j = 0; j < n; ++j)
+							A(i, j) = A(i, j) - coef * A(r, j);
+				}
+			}
 			return ret;
 		}
 		/// Singular value decomposition.
@@ -326,7 +335,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @return Inverse matrix.
 		/// @see Matrix::PseudoInvert.
 		/// \todo (test) Activate and test implementation with Solve.
@@ -342,7 +351,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @return Inverse matrix,
 		/// @see Matrix::PseudoInvert.
 		/// \warning Number of rows in matrices A and B should match.
@@ -359,7 +368,7 @@ namespace INMOST
 		/// @param ierr Returns error on fail. If ierr is NULL, then throws an exception.
 		///             If *ierr == -1 on input, then prints out information in case of failure.
 		///             In case of failure *ierr equal to a positive integer that represents the row
-		///             on which the failure occured (starting from 1), in case of no failure *ierr = 0.
+		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @see Matrix::PseudoInvert.
 		/// @return Inverse matrix,
 		template<typename typeB>
@@ -435,7 +444,7 @@ namespace INMOST
 		{
 			return DotProduct(other);
 		}
-		/// Computes frobenious norm of the matrix.
+		/// Computes frobenius norm of the matrix.
 		/// @return Frobenius norm of the matrix.
 		typename SelfPromote<Var>::type FrobeniusNorm() const
 		{
@@ -561,7 +570,7 @@ namespace INMOST
 			operator/(shell_expression<A> const& coef) const;// { return operator/(variable(coef)); }
 #endif //USE_AUTODIFF
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
-		/// Throws exception if matrix is not invertable. See Mesh::PseudoSolve for
+		/// Throws exception if matrix is not invertible. See Mesh::PseudoSolve for
 		/// singular matrices.
 		/// @param other Matrix to be inverted and multiplied from left.
 		/// @return Multiplication of current matrix by inverse of another
@@ -620,7 +629,7 @@ namespace INMOST
 		}
 		/// Destructor
 		virtual ~AbstractMatrixReadOnly() {}
-		/// Retrive number of indices of derivatives.
+		/// Retrieve number of indices of derivatives.
 		__INLINE virtual INMOST_DATA_ENUM_TYPE GetMatrixCount() const
 		{
 			INMOST_DATA_ENUM_TYPE cnt = 0;
@@ -986,7 +995,7 @@ namespace INMOST
 		/// 1. Test rescaling.
 		/// 2. Test on non-square matrices.
 		void MPT(INMOST_DATA_ENUM_TYPE* Perm, INMOST_DATA_REAL_TYPE* SL = NULL, INMOST_DATA_REAL_TYPE* SR = NULL) const;
-		/// Retrive number of indices of derivatives.
+		/// Retrieve number of indices of derivatives.
 		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const
 		{
 			INMOST_DATA_ENUM_TYPE cnt = 0;
@@ -1050,9 +1059,9 @@ namespace INMOST
 		/// Construct a matrix with provided sizes.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
-		/// \warning The matrix does not necessery have zero entries.
+		/// \warning The matrix does not necessary have zero entries.
 		SymmetricMatrix(enumerator pn) : space(pn*(pn+1)/2), n(pn) {}
-		/// Constract a matrix with provided elements.
+		/// Construct a matrix with provided elements.
 		/// The elements are ordered row-wise starting from the diagonal element.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -1113,7 +1122,7 @@ namespace INMOST
 		/// Delete matrix.
 		~SymmetricMatrix() {}
 		/// Resize the matrix into different size.
-		/// Number of rows must match number of columns for symmetric matrix.
+		/// Number of rows must match the number of columns for symmetric matrix.
 		/// @param nrows New number of rows.
 		/// @param ncols New number of columns.
 		void Resize(enumerator nrows, enumerator ncols)
@@ -1568,14 +1577,14 @@ namespace INMOST
 		/// Construct a matrix with provided sizes.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
-		/// \warning The matrix does not necessery have zero entries.
+		/// \warning The matrix does not necessary have zero entries.
 		Matrix(enumerator pn, enumerator pm) : space(pn*pm), n(pn), m(pm) {}
 		/// Construct a matrix with provided sizes and fills with value.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
 		/// @param c Value to fill the matrix.
 		Matrix(enumerator pn, enumerator pm, const Var & c) : space(pn*pm,c), n(pn), m(pm) {}
-		/// Constract a matrix with provided elements.
+		/// Construct a matrix with provided elements.
 		/// The elements are ordered row-wise.
 		/// @param pn Number of rows.
 		/// @param pm Number of columns.
@@ -1970,13 +1979,13 @@ namespace INMOST
 		/// Joint diagonalization algorithm by Cardoso.
 		/// Source http://perso.telecom-paristech.fr/~cardoso/Algo/Joint_Diag/joint_diag_r.m
 		/// Current matrix should have size n by n*m
-		/// And represent concatination of m n by n matrices.
+		/// And represent concatenation of m n by n matrices.
 		/// Current matrix is replaced by diagonalized matrices.
-		/// For correct result requires that input matrices are
-		/// exectly diagonalizable, otherwise the result may be approximate.
+		/// For correct result it is required that input matrices are
+		/// exactly diagonalizable, otherwise the result may be approximate.
 		/// @param threshold Optional small number.
 		/// @return A unitary n by n matrix V used to diagonalize array of
-		/// initial matrices. Current matrix is replaced by concatination of
+		/// initial matrices. Current matrix is replaced by concatenation of
 		/// V^T*A_i*V, a collection of diagonalized matrices.
 		Matrix<Var> JointDiagonalization(INMOST_DATA_REAL_TYPE threshold = 1.0e-7)
 		{
@@ -3256,7 +3265,7 @@ namespace INMOST
 							merger->AddRow(pA->get(i, k), pB->get(k, j).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger->RetriveRow(M(i, j).GetRow());
+						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
 					}
 				}
@@ -3342,7 +3351,7 @@ namespace INMOST
 							merger->AddRow(pB->get(k, j), pA->get(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger->RetriveRow(M(i, j).GetRow());
+						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
 					}
 				}
@@ -3431,7 +3440,7 @@ namespace INMOST
 							merger->AddRow(pB->get(k, j).GetValue(), pA->get(i, k).GetRow());
 						}
 						M(i, j).SetValue(value);
-						merger->RetriveRow(M(i, j).GetRow());
+						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
 					}
 				}
@@ -3918,7 +3927,7 @@ namespace INMOST
 					merger->AddRow((*this)(i,j),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger->RetriveRow(ret.GetRow());
+			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
 		}
 		else*/
@@ -3951,7 +3960,7 @@ namespace INMOST
 					merger->AddRow(other(i,j),(*this)(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger->RetriveRow(ret.GetRow());
+			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
 		}
 		else*/
@@ -3985,7 +3994,7 @@ namespace INMOST
 					merger->AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
-			merger->RetriveRow(ret.GetRow());
+			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
 		}
 		else*/
@@ -4272,7 +4281,7 @@ namespace INMOST
 						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->RetrieveRow(Y(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else
@@ -4302,7 +4311,7 @@ namespace INMOST
 						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->RetrieveRow(X(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else
@@ -4392,7 +4401,7 @@ namespace INMOST
 						pmerger->AddRow(-L(j,i),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->RetrieveRow(Y(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else
@@ -4421,7 +4430,7 @@ namespace INMOST
 						pmerger->AddRow(-L(i,j),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->RetrieveRow(X(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else
@@ -4511,7 +4520,7 @@ namespace INMOST
 						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
 					}
 					Y(i,k).SetValue(value);
-					pmerger->RetriveRow(Y(i,k).GetRow());
+					pmerger->RetrieveRow(Y(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else
@@ -4541,7 +4550,7 @@ namespace INMOST
 						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
 					}
 					X(i,k).SetValue(value);
-					pmerger->RetriveRow(X(i,k).GetRow());
+					pmerger->RetrieveRow(X(i,k).GetRow());
 					pmerger->Clear();
 				}
 				else

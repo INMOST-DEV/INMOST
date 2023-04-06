@@ -37,7 +37,7 @@ namespace INMOST
 			if (p[i] < bbox[i * 2] - 1.0e-3 || p[i] > bbox[i * 2 + 1] + 1.0e-3)
 			{
 				sout << "fail on " << i << " ";
-				if (p[i] < bbox[i * 2] - 1.0e-3) sout << p[i] << " is less then " << bbox[i * 2] - 1.0e-3 << "(" << bbox[i * 2] << ")";
+				if (p[i] < bbox[i * 2] - 1.0e-3) sout << p[i] << " is less than " << bbox[i * 2] - 1.0e-3 << "(" << bbox[i * 2] << ")";
 				if (p[i] > bbox[i * 2 + 1] + 1.0e-3) sout << p[i] << " is greater then " << bbox[i * 2 + 1] + 1.0e-3 << "(" << bbox[i * 2 + 1] << ")";
 				sout << std::endl;
 				return 0;

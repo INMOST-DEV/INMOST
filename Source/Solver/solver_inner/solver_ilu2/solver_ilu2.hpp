@@ -10,7 +10,7 @@ using namespace INMOST;
 
 #define DEFAULT_TAU 0.005
 #define DEFAULT_TAU2 0.00001
-//#define LFILL //control, that factorization is not less then fill for ilu2
+//#define LFILL //control, that factorization is not less than fill for ilu2
 
 
 

@@ -33,11 +33,11 @@ namespace INMOST
 		/// Assignment operator.
 		/// \warning May be expensive if matrices are large.
 		Residual & operator =(Residual const & other);
-		/// Retrive the first index of the equations in the local partition.
+		/// Retrieve the first index of the equations in the local partition.
 		INMOST_DATA_ENUM_TYPE GetFirstIndex() const {return residual.GetFirstIndex();}
-		/// Retrive the last index of the equations in the local partition.
+		/// Retrieve the last index of the equations in the local partition.
 		INMOST_DATA_ENUM_TYPE GetLastIndex() const {return residual.GetLastIndex();}
-		/// Retrive the first and the last indices of the equations in the local partition
+		/// Retrieve the first and the last indices of the equations in the local partition
 		/// @param start The first index of the equations will be recorded here.
 		/// @param end The last index of the equations will be recorded here.
 		void GetInterval(INMOST_DATA_ENUM_TYPE & start, INMOST_DATA_ENUM_TYPE & end) const;
@@ -45,42 +45,42 @@ namespace INMOST
 		/// @param start The new first index of the equations.
 		/// @param end The new last index of the equations.
 		void SetInterval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
-		/// Retrive a residual value and a jacobian row corresponding to certain equation.
+		/// Retrieve a residual value and a jacobian row corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
 		__INLINE multivar_expression_reference operator [](INMOST_DATA_ENUM_TYPE row)
 		{return multivar_expression_reference(residual[row],&jacobian[row]);}
-		/// Retrive a residual value corresponding to certain equation.
+		/// Retrieve a residual value corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
 		__INLINE double Value(INMOST_DATA_ENUM_TYPE row) const {return residual[row];}
-		/// Retrive a residual value corresponding to certain equation.
+		/// Retrieve a residual value corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
 		__INLINE double & Value(INMOST_DATA_ENUM_TYPE row) { return residual[row]; }
-		/// Retrive a vector of entries in residual, corresponding to a set of equations.
+		/// Retrieve a vector of entries in residual, corresponding to a set of equations.
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
 		Matrix<multivar_expression_reference> operator [](const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows);
-		/// Retrive a vector of entries in residual, corresponding to a set of equations.
+		/// Retrieve a vector of entries in residual, corresponding to a set of equations.
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
 		rMatrix Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows) const;
-		/// Retrive a vector of entries in residual, corresponding to a set of equations.
+		/// Retrieve a vector of entries in residual, corresponding to a set of equations.
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
 		Matrix<value_reference> Value(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows);
-		/// Retrive hessian matrix. Use in nonlinear solver.
+		/// Retrieve hessian matrix. Use in nonlinear solver.
 		Sparse::HessianMatrix & GetHessian() {return hessian;}
-		/// Retrive hessian matrix without right of modificaiton.
+		/// Retrieve hessian matrix without right of modificaiton.
 		const Sparse::HessianMatrix & GetHessian() const {return hessian;}
-		/// Retrive jacobian matrix. Use in Sparse::Solver::Solve function.
+		/// Retrieve jacobian matrix. Use in Sparse::Solver::Solve function.
 		Sparse::Matrix & GetJacobian() {return jacobian;}
-		/// Retrive jacobian matrix without right of modificaiton.
+		/// Retrieve jacobian matrix without right of modificaiton.
 		const Sparse::Matrix & GetJacobian() const {return jacobian;}
-		/// Retrive right hand side vector. Use in Sparse::Solver::Solve function.
+		/// Retrieve right hand side vector. Use in Sparse::Solver::Solve function.
 		Sparse::Vector & GetResidual() {return residual;}
-		/// Retrive right hand side vector without right of modification.
+		/// Retrieve right hand side vector without right of modification.
 		const Sparse::Vector & GetResidual() const {return residual;}
 		/// Zero out right hand side vector.
 		void ClearResidual();

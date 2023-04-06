@@ -703,7 +703,7 @@ namespace INMOST
 					}
 					else
 					{
-						REPORT_STR("number of processors is less then number of data entries - accumulating data");
+						REPORT_STR("number of processors is less than number of data entries - accumulating data");
 						chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
 						REPORT_VAL("chunk size" ,chunk);
 						pos = 0;
@@ -842,7 +842,7 @@ namespace INMOST
 					}
 					else
 					{
-						REPORT_STR("number of processors is less then number of data entries - accumulating data");
+						REPORT_STR("number of processors is less than number of data entries - accumulating data");
 						chunk = static_cast<INMOST_DATA_ENUM_TYPE>(floor(static_cast<double>(datanum)/static_cast<double>(recvsizes.size())));
 						REPORT_VAL("chunk size" ,chunk);
 						pos = 0;
@@ -898,7 +898,7 @@ namespace INMOST
 				REPORT_MPI(ierr = MPI_Scatter(&recvsizes[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				
-				//~ std::cout << "on processor " << mpirank << " recieve " << recvsize << std::endl;
+				//~ std::cout << "on processor " << mpirank << " receive " << recvsize << std::endl;
 				
 				REPORT_VAL("read on current processor",recvsize);
 				
