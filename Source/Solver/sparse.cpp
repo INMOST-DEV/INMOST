@@ -891,7 +891,7 @@ namespace INMOST
 			INMOST::Matrix<INMOST_DATA_REAL_TYPE> ret(rows.Rows(),rows.Cols());
 			for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 				for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-					ret(i,j) = data[rows(i,j)];
+					ret(i,j) = data[rows.get(i,j)];
 			return ret;
 		}
 #if defined(USE_AUTODIFF)
@@ -900,7 +900,7 @@ namespace INMOST
 			INMOST::Matrix<value_reference> ret(rows.Rows(), rows.Cols(),value_reference());
 			for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 				for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-					new (&ret(i, j)) value_reference(data[rows(i, j)]);
+					new (&ret(i, j)) value_reference(data[rows.get(i, j)]);
 			return ret;
 		}
 #endif //USE_AUTODIFF

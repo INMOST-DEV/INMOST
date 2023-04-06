@@ -106,7 +106,7 @@ namespace INMOST
 		Matrix<multivar_expression_reference> ret(rows.Rows(),rows.Cols(),multivar_expression_reference());
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-				new (&ret(i,j)) multivar_expression_reference(residual[rows(i,j)],&jacobian[rows(i,j)]);
+				new (&ret(i,j)) multivar_expression_reference(residual[rows.get(i,j)],&jacobian[rows.get(i,j)]);
 		return ret;
 	}
 	
@@ -115,7 +115,7 @@ namespace INMOST
 		rMatrix ret(rows.Rows(),rows.Cols());
 		for(INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for(INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-				ret(i,j) = residual[rows(i,j)];
+				ret(i,j) = residual[rows.get(i,j)];
 		return ret;
 	}
 
@@ -124,7 +124,7 @@ namespace INMOST
 		Matrix<value_reference> ret(rows.Rows(), rows.Cols(),value_reference());
 		for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
-				new (&ret(i, j)) value_reference(residual[rows(i, j)]);
+				new (&ret(i, j)) value_reference(residual[rows.get(i, j)]);
 		return ret;
 	}
 #endif //USE_SOLVER

@@ -35,3 +35,5 @@ add_test(NAME linalg_test000_psol_square    COMMAND $<TARGET_FILE:linalg_test000
 add_test(NAME linalg_test000_psol_ngtm      COMMAND $<TARGET_FILE:linalg_test000> 19)
 add_test(NAME linalg_test000_psol_nltm      COMMAND $<TARGET_FILE:linalg_test000> 20)
 add_test(NAME linalg_test000_transform      COMMAND $<TARGET_FILE:linalg_test000> 21)
+add_test(NAME linalg_test000_cross_prod     COMMAND $<TARGET_FILE:linalg_test000> 22)
+add_test(NAME linalg_test000_cross_mat      COMMAND $<TARGET_FILE:linalg_test000> 23)

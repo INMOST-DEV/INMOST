@@ -408,18 +408,38 @@ int main(int argc,char ** argv)
 		(Q*mB).Print();
 		err = (mA.Transform(mB)*mA-mB).FrobeniusNorm();
 	}
-	else if( test == 22 )  //check memory_pool with large matrix (was shown to fail in hydr_frac problem)
+	else if (test == 22)
+	{
+		Storage::real A[] = { 1,2,3 };
+		Storage::real B[] = { 2,3,4 };
+		Storage::real C[] = { -1,2,-1 };
+		raMatrix mA = raMatrixMake(A, 3, 1);
+		raMatrix mB = raMatrixMake(B, 3, 1);
+		raMatrix mC = raMatrixMake(C, 3, 1);
+		err = (mA.CrossProduct(mB) - mC).FrobeniusNorm();
+	}
+	else if (test == 23)
+	{
+		Storage::real A[] = { 1,2,3 };
+		Storage::real B[] = { 2,3,4 };
+		Storage::real C[] = { -1,2,-1 };
+		rMatrix Q = rMatrix::CrossProductMatrix(A);
+		raMatrix mB = raMatrixMake(B, 3, 1);
+		raMatrix mC = raMatrixMake(C, 3, 1);
+		err = (Q*mB - mC).FrobeniusNorm();
+	}
+	else if (test == 24)  //check memory_pool with large matrix (was shown to fail in hydr_frac problem)
 	{
 #if defined(USE_OMP)
 #pragma omp parallel
 #endif
 		{
-			rMatrix A(224,12), B(224,1);
-			for(int k = 0; k < 224; ++k)
+			rMatrix A(224, 12), B(224, 1);
+			for (int k = 0; k < 224; ++k)
 			{
-				for(int l = 0; l < 12; ++l)
-					A(k,l) = 2.0*(rand()/(1.*RAND_MAX))-1.0;
-				B(k,0) = 2.0*(rand()/(1.*RAND_MAX))-1.0;
+				for (int l = 0; l < 12; ++l)
+					A(k, l) = 2.0 * (rand() / (1. * RAND_MAX)) - 1.0;
+				B(k, 0) = 2.0 * (rand() / (1. * RAND_MAX)) - 1.0;
 			}
 #if defined(USE_OMP)
 #pragma omp critical
