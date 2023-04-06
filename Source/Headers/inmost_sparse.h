@@ -715,7 +715,7 @@ namespace INMOST
 			void Resize(const Matrix & A);
 #endif //USE_SOLVER
 			/// Clear linked list.
-			__INLINE void Clear();// { data.clear(); }
+			void Clear();// { data.clear(); }
 			/// Add a row with a coefficient into empty linked list.
 			/// This routine should be a bit faster then RowMerger::AddRow
 			/// for empty linked list. It may result in an unexpected behavior

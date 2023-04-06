@@ -5185,8 +5185,8 @@ namespace INMOST
 	template<typename Var>
 	bool AbstractMatrixReadOnly<Var>::cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const
 	{
-		m = Rows();
-		n = Cols();
+		int m = Rows();
+		int n = Cols();
 		//data eta / 1.1920929e-07 /
 		//data tol / 1.5e-31 /
 		if (m > n)
@@ -5197,7 +5197,7 @@ namespace INMOST
 			else return false;
 		}
 		Var cs, eta, f, g, h, q, r, sn, w, x, y, z;
-		int i, j, k, l, m, n, p = 0;
+		int i, j, k, l, p = 0;
 		std::vector<Var> t, b, c, s;
 		Matrix<Var> A = *this;
 		//  Householder reduction.
