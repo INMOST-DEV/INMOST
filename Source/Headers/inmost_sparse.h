@@ -637,13 +637,13 @@ namespace INMOST
 		class RowMerger
 		{
 			//typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
-			typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
+			//typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
 			//typedef robin_hood::unordered_node_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
 			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
+			//typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> container;
 		public:
-			//const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
+			const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
 			//const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
-			/*
 			class iterator
 			{
 			private:
@@ -669,22 +669,21 @@ namespace INMOST
 				bool operator >=(const iterator & other) const {return merger == other.merger && pos >= other.pos;}
 				friend class RowMerger;
 			};
-			*/
-			typedef container::iterator iterator;
+			//typedef container::iterator iterator;
 		private:
-			//INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
-			//INMOST_DATA_ENUM_TYPE First; ///< First position.
+			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
+			INMOST_DATA_ENUM_TYPE First; ///< First position.
 			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
 			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//map_container pos;  //Position in vals and next array (huge array)
-			//std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
-			//std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
+			map_container pos;  //Position in vals and next array (huge array)
+			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
+			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			//interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
-			container data;
+			//container data;
 		public:
 			/// Default constructor without size specified.
 			RowMerger();
@@ -716,7 +715,7 @@ namespace INMOST
 			void Resize(const Matrix & A);
 #endif //USE_SOLVER
 			/// Clear linked list.
-			__INLINE void Clear() { data.clear(); }
+			__INLINE void Clear();// { data.clear(); }
 			/// Add a row with a coefficient into empty linked list.
 			/// This routine should be a bit faster then RowMerger::AddRow
 			/// for empty linked list. It may result in an unexpected behavior
@@ -741,17 +740,17 @@ namespace INMOST
 			void RetriveRow(Row & r);
 			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
 			/// Get current number of nonzeros from linked list.
-			//INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}
-			INMOST_DATA_ENUM_TYPE Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+			INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}
+			//INMOST_DATA_ENUM_TYPE Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
 			/// Check if linked list is empty.
-			//bool Empty() const { return Nonzeros == 0; }
-			bool Empty() const { return data.empty(); }
+			bool Empty() const { return Nonzeros == 0; }
+			//bool Empty() const { return data.empty(); }
 			/// Retrive/add an entry from/to linked list.
 			/// @param pos Position in the list.
-			__INLINE INMOST_DATA_REAL_TYPE & operator [] (INMOST_DATA_ENUM_TYPE pos) 
-			{ 
-				return data[pos]; 
-			} 
+			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE pos);
+			//{ 
+			//	return data[pos]; 
+			//} 
 			/// Retrive an entry from linked list.
 			/// \warning
 			/// Will fire an exception if there is no entry.
@@ -773,11 +772,11 @@ namespace INMOST
 				Clear();
 			}
 			///Retrive iterator for the first element.
-			//iterator Begin() {return iterator(this);}
-			iterator Begin() { return data.begin(); }
+			iterator Begin() {return iterator(this);}
+			//iterator Begin() { return data.begin(); }
 			///Retrive iterator for the position beyond the last element.
-			//iterator End() {iterator ret(this); ret.pos = EOL; return ret;}
-			iterator End() { return data.end(); }
+			iterator End() {iterator ret(this); ret.pos = EOL; return ret;}
+			//iterator End() { return data.end(); }
 		};
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
 	} //namespace Sparse

@@ -1145,6 +1145,23 @@ namespace INMOST
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
 		template<typename typeB>
+		SymmetricMatrix& operator =(AbstractMatrix<typeB> const& other)
+		{
+			assert(other.Rows() == other.Cols());
+			if (Rows() != other.Rows())
+				space.resize((other.Rows() + 1) * other.Rows() / 2);
+			n = other.Rows();
+			for (enumerator i = 0; i < other.Rows(); ++i)
+				for (enumerator j = i; j < other.Cols(); ++j)
+					assign((*this)(i, j), other.get(i, j));
+			return *this;
+		}
+		/// Assign matrix of another type.
+		/// Function assumes that the other matrix is square and symmetric.
+		/// Copies only top-right triangular part.
+		/// @param other Another matrix of different type.
+		/// @return Reference to matrix.
+		template<typename typeB>
 		SymmetricMatrix & operator =(AbstractMatrixReadOnly<typeB> const & other)
 		{
 			assert(other.Rows() == other.Cols());
@@ -1153,7 +1170,7 @@ namespace INMOST
 			n = other.Rows();
 			for (enumerator i = 0; i < other.Rows(); ++i)
 				for (enumerator j = i; j < other.Cols(); ++j)
-					assign((*this)(i, j), other(i, j));
+					assign((*this)(i, j), other.compute(i, j));
 			return *this;
 		}
 		/// Access element of the matrix by row and column indices.
