@@ -468,9 +468,9 @@ namespace INMOST
 		ENTER_BLOCK();
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
@@ -516,9 +516,9 @@ namespace INMOST
 		m->CheckSetLinks(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		CheckParentSet(__FILE__,__LINE__);
 		EXIT_BLOCK();
 		/*
@@ -646,11 +646,12 @@ namespace INMOST
 
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
+		//m->RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		ENTER_BLOCK();
 		m->BeginModification();
 		while(schedule_counter)
@@ -1514,7 +1515,7 @@ namespace INMOST
 		m->CheckSetLinks(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
 		//m->CheckGIDs();
 
@@ -1686,11 +1687,12 @@ namespace INMOST
 		ENTER_BLOCK();
 		assert(Element::CheckConnectivity(m));
 		CheckClosure(__FILE__,__LINE__);
+		//m->RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		
 		//keep links to prevent loss during balancing
@@ -1725,9 +1727,9 @@ namespace INMOST
 		CheckParentSet(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		
 		//m->Save("after_refine"+std::to_string(fi)+".pvtk");
@@ -1828,9 +1830,9 @@ namespace INMOST
 		ENTER_BLOCK();
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
@@ -1895,9 +1897,9 @@ namespace INMOST
 		CheckParentSet(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		
 		int schedule_counter = 1; //indicates order in which refinement will be scheduled
@@ -2248,9 +2250,9 @@ namespace INMOST
 		CheckParentSet(__FILE__,__LINE__);//,indicator);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		//std::fstream fout("sets"+std::to_string(m->GetProcessorRank())+".txt",std::ios::out);
 		//for(Mesh::iteratorSet it = m->BeginSet(); it != m->EndSet(); ++it)
@@ -2680,9 +2682,9 @@ namespace INMOST
 		CheckClosure(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		//restore links to prevent loss during balancing
 		m->ExchangeData(parent_set,CELL,0);
@@ -2717,9 +2719,9 @@ namespace INMOST
 		CheckParentSet(__FILE__,__LINE__);
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
-		m->CheckOwners();
+		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
-		m->CheckGIDs();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 		//m->Save("after_coarse"+std::to_string(fi)+".pvtk");
 		//std::cout << "Save after_coarse"+std::to_string(fi)+".pvtk" << std::endl;

@@ -504,7 +504,30 @@ int main(int argc,char ** argv)
 		for(int k = 0; k < r.Size(); ++k)
 			err += fabs(r[k]*r[k]);
 	}
-	else if (test == 30)  //check memory_pool with large matrix (was shown to fail in hydr_frac problem)
+	else if (test == 30) //this test is for sparse matrices, should move to another tests
+	{
+		Sparse::Matrix A("", 0, 3), B("", 0, 3),C;
+		//     | 10    -4|     | 5  2   |
+		// A = |  2 20   | B = |-1 10   |
+		//     |  4    40|     |    2 20|
+		//                 |    -8 -8|
+		// C = 2*A - 4*B = | 8       |
+		//                 | 8  -8   |
+		A[0][0] = 10; A[0][2] = -4;
+		A[1][0] = 2;  A[1][1] = 20;
+		A[2][0] = 4;  A[2][2] = 40;
+		B[0][0] = 5;  B[0][1] = 2;
+		B[1][0] = -1; B[1][1] = 10;
+		B[2][1] = 2;  B[2][2] = 20;
+		Sparse::Matrix::ZAXPBY(2, A, -4, B, C);
+		rMatrix D(3, 3, 0.0);
+		for (int k = 0; k < 3; ++k)
+			for (Sparse::Row::iterator jt = C[k].Begin(); jt != C[k].End(); ++jt)
+				D(k, jt->first) = jt->second;
+		D.Print();
+		err = (D - rMatrix::Make(3, 3, 0., -8., -8., 8., 0., 0., 8., -8., 0.)).FrobeniusNorm();
+	}
+	else if (test == 31)  //check memory_pool with large matrix (was shown to fail in hydr_frac problem)
 	{
 #if defined(USE_OMP)
 #pragma omp parallel

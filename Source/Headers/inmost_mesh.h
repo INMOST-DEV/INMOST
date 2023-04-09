@@ -3412,9 +3412,9 @@ namespace INMOST
 		/// Exits if does not match.
 		void                              CheckGhostSharedCount(std::string file, int line, ElementType etype = ESET | CELL | FACE | EDGE | NODE);
 		/// Let ghost elements send processors list to master elements and see if they match
-		void                              CheckOwners        ();
+		void                              CheckOwners        (std::string file, int line);
 		/// Let ghost elements send global ids to master elements and see if they match
-		void                              CheckGIDs(ElementType mask = NODE | EDGE | FACE | CELL | ESET);
+		void                              CheckGIDs(std::string file, int line, ElementType mask = NODE | EDGE | FACE | CELL | ESET);
 		/// Let ghost elements send owner processor to master elements and see if they match
 		void                              CheckProcessors    ();
 		/// Checks that there are no invalid links in sets

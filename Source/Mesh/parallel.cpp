@@ -447,8 +447,8 @@ namespace INMOST
 		ENTER_BLOCK();
 		CheckGhostSharedCount(__FILE__, __LINE__);
 		CheckCentroids(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		EXIT_BLOCK();
 #if defined(USE_MPI)
@@ -648,8 +648,8 @@ namespace INMOST
 		ENTER_BLOCK();
 		CheckGhostSharedCount(__FILE__, __LINE__);
 		CheckCentroids(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		EXIT_BLOCK();
 		
@@ -2124,14 +2124,9 @@ namespace INMOST
 					
 					Element::Status estat;
 					ENTER_BLOCK();
-					//for(Mesh::iteratorElement it = BeginElement(NODE); it != EndElement(); it++)
-#if defined(USE_OMP)
-#pragma omp parallel for
-#endif
-					for(integer i = 0; i < NodeLastLocalID(); ++i) if( isValidNode(i))
+					for(Mesh::iteratorElement it = BeginElement(NODE); it != EndElement(); it++)
 					{
-						Node it = NodeByLocalID(i);
-                        if (only_new && it->GetMarker(NewMarker()) == false) continue;
+						if (only_new && it->GetMarker(NewMarker()) == false) continue;
 						integer owner;
 						Storage::integer_array v = it->IntegerArrayDV(tag_processors);
 						std::sort(v.begin(),v.end());
@@ -2159,14 +2154,15 @@ namespace INMOST
 					EXIT_BLOCK();
 					//ComputeSharedProcs();
 					RecomputeParallelStorage(NODE);
+					CheckGhostSharedCount(__FILE__, __LINE__, NODE);
 					AssignGlobalID(NODE);
 					ReportParallelStorage();
 					REPORT_STR("Set parallel info for nodes");
 					
 					ENTER_BLOCK();
-					CheckGhostSharedCount(__FILE__, __LINE__);
-					CheckOwners();
-					CheckGIDs();
+					CheckGhostSharedCount(__FILE__, __LINE__,NODE);
+					CheckOwners(__FILE__, __LINE__);
+					CheckGIDs(__FILE__, __LINE__,NODE);
 					CheckProcessors();
 					CheckCentroids(__FILE__, __LINE__);
 					EXIT_BLOCK();
@@ -2518,9 +2514,9 @@ namespace INMOST
 						ENTER_BLOCK();
 
 						ENTER_BLOCK();
-						CheckGhostSharedCount(__FILE__, __LINE__);
-						CheckOwners();
-						CheckGIDs();
+						CheckGhostSharedCount(__FILE__, __LINE__,current_mask);
+						CheckOwners(__FILE__, __LINE__);
+						CheckGIDs(__FILE__, __LINE__,current_mask);
 						CheckProcessors();
 						CheckCentroids(__FILE__, __LINE__);
 						EXIT_BLOCK();
@@ -2534,9 +2530,9 @@ namespace INMOST
 						ReportParallelStorage();
 
 						ENTER_BLOCK();
-						CheckGhostSharedCount(__FILE__, __LINE__);
-						CheckOwners();
-						CheckGIDs();
+						CheckGhostSharedCount(__FILE__, __LINE__,current_mask);
+						CheckOwners(__FILE__, __LINE__);
+						CheckGIDs(__FILE__, __LINE__,current_mask);
 						CheckProcessors();
 						CheckCentroids(__FILE__, __LINE__);
 						EXIT_BLOCK();
@@ -2562,8 +2558,8 @@ namespace INMOST
 		ENTER_BLOCK();
 		CheckGhostSharedCount(__FILE__, __LINE__);
 		CheckCentroids(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		EXIT_BLOCK();
 
@@ -2573,8 +2569,8 @@ namespace INMOST
 		ENTER_BLOCK();
 		CheckGhostSharedCount(__FILE__, __LINE__);
 		CheckCentroids(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		EXIT_BLOCK();
 
@@ -3011,9 +3007,9 @@ namespace INMOST
 			}
 			EXIT_BLOCK();
 			ENTER_BLOCK();
-			CheckGIDs(mask);
+			CheckGIDs(__FILE__, __LINE__,mask);
 			SortParallelStorage(mask);
-			CheckGIDs(mask);
+			CheckGIDs(__FILE__, __LINE__,mask);
 			EXIT_BLOCK();
 		}
 		else
@@ -3157,7 +3153,7 @@ namespace INMOST
 	{
 		ENTER_FUNC();
 #if defined(USE_MPI)
-		CheckGIDs();
+		CheckGIDs(__FILE__, __LINE__);
 		if (!HaveGlobalID(CELL))
 		{
 			REPORT_STR("assign cell gids");
@@ -3192,14 +3188,6 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
-		REPORT_STR("number of ghost or shared faces");
-#if defined(USE_PARALLEL_WRITE_TIME)
-		for(std::map<int,int>::iterator it = numfacesperproc.begin(); it != numfacesperproc.end(); ++it)
-		{
-			REPORT_VAL("processor",it->first);
-			REPORT_VAL("skin faces",it->second);
-		}
-#endif
 
 		REPORT_STR("reducing cell's global identificators information")
 
@@ -3406,7 +3394,7 @@ namespace INMOST
 			}
 			on_skin = DeleteTag(on_skin);
 			REPORT_STR("number of shared elements");
-			CheckGIDs();
+			CheckGIDs(__FILE__, __LINE__);
 		}
 		EXIT_FUNC();
 		return bridge;
@@ -4052,6 +4040,7 @@ namespace INMOST
 							{
 								proc.insert(ip,mpirank);
 								send_elements[owner][GetHandleElementNum(*it)].push_back(*it);
+								//std::cout << "inform " << owner << " of " << ElementTypeName(GetHandleElementType(*it)) << " from " << mpirank << std::endl;
 							}
 						}
 				}
@@ -4082,8 +4071,8 @@ namespace INMOST
 
 			CheckGhostSharedCount(__FILE__, __LINE__);
 			CheckCentroids(__FILE__, __LINE__);
-			CheckOwners();
-			CheckGIDs();
+			CheckOwners(__FILE__, __LINE__);
+			CheckGIDs(__FILE__, __LINE__);
 			CheckProcessors();
 			//ComputeSharedProcs();
 		}
@@ -5502,6 +5491,7 @@ namespace INMOST
 						SetMarker(new_node,unpack_tags_mrk);
 						++marked_for_data;
 						++marked_ghost;
+						//std::cout << "New ghost node at " << GetProcessorRank() << " arrived from " << source << std::endl;
 					}
 				}
 				if ((flags[i] & 1 ? true : false) != GetMarker(new_node, unpack_tags_mrk))
@@ -5627,6 +5617,7 @@ namespace INMOST
 					++marked_ghost;
 					
 					assert(IntegerArrayDV(new_edge,tag_processors).size() == 0);
+					//std::cout << "New ghost edge at " << GetProcessorRank() << " arrived from " << source << std::endl;
 				}
 				else
 				{
@@ -5744,6 +5735,8 @@ namespace INMOST
 					SetMarker(new_face,unpack_tags_mrk);
 					++marked_for_data;
 					++marked_ghost;
+
+					//std::cout << "New ghost face at " << GetProcessorRank() << " arrived from " << source << std::endl;
 				} 
 				else 
 				{
@@ -5902,6 +5895,8 @@ namespace INMOST
 					SetMarker(new_cell,unpack_tags_mrk);
 					++marked_for_data;
 					++marked_ghost;
+					//std::cout << "New ghost cell at " << GetProcessorRank() << " arrived from " << source << std::endl;
+
 				} 
 				else 
 				{
@@ -5999,6 +5994,8 @@ namespace INMOST
 					++marked_for_data;
 					++marked_ghost;
 					
+
+					//std::cout << "New ghost eset at " << GetProcessorRank() << " arrived from " << source << std::endl;
 				}
 				else
 				{
@@ -6959,8 +6956,8 @@ namespace INMOST
 		RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
 		
 		CheckGhostSharedCount(__FILE__,__LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckCentroids(__FILE__,__LINE__);
 
 		if (action == AGhost)
@@ -6969,8 +6966,8 @@ namespace INMOST
 			ExchangeData(tag_processors, ESET | CELL | FACE | EDGE | NODE, 0);
 		}
 		CheckCentroids(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		
 		//ComputeSharedProcs();
@@ -7023,7 +7020,7 @@ namespace INMOST
 #if defined(USE_MPI)
 #if !defined(USE_PARALLEL_STORAGE)
 		parallel_storage ghost_elements, shared_elements;
-		GatherParallelStorage(ghost_elements,shared_elements,FACE);
+		GatherParallelStorage(ghost_elements,shared_elements,etype);
 #endif //USE_PARALLEL_STORAGE
 		int size = GetProcessorsNumber();
 		int rank = GetProcessorRank();
@@ -7053,6 +7050,14 @@ namespace INMOST
 					" for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k + size*5] << " ghost elements on " << it->first);
 				err++;
 			}
+			/*
+			else if( ElementTypeFromDim(k)& etype )
+			{
+				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of shared " << ElementTypeName(ElementTypeFromDim(k));
+				std::cout << " for " << it->first << " and there are " << recv_counts[it->first * size * 5 * 2 + rank * 5 + k + size * 5] << " ghost elements on " << it->first;
+				std::cout << " from " << file << ":" << line << std::endl;
+			}
+			*/
 		}
 		for(parallel_storage::iterator it = ghost_elements.begin(); it != ghost_elements.end(); ++it)
 		{
@@ -7064,6 +7069,14 @@ namespace INMOST
 					" for " << it->first << " but there are " << recv_counts[it->first*size*5*2 + rank*5+k] << " shared elements on " << it->first);
 				err++;
 			}
+			/*
+			else if (ElementTypeFromDim(k) & etype)
+			{
+				std::cout << "processor " << GetProcessorRank() << " has " << it->second[k].size() << " of ghost " << ElementTypeName(ElementTypeFromDim(k));
+				std::cout << " for " << it->first << " and there are " << recv_counts[it->first * size * 5 * 2 + rank * 5 + k] << " shared elements on " << it->first;
+				std::cout << " from " << file << ":" << line << std::endl;
+			}
+			*/
 		}
 		err = Integrate(err);
 #endif //USE_MPI
@@ -7074,6 +7087,7 @@ namespace INMOST
 			std::cout << "crash from " << file << ":" << line << std::endl;
 			REPORT_STR("crash from " << file << ":" << line);
 			std::cout.flush();
+			assert(false);
 			exit(-1);
 		}
 #endif //USE_MPI
@@ -7224,7 +7238,7 @@ namespace INMOST
 	}
 
 	
-	void Mesh::CheckOwners()
+	void Mesh::CheckOwners(std::string file, int line)
 	{
 #if !defined(NDEBUG)
 		ENTER_FUNC();
@@ -7246,7 +7260,7 @@ namespace INMOST
 		crash = Integrate(crash);
 		if (crash)
 		{
-			std::cout << "crash " << __FUNCTION__ << std::endl;
+			std::cout << "crash " << __FUNCTION__ << " " << file << ":" << line << std::endl;
 			REPORT_STR("crash from " << __FUNCTION__);
 			std::cout.flush();
 			exit(-1);
@@ -7271,7 +7285,7 @@ namespace INMOST
 		}
 	}
 
-	void Mesh::CheckGIDs(ElementType mask)
+	void Mesh::CheckGIDs(std::string file, int line, ElementType mask)
 	{
 #if !defined(NDEBUG)
 		ENTER_FUNC();
@@ -7307,7 +7321,7 @@ namespace INMOST
 		crash = Integrate(crash);
 		if (crash)
 		{
-			std::cout << "crash " << __FUNCTION__ << std::endl;
+			std::cout << "crash " << __FUNCTION__ << " " << file << ":" << line << std::endl;
 			REPORT_STR("crash from " << __FUNCTION__);
 			std::cout.flush();
 			exit(-1);
@@ -7716,8 +7730,8 @@ namespace INMOST
 		Integer(GetHandle(),tag_bridge) = bridge;
 		CheckSetLinks(__FILE__,__LINE__);
 		CheckGhostSharedCount(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__,__LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		CheckCentroids(__FILE__, __LINE__);
 		//Storage::integer_array procs = IntegerArrayDV(GetHandle(),tag_processors);
@@ -7772,8 +7786,8 @@ namespace INMOST
 			ENTER_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
 			CheckGhostSharedCount(__FILE__,__LINE__);
-			CheckOwners();
-			CheckGIDs();
+			CheckOwners(__FILE__, __LINE__);
+			CheckGIDs(__FILE__, __LINE__);
 			CheckProcessors();
 			CheckCentroids(__FILE__, __LINE__);
 			ExchangeMarked();
@@ -7836,8 +7850,8 @@ namespace INMOST
 			ENTER_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
 			CheckGhostSharedCount(__FILE__, __LINE__);
-			CheckOwners();
-			CheckGIDs();
+			CheckOwners(__FILE__, __LINE__);
+			CheckGIDs(__FILE__, __LINE__);
 			CheckProcessors();
 			CheckCentroids(__FILE__, __LINE__);
 			EXIT_BLOCK();
@@ -7878,8 +7892,8 @@ namespace INMOST
 			RemoveGhostElements(del_ghost);
 			CheckSetLinks(__FILE__,__LINE__);
 			CheckGhostSharedCount(__FILE__, __LINE__);
-			CheckOwners();
-			CheckGIDs();
+			CheckOwners(__FILE__, __LINE__);
+			CheckGIDs(__FILE__, __LINE__);
 			CheckProcessors();
 			CheckCentroids(__FILE__, __LINE__);
 			//Save("after_delete_ghost.pvtk");
@@ -8348,8 +8362,8 @@ namespace INMOST
 
 
 		CheckGhostSharedCount(__FILE__, __LINE__);
-		CheckOwners();
-		CheckGIDs();
+		CheckOwners(__FILE__, __LINE__);
+		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		CheckCentroids(__FILE__, __LINE__);
 

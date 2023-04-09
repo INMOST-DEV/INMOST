@@ -3,6 +3,7 @@
 #include "inmost_dense.h"
 #include <fstream>
 #include <sstream>
+#include "../Misc/judy.h"
 
 namespace INMOST
 {
@@ -14,29 +15,29 @@ namespace INMOST
 
 		INMOST_MPI_Type RowEntryType = INMOST_MPI_DATATYPE_NULL;
 
-		INMOST_MPI_Type GetRowEntryType() {return RowEntryType;}
+		INMOST_MPI_Type GetRowEntryType() { return RowEntryType; }
 
-		bool HaveRowEntryType() {return _hasRowEntryType;}
+		bool HaveRowEntryType() { return _hasRowEntryType; }
 
 		void CreateRowEntryType()
 		{
 #if defined(USE_MPI)
-			if( !HaveRowEntryType() )
+			if (!HaveRowEntryType())
 			{
 				int ierr;
 				MPI_Datatype type[2] = { INMOST_MPI_DATA_ENUM_TYPE, INMOST_MPI_DATA_REAL_TYPE };
 				int blocklen[2] = { 1, 1 };
 				MPI_Aint disp[2];
-				disp[0] = offsetof(Sparse::Row::entry,first);
-				disp[1] = offsetof(Sparse::Row::entry,second);
+				disp[0] = offsetof(Sparse::Row::entry, first);
+				disp[1] = offsetof(Sparse::Row::entry, second);
 				//disp[2] = sizeof(Sparse::Row::entry);
 				ierr = MPI_Type_create_struct(2, blocklen, disp, type, &RowEntryType);
-				if( ierr != MPI_SUCCESS )
+				if (ierr != MPI_SUCCESS)
 				{
 					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_create_struct" << std::endl;
 				}
 				ierr = MPI_Type_commit(&RowEntryType);
-				if( ierr != MPI_SUCCESS )
+				if (ierr != MPI_SUCCESS)
 				{
 					std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Type_commit" << std::endl;
 				}
@@ -48,7 +49,7 @@ namespace INMOST
 		void DestroyRowEntryType()
 		{
 #if defined(USE_MPI)
-			if( HaveRowEntryType() )
+			if (HaveRowEntryType())
 			{
 				MPI_Type_free(&RowEntryType);
 				RowEntryType = INMOST_MPI_DATATYPE_NULL;
@@ -57,91 +58,148 @@ namespace INMOST
 			_hasRowEntryType = false;
 		}
 
-////////class RowMerger
-		/*
+		////////class RowMerger
+				/*
 
-		RowMerger::RowMerger() {}
-		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
-		{
-			container::const_iterator f = data.find(ind);
-			if (f != data.end())
-				return f->second;
-			throw - 1;
-		}
-		
-		
-		//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
-		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
-		{
-			assert(data.empty());
-			data.reserve(size);
-		}
-		
-		void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
-		{
-			for (container::iterator it = data.begin(); it != data.end(); ++it)
-				it->second *= coef;
-		}
-
-		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-		{
-			assert(data.empty()); //Linked list should be empty
-			if (coef)
-			{
-				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-					data[it->first] = it->second * coef;
-			}
-		}
-
-		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-		{
-			if (coef)
-			{
-				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-					data[it->first] += coef * it->second;
-			}
-		}
-
-		void RowMerger::RetriveRow(Row& r)
-		{
-			r.Resize(Size());
-			INMOST_DATA_ENUM_TYPE k = 0;
-			for (container::iterator it = data.begin(); it != data.end(); ++it)
-			{
-				if (it->second)
+				RowMerger::RowMerger() {}
+				INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
 				{
-					r.GetIndex(k) = it->first;
-					r.GetValue(k) = it->second;
-					k++;
+					container::const_iterator f = data.find(ind);
+					if (f != data.end())
+						return f->second;
+					throw - 1;
 				}
-			}
-			r.Resize(k);
-		}
-		*/
 
-		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
-		 
-		INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
+
+				//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
+				void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
+				{
+					assert(data.empty());
+					data.reserve(size);
+				}
+
+				void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
+				{
+					for (container::iterator it = data.begin(); it != data.end(); ++it)
+						it->second *= coef;
+				}
+
+				void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+				{
+					assert(data.empty()); //Linked list should be empty
+					if (coef)
+					{
+						for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+							data[it->first] = it->second * coef;
+					}
+				}
+
+				void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
+				{
+					if (coef)
+					{
+						for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+							data[it->first] += coef * it->second;
+					}
+				}
+
+				void RowMerger::RetriveRow(Row& r)
+				{
+					r.Resize(Size());
+					INMOST_DATA_ENUM_TYPE k = 0;
+					for (container::iterator it = data.begin(); it != data.end(); ++it)
+					{
+						if (it->second)
+						{
+							r.GetIndex(k) = it->first;
+							r.GetValue(k) = it->second;
+							k++;
+						}
+					}
+					r.Resize(k);
+				}
+				*/
+
+#if 0
+		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
 		{
-			map_container::const_iterator f = pos.find(ind);
-			if( f != pos.end() )
-				return vals[f->second];
-			throw -1;
-		}
-		INMOST_DATA_REAL_TYPE& RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind)
-		{
-			map_container::iterator f = pos.find(ind);
-			if (f == pos.end())
+			judyvalue key = ind;
+			JudySlot* slot = (JudySlot*)judy_slot((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
+			if (slot != NULL)
 			{
-				pos[ind] = Nonzeros;
+				assert((*slot) - 1 < vals.size());
+				return (*slot) - 1;
+			}
+			else throw Impossible;
+		}
+		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
+		{
+			judyvalue key = ind;
+			JudySlot* slot = (JudySlot*)judy_slot((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
+			if (slot != NULL)
+			{
+				assert((*slot) - 1 < vals.size());
+				return (*slot) - 1;
+			}
+			else
+			{
+				ins_pos(ind, Nonzeros);
 				next.push_back(First);
 				vals.push_back(0.0);
 				First = ind;
-				++Nonzeros;
-				return vals.back();
+				return Nonzeros++;
 			}
-			else return vals[f->second];
 		}
+		void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE k)
+		{
+			judyvalue key = ind;
+			JudySlot* slot = (JudySlot*)judy_cell((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
+			assert(slot != NULL);
+			*slot = static_cast<judyvalue>(k)+1;
+		}
+		RowMerger::RowMerger() : First(EOL), Nonzeros(0) 
+		{
+			judy_array = judy_open(JUDY_key_size, 1);
+		}
+		void RowMerger::Clear()
+		{
+			First = EOL;
+			judyvalue key = 0;
+			JudySlot* slot = NULL;
+			while( NULL != (slot = judy_strt((Judy*)judy_array, (const unsigned char*)&key, 0)))
+				judy_del((Judy*)judy_array);
+			vals.clear();
+			next.clear();
+			Nonzeros = 0;
+		}
+
+#else
+		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
+		{
+			map_container::const_iterator f = pos.find(ind);
+			if (f != pos.end())
+				return f->second;
+			else throw Impossible;
+		}
+		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
+		{
+			map_container::iterator f = pos.find(ind);
+			if (f != pos.end())
+				return f->second;
+			else
+			{
+				ins_pos(ind, Nonzeros);
+				next.push_back(First);
+				vals.push_back(0.0);
+				First = ind;
+				return Nonzeros++;
+			}
+		}
+		void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE k)
+		{
+			pos[ind] = k;
+		}
+		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
 		void RowMerger::Clear()
 		{
 			First = EOL;
@@ -150,6 +208,9 @@ namespace INMOST
 			next.clear();
 			Nonzeros = 0;
 		}
+
+#endif
+
 		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
 		{
 			if (coef)
@@ -158,17 +219,8 @@ namespace INMOST
 				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
 					ind = it->first;
-					map_container::iterator f = pos.find(ind);
-					if (f == pos.end())
-					{
-						//pos.insert(std::make_pair(ind, Nonzeros));
-						pos[ind] = Nonzeros;
-						next.push_back(First);
-						vals.push_back(coef * it->second);
-						First = ind;
-						++Nonzeros;
-					}
-					else vals[f->second] += coef * it->second;
+					INMOST_DATA_ENUM_TYPE p = get_pos(ind);
+					vals[p] += coef * it->second;
 				}
 			}
 		}
@@ -178,7 +230,7 @@ namespace INMOST
 			assert(Nonzeros == 0);
 			Nonzeros = 0;
 			First = EOL;
-			pos.reserve(size);
+			//pos.reserve(size);
 			next.clear();
 			vals.clear();
 		}
@@ -231,8 +283,7 @@ namespace INMOST
 				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
 					ind = it->first;
-					//pos.insert(std::make_pair(ind, k));
-					pos[ind] = k;
+					ins_pos(ind, k);
 					next[k] = First;
 					vals[k] = it->second * coef;
 					First = ind;
@@ -245,20 +296,20 @@ namespace INMOST
 		
 
 
-		void RowMerger::RetrieveRow(Row & r)
+		void RowMerger::RetrieveRow(Row & r) const
 		{
             r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros));
 			INMOST_DATA_ENUM_TYPE i = First, k = 0;
 			while( i != EOL )
 			{
-				map_container::iterator	f = pos.find(i);
-				if(vals[f->second])
+				INMOST_DATA_ENUM_TYPE p = get_pos(i);
+				if(vals[p])
 				{
 					r.GetIndex(k) = i;
-					r.GetValue(k) = vals[f->second];
+					r.GetValue(k) = vals[p];
 					++k;
 				}
-				i = next[f->second];
+				i = next[p];
 			}
 			r.Resize(k);
 		}
@@ -1542,6 +1593,38 @@ namespace INMOST
 			// outer procedure should update J Matrix, if needed
 		}
 
+
+		void Sparse::Matrix::ZAXPBY(INMOST_DATA_REAL_TYPE alpha, const Sparse::Matrix& X, INMOST_DATA_REAL_TYPE beta, const Sparse::Matrix& Y, Sparse::Matrix& Z)
+		{
+			if (X.GetFirstIndex() != Y.GetFirstIndex())
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " X and Y first index mismatch!" << std::endl;
+				throw Impossible;
+			}
+			if (X.GetLastIndex() != Y.GetLastIndex())
+			{
+				std::cout << __FILE__ << ":" << __LINE__ << " X and Y last index mismatch!" << std::endl;
+				throw Impossible;
+			}
+			Z.SetInterval(X.GetFirstIndex(), X.GetLastIndex());
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+			{
+				Sparse::RowMerger merger;
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for (INMOST_DATA_INTEGER_TYPE it = Z.GetFirstIndex(); it < Z.GetLastIndex(); ++it)
+				{
+					Z[it].Clear();
+					merger.PushRow(alpha, X[it]);
+					merger.AddRow(beta, Y[it]);
+					merger.RetrieveRow(Z[it]);
+					merger.Clear();
+				}
+			}
+		}
 
 #endif //USE_SOLVER
 	}

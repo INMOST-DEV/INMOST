@@ -2037,9 +2037,11 @@ namespace INMOST
 #endif
 		EXIT_BLOCK();
 		*/
-#if defined(USE_MPI)
+#if 0//defined(USE_MPI)
 		ENTER_BLOCK();
 		SwapModification(false);
+		//RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
+		CheckGhostSharedCount(__FILE__, __LINE__);
 		MarkerType del = NewMarker();
 		int mpirank = GetProcessorRank();
 		Tag tag_delete = CreateTag("TEMPORARY_DELETE_GHOST_ELEMENTS_TAG", DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
@@ -2220,10 +2222,12 @@ namespace INMOST
 		ResolveSets();
 		CheckSetLinks(__FILE__,__LINE__);
 		ResolveShared(true);
+		//ResolveShared();
 		CheckSetLinks(__FILE__,__LINE__);
 		EXIT_BLOCK();
 		//ReportParallelStorage();
-		//CheckCentroids(__FILE__,__LINE__);
+		//RecomputeParallelStorage(ESET | CELL | FACE | EDGE | NODE);
+		CheckCentroids(__FILE__,__LINE__);
 		/*
 		h = 0, n = 0, hn = 0;
 		for(ElementType etype = NODE; etype <= CELL; etype = NextElementType(etype))
@@ -2236,12 +2240,14 @@ namespace INMOST
 		}
 		std::cout << GetProcessorRank() << " before exchange ghost new " << n << " hidden " << h << " both " << hn << std::endl;
 		*/
+		CheckGhostSharedCount(__FILE__, __LINE__);
 		//std::cout << "layers " << Integer(GetHandle(),tag_layers) << " bridge " << ElementTypeName(ElementType(Integer(GetHandle(),tag_bridge))) << std::endl;
 		ENTER_BLOCK();
 		if( Integer(GetHandle(),tag_layers) )
 			ExchangeGhost(Integer(GetHandle(),tag_layers),Integer(GetHandle(),tag_bridge));//,NewMarker()); //TODO!!!!
 		EXIT_BLOCK();
 
+		CheckGhostSharedCount(__FILE__, __LINE__);
 		//ReportParallelStorage();
 		//CheckCentroids(__FILE__,__LINE__);
 		//Save("after_exchange_ghost.pvtk");
