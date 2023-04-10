@@ -2351,6 +2351,20 @@ namespace INMOST
 			else
 				return M->compute(i-orow,j-ocol);
 		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// If indices are out of block matrix bounds, assert will fire in Debug mode.
+		/// In Release mode this check is omitted.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		__INLINE const Var & get(enumerator i, enumerator j) const
+		{
+			assert(i < Rows());
+			assert(j < Cols());
+			assert(! (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols()) );
+			return M->get(i-orow,j-ocol);
+		}
 		/// Convert block of matrix into matrix.
 		/// Note, that modifying returned matrix does
 		/// not affect elements of the matrix or original matrix
