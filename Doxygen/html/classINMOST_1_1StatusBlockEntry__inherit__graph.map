@@ -1,0 +1,4 @@
+<map id="INMOST::StatusBlockEntry" name="INMOST::StatusBlockEntry">
+<area shape="rect" id="node1" title="This class is used to organize unknowns into blocks and provides mechanisms to change activation stat..." alt="" coords="5,80,197,107"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1AbstractEntry.html" title="This class is used to organize unknowns in abstract way, it should be registered with and managed by ..." alt="" coords="17,5,186,32"/>
+</map>

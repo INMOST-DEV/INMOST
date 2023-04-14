@@ -1,11 +1,3 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_i_n_m_o_s_t_1_1_storage.html" title="INMOST::Storage" alt="" coords="19,107,143,133"/>
-<area shape="rect" id="node2" href="$class_i_n_m_o_s_t_1_1_element.html" title="INMOST::Element" alt="" coords="204,107,331,133"/>
-<area shape="rect" id="node8" href="$class_i_n_m_o_s_t_1_1_mesh.html" title="INMOST::Mesh" alt="" coords="212,157,323,184"/>
-<area shape="rect" id="node3" href="$class_i_n_m_o_s_t_1_1_cell.html" title="An interface for elements of type CELL. " alt="" coords="401,5,503,32"/>
-<area shape="rect" id="node4" href="$class_i_n_m_o_s_t_1_1_edge.html" title="INMOST::Edge" alt="" coords="397,56,507,83"/>
-<area shape="rect" id="node5" href="$class_i_n_m_o_s_t_1_1_element_set.html" title="INMOST::ElementSet" alt="" coords="379,107,525,133"/>
-<area shape="rect" id="node6" href="$class_i_n_m_o_s_t_1_1_face.html" title="An interface for elements of type FACE. " alt="" coords="398,157,506,184"/>
-<area shape="rect" id="node7" href="$class_i_n_m_o_s_t_1_1_node.html" title="INMOST::Node" alt="" coords="397,208,507,235"/>
-<area shape="rect" id="node9" href="$class_i_n_m_o_s_t_1_1_tag_manager.html" title="INMOST::TagManager" alt="" coords="5,157,156,184"/>
+<area shape="rect" id="node1" href="$classINMOST_1_1Mesh_1_1IntegerComparator.html" title=" " alt="" coords="5,5,252,32"/>
 </map>

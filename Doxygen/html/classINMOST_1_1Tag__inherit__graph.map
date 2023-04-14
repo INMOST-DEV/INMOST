@@ -1,0 +1,13 @@
+<map id="INMOST::Tag" name="INMOST::Tag">
+<area shape="rect" id="node1" title="This class provides the access to the individual mesh datum and general information about it." alt="" coords="5,233,108,260"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1TagBulk.html" title=" " alt="" coords="192,5,324,32"/>
+<area shape="rect" id="node3" href="$classINMOST_1_1TagBulkArray.html" title=" " alt="" coords="175,56,341,83"/>
+<area shape="rect" id="node4" href="$classINMOST_1_1TagInteger.html" title=" " alt="" coords="183,107,333,133"/>
+<area shape="rect" id="node5" href="$classINMOST_1_1TagIntegerArray.html" title=" " alt="" coords="166,157,350,184"/>
+<area shape="rect" id="node6" href="$classINMOST_1_1TagReal.html" title="Helper classes for class Tag //." alt="" coords="192,208,324,235"/>
+<area shape="rect" id="node7" href="$classINMOST_1_1TagRealArray.html" title=" " alt="" coords="175,259,341,285"/>
+<area shape="rect" id="node8" href="$classINMOST_1_1TagReference.html" title=" " alt="" coords="173,309,343,336"/>
+<area shape="rect" id="node9" href="$classINMOST_1_1TagReferenceArray.html" title=" " alt="" coords="156,360,360,387"/>
+<area shape="rect" id="node10" href="$classINMOST_1_1TagVariable.html" title=" " alt="" coords="179,411,337,437"/>
+<area shape="rect" id="node11" href="$classINMOST_1_1TagVariableArray.html" title=" " alt="" coords="162,461,354,488"/>
+</map>

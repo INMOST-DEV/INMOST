@@ -1,3 +1,8 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_i_n_m_o_s_t_1_1array_1_1__iterator.html" title="INMOST::array\&lt; element\l \&gt;::_iterator\&lt; etype \&gt;" alt="" coords="5,5,172,47"/>
+<area shape="rect" id="node1" href="$classINMOST_1_1AbstractEntry.html" title="This class is used to organize unknowns in abstract way, it should be registered with and managed by ..." alt="" coords="5,107,175,133"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1BlockEntry.html" title="This class is used to organize unknowns into blocks, blocks enumeration are managed by class Automati..." alt="" coords="243,5,394,32"/>
+<area shape="rect" id="node3" href="$classINMOST_1_1MultiEntry.html" title="Stack together multiple objects of AbstractEntry class." alt="" coords="245,56,393,83"/>
+<area shape="rect" id="node4" href="$classINMOST_1_1SingleEntry.html" title="This class is used to organize a single unknown." alt="" coords="241,107,396,133"/>
+<area shape="rect" id="node5" href="$classINMOST_1_1StatusBlockEntry.html" title="This class is used to organize unknowns into blocks and provides mechanisms to change activation stat..." alt="" coords="223,157,415,184"/>
+<area shape="rect" id="node6" href="$classINMOST_1_1VectorEntry.html" title="This class is used to organize multiple unknowns resided on single tag of variable or static size." alt="" coords="240,208,397,235"/>
 </map>

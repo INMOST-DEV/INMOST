@@ -1,0 +1,17 @@
+<map id="INMOST::AbstractMatrix&lt; Var &gt;" name="INMOST::AbstractMatrix&lt; Var &gt;">
+<area shape="rect" id="node1" title="Abstract class for a matrix, used to abstract away all the data storage and access and provide common..." alt="" coords="521,453,699,495"/>
+<area shape="rect" id="node4" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="747,5,988,76"/>
+<area shape="rect" id="node5" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="756,100,979,171"/>
+<area shape="rect" id="node6" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="772,195,963,236"/>
+<area shape="rect" id="node7" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="756,260,979,331"/>
+<area shape="rect" id="node8" href="$classINMOST_1_1BlockOfMatrix.html" title="This class allows to address a matrix as a block of an empty matrix of larger size." alt="" coords="780,355,955,396"/>
+<area shape="rect" id="node9" href="$classINMOST_1_1Matrix.html" title="Class for linear algebra operations on dense matrices." alt="" coords="785,420,949,461"/>
+<area shape="rect" id="node10" href="$classINMOST_1_1MatrixConcatCols.html" title=" " alt="" coords="769,485,965,527"/>
+<area shape="rect" id="node11" href="$classINMOST_1_1MatrixConcatRows.html" title=" " alt="" coords="766,551,969,592"/>
+<area shape="rect" id="node12" href="$classINMOST_1_1MatrixRepack.html" title=" " alt="" coords="782,616,953,657"/>
+<area shape="rect" id="node13" href="$classINMOST_1_1MatrixTranspose.html" title=" " alt="" coords="773,681,962,723"/>
+<area shape="rect" id="node14" href="$classINMOST_1_1SubMatrix.html" title="This class allows for in&#45;place operations on submatrix of the matrix elements." alt="" coords="788,747,947,788"/>
+<area shape="rect" id="node15" href="$classINMOST_1_1SymmetricMatrix.html" title=" " alt="" coords="770,812,965,853"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1AbstractMatrixReadOnly.html" title=" " alt="" coords="263,453,473,495"/>
+<area shape="rect" id="node3" href="$classINMOST_1_1AbstractMatrixBase.html" title=" " alt="" coords="5,461,215,487"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="INMOST::VectorEntry" name="INMOST::VectorEntry">
+<area shape="rect" id="node1" title="This class is used to organize multiple unknowns resided on single tag of variable or static size." alt="" coords="11,80,169,107"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1AbstractEntry.html" title="This class is used to organize unknowns in abstract way, it should be registered with and managed by ..." alt="" coords="5,5,175,32"/>
+</map>

@@ -1,0 +1,36 @@
+<map id="INMOST::AbstractMatrixReadOnly&lt; Var &gt;" name="INMOST::AbstractMatrixReadOnly&lt; Var &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="263,981,473,1023"/>
+<area shape="rect" id="node3" href="$classINMOST_1_1AbstractMatrix.html" title=" " alt="" coords="525,19,745,75"/>
+<area shape="rect" id="node5" href="$classINMOST_1_1AbstractMatrix.html" title=" " alt="" coords="524,114,745,170"/>
+<area shape="rect" id="node7" href="$classINMOST_1_1AbstractMatrix.html" title=" " alt="" coords="535,381,735,452"/>
+<area shape="rect" id="node9" href="$classINMOST_1_1AbstractMatrix.html" title="Abstract class for a matrix, used to abstract away all the data storage and access and provide common..." alt="" coords="546,655,723,696"/>
+<area shape="rect" id="node22" href="$classINMOST_1_1ConstBlockOfMatrix.html" title="This class allows to address a matrix as a block of an empty matrix of larger size." alt="" coords="529,720,740,761"/>
+<area shape="rect" id="node23" href="$classINMOST_1_1ConstMatrixConcatCols.html" title=" " alt="" coords="532,785,737,827"/>
+<area shape="rect" id="node24" href="$classINMOST_1_1ConstMatrixConcatRows.html" title=" " alt="" coords="532,851,737,892"/>
+<area shape="rect" id="node25" href="$classINMOST_1_1ConstMatrixConjugate.html" title=" " alt="" coords="521,916,748,957"/>
+<area shape="rect" id="node26" href="$classINMOST_1_1ConstMatrixConjugateTranspose.html" title=" " alt="" coords="521,981,748,1023"/>
+<area shape="rect" id="node27" href="$classINMOST_1_1ConstMatrixRepack.html" title=" " alt="" coords="531,1047,739,1088"/>
+<area shape="rect" id="node28" href="$classINMOST_1_1ConstMatrixTranspose.html" title=" " alt="" coords="521,1112,748,1153"/>
+<area shape="rect" id="node29" href="$classINMOST_1_1ConstSubMatrix.html" title="This class allows for in&#45;place operations on submatrix of the matrix elements." alt="" coords="543,1177,727,1219"/>
+<area shape="rect" id="node30" href="$classINMOST_1_1MatrixCol.html" title=" " alt="" coords="557,1243,712,1284"/>
+<area shape="rect" id="node31" href="$classINMOST_1_1MatrixDiag.html" title=" " alt="" coords="558,1308,711,1349"/>
+<area shape="rect" id="node32" href="$classINMOST_1_1MatrixRow.html" title=" " alt="" coords="553,1373,716,1415"/>
+<area shape="rect" id="node33" href="$classINMOST_1_1MatrixUnaryMinus.html" title=" " alt="" coords="534,1439,735,1480"/>
+<area shape="rect" id="node34" href="$classINMOST_1_1MatrixUnit.html" title=" " alt="" coords="559,1504,710,1545"/>
+<area shape="rect" id="node2" href="$classINMOST_1_1AbstractMatrixBase.html" title=" " alt="" coords="5,989,215,1015"/>
+<area shape="rect" id="node4" href="$classINMOST_1_1MatrixMul_3_01variable_00_01INMOST__DATA__REAL__TYPE_00_01Promote_3_01variable_00f67eee28fd4082b5d148e4e5ab831190.html" title=" " alt="" coords="796,5,1061,76"/>
+<area shape="rect" id="node6" href="$classINMOST_1_1MatrixMul_3_01variable_00_01variable_00_01Promote_3_01variable_00_01variable_01_4_1_1type_01_4.html" title=" " alt="" coords="823,100,1034,171"/>
+<area shape="rect" id="node8" href="$classINMOST_1_1MatrixMul_3_01INMOST__DATA__REAL__TYPE_00_01variable_00_01Promote_3_01INMOST__DAT1ada33977bb963d400fabe7ea121aedd.html" title=" " alt="" coords="824,195,1033,281"/>
+<area shape="rect" id="node10" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="808,305,1049,376"/>
+<area shape="rect" id="node11" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="817,400,1040,471"/>
+<area shape="rect" id="node12" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="833,495,1024,536"/>
+<area shape="rect" id="node13" href="$classINMOST_1_1Matrix.html" title=" " alt="" coords="817,560,1040,631"/>
+<area shape="rect" id="node14" href="$classINMOST_1_1BlockOfMatrix.html" title="This class allows to address a matrix as a block of an empty matrix of larger size." alt="" coords="841,655,1016,696"/>
+<area shape="rect" id="node15" href="$classINMOST_1_1Matrix.html" title="Class for linear algebra operations on dense matrices." alt="" coords="847,720,1011,761"/>
+<area shape="rect" id="node16" href="$classINMOST_1_1MatrixConcatCols.html" title=" " alt="" coords="831,785,1027,827"/>
+<area shape="rect" id="node17" href="$classINMOST_1_1MatrixConcatRows.html" title=" " alt="" coords="827,851,1030,892"/>
+<area shape="rect" id="node18" href="$classINMOST_1_1MatrixRepack.html" title=" " alt="" coords="843,916,1014,957"/>
+<area shape="rect" id="node19" href="$classINMOST_1_1MatrixTranspose.html" title=" " alt="" coords="834,981,1023,1023"/>
+<area shape="rect" id="node20" href="$classINMOST_1_1SubMatrix.html" title="This class allows for in&#45;place operations on submatrix of the matrix elements." alt="" coords="849,1047,1008,1088"/>
+<area shape="rect" id="node21" href="$classINMOST_1_1SymmetricMatrix.html" title=" " alt="" coords="831,1112,1026,1153"/>
+</map>
