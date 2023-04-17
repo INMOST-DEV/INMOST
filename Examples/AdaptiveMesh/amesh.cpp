@@ -484,7 +484,7 @@ namespace INMOST
 		//TagInteger indicator = m->CreateTag(indicator.GetTagName(), DATA_INTEGER, CELL, NONE, 1);
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 			(*it)->RefineIndicator(*this,indicator);
-		int refine = 0, tot = m->TotalNumberOf(CELL);
+		Storage::integer refine = 0, tot = m->TotalNumberOf(CELL);
 		for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
 		{
 			Cell c = m->CellByLocalID(i);
@@ -1846,7 +1846,7 @@ namespace INMOST
 		}
 		for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 			(*it)->CoarseIndicator(*this,indicator);
-		int coarse = 0, tot = m->TotalNumberOf(CELL);
+		Storage::integer coarse = 0, tot = m->TotalNumberOf(CELL);
 		for (Storage::integer i = 0; i < m->CellLastLocalID(); ++i) if (m->isValidCell(i))
 		{
 			Cell c = m->CellByLocalID(i);

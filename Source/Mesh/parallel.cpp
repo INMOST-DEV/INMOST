@@ -549,7 +549,7 @@ namespace INMOST
 					stat |= it->GetStatus();
 				if ((stat & Element::Owned) && (stat & (Element::Shared | Element::Ghost)))
 				{
-					int owner = INT_MAX;
+					integer owner = INT_MAX;
 					for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it) if (it->GetStatus() == Element::Owned)
 						owner = std::min(owner, it->IntegerDF(tag_owner));
 					tag[e][0] = owner;
@@ -576,7 +576,7 @@ namespace INMOST
 					ElementArray<Element> adj = c.getAdjElements(bridge);
 					std::pair<int, int> val(INT_MAX, INT_MAX);
 					for (ElementArray<Element>::iterator it = adj.begin(); it != adj.end(); ++it)
-						val = std::min(val, std::make_pair(tag[*it][1], tag[*it][0]));
+						val = std::min(val, std::pair<int,int>(tag[*it][1], tag[*it][0]));
 					if (val.first == cur_dist)
 					{
 						tag[c][0] = val.second;
@@ -602,7 +602,7 @@ namespace INMOST
 						ElementArray<Cell> cells = e.getCells();
 						std::pair<int, int> val(INT_MAX, INT_MAX);
 						for (ElementArray<Cell>::iterator it = cells.begin(); it != cells.end(); ++it)
-							val = std::min(val, std::make_pair(tag[*it][1], tag[*it][0]));
+							val = std::min(val, std::pair<int,int>(tag[*it][1], tag[*it][0]));
 						tag[e][0] = val.second;
 						tag[e][1] = val.first;
 					}
@@ -2387,7 +2387,7 @@ namespace INMOST
 							int m = static_cast<int>(p - procs.begin());
 							//REPORT_VAL("on processor",*p);
 							element_set remote_elements;
-							int pos = 0;
+							integer pos = 0;
 							if( message_recv[m].empty() ) continue;
 							integer num_remote_elements = message_recv[m][pos++];
 							REPORT_VAL("number of remote elements",num_remote_elements);

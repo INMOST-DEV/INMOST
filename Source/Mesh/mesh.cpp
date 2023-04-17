@@ -2558,7 +2558,7 @@ namespace INMOST
 				{
 					const inner_variable_array * arr = static_cast<const inner_variable_array      *>(adata);
 					Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
-					int k = 0;
+					integer k = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
 						k += (*arr)[r+shift].Record(data+k);
 				}
@@ -2571,7 +2571,7 @@ namespace INMOST
 		{
 			Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
 			const var * v = static_cast<const var *>(MGetLink(h,tag));
-			int k = 0;
+			integer k = 0;
 			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
 				k += v[r+shift].Record(data+k);
 		}

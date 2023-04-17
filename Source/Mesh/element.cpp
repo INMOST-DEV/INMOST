@@ -27,7 +27,7 @@ namespace INMOST
 	}
 	
 	
-	Storage::integer Element::GetGeometricDimension(GeometricType m_type)
+	unsigned int Element::GetGeometricDimension(GeometricType m_type)
 	{
 		switch(m_type)
 		{

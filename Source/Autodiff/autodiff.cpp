@@ -41,7 +41,7 @@ namespace INMOST
 		if( &b != this )
 		{
 			name = b.name+"_copy";
-			for (unsigned k = 0; k < reg_blocks.size(); k++)
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < reg_blocks.size(); k++)
 				if( isRegisteredEntry(k) ) UnregisterEntry(k);
 			del_blocks.clear();
 			reg_blocks.clear();
@@ -56,7 +56,7 @@ namespace INMOST
 	Automatizator::Automatizator(std::string _name) :name(_name), first_num(0), last_num(0) {}
 	Automatizator::~Automatizator()
 	{
-		for (unsigned k = 0; k < reg_blocks.size(); k++) 
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < reg_blocks.size(); k++)
 			if( isRegisteredEntry(k) ) UnregisterEntry(k);
 		del_blocks.clear();
 		act_blocks.clear();
@@ -83,7 +83,7 @@ namespace INMOST
 		ElementType sparse = NONE;// b.GetElementType();
 		for (ElementType q = NODE; q <= MESH; q = NextElementType(q)) if (q & b.GetElementType())
 		{
-			for(unsigned unk = 0; unk < b.Size(); ++unk)
+			for(INMOST_DATA_ENUM_TYPE unk = 0; unk < b.Size(); ++unk)
 				sparse |= b.GetValueTag(unk).isSparse(q) ? q : NONE;
 		}
 		
@@ -156,7 +156,7 @@ namespace INMOST
 			ElementType sparse = NONE;// b.GetElementType();
 			for (ElementType q = NODE; q <= MESH; q = NextElementType(q)) if (q & b.GetElementType())
 			{
-				for(unsigned unk = 0; unk < b.Size(); ++unk)
+				for(INMOST_DATA_ENUM_TYPE unk = 0; unk < b.Size(); ++unk)
 					sparse |= b.GetValueTag(unk).isSparse(q) ? q : NONE;
 			}
 			std::stringstream tag_name;
@@ -171,7 +171,7 @@ namespace INMOST
 		first_num = last_num = 0;
 		const ElementType paralleltypes = NODE | EDGE | FACE | CELL | ESET;
 		
-		for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
+		for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 		{
 			AbstractEntry & b = *reg_blocks[it];
 			TagInteger offset_tag = b.GetOffsetTag();
@@ -179,24 +179,24 @@ namespace INMOST
 			for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
 				if (offset_tag.isDefined(etype) && offset_tag.isSparse(etype))
 				{
-					for(int kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
+					for(INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
 						m->ElementByLocalID(etype,kt).DelData(offset_tag);
 				}
 		}
 		std::set<Mesh*> meshes;
 		if (blocks)
 		{
-			for (unsigned it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
+			for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
 				meshes.insert(reg_blocks[it]->GetMeshLink());
 
 			for (std::set<Mesh*>::iterator mit = meshes.begin(); mit != meshes.end(); ++mit)
 			{
 				for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
 				{
-					for (int kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
+					for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
 					{
 						Element jt = (*mit)->ElementByLocalID(etype, kt);
-						for (unsigned it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
+						for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
 						{
 							AbstractEntry& b = *reg_blocks[it];
 							if (b.GetElementType() & etype && b.GetMeshLink() == *mit)
@@ -215,14 +215,14 @@ namespace INMOST
 		}
 		else
 		{
-			for (unsigned it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
+			for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
 			{
 				AbstractEntry& b = *reg_blocks[it];
 				TagInteger offset_tag = b.GetOffsetTag();
 				Mesh* m = offset_tag.GetMeshLink();
 				for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
 				{
-					for (int kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
+					for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
 					{
 						Element jt = m->ElementByLocalID(etype, kt);
 						if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
@@ -251,10 +251,10 @@ namespace INMOST
 				{
 					for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
 					{
-						for (int kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
+						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
 						{
 							Element jt = (*mit)->ElementByLocalID(etype, kt);
-							for (unsigned it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
+							for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
 							{
 								AbstractEntry& b = *reg_blocks[it];
 								if (b.GetElementType() & etype && b.GetMeshLink() == *mit)
@@ -271,7 +271,7 @@ namespace INMOST
 			}
 			else
 			{
-				for (unsigned it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
+				for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if (act_blocks[it])
 				{
 					AbstractEntry& b = *reg_blocks[it];
 					TagInteger offset_tag = b.GetOffsetTag();
@@ -279,7 +279,7 @@ namespace INMOST
 					for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
 					{
 						exch_mask |= etype;
-						for (int kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
+						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
 						{
 							Element jt = m->ElementByLocalID(etype, kt);
 							if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
@@ -291,26 +291,26 @@ namespace INMOST
 			//synchronize indices
 			{
 				std::map<Mesh *,std::vector<Tag> > exch_tags;
-				for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
+				for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 					exch_tags[reg_blocks[it]->GetOffsetTag().GetMeshLink()].push_back(reg_blocks[it]->GetOffsetTag());
 				for(std::map<Mesh *,std::vector<Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)
 					it->first->ExchangeData(it->second, exch_mask,0);
 			}
 #if 0
 			//compute out-of-bounds indices
-			for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
+			for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 			{
 				AbstractEntry & b = *reg_blocks[it];
 				TagInteger offset_tag = b.GetOffsetTag();
 				Mesh * m = offset_tag.GetMeshLink();
 				for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( b.GetElementType() & etype )
 				{
-					for(int kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
+					for(INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
 					{
 						Element jt = m->ElementByLocalID(etype,kt);
 						if ((!(etype & paralleltypes) || (jt.GetStatus() == Element::Ghost)) && b.isValid(jt) && b.Size(jt))
 						{
-							for(unsigned q = 0; q < b.MatrixSize(jt); ++q) 
+							for(INMOST_DATA_ENUM_TYPE q = 0; q < b.MatrixSize(jt); ++q)
 							{
 								INMOST_DATA_ENUM_TYPE ind =  b.Index(jt,q);
 								if( ind != ENUMUNDEF ) 
@@ -349,7 +349,7 @@ namespace INMOST
 		{
 			if( value.GetSize() != ENUMUNDEF )
 			{
-				for(unsigned k = 0; k < value.GetSize(); ++k)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < value.GetSize(); ++k)
 				{
 					unknown_tags.push_back(value);
 					unknown_comp.push_back(k);
@@ -368,17 +368,17 @@ namespace INMOST
 	INMOST_DATA_ENUM_TYPE MultiEntry::MatrixSize(const Storage & e) const 
 	{
 		INMOST_DATA_ENUM_TYPE ret = 0; 
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 			ret += entries[k]->MatrixSize(e); 
 		return ret;
 	}
 	
 	INMOST_DATA_REAL_TYPE MultiEntry::Value(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-        unsigned pos = 0;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE pos = 0;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
-			unsigned s = entries[k]->MatrixSize(e);
+			INMOST_DATA_ENUM_TYPE s = entries[k]->MatrixSize(e);
 			if( pos + s > unk )
 				return entries[k]->Value(e,unk-pos);
 			else pos += s; 
@@ -388,10 +388,10 @@ namespace INMOST
 	
 	INMOST_DATA_REAL_TYPE & MultiEntry::Value(const Storage & e, INMOST_DATA_ENUM_TYPE unk)
 	{
-        unsigned pos = 0;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE pos = 0;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
-			unsigned s = entries[k]->MatrixSize(e);
+			INMOST_DATA_ENUM_TYPE s = entries[k]->MatrixSize(e);
 			if( pos + s > unk )
 				return entries[k]->Value(e,unk-pos);
 			else pos += s; 
@@ -401,10 +401,10 @@ namespace INMOST
 	
 	INMOST_DATA_ENUM_TYPE MultiEntry::Index(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-        unsigned pos = 0;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE pos = 0;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
-			unsigned s = entries[k]->MatrixSize(e);
+			INMOST_DATA_ENUM_TYPE s = entries[k]->MatrixSize(e);
 			if( pos + s > unk )
 				return entries[k]->Index(e,unk-pos);
 			else pos += s; 
@@ -414,10 +414,10 @@ namespace INMOST
 	
 	unknown MultiEntry::Unknown(const Storage & e, INMOST_DATA_ENUM_TYPE unk) const
 	{
-        unsigned pos = 0;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE pos = 0;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
-			unsigned s = entries[k]->MatrixSize(e);
+			INMOST_DATA_ENUM_TYPE s = entries[k]->MatrixSize(e);
 			if( pos + s > unk )
 				return entries[k]->Unknown(e,unk-pos);
 			else pos += s; 
@@ -428,8 +428,8 @@ namespace INMOST
 	Matrix<value_reference> MultiEntry::Value(const Storage & e) 
 	{
 		Matrix<value_reference> ret(MatrixSize(e),1,value_reference());
-		unsigned l = 0, r, t;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE l = 0, r, t;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			t = entries[k]->MatrixSize(e);
 			for(r = 0; r < t; ++r)
@@ -441,8 +441,8 @@ namespace INMOST
 	rMatrix MultiEntry::Value(const Storage& e) const
 	{
 		rMatrix ret(MatrixSize(e), 1);
-		unsigned l = 0, r, t;
-		for (unsigned k = 0; k < entries.size(); ++k) if (entries[k]->isValid(e))
+		INMOST_DATA_ENUM_TYPE l = 0, r, t;
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if (entries[k]->isValid(e))
 		{
 			t = entries[k]->MatrixSize(e);
 			for (r = 0; r < t; ++r)
@@ -454,8 +454,8 @@ namespace INMOST
 	iMatrix MultiEntry::Index(const Storage & e) const
 	{
 		iMatrix ret(MatrixSize(e),1);
-		unsigned l = 0, r, t;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE l = 0, r, t;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			t = entries[k]->MatrixSize(e);
 			for(r = 0; r < t; ++r)
@@ -467,8 +467,8 @@ namespace INMOST
 	uMatrix MultiEntry::operator [](const Storage & e) const
 	{
 		uMatrix ret(MatrixSize(e),1);
-		unsigned l = 0, r, t;
-		for(unsigned k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
+		INMOST_DATA_ENUM_TYPE l = 0, r, t;
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k) if( entries[k]->isValid(e) )
 		{
 			t = entries[k]->MatrixSize(e);
 			for(r = 0; r < t; ++r)
@@ -479,7 +479,7 @@ namespace INMOST
 
 	INMOST_DATA_ENUM_TYPE MultiEntry::GetValueComp(INMOST_DATA_ENUM_TYPE unk) const
 	{
-		unsigned pos = 0, k = 0;
+		INMOST_DATA_ENUM_TYPE pos = 0, k = 0;
 		while( pos + entries[k]->Size() <= unk ) pos += entries[k++]->Size();
 		assert(k < entries.size());
 		return entries[k]->GetValueComp(unk-pos);
@@ -487,7 +487,7 @@ namespace INMOST
 	
 	TagRealArray MultiEntry::GetValueTag(INMOST_DATA_ENUM_TYPE unk) const
 	{
-		unsigned pos = 0, k = 0;
+		INMOST_DATA_ENUM_TYPE pos = 0, k = 0;
 		while( pos + entries[k]->Size() <= unk ) pos += entries[k++]->Size();
 		assert(k < entries.size());
 		return entries[k]->GetValueTag(unk-pos);
@@ -496,7 +496,7 @@ namespace INMOST
 	AbstractEntry * MultiEntry::Copy() const
 	{
 		MultiEntry * ret = new MultiEntry(GetElementType(),GetMask(),GetMaskInverse());
-		for(unsigned k = 0; k < entries.size(); ++k)
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < entries.size(); ++k)
 			ret->entries.push_back(entries[k]->Copy());
 		return ret;
 	}
@@ -516,7 +516,7 @@ namespace INMOST
 		{
 			if( value.GetSize() != ENUMUNDEF )
 			{
-				for(unsigned k = 0; k < value.GetSize(); ++k)
+				for(INMOST_DATA_ENUM_TYPE k = 0; k < value.GetSize(); ++k)
 				{
 					unknown_tags.push_back(value);
 					unknown_comp.push_back(k);
@@ -535,7 +535,7 @@ namespace INMOST
 	{
 		INMOST_DATA_ENUM_TYPE ret = 0; 
 		int stat = status_tag[e];
-		for(unsigned k = 0; k < unknown_tags.size(); ++k) 
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < unknown_tags.size(); ++k)
 			if( e.HaveData(unknown_tags[k]) && status_tbl[stat][k] ) ret++;
 		return ret;
 	}
@@ -543,7 +543,7 @@ namespace INMOST
 	AbstractEntry * StatusBlockEntry::Copy() const 
 	{
 		StatusBlockEntry * ret = new StatusBlockEntry(GetElementType(),GetMask(),GetMaskInverse(),status_tag,status_tbl);
-		for(unsigned k = 0; k < Size(); ++k) 
+		for(INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
 			ret->AddTag(unknown_tags[k],unknown_comp[k]); 
 		return ret; 
 	}
@@ -554,7 +554,7 @@ namespace INMOST
 		{
 			Mesh * m = NULL;
 			std::set<Tag> exch_tags;
-			for(unsigned jt = 0; jt < Size(); ++jt)
+			for(INMOST_DATA_ENUM_TYPE jt = 0; jt < Size(); ++jt)
 			{
 				if( m == NULL )
 					m = GetValueTag(jt).GetMeshLink();
@@ -575,10 +575,10 @@ namespace INMOST
 		{
 			std::map<Mesh *,std::map<std::string,Tag> > exch_tags;
 			ElementType exch_mask = NONE;
-			for (unsigned it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
+			for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
 			{
 				exch_mask |= reg_blocks[it]->GetElementType();
-				for(unsigned jt = 0; jt < reg_blocks[it]->Size(); ++jt)
+				for(INMOST_DATA_ENUM_TYPE jt = 0; jt < reg_blocks[it]->Size(); ++jt)
 					exch_tags[reg_blocks[it]->GetValueTag(jt).GetMeshLink()][reg_blocks[it]->GetValueTag(jt).GetTagName()] = reg_blocks[it]->GetValueTag(jt);
 			}
 			for(std::map<Mesh *,std::map<std::string,Tag> >::iterator it = exch_tags.begin(); it != exch_tags.end(); ++it)

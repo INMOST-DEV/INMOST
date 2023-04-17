@@ -204,7 +204,7 @@ namespace INMOST
 			//return sqrt(a * conj(a) + b * conj(b));
 		}
 	public:
-		typedef unsigned enumerator;
+		typedef INMOST_DATA_ENUM_TYPE enumerator;
 		/// Obtain number of rows.
 		/// @return Number of rows.
 		virtual enumerator Rows() const = 0;
@@ -3680,7 +3680,7 @@ namespace INMOST
 		assert(A.Cols() == 1);
 		assert(B.Rows() == 3);
 		Matrix<typename Promote<Var,typeB>::type> ret(3,B.Cols()); //check RVO
-		for(unsigned k = 0; k < B.Cols(); ++k)
+		for(enumerator k = 0; k < B.Cols(); ++k)
 		{
 			ret(0,k) = (A.compute(1,0)*B.compute(2,k) - A.compute(2,0)*B.compute(1,k));
 			ret(1,k) = (A.compute(2,0)*B.compute(0,k) - A.compute(0,0)*B.compute(2,k));
@@ -3700,7 +3700,7 @@ namespace INMOST
 		assert(A.Cols() == 1);
 		assert(B.Rows() == 3);
 		Matrix<typename Promote<Var, typeB>::type> ret(3, B.Cols()); //check RVO
-		for (unsigned k = 0; k < B.Cols(); ++k)
+		for (enumerator k = 0; k < B.Cols(); ++k)
 		{
 			ret(0, k) = (A.get(1, 0) * B.get(2, k) - A.get(2, 0) * B.get(1, k));
 			ret(1, k) = (A.get(2, 0) * B.get(0, k) - A.get(0, 0) * B.get(2, k));
@@ -3719,7 +3719,7 @@ namespace INMOST
 		assert(A.Cols() == 1);
 		assert(B.Rows() == 3);
 		Matrix<typename Promote<Var, typeB>::type> ret(3, B.Cols()); //check RVO
-		for (unsigned k = 0; k < B.Cols(); ++k)
+		for (enumerator k = 0; k < B.Cols(); ++k)
 		{
 			ret(0, k) = (A.get(1, 0) * B.compute(2, k) - A.get(2, 0) * B.compute(1, k));
 			ret(1, k) = (A.get(2, 0) * B.compute(0, k) - A.get(0, 0) * B.compute(2, k));
@@ -4250,7 +4250,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
@@ -4263,7 +4263,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
@@ -4371,7 +4371,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
@@ -4384,7 +4384,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
@@ -4489,7 +4489,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;
@@ -4502,7 +4502,7 @@ namespace INMOST
 				if( ierr )
 				{
 					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = k+1;
+					*ierr = (int)(k+1);
 				}
 				else throw MatrixCholeskySolveFail;
 				return ret;

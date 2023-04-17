@@ -308,7 +308,7 @@ namespace INMOST
 		static const GeometricType MaxType      = 255;
 		//enum GeometricType {Unset,Vertex,Line,MultiLine,Tri,Quad,Polygon,MultiPolygon,Tet,Hex,Prism,Pyramid,Polyhedron,Set};
 		static const char *       GeometricTypeName(GeometricType t);
-		static integer            GetGeometricDimension(GeometricType m_type);
+		static unsigned int       GetGeometricDimension(GeometricType m_type);
 		typedef INMOST_DATA_BULK_TYPE Status;
 		static const Status Owned  = 1;
 		static const Status Shared = 2;

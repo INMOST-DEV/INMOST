@@ -1352,7 +1352,7 @@ namespace INMOST
 				if( n->GetStatus() != Element::Ghost ) total_points++;
 			}
 			std::vector< idx > points_node(total_points);
-			std::vector< real > points_center(std::max(total_points*3,1));
+			std::vector< real > points_center(std::max<idx>(total_points*3,1));
 			std::vector< idx > points_cluster(total_points,-1);
 			std::vector< real > cluster_center(K*3,0.0);
 			std::vector< real > cluster_center_old(K*3);
@@ -1771,7 +1771,7 @@ namespace INMOST
 					counts[k] = npoints[k];
 				}
 				total_points = counts[m->GetProcessorRank()];
-				points_cluster.resize(std::max(total_points,1));
+				points_cluster.resize(std::max<idx>(total_points,1));
 				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],MPI_IDXT,&points_cluster[0],total_points,MPI_IDXT,0,MPI_COMM_WORLD);
 			}
 #endif
