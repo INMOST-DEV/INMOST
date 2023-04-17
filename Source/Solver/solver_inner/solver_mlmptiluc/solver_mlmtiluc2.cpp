@@ -5363,7 +5363,7 @@ const double apert = 1.0e-8;
 							int nthr = Thread();
 							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE>& LineValues = LineValuesS[nthr];
 							interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& LineIndeces = LineIndecesS[nthr];
-							double Emax = 0, Enorm = 0, Enum = 0;
+							INMOST_DATA_REAL_TYPE Emax = 0, Enorm = 0, Enum = 0;
 							// no values at E block - unpack C block into Schur 
 							INMOST_DATA_ENUM_TYPE Li = cbeg;
 							int Ethr = E_Address.back()->at(k).thr;

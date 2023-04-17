@@ -230,12 +230,12 @@ namespace INMOST
 		Var Det() const
 		{
 			assert(Rows() == Cols());
-			const double eps = 1.0e-13;
+			const INMOST_DATA_REAL_TYPE eps = 1.0e-13;
 			const enumerator n = Rows();
 			Matrix<Var> A(*this);
 			Matrix<Var> row_visited(n,1,-1);
 			Var ret = 1.0, coef;
-			double sign;
+			INMOST_DATA_REAL_TYPE sign;
 			for (enumerator d = 0; d < n; ++d)
 			{
 				enumerator r = 0;
@@ -408,7 +408,7 @@ namespace INMOST
 		}
 		/// Check if the matrix is symmetric.
 		/// @return Returns true if the matrix is symmetric, otherwise false.
-		bool isSymmetric(double eps = 1.0e-7) const
+		bool isSymmetric(INMOST_DATA_REAL_TYPE eps = 1.0e-7) const
 		{
 			if (Rows() != Cols()) return false;
 			for (enumerator k = 0; k < Rows(); ++k)
@@ -974,7 +974,7 @@ namespace INMOST
 		}
 		/// Check if the matrix is symmetric.
 		/// @return Returns true if the matrix is symmetric, otherwise false.
-		bool isSymmetric(double eps = 1.0e-7) const
+		bool isSymmetric(INMOST_DATA_REAL_TYPE eps = 1.0e-7) const
 		{
 			if (Rows() != Cols()) return false;
 			for (enumerator k = 0; k < Rows(); ++k)
@@ -3933,7 +3933,7 @@ namespace INMOST
 		if( cnt >= CNT_USE_MERGER )
 		{
 			merger->Resize(cnt);
-			double value = 0.0;
+			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
@@ -3966,7 +3966,7 @@ namespace INMOST
 		if( cnt >= CNT_USE_MERGER )
 		{
 			merger->Resize(cnt);
-			double value = 0.0;
+			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
@@ -3999,7 +3999,7 @@ namespace INMOST
 		if( cnt >= CNT_USE_MERGER )
 		{
 			merger->Resize(cnt);
-			double value = 0.0;
+			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
@@ -4315,7 +4315,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = X(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
 					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{
@@ -4407,7 +4407,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = Y(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
 					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
@@ -4435,7 +4435,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = X(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
 					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{
@@ -4525,7 +4525,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = Y(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
 					pmerger->PushRow(1.0,Y(i,k).GetRow());
 					for(enumerator j = 0; j < i; ++j)
 					{
@@ -4554,7 +4554,7 @@ namespace INMOST
 			{
 				if( pmerger )
 				{
-					double value = X(i,k).GetValue();
+					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
 					pmerger->PushRow(1.0,X(i,k).GetRow());
 					for(enumerator jt = n; jt > it; --jt)
 					{

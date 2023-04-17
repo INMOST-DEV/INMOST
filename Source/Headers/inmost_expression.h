@@ -1343,8 +1343,8 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			Sparse::HessianRow ArgH;
-			double coefJ = -multJ*value*reciprocial_val;
-			double signJ = coefJ < 0 ? -1 : 1;
+			INMOST_DATA_REAL_TYPE coefJ = -multJ*value*reciprocial_val;
+			INMOST_DATA_REAL_TYPE signJ = coefJ < 0 ? -1 : 1;
 			arg.GetHessian(signJ,J,-2*multH*value*reciprocial_val,ArgH);
 			Sparse::HessianRow::MergeJacobianHessian(2*value*reciprocial_val*reciprocial_val*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
@@ -1427,8 +1427,8 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ,Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
-			double a = (value == 0 ? (multJ < 0.0 ? -1 : 1) : 1);
-			double b = (value == 0 ? (multH < 0.0 ? -1 : 1) : 1);
+			INMOST_DATA_REAL_TYPE a = (value == 0 ? (multJ < 0.0 ? -1 : 1) : 1);
+			INMOST_DATA_REAL_TYPE b = (value == 0 ? (multH < 0.0 ? -1 : 1) : 1);
 			arg.GetHessian( a * multJ * dmult,J, b*multH * dmult,H);
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
@@ -1460,8 +1460,8 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			Sparse::HessianRow ArgH;
-			double coefJ = multJ*value;
-			double signJ = coefJ < 0.0 ? -1 : 1;
+			INMOST_DATA_REAL_TYPE coefJ = multJ*value;
+			INMOST_DATA_REAL_TYPE signJ = coefJ < 0.0 ? -1 : 1;
 			arg.GetHessian(signJ, J, multH*value, ArgH); //check
 			Sparse::HessianRow::MergeJacobianHessian(coefJ*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
@@ -1495,8 +1495,8 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			Sparse::HessianRow ArgH;
-			double coefJ = multJ*dmult;
-			double signJ = coefJ < 0.0 ? -1 : 1;
+			INMOST_DATA_REAL_TYPE coefJ = multJ*dmult;
+			INMOST_DATA_REAL_TYPE signJ = coefJ < 0.0 ? -1 : 1;
 			arg.GetHessian(signJ, J, 2*multH*dmult, ArgH); //check
 			Sparse::HessianRow::MergeJacobianHessian(-coefJ*signJ*dmult,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;

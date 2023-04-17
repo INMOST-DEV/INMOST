@@ -14,13 +14,14 @@ namespace INMOST
 		options_.Equil              = YES;
 		options_.Fact               = DOFACT;
 		PStatInit(&stat_);
+        g_size = 0;
 #else // USE_SOLVER_SUPERLU_DIST
         set_default_options(&options);
         StatInit(&stat);
         perm_c = NULL;
         perm_r = NULL;
 #endif //USE_SOLVER_SUPERLU_DIST
-        g_size = a_size = 0;
+        a_size = 0;
     }
 
     SolverInterface *SolverSUPERLU::Copy(const SolverInterface *other) 

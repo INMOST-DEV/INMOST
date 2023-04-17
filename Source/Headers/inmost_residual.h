@@ -53,11 +53,11 @@ namespace INMOST
 		/// Retrieve a residual value corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
-		__INLINE double Value(INMOST_DATA_ENUM_TYPE row) const {return residual[row];}
+		__INLINE INMOST_DATA_REAL_TYPE Value(INMOST_DATA_ENUM_TYPE row) const {return residual[row];}
 		/// Retrieve a residual value corresponding to certain equation.
 		/// @param row Equation number.
 		/// @return A structure that can be used in or assigned an automatic differentiation expression.
-		__INLINE double & Value(INMOST_DATA_ENUM_TYPE row) { return residual[row]; }
+		__INLINE INMOST_DATA_REAL_TYPE& Value(INMOST_DATA_ENUM_TYPE row) { return residual[row]; }
 		/// Retrieve a vector of entries in residual, corresponding to a set of equations.
 		/// @param rows A row-vector of equation numbers.
 		/// @param A structure that can be used in or assigned an automatic differentiation matrix expression.
