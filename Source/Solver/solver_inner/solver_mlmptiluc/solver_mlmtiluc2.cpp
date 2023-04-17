@@ -5378,7 +5378,7 @@ const double apert = 1.0e-8;
 								Li = LineIndeces[Li] = i + 1;
 								Enorm += u*u;
 								Enum  ++;
-								Emax = std::max(Emax, fabs(u));
+								Emax = std::max(Emax, std::fabs(u));
 							}
 							LineIndeces[Li] = EOL;
 							if( Enum ) Enorm = sqrt(Enorm/Enum);
