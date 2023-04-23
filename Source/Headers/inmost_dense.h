@@ -217,6 +217,8 @@ namespace INMOST
 		/// @param j Row index.
 		/// @return Reference to constant element.
 		virtual Var compute(enumerator i, enumerator j) const = 0;
+		//TODO: comment this and use compute in internal functions
+		Var operator()(enumerator i, enumerator j) const {return compute(i,j);}
 		/// Check all matrix entries for not a number.
 		/// Also checks derivatives for matrices of variables.
 		bool CheckNans() const { return Matrix<Var>(*this).CheckNans(); }
@@ -646,6 +648,7 @@ namespace INMOST
 	class AbstractMatrix : public AbstractMatrixReadOnly<Var>
 	{
 	public:
+	 	using AbstractMatrixReadOnly<Var>::operator ();
 		using AbstractMatrixReadOnly<Var>::compute;
 		using AbstractMatrixReadOnly<Var>::Rows;
 		using AbstractMatrixReadOnly<Var>::Cols;
@@ -722,6 +725,8 @@ namespace INMOST
 		/// @param j Row index.
 		/// @return Reference to constant element.
 		virtual const Var & get(enumerator i, enumerator j) const = 0;
+		//TODO: comment this and use get in internal functions
+		const Var & operator()(enumerator i, enumerator j) const {return get(i,j);}
 		/// Resize the matrix into different size.
 		/// @param nrows New number of rows.
 		/// @param ncols New number of columns.
@@ -4595,7 +4600,7 @@ namespace INMOST
 			ConstMatrixTranspose<Var> At = this->Transpose(); //m by n matrix
 			return (At * (*this)).Solve(At * B, ierr);
 		}
-		Matrix<typeB> AtB = B; //m by l matrix
+		Matrix<typename Promote<Var,typeB>::type> AtB = B; //m by l matrix
 		Matrix<Var> AtA = (*this); //m by m matrix
 		enumerator l = B.Cols();
 		enumerator m = Cols();

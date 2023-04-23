@@ -36,9 +36,9 @@ namespace INMOST
 		/// Update time step.
 		virtual bool UpdateTimeStep() = 0;
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) = 0;
+		virtual bool SetTimeStep(double dt) {(void)dt; return true;}
 		/// Provide current time.
-		virtual bool SetTime(double t) = 0;
+		virtual bool SetTime(double t) {(void)t; return true;}
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() = 0;
 		/// Calculate multiplier for update for this model. Can simply return 1.
