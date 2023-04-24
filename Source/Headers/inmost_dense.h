@@ -108,6 +108,8 @@ namespace INMOST
 	template<> struct Promote<unknown, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<unknown, hessian_variable>  {typedef hessian_variable type;};
 	//for value_reference
+	template<> struct Promote<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct Promote<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct Promote<value_reference, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, variable> { typedef variable type; };
 	template<> struct Promote<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
