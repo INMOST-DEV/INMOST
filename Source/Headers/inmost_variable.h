@@ -105,6 +105,7 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 
 	};
 
@@ -121,6 +122,7 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 	};
 	
 	template<class A, class ArgA, class ArgB, class ArgC>
@@ -136,6 +138,7 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 	};
 	
 	class abstract_dynamic_variable
@@ -432,6 +435,13 @@ namespace INMOST
 				J.Swap(tmpJ);
 				H.Swap(tmpH);
 			}
+		}
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const 
+		{ 
+			INMOST_DATA_ENUM_TYPE ret = 0;
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				ret += it->GetCount();
+			return ret;
 		}
 	};
 	
