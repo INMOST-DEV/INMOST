@@ -954,7 +954,7 @@ namespace INMOST
 						// for flat refinement we have to create internal edges connecting through cell hanging nodes
 						// except for triangle where no vertical edge is created
 						// then create face through cell center nodes, face center nodes and mark_flat adjacent edges
-						if (flat) // todo: detect flat and skip_tree!!!
+						if (flat) // todo: detect flat and skip_tri!!!
 						{
 							ElementArray<Edge> cell_edges = c.getEdges(); // get cell edges
 							ElementArray<Node> edge_nodes(m);
@@ -997,7 +997,7 @@ namespace INMOST
 												Node n1 = ejt->getBeg() == edge_nodes[1] ? ejt->getEnd() : ejt->getBeg();
 												Storage::real_array nc1 = n1.Coords();
 												if (fabs(nc0[0] - nc1[0]) < m->GetEpsilon() &&
-													fabs(nc0[1] - nc0[1]) < m->GetEpsilon())
+													fabs(nc0[1] - nc1[1]) < m->GetEpsilon())
 												{
 													face_edges.push_back(eit->self());
 													edge_nodes[0] = n0;
