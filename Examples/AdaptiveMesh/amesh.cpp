@@ -339,7 +339,7 @@ namespace INMOST
 		//m->ResolveSets();
 	}
 	
-	AdaptiveMesh::AdaptiveMesh(Mesh & _m, bool skip_tri) : m(&_m), skip_tri(skip_tri)
+	AdaptiveMesh::AdaptiveMesh(Mesh & _m, bool skip_tri, bool flat) : m(&_m), skip_tri(skip_tri), flat(flat)
 	{
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		model = NULL;
@@ -659,6 +659,8 @@ namespace INMOST
 			assert(Element::CheckConnectivity(m));
 			CheckClosure(__FILE__,__LINE__);
 			Storage::real xyz[3] = { 0,0,0 }, exyz[3] = { 0,0,0 };
+			// this marker detects non-refined vertical elements
+			MarkerType mark_flat = flat ? m->CreateMarker() : 0;
 			//7.split all edges of the current schedule
 			ENTER_BLOCK();
 			{
@@ -669,53 +671,61 @@ namespace INMOST
 					Edge e = m->EdgeByLocalID(it);
 					if( !e.Hidden() && indicator[e] == schedule_counter )
 					{
-						//ENTER_BLOCK();
-						//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
-						//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
-						//EXIT_BLOCK();
-						//REPORT_STR("split edge " << e.LocalID() << " nodes " << e.getBeg().LocalID() << "," << e.getEnd().LocalID() << " level " << level[e] << " lc size " << m->LowConn(e.GetHandle()).size() );
-						//ElementArray<Node> nodes = e.getNodes();
-						//for(int q = 0; q < nodes.size(); ++q) REPORT_STR("node " << nodes[q].GetHandle() << " " << nodes[q].LocalID() << (nodes[q].Hidden()?" hidden " : " good ") );
-						//remember adjacent faces that should get information about new hanging node
-						t1 = Timer();
-						ElementArray<Face> edge_faces = e.getFaces();
-						t2 = Timer(), tadj += t2 - t1, t1 = t2;
-						//location on the center of the edge
-						for(Storage::integer d = 0; d < m->GetDimensions(); ++d)
-							xyz[d] = (e.getBeg().Coords()[d]+e.getEnd().Coords()[d])*0.5;
-						//todo: request transformation of node location according to geometrical model
-						//create middle node
-						Node n = m->CreateNode(xyz);
-						new_nodes++;
-						//set increased level for new node
-						level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e]+1;
-//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
-//						if (model) model->NewNode(e, n);
-//#endif
-						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-							(*it)->NewNode(e,n);
-						t2 = Timer(), tcreate += t2 - t1, t1 = t2;
-						//for each face provide link to a new hanging node
-						for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
-							hanging_nodes[edge_faces[kt]].push_back(n);
-						t2 = Timer(), thanging += t2 - t1, t1 = t2;
-						//CheckClosure(__FILE__,__LINE__);
-						//split the edge by the middle node
-						ElementArray<Edge> new_edges = Edge::SplitEdge(e,ElementArray<Node>(m,1,n.GetHandle()),0);
-						splits++;
-						for(ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt) assert(edge_faces[kt].Closure());
-						t2 = Timer(), tsplit += t2 - t1, t1 = t2;
-						//set increased level for new edges
-						level[new_edges[0]] = level[new_edges[1]] = level[e]+1;
-						for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-							(*it)->EdgeRefinement(e, new_edges);
-						t2 = Timer(), tdata += t2 - t1, t1 = t2;
-						//for(int q = 0; q < 2; ++q)
-						//{
-						//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
-						//}
-						//CheckClosure(__FILE__,__LINE__);
-						//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
+						if (flat && fabs(e.getBeg().Coords()[2] - e.getEnd().Coords()[2]) < m->GetEpsilon())
+						{
+							level[e] = level[e] + 1;
+							e.SetMarker(mark_flat);
+						}
+						else
+						{
+							//ENTER_BLOCK();
+							//for(Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+							//	if( it->getNodes().size() != 2 ) {REPORT_STR("edge " << it->LocalID() << " has " << it->getNodes().size() << " nodes ");}
+							//EXIT_BLOCK();
+							//REPORT_STR("split edge " << e.LocalID() << " nodes " << e.getBeg().LocalID() << "," << e.getEnd().LocalID() << " level " << level[e] << " lc size " << m->LowConn(e.GetHandle()).size() );
+							//ElementArray<Node> nodes = e.getNodes();
+							//for(int q = 0; q < nodes.size(); ++q) REPORT_STR("node " << nodes[q].GetHandle() << " " << nodes[q].LocalID() << (nodes[q].Hidden()?" hidden " : " good ") );
+							//remember adjacent faces that should get information about new hanging node
+							t1 = Timer();
+							ElementArray<Face> edge_faces = e.getFaces();
+							t2 = Timer(), tadj += t2 - t1, t1 = t2;
+							//location on the center of the edge
+							for (Storage::integer d = 0; d < m->GetDimensions(); ++d)
+								xyz[d] = (e.getBeg().Coords()[d] + e.getEnd().Coords()[d]) * 0.5;
+							//todo: request transformation of node location according to geometrical model
+							//create middle node
+							Node n = m->CreateNode(xyz);
+							new_nodes++;
+							//set increased level for new node
+							level[n] = level[e.getBeg()] = level[e.getEnd()] = level[e] + 1;
+							//#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
+							//						if (model) model->NewNode(e, n);
+							//#endif
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->NewNode(e, n);
+							t2 = Timer(), tcreate += t2 - t1, t1 = t2;
+							//for each face provide link to a new hanging node
+							for (ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt)
+								hanging_nodes[edge_faces[kt]].push_back(n);
+							t2 = Timer(), thanging += t2 - t1, t1 = t2;
+							//CheckClosure(__FILE__,__LINE__);
+							//split the edge by the middle node
+							ElementArray<Edge> new_edges = Edge::SplitEdge(e, ElementArray<Node>(m, 1, n.GetHandle()), 0);
+							splits++;
+							for (ElementArray<Face>::size_type kt = 0; kt < edge_faces.size(); ++kt) assert(edge_faces[kt].Closure());
+							t2 = Timer(), tsplit += t2 - t1, t1 = t2;
+							//set increased level for new edges
+							level[new_edges[0]] = level[new_edges[1]] = level[e] + 1;
+							for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+								(*it)->EdgeRefinement(e, new_edges);
+							t2 = Timer(), tdata += t2 - t1, t1 = t2;
+							//for(int q = 0; q < 2; ++q)
+							//{
+							//	REPORT_STR("new edges["<<q<<"]" << new_edges[q].LocalID() << " nodes " << new_edges[q].getBeg().LocalID() << "," << new_edges[q].getEnd().LocalID() << " level " << level[new_edges[q]]);
+							//}
+							//CheckClosure(__FILE__,__LINE__);
+							//if( !Element::CheckConnectivity(m) ) std::cout << __FILE__ << ":" << __LINE__ << " broken connectivity" << std::endl;
+						}
 					}
 				}
 				REPORT_VAL("adjacencies", tadj);
@@ -789,6 +799,15 @@ namespace INMOST
 						Storage::reference_array face_hanging_nodes = hanging_nodes[f];
 						ElementArray<Node> edge_nodes(m, 2); //to create new edges
 						ElementArray<Edge> hanging_edges(m);
+						//todo: 
+						// if there is any edge with mark_flat marker, then
+						// detect that all hanging nodes are vertical and collect them into pairs
+						// and create splitting edges from such pairs
+						// if this does not hold, then geometry is not vertical,
+						// create center node and split face as usual or throw an error
+						if (flat)
+						{
+						}
 						//skip triangle
 						if (skip_tri && (f.nbAdjElements(NODE) - face_hanging_nodes.size()) == 3)
 						{
@@ -1502,6 +1521,7 @@ namespace INMOST
 			ENTER_BLOCK();
 			m->ReleaseMarker(mark_hanging_nodes);
 			m->ReleaseMarker(mark_cell_edges);
+			if (flat) m->ReleaseMarker(mark_flat, FACE | EDGE);
 			m->DeleteTag(internal_face_edges);
 			EXIT_BLOCK();
 			ENTER_BLOCK();

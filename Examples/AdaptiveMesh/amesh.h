@@ -61,7 +61,7 @@ namespace INMOST
 		void CheckClosure(std::string file, int line);
         //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
         //void SynchronizeIndicated(TagInteger& indicator);
-		bool skip_tri;
+		bool skip_tri, flat;
 		std::vector<AdaptiveMeshCallback*> callbacks;
 	public:
 		void ReportSets(std::fstream & fout);
@@ -72,7 +72,11 @@ namespace INMOST
 		TagInteger level; //< Refinement level of the cell
 		//TagReferenceArray ref_tag; //<Link to the set that contains an element.
 		Storage::integer GetLevel(const Storage & e) {return level[e];}
-        AdaptiveMesh(Mesh & m, bool skip_tri = false);
+		/// Constructor for AdaptiveMesh object
+		/// @param Mesh Attach to this mesh to perform refinement
+		/// @param skip_tri Do not create center node in triangle
+		/// @param flat Do not split in z-direction
+        AdaptiveMesh(Mesh & m, bool skip_tri = false, bool flat = false);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells
