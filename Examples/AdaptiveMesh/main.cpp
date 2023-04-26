@@ -6,7 +6,8 @@ bool output_file = true;
 bool balance_mesh = true;
 bool balance_mesh_refine = false;
 bool balance_mesh_coarse = false;
-std::string file_format = ".pvtu";
+//std::string file_format = ".pvtu";
+std::string file_format = ".vtu";
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932
@@ -21,19 +22,24 @@ int main(int argc, char ** argv)
 		Mesh m;
 		
 		m.SetCommunicator(INMOST_MPI_COMM_WORLD);
+
+		m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE
+//			| PROHIBIT_CONCAVE_CELL
+			| FACE_EDGES_ORDER
+			| DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE
+			| PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL
+			| INTERLEAVED_FACES | NEED_TEST_CLOSURE
+			| DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL
+			| ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
+
 		if( m.isParallelFileFormat(argv[1]) )
 			m.Load(argv[1]);
 		else if( m.GetProcessorRank() == 0 )
 			m.Load(argv[1]);
+
+		Element::CheckConnectivity(&m);
 	
-		//~ m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON | PROHIBIT_MULTILINE 
-						   //~ | PROHIBIT_CONCAVE_CELL
-						   //~ | FACE_EDGES_ORDER
-						   //~ | DEGENERATE_CELL | DEGENERATE_EDGE | DEGENERATE_FACE
-						   //~ | PRINT_NOTIFY | TRIPLE_SHARED_FACE | FLATTENED_CELL
-						   //~ | INTERLEAVED_FACES | NEED_TEST_CLOSURE
-						   //~ | DUPLICATE_EDGE | DUPLICATE_FACE | DUPLICATE_CELL
-						   //~ | ADJACENT_DUPLICATE | ADJACENT_HIDDEN | ADJACENT_VALID | ADJACENT_DIMENSION);
+		
 		//m.RemTopologyCheck(THROW_EXCEPTION);
 		
 		{
@@ -49,8 +55,8 @@ int main(int argc, char ** argv)
 		if( true )
 		{
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init before "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
-			//p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
-			p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
+			p.SetMethod(Partitioner::INNER_KMEANS,Partitioner::Partition);
+			//p.SetMethod(Partitioner::Parmetis,Partitioner::Partition);
 			//p.SetMethod(Partitioner::Parmetis,Partitioner::Refine);
 			p.Evaluate();
 			m.Redistribute();
@@ -58,11 +64,13 @@ int main(int argc, char ** argv)
 			
 			std::fill(nc.begin(),nc.end(),0); nc[m.GetProcessorRank()] = m.NumberOfCells(); m.Integrate(&nc[0],nc.size()); if( !m.GetProcessorRank() ) {std::cout << "init after "; for(unsigned q = 0; q < nc.size(); ++q) std::cout << nc[q] << " "; std::cout << std::endl;}
 			m.Barrier();
-			p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
+			//p.SetMethod(Partitioner::Parmetis,Partitioner::Repartition);
 		}
 #endif
 		m.ExchangeGhost(1,FACE);
-		AdaptiveMesh am(m,true);
+		//AdaptiveMesh am(m,true);
+		//AdaptiveMesh am(m,false,true);
+		AdaptiveMesh am(m,true,true);
 		//m.SetTopologyCheck(NEED_TEST_CLOSURE);
 		//m.SetTopologyCheck(PROHIBIT_MULTILINE);
 		//m.SetTopologyCheck(PROHIBIT_MULTIPOLYGON);

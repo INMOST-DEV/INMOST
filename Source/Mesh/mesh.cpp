@@ -1323,6 +1323,14 @@ namespace INMOST
 		std::cout << std::endl;
 	}
 
+	std::pair<Edge, bool> Mesh::CreateEdge(Node n1, Node n2)
+	{
+		ElementArray<Node> nodes(this);
+		nodes.push_back(n1);
+		nodes.push_back(n2);
+		return CreateEdge(nodes);
+	}
+
 	std::pair<Edge,bool> Mesh::CreateEdge(const ElementArray<Node> & nodes)
 	{
 		HandleType he = InvalidHandle();

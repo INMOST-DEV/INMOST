@@ -2177,7 +2177,7 @@ safe_output:
 										}
 									}
 									j = k;
-									Cell c = CreateCell(c_nodes,sizes.data(),static_cast<integer>(sizes.size()),c_nodes).first;
+									Cell c = CreateCell(c_nodes,sizes.data(),static_cast<integer>(sizes.size())/*, c_nodes*/).first;
 									newcells[i] = c->GetHandle();
 									break;
 								}

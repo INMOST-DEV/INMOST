@@ -352,7 +352,7 @@ namespace INMOST
 		//ref_tag = m->CreateTag("REF",DATA_REFERENCE,CELL|FACE|EDGE|NODE,NONE);
 		//create a tag that stores links to all the hanging nodes of the cell
 		hanging_nodes = m->CreateTag("HANGING_NODES",DATA_REFERENCE,CELL|FACE,NONE);
-		if (skip_tri)
+		if (skip_tri || flat)
 			tri_hanging_edges = m->CreateTag("TRI_HANGING_EDGES", DATA_REFERENCE, CELL, CELL);
 		//create a tag that stores links to sets
 		parent_set = m->CreateTag("PARENT_SET",DATA_REFERENCE,CELL,NONE,1);
@@ -466,6 +466,7 @@ namespace INMOST
 		static int fi = 0;
         ENTER_FUNC();
 		ENTER_BLOCK();
+		assert(Element::CheckConnectivity(m));
 		m->CheckGhostSharedCount(__FILE__, __LINE__);
 		m->CheckCentroids(__FILE__, __LINE__);
 		m->CheckOwners(__FILE__, __LINE__);
@@ -664,6 +665,16 @@ namespace INMOST
 			//7.split all edges of the current schedule
 			ENTER_BLOCK();
 			{
+				//mark all vertical edges
+				if (flat)
+				{
+					for (Mesh::iteratorEdge it = m->BeginEdge(); it != m->EndEdge(); ++it)
+					{
+						if (fabs(it->getBeg().Coords()[0] - it->getEnd().Coords()[0]) < m->GetEpsilon() &&
+							fabs(it->getBeg().Coords()[1] - it->getEnd().Coords()[1]) < m->GetEpsilon())
+								it->SetMarker(mark_flat);
+					}
+				}
 				int new_nodes = 0, splits = 0;
 				double t1, t2, tadj = 0, tcreate = 0, thanging = 0, tdata = 0, tsplit = 0;
 				for(Storage::integer it = 0; it < m->EdgeLastLocalID(); ++it) if( m->isValidEdge(it) )
@@ -671,14 +682,10 @@ namespace INMOST
 					Edge e = m->EdgeByLocalID(it);
 					if( !e.Hidden() && indicator[e] == schedule_counter )
 					{
-						if (flat)
+						if (flat && e.GetMarker(mark_flat))
 						{
-							if (fabs(e.getBeg().Coords()[0] - e.getEnd().Coords()[0]) < m->GetEpsilon() &&
-								fabs(e.getBeg().Coords()[1] - e.getEnd().Coords()[1]) < m->GetEpsilon())
-							{
-								e.SetMarker(mark_flat);
-								continue;
-							}
+							level[e] = level[e] + 1;
+							continue;
 						}
 						
 						//ENTER_BLOCK();
@@ -755,10 +762,11 @@ namespace INMOST
 					if( !f.Hidden() && indicator[f] == schedule_counter )
 					{
 #if !defined(NDEBUG)
+						bool isvert = false;
 						ElementArray<Edge> face_edges = f.getEdges();
 						for(ElementArray<Edge>::iterator jt = face_edges.begin(); jt != face_edges.end(); ++jt)
 						{
-							if( level[*jt] != level[f]+1 )
+							if( level[*jt] != level[f]+1)// && !(flat && jt->GetMarker(mark_flat)))
 							{
 								std::cout << m->GetProcessorRank() << std::endl;
 								std::cout << " face " << f.LocalID() << " h " << f.GetHandle();
@@ -789,7 +797,9 @@ namespace INMOST
 									std::cout << std::endl;
 								}
 							}
-							assert(level[*jt] == level[f]+1);
+							assert(level[*jt] == level[f] + 1);// || (flat && jt->GetMarker(mark_flat)));
+							if (flat && jt->GetMarker(mark_flat))
+								isvert = true;
 						}
 #endif //NDEBUG
 						t1 = Timer();
@@ -806,7 +816,7 @@ namespace INMOST
 						// and create splitting edges from such pairs
 						// if this does not hold, then geometry is not vertical,
 						// create center node and split face as usual (todo) or throw an error (done!)
-						if (flat && f.nbAdjElements(FACE,mark_flat) )//&& face_hanging_nodes.size()%2 == 0) //odd number of hanging nodes indicate match
+						if (flat && f.nbAdjElements(EDGE,mark_flat) )//&& face_hanging_nodes.size()%2 == 0) //odd number of hanging nodes indicate match
 						{
 							for (Storage::reference_array::size_type kt = 0; kt < face_hanging_nodes.size(); ++kt) if(!face_hanging_nodes[kt].GetMarker(mark_flat))
 							{
@@ -824,12 +834,13 @@ namespace INMOST
 										edge_nodes[1] = face_hanging_nodes[qt].getAsNode();
 										edge_nodes.SetMarker(mark_flat);
 										hanging_edges.push_back(m->CreateEdge(edge_nodes).first);
+										hanging_edges.back().SetMarker(mark_flat);
 										new_edges++;
 										level[hanging_edges.back()] = level[f] + 1;
 										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 											(*it)->NewEdge(f, hanging_edges.back());
-										//for (ElementArray<Face>::size_type qt = 0; qt < face_cells.size(); ++qt)
-										//	tri_hanging_edges[face_cells[qt]].push_back(hanging_edges[kt]);
+										for (ElementArray<Face>::size_type gt = 0; gt < face_cells.size(); ++gt)
+											tri_hanging_edges[face_cells[gt]].push_back(hanging_edges.back());
 										matched = true;
 										break;
 									}
@@ -953,21 +964,30 @@ namespace INMOST
 						// for flat refinement we have to create internal edges connecting through cell hanging nodes
 						// except for triangle where no vertical edge is created
 						// then create face through cell center nodes, face center nodes and mark_flat adjacent edges
-						if (flat) // todo: detect flat and skip_tri!!!
+						if (flat) 
 						{
 							//these are triangles at top and bottom
 							if (skip_tri && cell_hanging_nodes.empty())
 							{
 								Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+								ElementArray<Node> face_nodes(m,4);
 								//create internal faces
 								//find a pair of hanging edges that form a quad
+								//tri_hanging_edges also contains side edges - filter them by mark_flat
+								int nflat = 0, nmatched = 0, mrk0 = 0;
+								std::vector< std::pair<int, int> > hist;
 								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
+									mrk0 += (cell_hanging_edges[kt].GetMarker(mark_cell_edges) ? 1 : 0);
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt) if (!cell_hanging_edges[kt].GetMarker(mark_flat))
 								{
+									if (cell_hanging_edges[kt].GetMarker(mark_cell_edges)) continue;
+									cell_hanging_edges[kt].SetMarker(mark_cell_edges);
 									bool matched = false;
 									Storage::real_array ckb = cell_hanging_edges[kt].getAsEdge().getBeg().Coords();
 									Storage::real_array cke = cell_hanging_edges[kt].getAsEdge().getEnd().Coords();
-									for (Storage::reference_array::size_type qt = 1; qt < cell_hanging_edges.size(); ++qt)
+									for (Storage::reference_array::size_type qt = 0; qt < cell_hanging_edges.size(); ++qt) if (!cell_hanging_edges[qt].GetMarker(mark_flat))
 									{
+										if (cell_hanging_edges[qt].GetMarker(mark_cell_edges)) continue;
 										Storage::real_array cqb = cell_hanging_edges[qt].getAsEdge().getBeg().Coords();
 										Storage::real_array cqe = cell_hanging_edges[qt].getAsEdge().getEnd().Coords();
 										if (fabs(ckb[0] - cqb[0]) < m->GetEpsilon() &&
@@ -975,26 +995,66 @@ namespace INMOST
 											fabs(cke[0] - cqe[0]) < m->GetEpsilon() &&
 											fabs(cke[1] - cqe[1]) < m->GetEpsilon()) //normal order
 										{
+											face_nodes[0] = cell_hanging_edges[kt].getAsEdge().getBeg();
+											face_nodes[1] = cell_hanging_edges[kt].getAsEdge().getEnd();
+											face_nodes[2] = cell_hanging_edges[qt].getAsEdge().getEnd();
+											face_nodes[3] = cell_hanging_edges[qt].getAsEdge().getBeg();
 											matched = true;
-											break;
 										}
-										else if(fabs(cke[0] - cqb[0]) < m->GetEpsilon() &&
-												fabs(cke[1] - cqb[1]) < m->GetEpsilon() &&
-												fabs(ckb[0] - cqe[0]) < m->GetEpsilon() &&
-												fabs(ckb[1] - cqe[1]) < m->GetEpsilon()) //reverse order
+										else if (fabs(cke[0] - cqb[0]) < m->GetEpsilon() &&
+											fabs(cke[1] - cqb[1]) < m->GetEpsilon() &&
+											fabs(ckb[0] - cqe[0]) < m->GetEpsilon() &&
+											fabs(ckb[1] - cqe[1]) < m->GetEpsilon()) //reverse order
 										{
+											face_nodes[0] = cell_hanging_edges[kt].getAsEdge().getEnd();
+											face_nodes[1] = cell_hanging_edges[kt].getAsEdge().getBeg();
+											face_nodes[2] = cell_hanging_edges[qt].getAsEdge().getEnd();
+											face_nodes[3] = cell_hanging_edges[qt].getAsEdge().getBeg();
 											matched = true;
+										}
+										if (matched)
+										{
+											nmatched++;
+											hist.push_back(std::make_pair(kt, qt));
+											cell_hanging_edges[qt].SetMarker(mark_cell_edges);
+											internal_faces.push_back(m->CreateFace(face_nodes).first);
+											new_faces++;
+											//set increased level
+											level[internal_faces.back()] = level[c] + 1;
+											for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+												(*it)->NewFace(c, internal_faces.back());
 											break;
 										}
 									}
 									if (!matched)
 									{
-										std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging edge!" << std::endl;
+										std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging edge! " << kt << std::endl;
+										std::cout << "nflat: " << nflat << " nmatched " << nmatched << " mrk0 " << mrk0 << std::endl;
+										std::cout << "matched: ";
+										for (std::vector< std::pair<int, int> >::iterator mt = hist.begin(); mt != hist.end(); ++mt)
+											std::cout << mt->first << " and " << mt->second << " ";
+										std::cout << std::endl;
+										for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
+										{
+											Storage::real_array ckb = cell_hanging_edges[kt].getAsEdge().getBeg().Coords();
+											Storage::real_array cke = cell_hanging_edges[kt].getAsEdge().getEnd().Coords();
+											std::cout << std::setw(2) << kt << " ";
+											std::cout << "(" << std::setw(12) << ckb[0] << "," << std::setw(12) << ckb[1] << "," << std::setw(12) << ckb[2] << ")";
+											std::cout << "<->";
+											std::cout << "(" << std::setw(12) << cke[0] << "," << std::setw(12) << cke[1] << "," << std::setw(12) << cke[2] << ")";
+											std::cout << (cell_hanging_edges[kt].GetMarker(mark_flat) ? "vert" : "horiz");
+											std::cout << (cell_hanging_edges[kt].GetMarker(mark_cell_edges) ? "mrk" : "no mrk");
+											std::cout << std::endl;
+										}
 										throw Impossible;
 									}
 								}
+								else nflat++;
+								//clear marker
 								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
-									cell_hanging_edges[kt].RemMarker(mark_flat);
+									cell_hanging_edges[kt].RemMarker(mark_cell_edges);
+								if (internal_faces.empty())
+									throw Impossible;
 							}
 							else
 							{
@@ -1014,7 +1074,7 @@ namespace INMOST
 										if (fabs(ck[0] - cq[0]) < m->GetEpsilon() &&
 											fabs(ck[1] - cq[1]) < m->GetEpsilon())
 										{
-											ElementArray<Edge> face_edges(m);
+											ElementArray<Edge> face_edges(m, 4);
 											//create vertical edge
 											edge_nodes[0] = cell_hanging_nodes[kt].getAsNode();
 											edge_nodes[1] = cell_hanging_nodes[qt].getAsNode();
@@ -1025,7 +1085,6 @@ namespace INMOST
 											for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 												(*it)->NewEdge(c, e);
 											matched = true;
-											face_edges.push_back(e);
 											//create internal faces
 											ElementArray<Edge> e0 = edge_nodes[0].getEdges(mark_cell_edges);
 											ElementArray<Edge> e1 = edge_nodes[1].getEdges(mark_cell_edges); //e1 should not have flat markers!
@@ -1033,19 +1092,22 @@ namespace INMOST
 											for (ElementArray<Edge>::iterator eit = e0.begin(); eit != e0.end(); ++eit)
 											{
 												bool node_matched = false;
-												Node n0 = eit->getBeg() == edge_nodes[0] ? eit->getEnd() : eit->getBeg();
+												Node n0b = eit->getBeg();
+												Node n0e = eit->getEnd();
+												Node n0 = (n0b == edge_nodes[0]) ? n0e : n0b;
 												Storage::real_array nc0 = n0.Coords();
 												for (ElementArray<Edge>::iterator ejt = e1.begin(); ejt != e1.end(); ++ejt) if (!ejt->GetMarker(mark_flat))
 												{
-													Node n1 = ejt->getBeg() == edge_nodes[1] ? ejt->getEnd() : ejt->getBeg();
+													Node n1b = ejt->getBeg();
+													Node n1e = ejt->getEnd();
+													Node n1 = (n1b == edge_nodes[1]) ? n1e : n1b;
 													Storage::real_array nc1 = n1.Coords();
 													if (fabs(nc0[0] - nc1[0]) < m->GetEpsilon() &&
 														fabs(nc0[1] - nc1[1]) < m->GetEpsilon())
 													{
-														face_edges.push_back(eit->self());
-														edge_nodes[0] = n0;
-														edge_nodes[1] = n1;
-														std::pair<Edge, bool> em = m->CreateEdge(edge_nodes);
+														face_edges[0] = e;
+														face_edges[1] = eit->self();
+														std::pair<Edge, bool> em = m->CreateEdge(n0,n1);
 														if (em.second)
 														{
 															new_edges++;
@@ -1053,8 +1115,8 @@ namespace INMOST
 															for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
 																(*it)->NewEdge(c, em.first);
 														}
-														face_edges.push_back(em.first);
-														face_edges.push_back(ejt->self());
+														face_edges[2] = em.first;
+														face_edges[3] = ejt->self();
 														ejt->SetMarker(mark_flat);
 														internal_faces.push_back(m->CreateFace(face_edges).first);
 														new_faces++;
@@ -1087,6 +1149,8 @@ namespace INMOST
 								cell_edges.RemMarker(mark_cell_edges);
 								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
 									cell_hanging_nodes[kt].RemMarker(mark_flat);
+								if (internal_faces.empty())
+									throw Impossible;
 							}
 						}
 						else if (skip_tri && cell_hanging_nodes.size() == 0 && nedges == 12) //tetrahedron
@@ -1593,6 +1657,8 @@ namespace INMOST
 							throw - 1;
 						}
 						*/
+						if (internal_faces.empty())
+							throw Impossible;
 						//split the cell
 						//retrive parent set
 						ElementSet parent(m,parent_set[c]);
@@ -1628,7 +1694,8 @@ namespace INMOST
 									std::cout << jt.GetName() << " size " << jt.Size() << " ";
 								std::cout << std::endl;
 							}
-							exit(-1);
+							//exit(-1);
+							throw Impossible;
 						}
 #endif
 						ElementSet cell_set = m->CreateSetUnique(set_name.str()).first;
@@ -1696,7 +1763,7 @@ namespace INMOST
 			ENTER_BLOCK();
 			m->ReleaseMarker(mark_hanging_nodes);
 			m->ReleaseMarker(mark_cell_edges);
-			if (flat) m->ReleaseMarker(mark_flat, FACE | EDGE);
+			if (flat) m->ReleaseMarker(mark_flat, EDGE);
 			m->DeleteTag(internal_face_edges);
 			EXIT_BLOCK();
 			ENTER_BLOCK();
@@ -1715,27 +1782,30 @@ namespace INMOST
 		//m->CheckGIDs();
 
 #if !defined(NDEBUG)
-		for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
+		//if (!flat) // verticle edges have different refinement level and check will assert
 		{
-			ElementArray<Edge> cell_edges = it->getEdges();
-			for (ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt)
+			for (Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 			{
-				if (level[*jt] < level[*it])
+				ElementArray<Edge> cell_edges = it->getEdges();
+				for (ElementArray<Edge>::iterator jt = cell_edges.begin(); jt != cell_edges.end(); ++jt)
 				{
-					std::cout << "cell " << it->LocalID() << " h " << it->GetHandle() << " lvl " << level[*it] << " ind " << indicator[*it];
-					std::cout << std::endl;
-					std::cout << "edge " << jt->LocalID() << " h " << jt->GetHandle() << " lvl " << level[*jt] << " ind " << indicator[*jt];
-					std::cout << std::endl;
+					if (level[*jt] < level[*it])
+					{
+						std::cout << "cell " << it->LocalID() << " h " << it->GetHandle() << " lvl " << level[*it] << " ind " << indicator[*it];
+						std::cout << std::endl;
+						std::cout << "edge " << jt->LocalID() << " h " << jt->GetHandle() << " lvl " << level[*jt] << " ind " << indicator[*jt];
+						std::cout << std::endl;
+					}
+					assert(level[*jt] >= level[*it]);
 				}
-				assert(level[*jt] >= level[*it]);
+				ElementArray<Face> cell_faces = it->getFaces();
+				for (ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] >= level[*it]);
 			}
-			ElementArray<Face> cell_faces = it->getFaces();
-			for (ElementArray<Face>::iterator jt = cell_faces.begin(); jt != cell_faces.end(); ++jt) assert(level[*jt] >= level[*it]);
-		}
-		for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
-		{
-			ElementArray<Edge> face_edges = it->getEdges();
-			for (ElementArray<Edge>::iterator jt = face_edges.begin(); jt != face_edges.end(); ++jt) assert(level[*jt] >= level[*it]);
+			for (Mesh::iteratorFace it = m->BeginFace(); it != m->EndFace(); ++it)
+			{
+				ElementArray<Edge> face_edges = it->getEdges();
+				for (ElementArray<Edge>::iterator jt = face_edges.begin(); jt != face_edges.end(); ++jt) assert(level[*jt] >= level[*it]);
+			}
 		}
 #endif //NDEBUG
 
@@ -2743,6 +2813,16 @@ namespace INMOST
 					if( !e.Hidden() && indicator[e] == schedule_counter )
 					{
 						t1 = Timer();
+						//for vertical edges simply reduce counter
+						if (flat)
+						{
+							if (fabs(e.getBeg().Coords()[0] - e.getEnd().Coords()[0]) < m->GetEpsilon() &&
+								fabs(e.getBeg().Coords()[1] - e.getEnd().Coords()[1]) < m->GetEpsilon())
+							{
+								level[e] = level[e] - 1;
+								continue;
+							}
+						}
 						//at least one face must have lower level
 						bool visited = false;
 						(void)visited;

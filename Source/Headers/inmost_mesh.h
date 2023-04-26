@@ -1505,6 +1505,7 @@ namespace INMOST
 		/// @param coords array of coordinates at least of size GetDimensions()
 		/// @return interface to created node
 		Node                              CreateNode         (const real * coords);
+		std::pair<Edge,bool>              CreateEdge         (Node n1, Node n2);
 		std::pair<Edge,bool>              CreateEdge         (const ElementArray<Node> & nodes);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Edge> & edges);
 		std::pair<Face,bool>              CreateFace         (const ElementArray<Node> & nodes);
