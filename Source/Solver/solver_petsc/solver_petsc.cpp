@@ -8,7 +8,12 @@
 #include <petsc.h>
 #include "solver_petsc.h"
 
+#ifndef PETSC_SUCCESS
 #define PETSC_SUCCESS 0
+#endif
+#ifndef PETSC_NULLPTR
+#define PETSC_NULLPTR PETSC_NULL
+#endif
 
 
 bool SolverIsInitializedPetsc()
@@ -99,7 +104,7 @@ MatrixPreallocatePetsc(Mat *matrix, int local_size, int global_size, int *diag_n
     PetscErrorCode ierr;
     ierr = MatSetSizes(*matrix, local_size, local_size, global_size, global_size);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
-    ierr = MatXAIJSetPreallocation(*matrix, 1, diag_nonzeroes, off_diag_nonzeroes, PETSC_NULL, PETSC_NULL);
+    ierr = MatXAIJSetPreallocation(*matrix, 1, diag_nonzeroes, off_diag_nonzeroes, PETSC_NULLPTR, PETSC_NULLPTR);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
 }
 
@@ -300,7 +305,7 @@ bool SolverSolvePetsc(KSP *ksp, Vec *rhs, Vec *sol)
         if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
     }
     //MatNullSpace nullsp;
-    //ierr = MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, PETSC_NULL,&nullsp);
+    //ierr = MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, PETSC_NULLPTR,&nullsp);
     //ierr = KSPSetNullSpace(*ksp,nullsp);
     ierr = KSPSolve(*ksp, *rhs, *sol);
     if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
@@ -393,10 +398,12 @@ const char *SolverConvergedReasonPetsc(KSP *ksp)
         case KSP_CONVERGED_ITS:
             strcpy(reason_str, "converged by direct solver");
             break;
+#if PETSC_VERSION_LT(3,19,0)
         case KSP_CONVERGED_CG_NEG_CURVE:
         case KSP_CONVERGED_CG_CONSTRAINED:
             strcpy(reason_str, "converged due to some condition in conjugate gradient method");
             break;
+#endif
         case KSP_CONVERGED_STEP_LENGTH:
             strcpy(reason_str, "converged due to step length");
             break;
