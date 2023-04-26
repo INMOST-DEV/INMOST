@@ -676,7 +676,6 @@ namespace INMOST
 							if (fabs(e.getBeg().Coords()[0] - e.getEnd().Coords()[0]) < m->GetEpsilon() &&
 								fabs(e.getBeg().Coords()[1] - e.getEnd().Coords()[1]) < m->GetEpsilon())
 							{
-								level[e] = level[e] + 1;
 								e.SetMarker(mark_flat);
 								continue;
 							}
@@ -956,94 +955,139 @@ namespace INMOST
 						// then create face through cell center nodes, face center nodes and mark_flat adjacent edges
 						if (flat) // todo: detect flat and skip_tri!!!
 						{
-							ElementArray<Edge> cell_edges = c.getEdges(); // get cell edges
-							ElementArray<Node> edge_nodes(m);
-							//mark all edges so that we can retive them later
-							cell_edges.SetMarker(mark_cell_edges);
-							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt) if (!cell_hanging_nodes[kt].GetMarker(mark_flat))
+							//these are triangles at top and bottom
+							if (skip_tri && cell_hanging_nodes.empty())
 							{
-								Storage::real_array ck = cell_hanging_nodes[kt].getAsNode().Coords();
-								//find vertical match
-								bool matched = false;
-								for (Storage::reference_array::size_type qt = 1; qt < cell_hanging_nodes.size(); ++qt) if (!cell_hanging_nodes[qt].GetMarker(mark_flat))
+								Storage::reference_array cell_hanging_edges = tri_hanging_edges[c];
+								//create internal faces
+								//find a pair of hanging edges that form a quad
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
 								{
-									Storage::real_array cq = cell_hanging_nodes[qt].getAsNode().Coords();
-									if (fabs(ck[0] - cq[0]) < m->GetEpsilon() &&
-										fabs(ck[1] - cq[1]) < m->GetEpsilon())
+									bool matched = false;
+									Storage::real_array ckb = cell_hanging_edges[kt].getAsEdge().getBeg().Coords();
+									Storage::real_array cke = cell_hanging_edges[kt].getAsEdge().getEnd().Coords();
+									for (Storage::reference_array::size_type qt = 1; qt < cell_hanging_edges.size(); ++qt)
 									{
-										ElementArray<Edge> face_edges(m);
-										//create vertical edge
-										edge_nodes[0] = cell_hanging_nodes[kt].getAsNode();
-										edge_nodes[1] = cell_hanging_nodes[qt].getAsNode();
-										edge_nodes.SetMarker(mark_flat);
-										Edge e = m->CreateEdge(edge_nodes).first;
-										new_edges++;
-										level[e] = level[c] + 1;
-										for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-											(*it)->NewEdge(c, e);
-										matched = true;
-										face_edges.push_back(e);
-										//create internal faces
-										ElementArray<Edge> e0 = edge_nodes[0].getEdges(mark_cell_edges);
-										ElementArray<Edge> e1 = edge_nodes[1].getEdges(mark_cell_edges); //e1 should not have flat markers!
-										// find matching nodes in e0 and e1
-										for (ElementArray<Edge>::iterator eit = e0.begin(); eit != e0.end(); ++eit)
+										Storage::real_array cqb = cell_hanging_edges[qt].getAsEdge().getBeg().Coords();
+										Storage::real_array cqe = cell_hanging_edges[qt].getAsEdge().getEnd().Coords();
+										if (fabs(ckb[0] - cqb[0]) < m->GetEpsilon() &&
+											fabs(ckb[1] - cqb[1]) < m->GetEpsilon() &&
+											fabs(cke[0] - cqe[0]) < m->GetEpsilon() &&
+											fabs(cke[1] - cqe[1]) < m->GetEpsilon()) //normal order
 										{
-											bool node_matched = false;
-											Node n0 = eit->getBeg() == edge_nodes[0] ? eit->getEnd() : eit->getBeg();
-											Storage::real_array nc0 = n0.Coords();
-											for (ElementArray<Edge>::iterator ejt = e1.begin(); ejt != e1.end(); ++ejt) if( !ejt->GetMarker(mark_flat) )
-											{
-												Node n1 = ejt->getBeg() == edge_nodes[1] ? ejt->getEnd() : ejt->getBeg();
-												Storage::real_array nc1 = n1.Coords();
-												if (fabs(nc0[0] - nc1[0]) < m->GetEpsilon() &&
-													fabs(nc0[1] - nc1[1]) < m->GetEpsilon())
-												{
-													face_edges.push_back(eit->self());
-													edge_nodes[0] = n0;
-													edge_nodes[1] = n1;
-													std::pair<Edge, bool> em = m->CreateEdge(edge_nodes);
-													if (em.second)
-													{
-														new_edges++;
-														level[em.first] = level[c] + 1;
-														for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-															(*it)->NewEdge(c, em.first);
-													}
-													face_edges.push_back(em.first);
-													face_edges.push_back(ejt->self());
-													ejt->SetMarker(mark_flat);
-													internal_faces.push_back(m->CreateFace(face_edges).first);
-													new_faces++;
-													//set increased level
-													level[internal_faces.back()] = level[c] + 1;
-													for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
-														(*it)->NewFace(c, internal_faces.back());
-													node_matched = true;
-													break;
-												}
-											}
-											if (!node_matched)
-											{
-												std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging node!" << std::endl;
-												throw Impossible;
-											}
+											matched = true;
+											break;
 										}
-										//clear markers after use
-										e1.RemMarker(mark_flat);
-										break;
+										else if(fabs(cke[0] - cqb[0]) < m->GetEpsilon() &&
+												fabs(cke[1] - cqb[1]) < m->GetEpsilon() &&
+												fabs(ckb[0] - cqe[0]) < m->GetEpsilon() &&
+												fabs(ckb[1] - cqe[1]) < m->GetEpsilon()) //reverse order
+										{
+											matched = true;
+											break;
+										}
+									}
+									if (!matched)
+									{
+										std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging edge!" << std::endl;
+										throw Impossible;
 									}
 								}
-								if (!matched)
-								{
-									std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging node!" << std::endl;
-									throw Impossible;
-								}
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_edges.size(); ++kt)
+									cell_hanging_edges[kt].RemMarker(mark_flat);
 							}
-							//clear marker after use
-							cell_edges.RemMarker(mark_cell_edges);
-							for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
-								cell_hanging_nodes[kt].RemMarker(mark_flat);
+							else
+							{
+								ElementArray<Edge> cell_edges = c.getEdges(); // get cell edges
+								ElementArray<Node> edge_nodes(m,2);
+								//mark all edges so that we can retive them later
+								cell_edges.SetMarker(mark_cell_edges);
+								//find a pair of nodes that form internal vertical edge
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt) if (!cell_hanging_nodes[kt].GetMarker(mark_flat))
+								{
+									Storage::real_array ck = cell_hanging_nodes[kt].getAsNode().Coords();
+									//find vertical match
+									bool matched = false;
+									for (Storage::reference_array::size_type qt = 1; qt < cell_hanging_nodes.size(); ++qt) if (!cell_hanging_nodes[qt].GetMarker(mark_flat))
+									{
+										Storage::real_array cq = cell_hanging_nodes[qt].getAsNode().Coords();
+										if (fabs(ck[0] - cq[0]) < m->GetEpsilon() &&
+											fabs(ck[1] - cq[1]) < m->GetEpsilon())
+										{
+											ElementArray<Edge> face_edges(m);
+											//create vertical edge
+											edge_nodes[0] = cell_hanging_nodes[kt].getAsNode();
+											edge_nodes[1] = cell_hanging_nodes[qt].getAsNode();
+											edge_nodes.SetMarker(mark_flat);
+											Edge e = m->CreateEdge(edge_nodes).first;
+											new_edges++;
+											level[e] = level[c] + 1;
+											for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+												(*it)->NewEdge(c, e);
+											matched = true;
+											face_edges.push_back(e);
+											//create internal faces
+											ElementArray<Edge> e0 = edge_nodes[0].getEdges(mark_cell_edges);
+											ElementArray<Edge> e1 = edge_nodes[1].getEdges(mark_cell_edges); //e1 should not have flat markers!
+											// find matching nodes in e0 and e1
+											for (ElementArray<Edge>::iterator eit = e0.begin(); eit != e0.end(); ++eit)
+											{
+												bool node_matched = false;
+												Node n0 = eit->getBeg() == edge_nodes[0] ? eit->getEnd() : eit->getBeg();
+												Storage::real_array nc0 = n0.Coords();
+												for (ElementArray<Edge>::iterator ejt = e1.begin(); ejt != e1.end(); ++ejt) if (!ejt->GetMarker(mark_flat))
+												{
+													Node n1 = ejt->getBeg() == edge_nodes[1] ? ejt->getEnd() : ejt->getBeg();
+													Storage::real_array nc1 = n1.Coords();
+													if (fabs(nc0[0] - nc1[0]) < m->GetEpsilon() &&
+														fabs(nc0[1] - nc1[1]) < m->GetEpsilon())
+													{
+														face_edges.push_back(eit->self());
+														edge_nodes[0] = n0;
+														edge_nodes[1] = n1;
+														std::pair<Edge, bool> em = m->CreateEdge(edge_nodes);
+														if (em.second)
+														{
+															new_edges++;
+															level[em.first] = level[c] + 1;
+															for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+																(*it)->NewEdge(c, em.first);
+														}
+														face_edges.push_back(em.first);
+														face_edges.push_back(ejt->self());
+														ejt->SetMarker(mark_flat);
+														internal_faces.push_back(m->CreateFace(face_edges).first);
+														new_faces++;
+														//set increased level
+														level[internal_faces.back()] = level[c] + 1;
+														for (std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin(); it != callbacks.end(); ++it)
+															(*it)->NewFace(c, internal_faces.back());
+														node_matched = true;
+														break;
+													}
+												}
+												if (!node_matched)
+												{
+													std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging node!" << std::endl;
+													throw Impossible;
+												}
+											}
+											//clear markers after use
+											e1.RemMarker(mark_flat);
+											break;
+										}
+									}
+									if (!matched)
+									{
+										std::cout << __FILE__ << ":" << __LINE__ << " unmatched hanging node!" << std::endl;
+										throw Impossible;
+									}
+								}
+								//clear marker after use
+								cell_edges.RemMarker(mark_cell_edges);
+								for (Storage::reference_array::size_type kt = 0; kt < cell_hanging_nodes.size(); ++kt)
+									cell_hanging_nodes[kt].RemMarker(mark_flat);
+							}
 						}
 						else if (skip_tri && cell_hanging_nodes.size() == 0 && nedges == 12) //tetrahedron
 						{
