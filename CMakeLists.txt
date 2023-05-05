@@ -493,25 +493,27 @@ add_subdirectory(Tests)
 endif(COMPILE_TESTS)
 
 
-set(INMOST_INSTALL_HEADERS Source/Headers/inmost.h
+set(INMOST_INSTALL_HEADERS Source/Headers/container.hpp
                            Source/Headers/inmost_autodiff.h
-                           Source/Headers/inmost_residual.h
-                           Source/Headers/inmost_model.h
-                           Source/Headers/inmost_operator.h
+                           Source/Headers/inmost_block_variable.h
                            Source/Headers/inmost_common.h
                            Source/Headers/inmost_data.h
                            Source/Headers/inmost_dense.h
                            Source/Headers/inmost_expression.h
+                           Source/Headers/inmost.h
                            Source/Headers/inmost_mesh.h
+                           Source/Headers/inmost_model.h
                            Source/Headers/inmost_nonlinear.h
+                           Source/Headers/inmost_operator.h
+                           Source/Headers/inmost_optimizer.h
+                           Source/Headers/inmost_options_cmake.h
                            Source/Headers/inmost_partitioner.h
+                           Source/Headers/inmost_residual.h
                            Source/Headers/inmost_solver.h
                            Source/Headers/inmost_sparse.h
-                           Source/Headers/inmost_xml.h
                            Source/Headers/inmost_variable.h
-                           Source/Headers/inmost_block_variable.h
-		Source/Headers/inmost_optimizer.h
-                           Source/Headers/container.hpp)
+                           Source/Headers/inmost_xml.h
+                           Source/Headers/robin_hood.h)
 
 #if( COMPILE_EXAMPLES )
 #list(APPEND INMOST_INSTALL_HEADERS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
@@ -539,25 +541,27 @@ configure_file(inmost-config-version.cmake.in "${PROJECT_BINARY_DIR}/inmost-conf
 
 set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_BINARY_DIR}/inmost_options.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_autodiff.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_residual.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_operator.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_model.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_common.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_data.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_dense.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_expression.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_mesh.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_model.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_nonlinear.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_operator.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_optimizer.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_options_cmake.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_partitioner.h"
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_residual.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_sparse.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_block_variable.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_optimizer.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/container.hpp")
+	"${PROJECT_SOURCE_DIR}/Source/Headers/robin_hood.h")
 
 #if( COMPILE_EXAMPLES )
 #set_property(TARGET inmost APPEND PROPERTY PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
