@@ -642,7 +642,7 @@ namespace INMOST
 			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
 			//typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> container;
 		public:
-			const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
+			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
 			//const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
 			class iterator
 			{
