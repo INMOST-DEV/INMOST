@@ -6272,7 +6272,7 @@ namespace INMOST
 		recv_reqs.clear();//resize(recv_bufs.size());
 		send_reqs.clear();//resize(send_bufs.size());
 		{
-			INMOST_DATA_BULK_TYPE stub;
+			INMOST_DATA_BULK_TYPE stub = 0;
 			REPORT_VAL("recv bufs size",recv_bufs.size());
 			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
@@ -6323,6 +6323,7 @@ namespace INMOST
 					REPORT_VAL("size",chunk);
 					REPORT_VAL("proc",send_bufs[i].first);
 					REPORT_VAL("empty",send_bufs[i].second.empty());
+					if (send_bufs[i].first >= mpisize) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << send_bufs[i].first << " from " << mpirank << std::endl;
 					REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,send_bufs[i].first,mpi_tag_it,comm,&req));	
 					send_reqs.push_back(req);
 					shift += chunk;
@@ -6414,6 +6415,7 @@ namespace INMOST
 					REPORT_VAL("mpi_tag",mpi_tag);
 					REPORT_VAL("size",send_recv_size[i+recv_bufs.size()]);
 					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
+					if (send_bufs[i].first >= mpisize) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << send_bufs[i].first << " from " << mpirank << std::endl;
 					REPORT_MPI(MPI_Isend(&send_recv_size[i+recv_bufs.size()],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,send_bufs[i].first,mpi_tag,comm,&reqs[i+recv_bufs.size()]));	
 				}
 				if( !recv_bufs.empty() )

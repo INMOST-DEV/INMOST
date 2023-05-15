@@ -277,6 +277,7 @@ namespace INMOST
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_recv[0]; k++) //send rows that i want to receive
 				{
 					total_recv += vector_exchange_recv[j + 1];
+					if ((int)vector_exchange_recv[j] >= size) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << vector_exchange_recv[j] << " from " << rank << std::endl;
 					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 1], 1, INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], (size + vector_exchange_recv[j])%max_tag, comm, &requests[k])); //send number of rows
 					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 2], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], (2 * size + vector_exchange_recv[j])%max_tag, comm, &requests[k + vector_exchange_recv[0]])); //send row positions
 					j += vector_exchange_recv[j + 1] + 2;
@@ -398,6 +399,7 @@ namespace INMOST
 						send_row_sizes[q + r] = m[vector_exchange_send[j + 2 + r]].Size();
 						total_rows_send += m[vector_exchange_send[j + 2 + r]].Size();
 					}
+					if ((int)vector_exchange_send[j] >= size) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << vector_exchange_send[j] << " from " << rank << std::endl;
 					GUARD_MPI(MPI_Isend(&send_row_sizes[q], vector_exchange_send[j + 1], INMOST_MPI_DATA_ENUM_TYPE,vector_exchange_send[j], (3 * size + rank)%max_tag, comm, &requests[vector_exchange_recv[0] + k])); //recv rows
 					//remember processor numbers here
 					q += vector_exchange_send[j + 1];
@@ -449,6 +451,7 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE local_size = 0;
 					for (INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_send[j + 1]; r++)
 						local_size += send_row_sizes[q + r];
+					if ((int)vector_exchange_send[j] >= size) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << vector_exchange_send[j] << " from " << rank << std::endl;
 					GUARD_MPI( MPI_Isend(&send_row_data[f], local_size, Sparse::GetRowEntryType(), vector_exchange_send[j],(4 * size + rank)%max_tag, comm, &requests[k + vector_exchange_recv[0]]));
 					q += vector_exchange_send[j + 1];
 					j += vector_exchange_send[j + 1] + 2;
@@ -685,6 +688,7 @@ namespace INMOST
 				//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_send[j+1] << " dest " << vector_exchange_send[j] << " tag " << rank*size+vector_exchange_send[j] << std::endl;
 				for (k = 0; k < vector_exchange_send[j + 1]; k++)
 					send_storage[l + k] = x[vector_exchange_send[k + j + 2]];
+				if ((int)vector_exchange_send[j] >= size) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << vector_exchange_send[j] << " from " << rank << std::endl;
 				GUARD_MPI(MPI_Isend(&send_storage[l], vector_exchange_send[j + 1], INMOST_MPI_DATA_REAL_TYPE, vector_exchange_send[j], (rank * size + vector_exchange_send[j])%max_tag, comm, &send_requests[i]));
 				l += vector_exchange_send[j + 1];
 				j += vector_exchange_send[j + 1] + 2;
@@ -749,6 +753,7 @@ namespace INMOST
 				for (k = 0; k < vector_exchange_recv[j + 1]; k++)
 					recv_storage[l + k] = x[vector_exchange_recv[k + j + 2]];
 				//std::cout << GetRank() << " MPI_Isend size " << vector_exchange_recv[j+1] << " dest " << vector_exchange_recv[j] << " tag " << rank*size+vector_exchange_recv[j] << std::endl;
+				if ((int)vector_exchange_recv[j] >= size) std::cout << __FILE__ << ":" << __LINE__ << " bad desitnation " << vector_exchange_recv[j] << " from " << rank << std::endl;
 				GUARD_MPI(MPI_Isend(&recv_storage[l], vector_exchange_recv[j + 1], INMOST_MPI_DATA_REAL_TYPE,
 									vector_exchange_recv[j], (rank * size + vector_exchange_recv[j])%max_tag, comm,
 									&recv_requests[i]));
