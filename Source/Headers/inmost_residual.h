@@ -20,6 +20,7 @@ namespace INMOST
 		Sparse::Matrix jacobian; ///< Jacobian matrix.
 		Sparse::Vector residual; ///< Right hand side vector.
 		Sparse::LockService locks; ///< Array of locks for openmp shared access.
+		INMOST_DATA_ENUM_TYPE gbeg, gend; //global interval for debug
 	public:
 		/// Constructor
 		/// @param name Name for the matrix and right hand side. Can be used to set options for linear solver.
@@ -107,6 +108,10 @@ namespace INMOST
 		/// @param pos Equation number.
 		/// @return True if equation was locked.
 		__INLINE bool TestLock(INMOST_DATA_ENUM_TYPE pos) {if(!locks.Empty()) return locks.TestLock(pos); return false;}
+		/// For debug, check that residual indices are within global bounds
+		bool CheckBounds(INMOST_DATA_ENUM_TYPE row) const;
+		bool CheckBounds(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows) const;
+		bool CheckBounds(const variable & var) const;
 	};
 } //namespace INMOST
 

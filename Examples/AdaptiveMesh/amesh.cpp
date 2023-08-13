@@ -332,7 +332,9 @@ namespace INMOST
 					root.PutElement(it->self());
 					parent_set[it->self()] = root.GetHandle();
 				}
+				m->ResolveSets();
 				m->Enumerate(CELL,set_id);
+				m->AssignGlobalID(ESET);
 			}
         }
 		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
@@ -472,6 +474,9 @@ namespace INMOST
 		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
 		m->CheckGIDs(__FILE__, __LINE__);
+
+		m->CheckSetLinks(__FILE__, __LINE__);
+		//CheckParentSet(__FILE__, __LINE__);
 		EXIT_BLOCK();
 //#if defined(USE_AUTODIFF) && defined(USE_SOLVER)
 //		if (model) model->PrepareAdaptation(*m);
@@ -503,7 +508,9 @@ namespace INMOST
 		//initialize tree structure
 		//m->CheckCentroids(__FILE__,__LINE__);
 		ENTER_BLOCK();
+		m->CheckGIDs(__FILE__, __LINE__);
 		PrepareSet();
+		m->CheckGIDs(__FILE__, __LINE__);
 		EXIT_BLOCK();
 
 		//m->Save("before_refine"+std::to_string(fi)+".pvtk");
@@ -519,8 +526,8 @@ namespace INMOST
 		m->CheckCentroids(__FILE__, __LINE__);
 		m->CheckOwners(__FILE__, __LINE__);
 		m->CheckProcessors();
+		CheckParentSet(__FILE__, __LINE__);
 		m->CheckGIDs(__FILE__, __LINE__);
-		CheckParentSet(__FILE__,__LINE__);
 		EXIT_BLOCK();
 		/*
 		ENTER_BLOCK();

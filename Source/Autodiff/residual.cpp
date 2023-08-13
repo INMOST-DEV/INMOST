@@ -14,6 +14,13 @@ namespace INMOST
 	{
 		jacobian.SetInterval(beg,end);
 		residual.SetInterval(beg,end);
+#if defined(USE_MPI)
+		MPI_Allreduce(&beg, &gbeg, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, residual.GetCommunicator());
+		MPI_Allreduce(&end, &gend, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, residual.GetCommunicator());
+#else
+		gbeg = beg;
+		gend = end;
+#endif
 	}
 	void Residual::ClearResidual()
 	{
@@ -95,10 +102,25 @@ namespace INMOST
 	Residual::Residual(std::string name, INMOST_DATA_ENUM_TYPE start, INMOST_DATA_ENUM_TYPE end, INMOST_MPI_Comm _comm)
 	: hessian(name,0,0,_comm),jacobian(name,start,end,_comm),residual(name,start,end,_comm)
 	{
+#if defined(USE_MPI)
+		MPI_Allreduce(&start, &gbeg, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, _comm);
+		MPI_Allreduce(&end, &gend, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, _comm);
+#else
+		gbeg = start;
+		gend = end;
+#endif
 	}
 	Residual::Residual(const Residual & other)
 	: hessian(other.hessian),jacobian(other.jacobian), residual(other.residual)
 	{
+		INMOST_DATA_ENUM_TYPE start = residual.GetFirstIndex(), end = residual.GetLastIndex();
+#if defined(USE_MPI)
+		MPI_Allreduce(&start, &gbeg, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, residual.GetCommunicator());
+		MPI_Allreduce(&end, &gend, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, residual.GetCommunicator());
+#else
+		gbeg = start;
+		gend = end;
+#endif
 	}
 	
 	Matrix<multivar_expression_reference> Residual::operator [](const AbstractMatrix<INMOST_DATA_INTEGER_TYPE> & rows)
@@ -125,6 +147,31 @@ namespace INMOST
 		for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows(); ++i)
 			for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols(); ++j)
 				new (&ret(i, j)) value_reference(residual[rows.get(i, j)]);
+		return ret;
+	}
+
+	bool Residual::CheckBounds(INMOST_DATA_ENUM_TYPE row) const
+	{
+		bool ret = true;
+		const Sparse::Row& r = jacobian[row];
+		for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size() && ret; ++i)
+			ret &= r.GetIndex(i) >= gbeg && r.GetIndex(i) < gend;
+		return ret;
+	}
+	bool Residual::CheckBounds(const AbstractMatrix<INMOST_DATA_INTEGER_TYPE>& rows) const
+	{
+		bool ret = true;
+		for (INMOST_DATA_ENUM_TYPE i = 0; i < rows.Rows() && ret; ++i)
+			for (INMOST_DATA_ENUM_TYPE j = 0; j < rows.Cols() && ret; ++j)
+				ret &= CheckBounds(rows.get(i, j));
+		return ret;
+	}
+	bool Residual::CheckBounds(const variable& var) const
+	{
+		bool ret = true;
+		const Sparse::Row& r = var.GetRow();
+		for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size() && ret; ++i)
+			ret &= r.GetIndex(i) >= gbeg && r.GetIndex(i) < gend;
 		return ret;
 	}
 #endif //USE_SOLVER

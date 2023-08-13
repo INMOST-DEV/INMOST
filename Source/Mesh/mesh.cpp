@@ -1977,6 +1977,7 @@ namespace INMOST
 	
 	std::pair<ElementSet,bool> Mesh::CreateSetUnique(std::string name)
 	{
+		assert(GetSet(name) == InvalidElementSet());
 		HandleType he = ComposeHandleNum(4,TieElement(4));
 		bulk_array set_name = BulkArrayDV(he,SetNameTag());
 		set_name.resize(static_cast<bulk_array::size_type>(name.size()));
