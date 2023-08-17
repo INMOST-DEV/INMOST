@@ -4407,7 +4407,7 @@ namespace INMOST
 			const Tag & tag = tag_list[k];
 			if( tag.GetDataType() == DATA_REFERENCE )
 			{
-				for(int i = ElementNum(NODE); i <= ElementNum(ESET); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
+				for(int i = ElementNum(NODE); i <= ElementNum(MESH); i++) if( (mask & ElementTypeFromDim(i)) && tag.isDefinedByDim(i) )
 				{
 					INMOST_DATA_ENUM_TYPE last = (INMOST_DATA_ENUM_TYPE)elements[i].size(); //avoid resize if selems == elements
 					for(INMOST_DATA_ENUM_TYPE q = 0; q < last; ++q) 
@@ -8192,14 +8192,14 @@ namespace INMOST
 			if( t->GetTagName().substr(0,9) == "PROTECTED" ) continue;
 			if( t->GetDataType() == DATA_REFERENCE )
 			{
-				for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (t->isDefined(etype))
+				for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if (t->isDefined(etype))
 				{
 					for (integer eit = 0; eit < LastLocalID(etype); ++eit) if (isValidElement(etype, eit))
 					{
 						Element it = ElementByLocalID(etype, eit);
 						if (it->HaveData(*t))
 						{
-							Storage::integer owner = it->Integer(tag_new_owner);
+							Storage::integer owner = (etype == MESH ? GetProcessorRank() : it->Integer(tag_new_owner));
 							Storage::integer_array procs;
 							Storage::reference_array refs = it->ReferenceArray(*t);
 							for (Storage::reference_array::iterator jt = refs.begin(); jt != refs.end(); ++jt) if (jt->isValid())
@@ -8264,8 +8264,13 @@ namespace INMOST
 				std::set<Storage::integer> elem_procs;
 				for(ElementSet::iterator jt = it.Begin(); jt != it.End(); ++jt)
 				{
-					Storage::integer_array new_procs = jt->IntegerArrayDV(tag_new_processors);
-					elem_procs.insert(new_procs.begin(),new_procs.end());
+					if(jt->GetElementType() == MESH)
+						elem_procs.insert(GetProcessorRank());
+					else
+					{
+						Storage::integer_array new_procs = jt->IntegerArrayDV(tag_new_processors);
+						elem_procs.insert(new_procs.begin(),new_procs.end());
+					}
 				}
 				Storage::integer_array set_procs = it->IntegerArrayDV(tag_new_processors);
 				elem_procs.insert(set_procs.begin(),set_procs.end());

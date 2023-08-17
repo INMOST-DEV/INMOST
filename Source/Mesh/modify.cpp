@@ -1893,7 +1893,7 @@ namespace INMOST
 			{
 				//++q;
 				//std::cout << "check element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
-				if (jt->GetMarker(mrk))
+				if (jt->GetMarker(mrk) && jt->GetElementType() != MESH)
 				{
 					//std::cout << "erase element " << ElementTypeName(jt->GetElementType()) << " num " << jt->LocalID() << " handle " << jt->GetHandle() << std::endl;
 					jt = it->Erase(jt);
