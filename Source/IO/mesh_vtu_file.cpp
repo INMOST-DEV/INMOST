@@ -384,11 +384,13 @@ namespace INMOST
 		}
 		f << "\t\t\t</CellData>" << std::endl;
 		f << "\t\t\t<Points>" << std::endl;
-		f << "\t\t\t\t<DataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"" << GetDimensions() << "\" format=\"ascii\">" << std::endl;
+		f << "\t\t\t\t<DataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">" << std::endl;
 		for(Mesh::iteratorNode jt = BeginNode(); jt != EndNode(); ++jt) if( nid[*jt] != -1 )
 		{
 			for(int k = 0; k < GetDimensions(); ++k)
 				f << jt->Coords()[k] << " ";
+			for (int k = GetDimensions(); k < 3; ++k)
+				f << "0 ";
 			f << std::endl;
 		}
 		f << "\t\t\t\t</DataArray>" << std::endl;
