@@ -114,7 +114,7 @@ namespace INMOST
 				fh << "\t\t<PPoints>" << std::endl;
 				fh << "\t\t\t<PDataArray";
 				fh << " type=\"Float64\"";
-				fh << " NumberOfComponents=\"" << GetDimensions() << "\"";
+				fh << " NumberOfComponents=\"3\"";
 				fh << " Format=\"ascii\"";
 				fh << "/>" << std::endl;
 				fh << "\t\t</PPoints>" << std::endl;
