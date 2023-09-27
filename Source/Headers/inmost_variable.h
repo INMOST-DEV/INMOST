@@ -93,21 +93,22 @@ namespace INMOST
 	};
 	
 	template<class A, class ArgA>
-	class unary_pool_expression : public shell_expression<unary_pool_expression<A,ArgA> >
+	class unary_pool_expression : public shell_expression<unary_pool_expression<A, ArgA> >
 	{
-		unary_pool<A,ArgA> pool;
+		unary_pool<A, ArgA> pool;
 	public:
-		unary_pool_expression(const unary_pool<A,ArgA> & ppool) : pool(ppool) {}
-		unary_pool_expression(const unary_pool_expression & other) : pool(other.pool) {}
-		unary_pool_expression & operator = (unary_pool_expression const & other) {pool = other.pool; return * this;}
+		unary_pool_expression(const unary_pool<A, ArgA>& ppool) : pool(ppool) {}
+		unary_pool_expression(const unary_pool_expression& other) : pool(other.pool) {}
+		unary_pool_expression& operator = (unary_pool_expression const& other) { pool = other.pool; return *this; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {pool.get_op().GetJacobian(mult,r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { pool.get_op().GetJacobian(mult, r); }
-		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
-
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 
 	template<class A, class ArgA, class ArgB>
@@ -123,8 +124,10 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 	
 	template<class A, class ArgA, class ArgB, class ArgC>
@@ -140,8 +143,10 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {pool.get_op().GetJacobian(mult,r);}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const { return pool.get_op().GetInterval(beg, end, cnt); }
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 	
 	class abstract_dynamic_variable
@@ -450,6 +455,21 @@ namespace INMOST
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				ret += it->GetCount();
 			return ret;
+		}
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				ret += it->GetInterval(beg, end);
+		}
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const 
+		{ 
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetIndices(shift, bitset, inds); 
+		}
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetValues(coef, inds, vals);
 		}
 	};
 	

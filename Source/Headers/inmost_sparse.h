@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include "robin_hood.h"
 
+#define ASSUME_SORTED
+
 namespace INMOST
 {
 	namespace Sparse
@@ -270,7 +272,11 @@ namespace INMOST
 			/// @return Value corresponding to the position in the array.
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
 			/// Retrive interval of nonzeroes
-			//void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const;
+			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
+			/// Retrive indices
+			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
+			/// Retrive values
+			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
 			iterator                Begin() {return data.begin();}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
@@ -629,6 +635,38 @@ namespace INMOST
 #endif //defined(USE_SOLVER)
 		
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
+		struct RowMerger2
+		{
+			std::vector<bool> bitset;
+			std::vector<INMOST_DATA_REAL_TYPE> vals;
+			std::vector<INMOST_DATA_ENUM_TYPE> inds;
+			void clear()
+			{
+				bitset.clear();
+				vals.clear();
+				inds.clear();
+			}
+			void set_vals()
+			{
+				std::sort(inds.begin(), inds.end());
+				vals.resize(inds.size(), 0.0);
+			}
+			void get_row(Sparse::Row& r)
+			{
+				INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
+				r.Resize(s);
+				for(INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
+				{
+					if (1.0 + vals[i] != 1.0)
+					{
+						r.GetIndex(k) = inds[i];
+						r.GetValue(k) = vals[i];
+						k++;
+					}
+				}
+				r.Resize(k);
+			}
+		};
 		/// This class may be used to sum multiple sparse rows.
 		/// \warning
 		/// In parallel column indices of the matrix may span wider then

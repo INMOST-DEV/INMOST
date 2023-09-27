@@ -582,17 +582,60 @@ namespace INMOST
 			return ret;
 		}
 #endif //USE_SOLVER
-		/*
-		void Row::GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end, INMOST_DATA_ENUM_TYPE& cnt) const
+		
+		void Row::GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
 		{
+#if defined(ASSUME_SORTED)
+			if (!Empty())
+			{
+				beg = std::min(beg, Begin()->first);
+				end = std::max(end, rBegin()->first + 1);
+			}
+#else
 			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
 			{
 				beg = std::min(beg, it->first);
 				end = std::max(end, it->first + 1);
-				cnt++;
+			}
+#endif
+		}
+
+		void Row::GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		{
+			INMOST_DATA_ENUM_TYPE ind, sind;
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) 
+			{
+				ind = GetIndex(k);
+				sind = ind - shift;
+				if (!bitset[sind])
+				{
+					bitset[sind] = true;
+					inds.push_back(ind);
+				}
 			}
 		}
-		*/
+
+		
+		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+#if defined(ASSUME_SORTED)
+			INMOST_DATA_ENUM_TYPE pos, ind;
+			const INMOST_DATA_ENUM_TYPE *beg = &inds[0], *beg0 = beg;
+			//std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator beg = inds.begin();
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
+			{
+				ind = GetIndex(k);
+				//beg = std::lower_bound(beg, end, ind);
+				while (*beg != ind) beg++;
+				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - beg0);
+				vals[pos] += GetValue(k) * coef;
+			}
+#else
+			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
+				vals[std::lower_bound(inds.begin(), inds.end(), it->first) - inds.begin()] += it->second * coef;
+#endif
+		}
+		
 		bool Row::isSorted() const
 		{
 			for(INMOST_DATA_ENUM_TYPE k = 1; k < Size(); ++k)

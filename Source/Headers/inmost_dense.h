@@ -184,7 +184,8 @@ namespace INMOST
 	class AbstractMatrixBase
 	{
 	protected:
-		static thread_private<Sparse::RowMerger> merger;
+		typedef Sparse::RowMerger2 merger_type;
+		static thread_private<merger_type> merger;
 	};
 
 
@@ -3271,6 +3272,7 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
+			/*
 			INMOST_DATA_ENUM_TYPE cnt = pB->GetMatrixCount();
 			if (cnt >= CNT_USE_MERGER)
 			{
@@ -3288,6 +3290,39 @@ namespace INMOST
 						M(i, j).SetValue(value);
 						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
+					}
+				}
+			}
+			else
+			*/
+			if (true)
+			{
+				AbstractMatrixBase::merger_type& m = *merger;
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+						m.clear();
+						for (enumerator k = 0; k < pA->Cols(); ++k)
+						{
+							value += pA->get(i, k) * pB->get(k, j).GetValue();
+							pB->get(k, j).GetInterval(beg, end);
+						}
+						M(i, j).SetValue(value);
+						Sparse::Row& r = M(i, j).GetRow();
+						if (end > beg)
+						{
+							m.bitset.resize(end - beg, false);
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+								pB->get(k, j).GetIndices(beg, m.bitset, m.inds);
+							m.set_vals();
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+								pB->get(k, j).GetValues(pA->get(i, k), m.inds, m.vals);
+							m.get_row(r);
+						}
+						else r.Clear();
 					}
 				}
 			}
@@ -3357,6 +3392,7 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
+			/*
 			INMOST_DATA_ENUM_TYPE cnt = pA->GetMatrixCount();
 			if (cnt >= CNT_USE_MERGER)
 			{
@@ -3374,6 +3410,39 @@ namespace INMOST
 						M(i, j).SetValue(value);
 						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
+					}
+				}
+			}
+			else
+			*/
+			if (true)
+			{
+				AbstractMatrixBase::merger_type& m = *merger;
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+						m.clear();
+						for (enumerator k = 0; k < pA->Cols(); ++k)
+						{
+							value += pA->get(i, k).GetValue() * pB->get(k, j);
+							pA->get(i, k).GetInterval(beg, end);
+						}
+						M(i, j).SetValue(value);
+						Sparse::Row& r = M(i, j).GetRow();
+						if (end > beg)
+						{
+							m.bitset.resize(end - beg, false);
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+								pA->get(i, k).GetIndices(beg, m.bitset, m.inds);
+							m.set_vals();
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+								pA->get(i, k).GetValues(pB->get(k, j), m.inds, m.vals);
+							m.get_row(r);
+						}
+						else r.Clear();
 					}
 				}
 			}
@@ -3443,6 +3512,7 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
+			/*
 			INMOST_DATA_ENUM_TYPE cnt = 0;
 			cnt += pA->GetMatrixCount();
 			cnt += pB->GetMatrixCount();
@@ -3463,6 +3533,46 @@ namespace INMOST
 						M(i, j).SetValue(value);
 						merger->RetrieveRow(M(i, j).GetRow());
 						merger->Clear();
+					}
+				}
+			}
+			else
+			*/
+			if (true)
+			{
+				AbstractMatrixBase::merger_type& m = *merger;
+				for (enumerator i = 0; i < pA->Rows(); ++i)
+				{
+					for (enumerator j = 0; j < pB->Cols(); ++j)
+					{
+						INMOST_DATA_REAL_TYPE value = 0.0;
+						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+						m.clear();
+						for (enumerator k = 0; k < pA->Cols(); ++k)
+						{
+							value += pA->get(i, k).GetValue() * pB->get(k, j).GetValue();
+							pA->get(i, k).GetInterval(beg, end);
+							pB->get(k, j).GetInterval(beg, end);
+						}
+						M(i, j).SetValue(value);
+						Sparse::Row& r = M(i, j).GetRow();
+						if (end > beg)
+						{
+							m.bitset.resize(end - beg, false);
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+							{
+								pA->get(i, k).GetIndices(beg, m.bitset, m.inds);
+								pB->get(k, j).GetIndices(beg, m.bitset, m.inds);
+							}
+							m.set_vals();
+							for (enumerator k = 0; k < pA->Cols(); ++k)
+							{
+								pA->get(i, k).GetValues(pB->get(k, j).GetValue(), m.inds, m.vals);
+								pB->get(k, j).GetValues(pA->get(i, k).GetValue(), m.inds, m.vals);
+							}
+							m.get_row(r);
+						}
+						else r.Clear();
 					}
 				}
 			}
@@ -4240,15 +4350,17 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<variable,variable>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
+		Sparse::RowMerger* pmerger = NULL;
+		/*
 		INMOST_DATA_ENUM_TYPE cnt = 0;
 		cnt += A.GetMatrixCount();
 		cnt += B.GetMatrixCount();
-		Sparse::RowMerger* pmerger = NULL; 
 		if (cnt >= CNT_USE_MERGER)
 		{
 			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
+		*/
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
@@ -4363,13 +4475,15 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type> ret(B);
 		SymmetricMatrix<INMOST_DATA_REAL_TYPE> L(A);
-		INMOST_DATA_ENUM_TYPE cnt = B.GetMatrixCount();
 		Sparse::RowMerger* pmerger = NULL;
+		/*
+		INMOST_DATA_ENUM_TYPE cnt = B.GetMatrixCount();
 		if (cnt >= CNT_USE_MERGER)
 		{
 			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
+		*/
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
@@ -4481,13 +4595,15 @@ namespace INMOST
 		enumerator l = B.Cols();
 		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> ret(B);
 		SymmetricMatrix<variable> L(A);
-		INMOST_DATA_ENUM_TYPE cnt = A.GetMatrixCount();
 		Sparse::RowMerger* pmerger = NULL;
+		/*
+		INMOST_DATA_ENUM_TYPE cnt = A.GetMatrixCount();
 		if (cnt >= CNT_USE_MERGER)
 		{
 			merger->Resize(cnt);
 			pmerger = &(*merger);
 		}
+		*/
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
