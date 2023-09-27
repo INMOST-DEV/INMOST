@@ -53,14 +53,14 @@ namespace INMOST
 		//TagInteger tag_status;
 		TagInteger set_id;
 		//TagInteger tag_an; 
-        int rank;
-        int size;
+		int rank;
+		int size;
 		/// Prepare sets for coarsements.
 		/// Do not do this in constructor, since mesh may contain no cells.
 		void PrepareSet();
 		void CheckClosure(std::string file, int line);
-        //void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
-        //void SynchronizeIndicated(TagInteger& indicator);
+		//void PrintSetLocal(std::string offset, ElementSet it, std::stringstream& ss);
+		//void SynchronizeIndicated(TagInteger& indicator);
 		bool skip_tri, flat;
 		std::vector<AdaptiveMeshCallback*> callbacks;
 	public:
@@ -76,7 +76,7 @@ namespace INMOST
 		/// @param Mesh Attach to this mesh to perform refinement
 		/// @param skip_tri Do not create center node in triangle
 		/// @param flat Do not split in z-direction
-        AdaptiveMesh(Mesh & m, bool skip_tri = false, bool flat = false);
+		AdaptiveMesh(Mesh & m, bool skip_tri = false, bool flat = false);
 		~AdaptiveMesh();
 		/// Indicator must be 1 on cells to be refined
 		/// and 0 on all other cells

@@ -37,7 +37,22 @@ __declspec( dllexport ) void partitioner_stub(){} //to avoid LNK4221 warning
 #define REPORT_VAL(str,x) {}
 #define ENTER_FUNC() {}
 #define EXIT_FUNC() {}
+#define ENTER_BLOCK() {}
+#define EXIT_BLOCK() {}
+//#define ENTER_BLOCK() if(!m->GetProcessorRank()){std::cout << m->GetProcessorRank() << " enter block " << __FUNCTION__ << " " << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;}
+//#define EXIT_BLOCK() m->Barrier();
+//#define ENTER_FUNC() {} if(!m->GetProcessorRank()) {std::cout << m->GetProcessorRank() << " enter function " << __FUNCTION__ << " " << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;}
+//#define EXIT_FUNC() m->Barrier();
 #endif
+
+__INLINE std::string NameSlash(std::string input)
+{
+	for(unsigned l = static_cast<unsigned>(input.size()); l > 0; --l)
+		if( input[l-1] == '/' || input[l-1] == '\\' )
+			return std::string(input.c_str() + l);
+	return input;
+}
+
 
 namespace INMOST
 {
@@ -525,25 +540,35 @@ namespace INMOST
 			
 			if( time_output ) time = Timer();
 			//set ghost boundaries so we certanly know we can access adjacencies
-			
+		
+			ENTER_BLOCK();	
 			if( m->GetMeshState() != Mesh::Parallel )  
 				m->ResolveShared();
+			EXIT_BLOCK();
+			
+			ENTER_BLOCK();
 			if( m->Integer(m->GetHandle(),m->LayersTag()) == 0 ) 
 				m->ExchangeGhost(1,FACE);
+
+			EXIT_BLOCK();
+			
+			ENTER_BLOCK();
 			//~ if( !m->GlobalIDTag().isValid() || !m->GlobalIDTag().isDefined(CELL) )
 				m->AssignGlobalID(CELL);
-			
+			EXIT_BLOCK();
 
 			
 			
 			if( time_output ) time = Timer();
 			
 			
+			ENTER_BLOCK();
 			mysize = 0;
 			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( it->GetStatus() != Element::Ghost ) mysize++;
 			vtxdist[0] = 0;
 			REPORT_MPI(result = MPI_Allgather(&mysize,1,IDX_T,&vtxdist[1],1,IDX_T,m->GetCommunicator()));
 			if( result != MPI_SUCCESS ) throw Impossible;
+			EXIT_BLOCK();
 			
 #if defined(USE_PARTITIONER_METIS)
 			if( package == 4 || package == 5 )
@@ -602,7 +627,7 @@ namespace INMOST
 			}
 			
 			
-			
+			ENTER_BLOCK();
 			
 			{
 				if( GetWeight().isValid() && GetWeight().GetSize() != ENUMUNDEF )
@@ -638,7 +663,9 @@ namespace INMOST
 					real_t c = static_cast<real_t>(1.0/static_cast<real_t>(nparts));
 					tpwgts.resize(nparts*ncon,c);
 				}
-			}			
+			}
+		
+			EXIT_BLOCK();		
 			
 			if( time_output ) time = Timer();
 			
@@ -660,6 +687,7 @@ namespace INMOST
 			
 			
 			//make graph
+			ENTER_BLOCK();
 			int k = 0;
 			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it)
 			if( it->GetStatus() != Element::Ghost )
@@ -700,7 +728,7 @@ namespace INMOST
 				}
 				k++;
 			}
-			
+			EXIT_BLOCK();
 			REPORT_STR("graph made, number of adjacencies: ");
 			REPORT_VAL("adjacencies_size",adjncy.size());
 			
@@ -717,7 +745,7 @@ namespace INMOST
 			//std::cout << "wgtflag: " <<wgtflag << std::endl;
 			
 			//debug_output = true;
-			
+			ENTER_BLOCK();
 			if( debug_output )
 			{
 				std::stringstream name;
@@ -827,11 +855,11 @@ namespace INMOST
 				//m->EndSequentialCode();
 				f.close();
 			}
-			
+			EXIT_BLOCK();
 			//redistribute entities;
 			if( time_output ) time = Timer();
-			
-			
+			/*
+			ENTER_BLOCK();
 #if defined(USE_PARTITIONER_PARMETIS)
 			if( package == 2 ) //parmetis expects non-empty graph on all processors
 			{
@@ -1052,7 +1080,9 @@ namespace INMOST
 				REPORT_STR("graph redistributed");
 			}
 #endif //USE_PARTITIONER_PARMETIS
-			
+			EXIT_BLOCK();
+			*/	
+			ENTER_BLOCK();
 			if( debug_output )
 			{
 				std::stringstream name;
@@ -1161,6 +1191,7 @@ namespace INMOST
 				//m->EndSequentialCode();
 				f.close();
 			}
+			EXIT_BLOCK();
 			
 			if( time_output )
 			{
@@ -1170,11 +1201,21 @@ namespace INMOST
 			}
 			
 			REPORT_STR("BEGIN PARMETIS");
-			
+			ENTER_BLOCK();
 			if( time_output ) time = Timer();
 			
-			MPI_Comm comm = m->GetCommunicator();
-			
+			MPI_Comm comm = m->GetCommunicator(), split;
+
+			MPI_Comm_split(comm, vtxdist[rank+1]-vtxdist[rank] ? 0 : MPI_UNDEFINED, rank, &split);
+
+			//std::cout << "rank " << rank << " size " << vtxdist[rank+1]-vtxdist[rank] << std::endl;
+			if(vtxdist[rank+1]-vtxdist[rank])
+			{
+				//int srank, ssize;
+				//MPI_Comm_rank(split,&srank);
+				//MPI_Comm_size(split,&ssize);
+				//std::cout << "rank " << rank << " new " << srank << "/" << ssize << " local " << vtxdist[rank+1]-vtxdist[rank] <<  std::endl;
+				vtxdist.resize(std::unique(vtxdist.begin(),vtxdist.end())-vtxdist.begin());
 			idx_t  * link_vtxdist = vtxdist.empty() ? NULL : &vtxdist[0];
 			idx_t  * link_xadj    = xadj.empty()    ? NULL : &xadj[0];
 			idx_t  * link_adjncy  = adjncy.empty()  ? NULL : &adjncy[0];
@@ -1207,28 +1248,31 @@ namespace INMOST
 					 //case Partition:
 					 //result = ParMETIS_V3_PartKway(&vtxdist[0],&xadj[0],&adjncy[0],&vwgt[0],&adjwgt[0],
 						//						   &wgtflag,&numflag,&ncon,&nparts,&tpwgts[0],
-						//						   &ubvec[0],&options[0],&edgecut,&part[0],&comm);
+						//						   &ubvec[0],&options[0],&edgecut,&part[0],&split);
 					 break;
 					case Refine:
+					//if(!srank) std::cout << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;
 					REPORT_STR("run refine");
 					result = ParMETIS_V3_RefineKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
 													&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
-													link_ubvec,link_options,&edgecut,link_part,&comm);	
+													link_ubvec,link_options,&edgecut,link_part,&split);	
 					break;
 					case Partition:
+					//if(!srank) std::cout << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;
 					REPORT_STR("run partition");
 					result = ParMETIS_V3_PartGeomKway(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_adjwgt,
 													  &wgtflag,&numflag,&ndims,link_xyz,&ncon,&nparts,link_tpwgts,
-													  link_ubvec,link_options,&edgecut,link_part,&comm);
+													  link_ubvec,link_options,&edgecut,link_part,&split);
 					break;
 					//~ case P_PartGeom:
-					//~ result = ParMETIS_V3_PartGeom(&vtxdist[0],&ndims,&xyz[0],&part[0],&comm);
+					//~ result = ParMETIS_V3_PartGeom(&vtxdist[0],&ndims,&xyz[0],&part[0],&split);
 					//~ break;
 					case Repartition:
+					//if(!srank) std::cout << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;
 					REPORT_STR("run repartition");
 					result = ParMETIS_V3_AdaptiveRepart(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_vsize,
 														link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
-														link_ubvec,&itr,link_options,&edgecut,link_part,&comm);
+														link_ubvec,&itr,link_options,&edgecut,link_part,&split);
 					break;
 				}
 			}
@@ -1259,7 +1303,10 @@ namespace INMOST
 				}
 			}
 #endif //USE_PARTITIONER_METIS
-			
+			 MPI_Comm_free(&split);
+			}
+
+			EXIT_BLOCK();
 			
 			
 			if( time_output )
@@ -1274,6 +1321,8 @@ namespace INMOST
 			if( time_output ) time = Timer();
 
 			//distribute computed parts back
+			/*
+			ENTER_BLOCK();
 #if defined(USE_PARTITIONER_PARMETIS)
 			if( package == 2 )
 			{
@@ -1297,7 +1346,8 @@ namespace INMOST
 				}
 			}
 #endif
-
+			EXIT_BLOCK();
+			*/
 			if( time_output )
 			{
 				time = Timer()-time;

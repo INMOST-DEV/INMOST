@@ -1940,7 +1940,7 @@ namespace INMOST
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{ 
 			left.GetValues(coef * ldmult, inds, vals); 
-			right.GetValues(coef  rdmult, inds, vals);
+			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 

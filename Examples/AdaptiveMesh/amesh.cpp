@@ -20,7 +20,12 @@
 #define EXIT_BLOCK()
 #define ENTER_FUNC() {}
 #define EXIT_FUNC() {}
-#define EXIT_FUNC_DIE()  {}
+#define EXIT_FUNC_DIE() {}
+//#define ENTER_BLOCK() if(!m->GetProcessorRank()){std::cout << m->GetProcessorRank() << " enter block " << __FUNCTION__ << " " << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;}
+//#define EXIT_BLOCK() m->Barrier();
+//#define ENTER_FUNC() {} if(!m->GetProcessorRank()) {std::cout << m->GetProcessorRank() << " enter function " << __FUNCTION__ << " " << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;}
+//#define EXIT_FUNC() m->Barrier();
+//#define EXIT_FUNC_DIE() m->Barrier();
 #endif
 
 __INLINE std::string NameSlash(std::string input)
@@ -318,10 +323,13 @@ namespace INMOST
 	
 	void AdaptiveMesh::PrepareSet()
 	{
+		ENTER_FUNC();
 		//retrive set for coarsening, initialize set if is not present
+		int update = 0;
 		if( !root.isValid() )
 		{
 			root = m->GetSet("AM_ROOT_SET");
+
 			if( root == InvalidElement() )
 			{
 				root = m->CreateSetUnique("AM_ROOT_SET").first;
@@ -332,13 +340,25 @@ namespace INMOST
 					root.PutElement(it->self());
 					parent_set[it->self()] = root.GetHandle();
 				}
-				m->ResolveSets();
-				m->Enumerate(CELL,set_id);
-				m->AssignGlobalID(ESET);
+				update = 1;
+				//m->ResolveSets();
+				//m->Enumerate(CELL,set_id);
+				//m->AssignGlobalID(ESET);
 			}
-        }
-		if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
+		}
+		update = m->AggregateMax(update);
+		if( update )
+		{
+			m->ResolveSets();
+			m->Enumerate(CELL,set_id);
+			m->AssignGlobalID(ESET);
+		}
+		//if( !m->HaveGlobalID(CELL) ) m->AssignGlobalID(CELL); //for unique set names
+		update = m->HaveGlobalID(CELL) ? 0 : 1;
+		update = m->AggregateMax(update);
+		if(update)  m->AssignGlobalID(CELL);
 		//m->ResolveSets();
+		EXIT_FUNC();
 	}
 	
 	AdaptiveMesh::AdaptiveMesh(Mesh & _m, bool skip_tri, bool flat) : m(&_m), skip_tri(skip_tri), flat(flat)
@@ -2281,9 +2301,13 @@ namespace INMOST
 				}
 			}
 			EXIT_BLOCK();
+			//if(!m->GetProcessorRank()) std::cout << "ReduceData " << __LINE__ << std::endl;
 			m->ReduceData(indicator,ESET,0,ReduceMin);
+			//if(!m->GetProcessorRank()) std::cout << "ReduceData " << __LINE__ << std::endl;
 			m->ReduceData(coarse_indicator,ESET,0,ReduceMax);
+			//if(!m->GetProcessorRank()) std::cout << "ExchangeData " << __LINE__ << std::endl;
 			m->ExchangeData(indicators,ESET,0);
+			//if(!m->GetProcessorRank()) std::cout << "Done " << __LINE__ << std::endl;
 			ENTER_BLOCK()
 #if defined(USE_OMP)
 #pragma omp parallel for reduction(+:unscheduled)

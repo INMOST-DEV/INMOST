@@ -459,7 +459,7 @@ namespace INMOST
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
 		{
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
-				ret += it->GetInterval(beg, end);
+				it->GetInterval(beg, end);
 		}
 		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const 
 		{ 
