@@ -380,8 +380,9 @@ namespace INMOST
 		}
 		void Print(double eps = -1, std::ostream & sout = std::cout) const
 		{
-			sout << value << " ";// std::endl;
+			sout << value << " ";
 			entries.Print(eps, sout);
+			if (entries.Empty()) std::cout << std::endl;
 		}
 		void swap(multivar_expression & b)
 		{
