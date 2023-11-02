@@ -38,8 +38,8 @@ namespace INMOST
 		{
 			int ierr = 0;
 			std::vector<INMOST_DATA_REAL_TYPE> temp(num);
-			memcpy(temp.data(), inout, sizeof(INMOST_DATA_REAL_TYPE) * num);
-			GUARD_MPI(MPI_Allreduce(temp.data(), inout, num, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm));
+			memcpy(&temp[0], inout, sizeof(INMOST_DATA_REAL_TYPE) * num);
+			GUARD_MPI(MPI_Allreduce(&temp[0], inout, num, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm));
 		}
 #else
 		(void) inout;
