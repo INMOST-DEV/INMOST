@@ -275,8 +275,10 @@ namespace INMOST
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
 			/// Retrive indices
 			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
+			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
 			/// Retrive values
 			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
+			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& indset, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
 			iterator                Begin() {return data.begin();}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
@@ -637,18 +639,22 @@ namespace INMOST
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		struct RowMerger2
 		{
-			std::vector<bool> bitset;
+			std::set<INMOST_DATA_ENUM_TYPE> indset;
+			//std::vector<bool> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds;
 			void clear()
 			{
-				bitset.clear();
+				indset.clear();
+				//bitset.clear();
 				vals.clear();
 				inds.clear();
 			}
 			void set_vals()
 			{
-				std::sort(inds.begin(), inds.end());
+				//std::sort(inds.begin(), inds.end());
+				inds.resize(indset.size());
+				std::copy(indset.begin(), indset.end(), inds.begin());
 				vals.resize(inds.size(), 0.0);
 			}
 			void get_row(Sparse::Row& r)

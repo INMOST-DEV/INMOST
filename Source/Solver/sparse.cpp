@@ -615,25 +615,42 @@ namespace INMOST
 			}
 		}
 
+		void Row::GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
+		{
+			std::set<INMOST_DATA_ENUM_TYPE>::const_iterator hint = indset.cend();
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
+				hint = indset.insert(hint, GetIndex(k));
+		}
 		
 		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
 #if defined(ASSUME_SORTED)
 			INMOST_DATA_ENUM_TYPE pos, ind;
-			const INMOST_DATA_ENUM_TYPE *beg = &inds[0], *beg0 = beg;
-			//std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator beg = inds.begin();
+			//const INMOST_DATA_ENUM_TYPE *beg = &inds[0], *beg0 = beg;
+			std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator beg = inds.begin();
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
 			{
 				ind = GetIndex(k);
-				//beg = std::lower_bound(beg, end, ind);
-				while (*beg != ind) beg++;
-				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - beg0);
+				beg = std::lower_bound(beg, inds.end(), ind);
+				//while (*beg != ind) beg++;
+				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - inds.cbegin());
 				vals[pos] += GetValue(k) * coef;
 			}
 #else
 			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
 				vals[std::lower_bound(inds.begin(), inds.end(), it->first) - inds.begin()] += it->second * coef;
 #endif
+		}
+
+		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& indset, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			std::set< INMOST_DATA_ENUM_TYPE>::const_iterator find;
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
+			{
+				find = indset.find(GetIndex(k));
+				assert(find != indset.end());
+				vals[std::distance(indset.begin(), find)] += GetValue(k) * coef;
+			}
 		}
 		
 		bool Row::isSorted() const

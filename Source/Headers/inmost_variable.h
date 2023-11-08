@@ -108,7 +108,9 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
 		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 
 	template<class A, class ArgA, class ArgB>
@@ -127,7 +129,9 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
 		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 	
 	template<class A, class ArgA, class ArgB, class ArgC>
@@ -146,7 +150,9 @@ namespace INMOST
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
 		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 	
 	class abstract_dynamic_variable
@@ -466,7 +472,17 @@ namespace INMOST
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetIndices(shift, bitset, inds); 
 		}
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetIndices(indset);
+		}
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetValues(coef, inds, vals);
+		}
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetValues(coef, inds, vals);

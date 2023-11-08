@@ -3200,14 +3200,9 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			for (enumerator i = 0; i < pA->Rows(); ++i) 
-			{
-				for (enumerator  k = 0; k < pB->Cols(); ++k) 
-					M(i, k) = pA->get(i, 0) * pB->get(0, k);
-				for (enumerator j = 1; j < pA->Cols(); ++j) 
-					for (enumerator k = 0; k < pB->Cols(); ++k)
-						M(i, k) += pA->get(i, j) * pB->get(j, k);
-			}
+			for (enumerator i = 0; i < pA->Rows(); ++i)
+				for (enumerator j = 0; j < pB->Cols(); ++j)
+					M(i, j) = (*pA)(i, i + 1, 0, pA->Cols()).DotProduct((*pB)(0, pB->Rows(), j, j + 1).Transpose());
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices
@@ -3229,379 +3224,6 @@ namespace INMOST
 		__INLINE const VarR& get(enumerator i, enumerator j) const { return M.get(i, j); }
 		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
 	};
-#if defined(USE_AUTODIFF)
-	template<>
-	class MatrixMul<INMOST_DATA_REAL_TYPE, variable, Promote<INMOST_DATA_REAL_TYPE,variable>::type > : public AbstractMatrix< Promote<INMOST_DATA_REAL_TYPE, variable>::type >
-	{
-	public:
-		using AbstractMatrix< Promote<INMOST_DATA_REAL_TYPE, variable>::type >::operator();
-		typedef typename AbstractMatrix< Promote<INMOST_DATA_REAL_TYPE, variable>::type >::enumerator enumerator; //< Integer type for indexes.
-	private:
-		Matrix<Promote<INMOST_DATA_REAL_TYPE, variable>::type> M;
-	public:
-		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
-		/// since it just points to a part of the larger empty matrix.
-		void Resize(enumerator rows, enumerator cols)
-		{
-			assert(Cols() == cols);
-			assert(Rows() == rows);
-			(void)cols; (void)rows;
-		}
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return M.Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return M.Cols(); }
-		MatrixMul(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rA, const AbstractMatrixReadOnly<variable>& rB)
-		{
-			assert(rA.Cols() == rB.Rows());
-			const AbstractMatrix<INMOST_DATA_REAL_TYPE>* pA = dynamic_cast<const AbstractMatrix<INMOST_DATA_REAL_TYPE> *>(&rA);
-			const AbstractMatrix<variable>* pB = dynamic_cast<const AbstractMatrix<variable> *>(&rB);
-			if (!pA)
-			{
-				static thread_private< Matrix<INMOST_DATA_REAL_TYPE> > tmpA;
-				*tmpA = rA;
-				pA = &(*tmpA);
-			}
-			if (!pB)
-			{
-				static thread_private< Matrix<variable> > tmpB;
-				*tmpB = rB;
-				pB = &(*tmpB);
-			}
-			M.Resize(rA.Rows(), rB.Cols());
-			/*
-			INMOST_DATA_ENUM_TYPE cnt = pB->GetMatrixCount();
-			if (cnt >= CNT_USE_MERGER)
-			{
-				merger->Resize(cnt);
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k) * pB->get(k, j).GetValue();
-							merger->AddRow(pA->get(i, k), pB->get(k, j).GetRow());
-						}
-						M(i, j).SetValue(value);
-						merger->RetrieveRow(M(i, j).GetRow());
-						merger->Clear();
-					}
-				}
-			}
-			else
-			*/
-			if (true)
-			{
-				AbstractMatrixBase::merger_type& m = *merger;
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-						m.clear();
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k) * pB->get(k, j).GetValue();
-							pB->get(k, j).GetInterval(beg, end);
-						}
-						M(i, j).SetValue(value);
-						Sparse::Row& r = M(i, j).GetRow();
-						if (end > beg)
-						{
-							m.bitset.resize(end - beg, false);
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-								pB->get(k, j).GetIndices(beg, m.bitset, m.inds);
-							m.set_vals();
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-								pB->get(k, j).GetValues(pA->get(i, k), m.inds, m.vals);
-							m.get_row(r);
-						}
-						else r.Clear();
-					}
-				}
-			}
-			else
-			{
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator k = 0; k < pB->Cols(); ++k)
-						M(i, k) = pA->get(i, 0) * pB->get(0, k);
-					for (enumerator j = 1; j < pA->Cols(); ++j)
-						for (enumerator k = 0; k < pB->Cols(); ++k)
-							M(i, k) += pA->get(i, j) * pB->get(j, k);
-				}
-			}
-		}
-		MatrixMul(const MatrixMul& b) : M(b.M) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE variable compute(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE variable& operator()(enumerator i, enumerator j) { return M(i, j); }
-		__INLINE const variable& get(enumerator i, enumerator j) const { return M.get(i, j);	}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
-	};
-
-	template<>
-	class MatrixMul<variable, INMOST_DATA_REAL_TYPE, Promote<variable, INMOST_DATA_REAL_TYPE>::type > : public AbstractMatrix< Promote<variable, INMOST_DATA_REAL_TYPE>::type >
-	{
-	public:
-		using AbstractMatrix< Promote<variable, INMOST_DATA_REAL_TYPE>::type >::operator();
-		typedef typename AbstractMatrix< Promote<variable, INMOST_DATA_REAL_TYPE>::type >::enumerator enumerator; //< Integer type for indexes.
-	private:
-		Matrix<Promote<variable, INMOST_DATA_REAL_TYPE>::type> M;
-	public:
-		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
-		/// since it just points to a part of the larger empty matrix.
-		void Resize(enumerator rows, enumerator cols)
-		{
-			assert(Cols() == cols);
-			assert(Rows() == rows);
-			(void)cols; (void)rows;
-		}
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return M.Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return M.Cols(); }
-		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>& rB)
-		{
-			assert(rA.Cols() == rB.Rows());
-			const AbstractMatrix<variable>* pA = dynamic_cast<const AbstractMatrix<variable> *>(&rA);
-			const AbstractMatrix<INMOST_DATA_REAL_TYPE>* pB = dynamic_cast<const AbstractMatrix<INMOST_DATA_REAL_TYPE> *>(&rB);
-			if (!pA)
-			{
-				static thread_private< Matrix<variable> > tmpA;
-				*tmpA = rA;
-				pA = &(*tmpA);
-			}
-			if (!pB)
-			{
-				static thread_private< Matrix<INMOST_DATA_REAL_TYPE> > tmpB;
-				*tmpB = rB;
-				pB = &(*tmpB);
-			}
-			M.Resize(rA.Rows(), rB.Cols());
-			/*
-			INMOST_DATA_ENUM_TYPE cnt = pA->GetMatrixCount();
-			if (cnt >= CNT_USE_MERGER)
-			{
-				merger->Resize(cnt);
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k).GetValue() * pB->get(k, j);
-							merger->AddRow(pB->get(k, j), pA->get(i, k).GetRow());
-						}
-						M(i, j).SetValue(value);
-						merger->RetrieveRow(M(i, j).GetRow());
-						merger->Clear();
-					}
-				}
-			}
-			else
-			*/
-			if (true)
-			{
-				AbstractMatrixBase::merger_type& m = *merger;
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-						m.clear();
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k).GetValue() * pB->get(k, j);
-							pA->get(i, k).GetInterval(beg, end);
-						}
-						M(i, j).SetValue(value);
-						Sparse::Row& r = M(i, j).GetRow();
-						if (end > beg)
-						{
-							m.bitset.resize(end - beg, false);
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-								pA->get(i, k).GetIndices(beg, m.bitset, m.inds);
-							m.set_vals();
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-								pA->get(i, k).GetValues(pB->get(k, j), m.inds, m.vals);
-							m.get_row(r);
-						}
-						else r.Clear();
-					}
-				}
-			}
-			else
-			{
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator k = 0; k < pB->Cols(); ++k)
-						M(i, k) = pA->get(i, 0) * pB->get(0, k);
-					for (enumerator j = 1; j < pA->Cols(); ++j)
-						for (enumerator k = 0; k < pB->Cols(); ++k)
-							M(i, k) += pA->get(i, j) * pB->get(j, k);
-				}
-			}
-		}
-		MatrixMul(const MatrixMul& b) : M(b.M) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE variable compute(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE variable & operator()(enumerator i, enumerator j) { return M(i, j); }
-		__INLINE const variable& get(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
-	};
-
-	template<>
-	class MatrixMul<variable, variable, Promote<variable, variable>::type > : public AbstractMatrix< Promote<variable, variable>::type >
-	{
-	public:
-		using AbstractMatrix< Promote<variable, variable>::type >::operator();
-		typedef typename AbstractMatrix< Promote<variable, variable>::type >::enumerator enumerator; //< Integer type for indexes.
-	private:
-		Matrix<Promote<variable, variable>::type> M;
-	public:
-		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
-		/// since it just points to a part of the larger empty matrix.
-		void Resize(enumerator rows, enumerator cols)
-		{
-			assert(Cols() == cols);
-			assert(Rows() == rows);
-			(void)cols; (void)rows;
-		}
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return M.Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return M.Cols(); }
-		MatrixMul(const AbstractMatrixReadOnly<variable>& rA, const AbstractMatrixReadOnly<variable>& rB)
-		{
-			assert(rA.Cols() == rB.Rows());
-			const AbstractMatrix<variable>* pA = dynamic_cast<const AbstractMatrix<variable>*>(&rA);
-			const AbstractMatrix<variable>* pB = dynamic_cast<const AbstractMatrix<variable>*>(&rB);
-			if (!pA)
-			{
-				static thread_private< Matrix<variable> > tmpA;
-				*tmpA = rA;
-				pA = &(*tmpA);
-			}
-			if (!pB)
-			{
-				static thread_private< Matrix<variable> > tmpB;
-				*tmpB = rB;
-				pB = &(*tmpB);
-			}
-			M.Resize(rA.Rows(), rB.Cols());
-			/*
-			INMOST_DATA_ENUM_TYPE cnt = 0;
-			cnt += pA->GetMatrixCount();
-			cnt += pB->GetMatrixCount();
-			if (cnt >= CNT_USE_MERGER)
-			{
-				merger->Resize(cnt);
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k).GetValue() * pB->get(k, j).GetValue();
-							merger->AddRow(pA->get(i, k).GetValue(), pB->get(k, j).GetRow());
-							merger->AddRow(pB->get(k, j).GetValue(), pA->get(i, k).GetRow());
-						}
-						M(i, j).SetValue(value);
-						merger->RetrieveRow(M(i, j).GetRow());
-						merger->Clear();
-					}
-				}
-			}
-			else
-			*/
-			if (true)
-			{
-				AbstractMatrixBase::merger_type& m = *merger;
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator j = 0; j < pB->Cols(); ++j)
-					{
-						INMOST_DATA_REAL_TYPE value = 0.0;
-						INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-						m.clear();
-						for (enumerator k = 0; k < pA->Cols(); ++k)
-						{
-							value += pA->get(i, k).GetValue() * pB->get(k, j).GetValue();
-							pA->get(i, k).GetInterval(beg, end);
-							pB->get(k, j).GetInterval(beg, end);
-						}
-						M(i, j).SetValue(value);
-						Sparse::Row& r = M(i, j).GetRow();
-						if (end > beg)
-						{
-							m.bitset.resize(end - beg, false);
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-							{
-								pA->get(i, k).GetIndices(beg, m.bitset, m.inds);
-								pB->get(k, j).GetIndices(beg, m.bitset, m.inds);
-							}
-							m.set_vals();
-							for (enumerator k = 0; k < pA->Cols(); ++k)
-							{
-								pA->get(i, k).GetValues(pB->get(k, j).GetValue(), m.inds, m.vals);
-								pB->get(k, j).GetValues(pA->get(i, k).GetValue(), m.inds, m.vals);
-							}
-							m.get_row(r);
-						}
-						else r.Clear();
-					}
-				}
-			}
-			else
-			{
-				for (enumerator i = 0; i < pA->Rows(); ++i)
-				{
-					for (enumerator k = 0; k < pB->Cols(); ++k)
-						M(i, k) = pA->get(i, 0) * pB->get(0, k);
-					for (enumerator j = 1; j < pA->Cols(); ++j)
-						for (enumerator k = 0; k < pB->Cols(); ++k)
-							M(i, k) += pA->get(i, j) * pB->get(j, k);
-				}
-			}
-		}
-		MatrixMul(const MatrixMul& b) : M(b.M) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE variable compute(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE variable & operator()(enumerator i, enumerator j) { return M(i, j); }
-		__INLINE const variable& get(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
-	};
-#endif //USE_AUTODIFF
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private< Matrix<VarR> > MatrixMul<VarA, VarB, VarR>::M;
 
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixMulCoef : public AbstractMatrixReadOnly< VarR >
@@ -3614,9 +3236,6 @@ namespace INMOST
 		const AbstractMatrixReadOnly<VarA>* A;
 		const VarB* coef;
 	public:
-		/// Check that this matrix does not require calculations for element access.
-		/// The function is used during multiplication.
-		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -3648,9 +3267,6 @@ namespace INMOST
 		const AbstractMatrixReadOnly<VarA>* A;
 		const VarB* coef;
 	public:
-		/// Check that this matrix does not require calculations for element access.
-		/// The function is used during multiplication.
-		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -3683,9 +3299,6 @@ namespace INMOST
 		const AbstractMatrixReadOnly<VarA>* A;
 		const variable coef;
 	public:
-		/// Check that this matrix does not require calculations for element access.
-		/// The function is used during multiplication.
-		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -3717,9 +3330,6 @@ namespace INMOST
 		const AbstractMatrixReadOnly<VarA>* A;
 		const variable coef;
 	public:
-		/// Check that this matrix does not require calculations for element access.
-		/// The function is used during multiplication.
-		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows(); }
@@ -3752,9 +3362,6 @@ namespace INMOST
 		const AbstractMatrixReadOnly<VarA>* A;
 		const AbstractMatrixReadOnly<VarB>* B;
 	public:
-		/// Check that this matrix does not require calculations for element access.
-		/// The function is used during multiplication.
-		bool TrivialArguments() const { return false; };
 		/// Number of rows.
 		/// @return Number of rows.
 		__INLINE enumerator Rows() const { return A->Rows() * B->Rows(); }
@@ -4035,7 +3642,7 @@ namespace INMOST
 	{
 		return MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>(*this, other);
 	}
-#if 0
+#if 1
 #if defined(USE_AUTODIFF)
 	template<>
 	template<>
@@ -4044,11 +3651,49 @@ namespace INMOST
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		Promote<INMOST_DATA_REAL_TYPE,variable>::type ret = 0.0;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = other.GetMatrixCount();
-		if( cnt >= CNT_USE_MERGER )
+		AbstractMatrixBase::merger_type& m = *merger;
+		variable ret = 0.0;
+		if( true )
 		{
+#if 0
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += (*this)(i, j) * other(i, j).GetValue();
+					other(i, j).GetInterval(beg, end);
+				}
+			ret.SetValue(value);
+			if (end > beg)
+			{
+				m.bitset.resize(end - beg, false);
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+						other(i, j).GetIndices(beg, m.bitset, m.inds);
+				m.set_vals();
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+						other(i, j).GetValues((*this)(i, j), m.inds, m.vals);
+				m.get_row(ret.GetRow());
+			}
+#elif 1
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += (*this)(i, j) * other(i, j).GetValue();
+					other(i, j).GetIndices(m.indset);
+				}
+			ret.SetValue(value);
+			m.set_vals();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					other(i, j).GetValues((*this)(i, j), m.inds, m.vals);
+			m.get_row(ret.GetRow());
+#else
 			merger->Resize(cnt);
 			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
@@ -4060,8 +3705,9 @@ namespace INMOST
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
+#endif
 		}
-		else*/
+		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -4077,7 +3723,7 @@ namespace INMOST
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		Promote<variable,INMOST_DATA_REAL_TYPE>::type ret = 0.0;
+		variable ret = 0.0;
 		/*
 		INMOST_DATA_ENUM_TYPE cnt = GetMatrixCount();
 		if( cnt >= CNT_USE_MERGER )
@@ -4314,9 +3960,10 @@ namespace INMOST
 		{
 			for(enumerator k = 0; k < l; ++k)
 			{
-				for(enumerator j = 0; j < i; ++j)
-					Y(i,k) -= Y(j,k)*(*L)(j,i);
-				Y(i,k) /= (*L)(i,i);
+				//for (enumerator j = 0; j < i; ++j)
+				//	Y(i, k) -= Y(j, k) * (*L)(j, i);
+				//Y(i, k) /= (*L)(i, i);
+				Y(i, k) -= Y(0, i, k, k + 1).DotProduct((*L)(0, i, i, i + 1)) / (*L)(i, i);
 			}
 		}
 		// L^TX = Y
@@ -4403,26 +4050,10 @@ namespace INMOST
 		{
 			for(enumerator k = 0; k < l; ++k)
 			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
-					pmerger->PushRow(1.0,Y(i,k).GetRow());
-					for(enumerator j = 0; j < i; ++j)
-					{
-						value -= Y(j,k).GetValue()*L(j,i).GetValue();
-						pmerger->AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
-						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
-					}
-					Y(i,k).SetValue(value);
-					pmerger->RetrieveRow(Y(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator j = 0; j < i; ++j)
-						Y(i,k) -= Y(j,k)*L(j,i);
-				}
-				Y(i,k) /= L(i,i);
+				//for(enumerator j = 0; j < i; ++j)
+				//	Y(i,k) -= Y(j,k)*L(j,i);
+				Y(i, k) -= Y(0, i, k, k + 1).DotProduct(L(0, i, i, i + 1));
+				Y(i, k) /= L(i, i);
 			}
 		}
 		// L^TX = Y

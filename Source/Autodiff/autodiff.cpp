@@ -60,6 +60,7 @@ namespace INMOST
 		*/
 	}
 
+#if 0
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
 	{
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
@@ -97,6 +98,31 @@ namespace INMOST
 		}
 		else entries.Clear();
 	}
+#else
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
+	{
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		merger.clear();
+		r.GetIndices(merger.indset);
+		entries.GetIndices(merger.indset);
+		merger.set_vals();
+		r.GetValues(coefa, merger.inds, merger.vals);
+		entries.GetValues(coefb, merger.inds, merger.vals);
+		merger.get_row(entries);
+	}
+
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
+	{
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		merger.clear();
+		expr.GetIndices(merger.indset);
+		entries.GetIndices(merger.indset);
+		merger.set_vals();
+		expr.GetValues(coefa, merger.inds, merger.vals);
+		entries.GetValues(coefb, merger.inds, merger.vals);
+		merger.get_row(entries);
+	}
+#endif
 
 	template<> Demote<INMOST_DATA_REAL_TYPE>::type    AbstractEntry::Access<INMOST_DATA_REAL_TYPE>   (const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Value(e,pos);}
 	template<> Demote<INMOST_DATA_INTEGER_TYPE>::type AbstractEntry::Access<INMOST_DATA_INTEGER_TYPE>(const Storage& e, INMOST_DATA_ENUM_TYPE pos) const {return Index(e,pos);}
