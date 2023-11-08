@@ -165,7 +165,7 @@ namespace INMOST
 	template<> struct Promote<float, hessian_multivar_expression_reference> { typedef hessian_variable type; };
 	template<> struct Promote<hessian_variable, float>  {typedef hessian_variable type;};
 	template<> struct Promote<float, hessian_variable> { typedef hessian_variable type; };
-#else
+#else //USE_FP64
 	template<> struct Promote<unknown, double>  {typedef variable type;};
 	template<> struct Promote<double, unknown> { typedef variable type; };
 	template<> struct Promote<value_reference, double>  {typedef INMOST_DATA_REAL_TYPE type;};
@@ -178,8 +178,8 @@ namespace INMOST
 	template<> struct Promote<double, hessian_multivar_expression_reference>  {typedef hessian_variable type;};
 	template<> struct Promote<hessian_variable, double>  {typedef hessian_variable type;};
 	template<> struct Promote<double, hessian_variable> { typedef hessian_variable type; };
-#endif
-#endif
+#endif //USE_FP64
+#endif //USE_AUTODIFF
 	
 	class AbstractMatrixBase
 	{
@@ -438,6 +438,22 @@ namespace INMOST
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
 					ret += compute(i, j) * other.compute(i, j);
+			return ret;
+		}
+		/// Computes dot product by summing up multiplication of entries with the
+		/// same indices in the current and the provided matrix.
+		/// @param other Provided matrix.
+		/// @return Dot product of two matrices.
+		template<typename typeB>
+		typename Promote<Var, typeB>::type
+			DotProduct(const AbstractMatrix<typeB>& other) const
+		{
+			assert(Cols() == other.Cols());
+			assert(Rows() == other.Rows());
+			typename Promote<Var, typeB>::type ret = 0.0;
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					ret += compute(i, j) * other.get(i, j);
 			return ret;
 		}
 		/// Computes dot product by summing up multiplication of entries with the
@@ -788,6 +804,7 @@ namespace INMOST
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
 		SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
+		SubMatrixConst<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 		/// Define matrix as a part of a matrix of larger size with in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, if i in [offset_row,offset_row+n),
@@ -2211,6 +2228,93 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
             (void)cols; (void)rows;
+		}
+	};
+
+	/// This class allows for in-place operations on submatrix of the matrix elements.
+	template<typename Var>
+	class SubMatrixConst : public AbstractMatrix<Var>
+	{
+	public:
+		using AbstractMatrix<Var>::operator();
+		using AbstractMatrix<Var>::operator =;
+		using AbstractMatrix<Var>::get;
+		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+	private:
+		const AbstractMatrix<Var>* M;
+		enumerator brow; //< First row in matrix M.
+		enumerator erow; //< Last row in matrix M.
+		enumerator bcol; //< First column in matrix M.
+		enumerator ecol; //< Last column in matrix M.
+	public:
+		/// Number of rows in submatrix.
+		/// @return Number of rows.
+		__INLINE enumerator Rows() const { return erow - brow; }
+		/// Number of columns in submatrix.
+		/// @return Number of columns.
+		__INLINE enumerator Cols() const { return ecol - bcol; }
+		/// Create submatrix for a matrix.
+		/// @param rM Reference to the matrix that stores elements.
+		/// @param first_row First row in the matrix.
+		/// @param last_row Last row in the matrix.
+		/// @param first_column First column in the matrix.
+		/// @param last_column Last column in the matrix.
+		SubMatrixConst(const AbstractMatrix<Var>& rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
+		{}
+		SubMatrixConst(const SubMatrixConst& b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to element.
+		__INLINE Var& operator()(enumerator i, enumerator j)
+		{
+			throw Impossible;
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Element copy.
+		__INLINE Var compute(enumerator i, enumerator j) const
+		{
+			assert(i < Rows());
+			assert(j < Cols());
+			assert(i * Cols() + j < Rows() * Cols()); //overflow check?
+			return (*M)(i + brow, j + bcol);
+		}
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to const element.
+		__INLINE const Var& get(enumerator i, enumerator j) const
+		{
+			assert(i < Rows());
+			assert(j < Cols());
+			assert(i * Cols() + j < Rows() * Cols()); //overflow check?
+			return M->get(i + brow, j + bcol);
+		}
+		/// Convert submatrix into matrix.
+		/// Note, that modifying returned matrix does
+		/// not affect elements of the submatrix or original matrix
+		/// used to create submatrix.
+		/// @return Matrix with same entries as submatrix.
+		::INMOST::Matrix<Var> MakeMatrix()
+		{
+			::INMOST::Matrix<Var> ret(Rows(), Cols());
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					ret(i, j) = (*this)(i, j);
+			return ret;
+		}
+		/// This is a stub function to fulfill abstract
+		/// inheritance. SubMatrix cannot change it's size,
+		/// since it just points to a part of the original matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+			(void)cols; (void)rows;
 		}
 	};
 	
@@ -3647,23 +3751,23 @@ namespace INMOST
 	template<>
 	template<>
 	__INLINE Promote<INMOST_DATA_REAL_TYPE,variable>::type
-	AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>::DotProduct<variable>(const AbstractMatrixReadOnly<variable> & other) const
+	AbstractMatrix<INMOST_DATA_REAL_TYPE>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
-		AbstractMatrixBase::merger_type& m = *merger;
 		variable ret = 0.0;
 		if( true )
 		{
-#if 0
+			AbstractMatrixBase::merger_type& m = *merger;
+#if 1
 			INMOST_DATA_REAL_TYPE value = 0.0;
 			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 			m.clear();
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
 				{
-					value += (*this)(i, j) * other(i, j).GetValue();
-					other(i, j).GetInterval(beg, end);
+					value += this->get(i, j) * other.get(i, j).GetValue();
+					other.get(i, j).GetInterval(beg, end);
 				}
 			ret.SetValue(value);
 			if (end > beg)
@@ -3671,11 +3775,11 @@ namespace INMOST
 				m.bitset.resize(end - beg, false);
 				for (enumerator i = 0; i < Rows(); ++i)
 					for (enumerator j = 0; j < Cols(); ++j)
-						other(i, j).GetIndices(beg, m.bitset, m.inds);
+						other.get(i, j).GetIndices(beg, m.bitset, m.inds);
 				m.set_vals();
 				for (enumerator i = 0; i < Rows(); ++i)
 					for (enumerator j = 0; j < Cols(); ++j)
-						other(i, j).GetValues((*this)(i, j), m.inds, m.vals);
+						other.get(i, j).GetValues(this->get(i, j), m.inds, m.vals);
 				m.get_row(ret.GetRow());
 			}
 #elif 1
@@ -3684,23 +3788,22 @@ namespace INMOST
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
 				{
-					value += (*this)(i, j) * other(i, j).GetValue();
-					other(i, j).GetIndices(m.indset);
+					value += this->get(i, j) * other.get(i, j).GetValue();
+					other.get(i, j).GetIndices(m.indset);
 				}
 			ret.SetValue(value);
 			m.set_vals();
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					other(i, j).GetValues((*this)(i, j), m.inds, m.vals);
+					other.get(i, j).GetValues(this->get(i, j), m.inds, m.vals);
 			m.get_row(ret.GetRow());
 #else
-			merger->Resize(cnt);
 			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
-					value += (*this)(i,j)*other(i,j).GetValue();
-					merger->AddRow((*this)(i,j),other(i,j).GetRow());
+					value += this->get(i,j)*other(i,j).GetValue();
+					merger->AddRow(this->get(i,j),other.get(i,j).GetRow());
 				}
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
@@ -3711,7 +3814,7 @@ namespace INMOST
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
-					ret += compute(i, j) * other.compute(i, j);
+					ret += get(i, j) * other.get(i, j);
 		}
 		return ret;
 	}
@@ -3719,16 +3822,53 @@ namespace INMOST
 	template<>
 	template<>
 	__INLINE Promote<variable,INMOST_DATA_REAL_TYPE>::type
-	AbstractMatrixReadOnly<variable>::DotProduct<INMOST_DATA_REAL_TYPE>(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE> & other) const
+	AbstractMatrix<variable>::DotProduct<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
 		variable ret = 0.0;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = GetMatrixCount();
-		if( cnt >= CNT_USE_MERGER )
+		if( true )
 		{
-			merger->Resize(cnt);
+			AbstractMatrixBase::merger_type& m = *merger;
+#if 1
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += this->get(i, j).GetValue() * other.get(i, j);
+					this->get(i, j).GetInterval(beg, end);
+				}
+			ret.SetValue(value);
+			if (end > beg)
+			{
+				m.bitset.resize(end - beg, false);
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+						this->get(i, j).GetIndices(beg, m.bitset, m.inds);
+				m.set_vals();
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+						this->get(i, j).GetValues(other.get(i, j), m.inds, m.vals);
+				m.get_row(ret.GetRow());
+			}
+#elif 1
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += this->get(i, j).GetValue() * other.get(i, j);
+					this->get(i, j).GetIndices(m.indset);
+				}
+			ret.SetValue(value);
+			m.set_vals();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					this->get(i, j).GetValues(other.get(i, j), m.inds, m.vals);
+			m.get_row(ret.GetRow());
+#else
 			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3739,8 +3879,9 @@ namespace INMOST
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
+#endif
 		}
-		else*/
+		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3752,16 +3893,64 @@ namespace INMOST
 	template<>
 	template<>
 	__INLINE Promote<variable,variable>::type
-	AbstractMatrixReadOnly<variable>::DotProduct<variable>(const AbstractMatrixReadOnly<variable> & other) const
+	AbstractMatrix<variable>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
 	{
 		assert(Cols() == other.Cols());
 		assert(Rows() == other.Rows());
 		Promote<variable,variable>::type ret = 0.0;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = GetMatrixCount() + other.GetMatrixCount();
-		if( cnt >= CNT_USE_MERGER )
+		if( true )
 		{
-			merger->Resize(cnt);
+			AbstractMatrixBase::merger_type& m = *merger;
+#if 1
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += this->get(i, j).GetValue() * other.get(i, j).GetValue();
+					this->get(i, j).GetInterval(beg, end);
+					other.get(i, j).GetInterval(beg, end);
+				}
+			ret.SetValue(value);
+			if (end > beg)
+			{
+				m.bitset.resize(end - beg, false);
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+					{
+						this->get(i, j).GetIndices(beg, m.bitset, m.inds);
+						other.get(i, j).GetIndices(beg, m.bitset, m.inds);
+					}
+				m.set_vals();
+				for (enumerator i = 0; i < Rows(); ++i)
+					for (enumerator j = 0; j < Cols(); ++j)
+					{
+						this->get(i, j).GetValues(other.get(i, j).GetValue(), m.inds, m.vals);
+						other.get(i, j).GetValues(this->get(i, j).GetValue(), m.inds, m.vals);
+					}
+				m.get_row(ret.GetRow());
+			}
+#elif 1
+			INMOST_DATA_REAL_TYPE value = 0.0;
+			m.clear();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					value += this->get(i, j).GetValue() * other.get(i, j).GetValue();
+					this->get(i, j).GetIndices(m.indset);
+					other.get(i, j).GetIndices(m.indset);
+				}
+			ret.SetValue(value);
+			m.set_vals();
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+				{
+					this->get(i, j).GetValues(other.get(i, j).GetValue(), m.inds, m.vals);
+					other.get(i, j).GetValues(this->get(i, j).GetValue(), m.inds, m.vals);
+				}
+			m.get_row(ret.GetRow());
+#else
 			INMOST_DATA_REAL_TYPE value = 0.0;
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3773,8 +3962,9 @@ namespace INMOST
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
 			merger->Clear();
+#endif
 		}
-		else*/
+		else
 		{
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
@@ -3783,7 +3973,7 @@ namespace INMOST
 		return ret;
 	}
 #endif //USE_AUTODIFF
-#endif
+#endif //if 0
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -3962,8 +4152,8 @@ namespace INMOST
 			{
 				//for (enumerator j = 0; j < i; ++j)
 				//	Y(i, k) -= Y(j, k) * (*L)(j, i);
-				//Y(i, k) /= (*L)(i, i);
-				Y(i, k) -= Y(0, i, k, k + 1).DotProduct((*L)(0, i, i, i + 1)) / (*L)(i, i);
+				Y(i, k) -= Y(0, i, k, k + 1).DotProduct((*L)(0, i, i, i + 1));
+				Y(i, k) /= (*L)(i, i);
 			}
 		}
 		// L^TX = Y
@@ -3973,369 +4163,19 @@ namespace INMOST
 			enumerator i = it-1;
 			for(enumerator k = 0; k < l; ++k)
 			{
-				for(enumerator jt = n; jt > it; --jt)
-				{
-					enumerator j = jt-1;
-					X(i,k) -= X(j,k)*(*L)(i,j);
-				}
-				X(i,k) /= (*L)(i,i);
-			}
-		}
-		if( ierr ) *ierr = 0;
-		return ret;
-	}
-#if defined(USE_AUTODIFF)
-	template<>
-	template<>
-	__INLINE Matrix<Promote<variable,variable>::type>
-	AbstractMatrixReadOnly<variable>::CholeskySolve(const AbstractMatrixReadOnly<variable> & B, int * ierr) const
-	{
-		const AbstractMatrixReadOnly<variable> & A = *this;
-		assert(A.Rows() == A.Cols());
-		assert(A.Rows() == B.Rows());
-		enumerator n = A.Rows();
-		enumerator l = B.Cols();
-		Matrix<Promote<variable,variable>::type> ret(B);
-		SymmetricMatrix<variable> L(A);
-		Sparse::RowMerger* pmerger = NULL;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = 0;
-		cnt += A.GetMatrixCount();
-		cnt += B.GetMatrixCount();
-		if (cnt >= CNT_USE_MERGER)
-		{
-			merger->Resize(cnt);
-			pmerger = &(*merger);
-		}
-		*/
-		//Outer product
-		for(enumerator k = 0; k < n; ++k)
-		{
-			if( L(k,k).GetValue() < 0.0 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			L(k,k) = sqrt(L(k,k));
-			
-			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			for(enumerator i = k+1; i < n; ++i)
-				L(i,k) /= L(k,k);
-			
-			for(enumerator j = k+1; j < n; ++j)
-			{
-				for(enumerator i = j; i < n; ++i)
-					L(i,j) -= L(i,k)*L(j,k);
-			}
-		}
-		// LY=B
-		Matrix<Promote<variable,variable>::type> & Y = ret;
-		for(enumerator i = 0; i < n; ++i)
-		{
-			for(enumerator k = 0; k < l; ++k)
-			{
-				//for(enumerator j = 0; j < i; ++j)
-				//	Y(i,k) -= Y(j,k)*L(j,i);
-				Y(i, k) -= Y(0, i, k, k + 1).DotProduct(L(0, i, i, i + 1));
-				Y(i, k) /= L(i, i);
-			}
-		}
-		// L^TX = Y
-		Matrix<Promote<variable,variable>::type> & X = ret;
-		for(enumerator it = n; it > 0; --it)
-		{
-			enumerator i = it-1;
-			for(enumerator k = 0; k < l; ++k)
-			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
-					pmerger->PushRow(1.0,X(i,k).GetRow());
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						value -= X(j,k).GetValue()*L(i,j).GetValue();
-						pmerger->AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
-						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
-					}
-					X(i,k).SetValue(value);
-					pmerger->RetrieveRow(X(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						X(i,k) -= X(j,k)*L(i,j);
-					}
-				}
-				X(i,k) /= L(i,i);
+				//for(enumerator jt = n; jt > it; --jt)
+				//{
+				//	enumerator j = jt-1;
+				//	X(i,k) -= X(j,k)*(*L)(i,j);
+				//}
+				X(i, k) -= X(i + 1, n, k, k + 1).DotProduct((*L)(i, i + 1, i + 1, n).Transpose());
+				X(i, k) /= (*L)(i, i);
 			}
 		}
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
 
-
-	template<>
-	template<>
-	__INLINE Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type>
-	AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE>::CholeskySolve(const AbstractMatrixReadOnly<variable> & B, int * ierr) const
-	{
-		const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE> & A = *this;
-		assert(A.Rows() == A.Cols());
-		assert(A.Rows() == B.Rows());
-		enumerator n = A.Rows();
-		enumerator l = B.Cols();
-		Matrix<Promote<INMOST_DATA_REAL_TYPE,variable>::type> ret(B);
-		SymmetricMatrix<INMOST_DATA_REAL_TYPE> L(A);
-		Sparse::RowMerger* pmerger = NULL;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = B.GetMatrixCount();
-		if (cnt >= CNT_USE_MERGER)
-		{
-			merger->Resize(cnt);
-			pmerger = &(*merger);
-		}
-		*/
-		//Outer product
-		for(enumerator k = 0; k < n; ++k)
-		{
-			if( L(k,k) < 0.0 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			L(k,k) = sqrt(L(k,k));
-			
-			if( fabs(L(k,k)) < 1.0e-24 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			for(enumerator i = k+1; i < n; ++i)
-				L(i,k) /= L(k,k);
-			
-			for(enumerator j = k+1; j < n; ++j)
-			{
-				for(enumerator i = j; i < n; ++i)
-					L(i,j) -= L(i,k)*L(j,k);
-			}
-		}
-		// LY=B
-		Matrix<Promote<variable,variable>::type> & Y = ret;
-		for(enumerator i = 0; i < n; ++i)
-		{
-			for(enumerator k = 0; k < l; ++k)
-			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
-					pmerger->PushRow(1.0,Y(i,k).GetRow());
-					for(enumerator j = 0; j < i; ++j)
-					{
-						value -= Y(j,k).GetValue()*L(j,i);
-						pmerger->AddRow(-L(j,i),Y(j,k).GetRow());
-					}
-					Y(i,k).SetValue(value);
-					pmerger->RetrieveRow(Y(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator j = 0; j < i; ++j)
-						Y(i,k) -= Y(j,k)*L(j,i);
-				}
-				Y(i,k) /= L(i,i);
-			}
-		}
-		// L^TX = Y
-		Matrix<Promote<variable,variable>::type> & X = ret;
-		for(enumerator it = n; it > 0; --it)
-		{
-			enumerator i = it-1;
-			for(enumerator k = 0; k < l; ++k)
-			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
-					pmerger->PushRow(1.0,X(i,k).GetRow());
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						value -= X(j,k).GetValue()*L(i,j);
-						pmerger->AddRow(-L(i,j),X(j,k).GetRow());
-					}
-					X(i,k).SetValue(value);
-					pmerger->RetrieveRow(X(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						X(i,k) -= X(j,k)*L(i,j);
-					}
-				}
-				X(i,k) /= L(i,i);
-			}
-		}
-		if( ierr ) *ierr = 0;
-		return ret;
-	}
-
-	template<>
-	template<>
-	__INLINE Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type>
-	AbstractMatrixReadOnly<variable>::CholeskySolve(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE> & B, int * ierr) const
-	{
-		const AbstractMatrixReadOnly<variable> & A = *this;
-		assert(A.Rows() == A.Cols());
-		assert(A.Rows() == B.Rows());
-		enumerator n = A.Rows();
-		enumerator l = B.Cols();
-		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> ret(B);
-		SymmetricMatrix<variable> L(A);
-		Sparse::RowMerger* pmerger = NULL;
-		/*
-		INMOST_DATA_ENUM_TYPE cnt = A.GetMatrixCount();
-		if (cnt >= CNT_USE_MERGER)
-		{
-			merger->Resize(cnt);
-			pmerger = &(*merger);
-		}
-		*/
-		//Outer product
-		for(enumerator k = 0; k < n; ++k)
-		{
-			if( L(k,k).GetValue() < 0.0 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Negative diagonal pivot " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			L(k,k) = sqrt(L(k,k));
-			
-			if( fabs(L(k,k).GetValue()) < 1.0e-24 )
-			{
-				if( ierr )
-				{
-					if( *ierr == -1 ) std::cout << "Diagonal pivot is too small " << get_value(L(k,k)) << " row " << k << std::endl;
-					*ierr = (int)(k+1);
-				}
-				else throw MatrixCholeskySolveFail;
-				return ret;
-			}
-			
-			for(enumerator i = k+1; i < n; ++i)
-				L(i,k) /= L(k,k);
-			
-			for(enumerator j = k+1; j < n; ++j)
-			{
-				for(enumerator i = j; i < n; ++i)
-					L(i,j) -= L(i,k)*L(j,k);
-			}
-		}
-		// LY=B
-		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> & Y = ret;
-		for(enumerator i = 0; i < n; ++i)
-		{
-			for(enumerator k = 0; k < l; ++k)
-			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = Y(i,k).GetValue();
-					pmerger->PushRow(1.0,Y(i,k).GetRow());
-					for(enumerator j = 0; j < i; ++j)
-					{
-						value -= Y(j,k).GetValue()*L(j,i).GetValue();
-						pmerger->AddRow(-Y(j,k).GetValue(),L(j,i).GetRow());
-						pmerger->AddRow(-L(j,i).GetValue(),Y(j,k).GetRow());
-					}
-					Y(i,k).SetValue(value);
-					pmerger->RetrieveRow(Y(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator j = 0; j < i; ++j)
-						Y(i,k) -= Y(j,k)*L(j,i);
-				}
-				Y(i,k) /= L(i,i);
-			}
-		}
-		// L^TX = Y
-		Matrix<Promote<variable,INMOST_DATA_REAL_TYPE>::type> & X = ret;
-		for(enumerator it = n; it > 0; --it)
-		{
-			enumerator i = it-1;
-			for(enumerator k = 0; k < l; ++k)
-			{
-				if( pmerger )
-				{
-					INMOST_DATA_REAL_TYPE value = X(i,k).GetValue();
-					pmerger->PushRow(1.0,X(i,k).GetRow());
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						value -= X(j,k).GetValue()*L(i,j).GetValue();
-						pmerger->AddRow(-X(j,k).GetValue(),L(i,j).GetRow());
-						pmerger->AddRow(-L(i,j).GetValue(),X(j,k).GetRow());
-					}
-					X(i,k).SetValue(value);
-					pmerger->RetrieveRow(X(i,k).GetRow());
-					pmerger->Clear();
-				}
-				else
-				{
-					for(enumerator jt = n; jt > it; --jt)
-					{
-						enumerator j = jt-1;
-						X(i,k) -= X(j,k)*L(i,j);
-					}
-				}
-				X(i,k) /= L(i,i);
-			}
-		}
-		if( ierr ) *ierr = 0;
-		return ret;
-	}
-#endif //USE_AUTODIFF
 	template<typename Var>
 	template<typename typeB>
 	Matrix<typename Promote<Var,typeB>::type>
@@ -4626,6 +4466,11 @@ namespace INMOST
 	SubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
 		return SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
+	}
+	template<typename Var>
+	SubMatrixConst<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+	{
+		return SubMatrixConst<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	template<typename Var>
 	ConstSubMatrix<Var> AbstractMatrixReadOnly<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
@@ -5627,7 +5472,7 @@ namespace INMOST
 	__INLINE uaSymmetricMatrix uaSymmetricMatrixMake(unknown * p, uaSymmetricMatrix::enumerator n) {return uaSymmetricMatrix(shell<unknown>(p,n*(n+1)/2),n);}
 	__INLINE vaSymmetricMatrix vaSymmetricMatrixMake(variable * p, vaSymmetricMatrix::enumerator n) {return vaSymmetricMatrix(shell<variable>(p,n*(n+1)/2),n);}
 	__INLINE haSymmetricMatrix vaSymmetricMatrixMake(hessian_variable * p, haSymmetricMatrix::enumerator n) {return haSymmetricMatrix(shell<hessian_variable>(p,n*(n+1)/2),n);}
-#endif
+#endif //USE_AUTODIFF
 }
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
@@ -5669,22 +5514,18 @@ operator *(const INMOST::variable& coef, const INMOST::AbstractMatrixReadOnly<ty
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a variable.
 template<typename typeB>
-//INMOST::Matrix<typename INMOST::Promote<INMOST::hessian_variable,typeB>::type>
 INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>
 operator *(const INMOST::hessian_variable& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-//{return other*coef;}
 {return INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>(other, coef);}
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
 template<class A, typename typeB>
-//INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
 INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>
 operator *(INMOST::shell_expression<A> const& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-//{return other*INMOST::variable(coef);}
 {return INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, INMOST::variable(coef));}
-#endif
+#endif //USE_AUTODIFF
 
 template<typename T>
 __INLINE bool check_nans(const INMOST::AbstractMatrixReadOnly<T> & A) {return A.CheckNans();}

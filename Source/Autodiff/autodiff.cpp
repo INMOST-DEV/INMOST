@@ -60,7 +60,7 @@ namespace INMOST
 		*/
 	}
 
-#if 0
+#if 1
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
 	{
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;

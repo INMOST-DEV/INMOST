@@ -639,22 +639,22 @@ namespace INMOST
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		struct RowMerger2
 		{
-			std::set<INMOST_DATA_ENUM_TYPE> indset;
-			//std::vector<bool> bitset;
+			//std::set<INMOST_DATA_ENUM_TYPE> indset;
+			std::vector<bool> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds;
 			void clear()
 			{
-				indset.clear();
-				//bitset.clear();
+				//indset.clear();
+				bitset.clear();
 				vals.clear();
 				inds.clear();
 			}
 			void set_vals()
 			{
-				//std::sort(inds.begin(), inds.end());
-				inds.resize(indset.size());
-				std::copy(indset.begin(), indset.end(), inds.begin());
+				std::sort(inds.begin(), inds.end());
+				//inds.resize(indset.size());
+				//std::copy(indset.begin(), indset.end(), inds.begin());
 				vals.resize(inds.size(), 0.0);
 			}
 			void get_row(Sparse::Row& r)

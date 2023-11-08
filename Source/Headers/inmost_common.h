@@ -346,6 +346,9 @@ namespace INMOST
 	
 	template<typename Var>
 	class SubMatrix;
+
+	template<typename Var>
+	class SubMatrixConst;
 	
 	template<typename Var>
 	class ConstSubMatrix;
