@@ -2694,7 +2694,8 @@ namespace INMOST
 			Sparse::HessianRow HL;
 			left.GetHessian(1,JL,1,HL); //retrieve jacobian row and hessian matrix of the left expression
 			Sparse::HessianRow::MergeJacobianHessian(multH*ldmult2,JL,JL,multH*ldmult,HL,H);
-			for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
+			//for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
+			for (Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) J[it->first] += it->second * ldmult * multJ;
             (void)J;
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
