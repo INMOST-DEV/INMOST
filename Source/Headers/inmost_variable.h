@@ -107,7 +107,7 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
@@ -128,7 +128,7 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
@@ -149,7 +149,7 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {pool.get_op().GetHessian(multJ,J,multH,H);}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
@@ -467,7 +467,7 @@ namespace INMOST
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const 
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{ 
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetIndices(shift, bitset, inds); 

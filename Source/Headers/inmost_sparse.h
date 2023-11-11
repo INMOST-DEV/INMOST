@@ -12,6 +12,8 @@ namespace INMOST
 {
 	namespace Sparse
 	{
+		typedef bool bit_type; //for RowMerger2
+
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// Retrieve MPI type for row entry type.
 		INMOST_MPI_Type GetRowEntryType();
@@ -274,7 +276,7 @@ namespace INMOST
 			/// Retrive interval of nonzeroes
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
 			/// Retrive indices
-			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
+			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
 			/// Retrive values
 			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
@@ -640,9 +642,10 @@ namespace INMOST
 		struct RowMerger2
 		{
 			//std::set<INMOST_DATA_ENUM_TYPE> indset;
-			std::vector<bool> bitset;
+			std::vector<Sparse::bit_type> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds;
+			RowMerger2() { bitset.reserve(1048576); }
 			void clear()
 			{
 				//indset.clear();

@@ -45,7 +45,7 @@ namespace INMOST
 		virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const = 0;
 		virtual INMOST_DATA_ENUM_TYPE GetCount() const = 0;
 		virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const = 0;
-		virtual void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const = 0;
+		virtual void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const = 0;
 		virtual void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const = 0;
 		virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const = 0;
 		virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const = 0;
@@ -70,7 +70,7 @@ namespace INMOST
 		__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
 		__INLINE virtual INMOST_DATA_ENUM_TYPE GetCount() const { return static_cast<const Derived*>(this)->GetCount(); }
 		__INLINE virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { return static_cast<const Derived*>(this)->GetInterval(beg, end); }
-		__INLINE virtual void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { static_cast<const Derived*>(this)->GetIndices(shift, bitset, inds); }
+		__INLINE virtual void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { static_cast<const Derived*>(this)->GetIndices(shift, bitset, inds); }
 		__INLINE virtual void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { static_cast<const Derived*>(this)->GetIndices(indset); }
 		__INLINE virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { static_cast<const Derived*>(this)->GetValues(coef, inds, vals); }
 		__INLINE virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { static_cast<const Derived*>(this)->GetValues(coef, inds, vals); }
@@ -93,7 +93,7 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {(void)multJ; (void)J; (void)multH; (void)H;}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return 0; }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { return; }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { return; }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { return; }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { return; }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { return;  }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { return; }
@@ -130,7 +130,7 @@ namespace INMOST
 				end = std::max(end, index + 1);
 			}
 		}
-		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (index != ENUMUNDEF && !bitset[index - shift])
 			{
@@ -225,7 +225,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries.Size(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { entries.GetInterval(beg, end); }
-		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			entries.GetIndices(shift, bitset, inds);
 		}
@@ -632,7 +632,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries.Size(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { entries.GetInterval(beg, end); }
-		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			entries.GetIndices(shift, bitset, inds);
 		}
@@ -874,7 +874,7 @@ namespace INMOST
 			if (entries) 
 				entries->GetInterval(beg, end);
 		}
-		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (entries)
 				entries->GetIndices(shift, bitset, inds);
@@ -1291,7 +1291,7 @@ namespace INMOST
 			if (entries)
 				entries->GetInterval(beg, end);
 		}
-		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (entries)
 				entries->GetIndices(shift, bitset, inds);
@@ -1345,7 +1345,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1382,7 +1382,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1421,7 +1421,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1458,7 +1458,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
@@ -1495,7 +1495,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
@@ -1542,7 +1542,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef * value * reciprocial_val, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef * value * reciprocial_val, inds, vals); }
@@ -1576,7 +1576,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
@@ -1610,7 +1610,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
@@ -1651,7 +1651,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues((value == 0 ? (coef < 0.0 ? -1 : 1) : 1) * coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues((value == 0 ? (coef < 0.0 ? -1 : 1) : 1) * coef * dmult, inds, vals); }
@@ -1695,7 +1695,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * value, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * value, inds, vals); }
@@ -1739,7 +1739,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1785,7 +1785,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1828,7 +1828,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1874,7 +1874,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return value ? arg.GetCount() : 0; }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { if(value) arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { if(value) arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { if(value) arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { if (value) arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { if (value) arg.GetValues(0.5 * coef / value, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { if (value) arg.GetValues(0.5 * coef / value, inds, vals); }
@@ -1915,7 +1915,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -1957,7 +1957,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
@@ -2014,7 +2014,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const 
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{ 
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2065,7 +2065,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { left.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
@@ -2121,7 +2121,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end); 
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2173,7 +2173,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(shift, bitset, inds); }
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { left.GetIndices(indset); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
@@ -2238,7 +2238,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2327,7 +2327,7 @@ namespace INMOST
 				right.GetInterval(beg, end);
 			}
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (reciprocal_rval)
 			{
@@ -2413,7 +2413,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2482,7 +2482,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2559,7 +2559,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2629,7 +2629,7 @@ namespace INMOST
 			left.GetInterval(beg, end);
 			right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 			right.GetIndices(shift, bitset, inds);
@@ -2700,7 +2700,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			left.GetIndices(shift, bitset, inds);
 		}
@@ -2756,7 +2756,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return right.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { right.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			right.GetIndices(shift, bitset, inds);
 		}
@@ -2828,7 +2828,7 @@ namespace INMOST
 			if (cond_value >= 0.0) left.GetInterval(beg, end);
 			else right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (cond_value >= 0.0) left.GetIndices(shift, bitset, inds);
 			else right.GetIndices(shift, bitset, inds);
@@ -2907,7 +2907,7 @@ namespace INMOST
 			if (cond) left.GetInterval(beg, end);
 			else right.GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			if (cond) left.GetIndices(shift, bitset, inds);
 			else right.GetIndices(shift, bitset, inds);
@@ -2980,7 +2980,7 @@ namespace INMOST
 		}
 		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			arg.GetIndices(shift, bitset, inds);
 		}

@@ -600,7 +600,7 @@ namespace INMOST
 #endif
 		}
 
-		void Row::GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<bool>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void Row::GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			INMOST_DATA_ENUM_TYPE ind, sind;
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) 
