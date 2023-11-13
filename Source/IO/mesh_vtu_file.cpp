@@ -188,9 +188,11 @@ namespace INMOST
 				//else if( GetProcessorRank() == 0 ) std::cout << __FILE__ << ":" << __LINE__ << "I don't use yet " << pd->GetName() << " in PUnstructuredGrid" << std::endl;
 			}
 		}
+		TagInteger tag_chunk = CreateTag("PVTU_CHUNK", DATA_INTEGER, CELL | MESH, NONE, 1);
 		for(int i = GetProcessorRank(); i < static_cast<int>(files.size()); i+= GetProcessorsNumber()) 
 		{
 			//std::cout << "load " << i << ": " << path + files[i] << " by " << GetProcessorRank() << std::endl;
+			tag_chunk[self()] = i;
 			Load(path + files[i]);
 		}
 		ResolveShared();
@@ -601,6 +603,9 @@ namespace INMOST
 						newnodes.push_back(old_nodes[find]);
 				}
 			}
+			TagInteger tag_chunk;
+			if (HaveTag("PVTU_CHUNK"))
+				tag_chunk = GetTag("PVTU_CHUNK");
 			//read all the faces
 			da = v->GetChild("Cells")->GetChildWithAttrib("Name", "faces");
 			if( da )
@@ -633,6 +638,8 @@ namespace INMOST
 						hfaces[q] = CreateFace(hnodes).first;
 					}
 					newpolyh.push_back(CreateCell(hfaces).first.GetHandle());
+					if (tag_chunk.isValid())
+						tag_chunk[newpolyh.back()] = tag_chunk[self()];
 				}
 			}
 			//check grid type
@@ -681,6 +688,7 @@ namespace INMOST
 					offset >> coffset;
 					nread = coffset - totread;
 					hnodes.resize(nread);
+					newcells[q] = InvalidHandle();
 					for (int l = 0; l < nread; ++l)
 					{
 						conn >> cconn;
@@ -914,6 +922,8 @@ namespace INMOST
 					else if (ctype == 42) //VTK_POLYHEDRON
 						newcells[q] = newpolyh[npolyh++];
 					else std::cout << __FILE__ << ":" << __LINE__ << " Implement VTK format " << ctype << std::endl;
+					if (newcells[q] != InvalidHandle() && tag_chunk.isValid())
+						tag_chunk[newcells[q]] = tag_chunk[self()];
 				}
 			}
 			//read data
