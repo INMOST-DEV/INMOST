@@ -656,7 +656,7 @@ namespace INMOST
 					REPORT_MPI(ierr = MPI_File_read(fh,&buffer[0],3,MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 					
-					if( static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile ) throw BadFile;
+					if (static_cast<HeaderType>(buffer[0]) != INMOST::INMOSTFile) throw BadFile;
 					
 					header.write(&buffer[1],2);
 					buconv.read_iByteOrder(header);
@@ -797,7 +797,7 @@ namespace INMOST
 				{
 					std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
 					fin.get(token);
-					if( token != INMOST::INMOSTFile ) throw BadFile;
+					if (token != INMOST::INMOSTFile) throw BadFile;
 					buconv.read_iByteOrder(fin);
 					buconv.read_iByteSize(fin);
 					
@@ -920,8 +920,6 @@ namespace INMOST
 						if( it >= 1000 )
 							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize << std::endl;
 					}
-					in.write(&local_buffer[0],local_buffer.size());
-					REPORT_VAL("output position",in.tellg());
 				}
 				
 				if( !requests.empty() )
@@ -929,6 +927,8 @@ namespace INMOST
 					//~ std::cout << mpirank << " wait " << requests.size() << std::endl;
 					REPORT_MPI(ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					in.write(&local_buffer[0], local_buffer.size());
+					REPORT_VAL("output position", in.tellg());
 				}
 				//~ std::cout << mpirank << " is out " << std::endl;
 				
@@ -944,7 +944,7 @@ namespace INMOST
 		{
 			std::fstream fin(File.c_str(),std::ios::in | std::ios::binary);
 			fin.get(token);
-			if( token != INMOST::INMOSTFile ) throw BadFile;
+			if (token != INMOST::INMOSTFile) throw BadFile;
 			buconv.read_iByteOrder(fin);
 			buconv.read_iByteSize(fin);
 			
@@ -1018,7 +1018,7 @@ namespace INMOST
 			REPORT_VAL("output position, loop",in.tellg());
 			if( !start )
 			{
-				if( token != INMOST::INMOSTFile ) throw BadFile; //check that this is valid file
+				if (token != INMOST::INMOSTFile) throw BadFile; //check that this is valid file
 				else
 				{
 					REPORT_STR("File chunk start read");
@@ -1056,7 +1056,7 @@ namespace INMOST
 			else if (token == INMOST::EoMHeader)
 			{
 				
-				if( !start ) throw BadFile;
+				if (!start) throw BadFile;
 				REPORT_STR("File chunk end read");
 				//~ std::cout << "end read" << std::endl;
 				if( old_nodes.empty() )
