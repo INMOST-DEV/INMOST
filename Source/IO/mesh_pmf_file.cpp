@@ -920,8 +920,6 @@ namespace INMOST
 						if( it >= 1000 )
 							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize << std::endl;
 					}
-					in.write(&local_buffer[0],local_buffer.size());
-					REPORT_VAL("output position",in.tellg());
 				}
 				
 				if( !requests.empty() )
@@ -929,6 +927,8 @@ namespace INMOST
 					//~ std::cout << mpirank << " wait " << requests.size() << std::endl;
 					REPORT_MPI(ierr = MPI_Waitall((int)requests.size(),&requests[0],MPI_STATUSES_IGNORE));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+					in.write(&local_buffer[0], local_buffer.size());
+					REPORT_VAL("output position", in.tellg());
 				}
 				//~ std::cout << mpirank << " is out " << std::endl;
 				
