@@ -644,37 +644,13 @@ namespace INMOST
 			//std::set<INMOST_DATA_ENUM_TYPE> indset;
 			std::vector<Sparse::bit_type> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
-			std::vector<INMOST_DATA_ENUM_TYPE> inds;
+			std::vector<INMOST_DATA_ENUM_TYPE> inds, temp;
 			RowMerger2() { bitset.reserve(1048576); }
-			void clear()
-			{
-				//indset.clear();
-				bitset.clear();
-				vals.clear();
-				inds.clear();
-			}
-			void set_vals()
-			{
-				std::sort(inds.begin(), inds.end());
-				//inds.resize(indset.size());
-				//std::copy(indset.begin(), indset.end(), inds.begin());
-				vals.resize(inds.size(), 0.0);
-			}
-			void get_row(Sparse::Row& r)
-			{
-				INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
-				r.Resize(s);
-				for(INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
-				{
-					if (1.0 + vals[i] != 1.0)
-					{
-						r.GetIndex(k) = inds[i];
-						r.GetValue(k) = vals[i];
-						k++;
-					}
-				}
-				r.Resize(k);
-			}
+			inline void radix_sort();
+			inline void naive_sort();
+			void clear();
+			void set_vals();
+			void get_row(Sparse::Row& r);
 		};
 		/// This class may be used to sum multiple sparse rows.
 		/// \warning

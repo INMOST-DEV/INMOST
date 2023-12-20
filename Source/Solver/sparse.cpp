@@ -58,6 +58,89 @@ namespace INMOST
 			_hasRowEntryType = false;
 		}
 
+#define _m0(x)	(x & 0x7FF)
+#define _m1(x)	(x >> 11 & 0x7FF)
+#define _m2(x)	(x >> 22 )
+
+		inline static  unsigned int flip(const unsigned int* fp)
+		{
+			unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
+			return *fp ^ mask;
+		}
+
+		inline void RowMerger2::radix_sort()
+		{
+			temp.resize(inds.size());
+			unsigned int i, size = inds.size();
+			const unsigned int kHist = 2048;
+			unsigned int  b0[kHist * 3];
+			unsigned int* b1 = b0 + kHist;
+			unsigned int* b2 = b1 + kHist;
+			memset(b0, 0, sizeof(unsigned int) * kHist * 3);
+			for (i = 0; i < size; i++)
+			{
+				unsigned int fi = flip((unsigned int*)&inds[i]);
+				++b0[_m0(fi)]; ++b1[_m1(fi)]; ++b2[_m2(fi)];
+			}
+			{
+				unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
+				for (i = 0; i < kHist; i++)
+				{
+					b0[kHist - 1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist - 1];
+					b1[kHist - 1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist - 1];
+					b2[kHist - 1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist - 1];
+				}
+			}
+			for (i = 0; i < size; i++) temp[++b0[_m0(flip((unsigned int*)&inds[i]))]] = inds[i];
+			for (i = 0; i < size; i++) inds[++b1[_m1(flip((unsigned int*)&temp[i]))]] = temp[i];
+			for (i = 0; i < size; i++) temp[++b2[_m2(flip((unsigned int*)&inds[i]))]] = inds[i];
+			for (i = 0; i < size; i++) inds[i] = temp[i];
+		}
+
+		inline void RowMerger2::naive_sort() 
+		{
+			size_t i, j;
+			for (i = 1; i < inds.size(); i++) 
+			{
+				INMOST_DATA_ENUM_TYPE tmp = inds[i];
+				for (j = i; j >= 1 && tmp < inds[j - 1]; j--)
+					inds[j] = inds[j - 1];
+				inds[j] = tmp;
+			}
+		}
+
+		void RowMerger2::clear()
+		{
+			//indset.clear();
+			//bitset.clear();
+			vals.clear();
+			inds.clear();
+		}
+		void RowMerger2::set_vals()
+		{
+			//radix_sort();
+			std::sort(inds.begin(), inds.end());
+			//naive_sort();
+			//inds.resize(indset.size());
+			//std::copy(indset.begin(), indset.end(), inds.begin());
+			vals.resize(inds.size(), 0.0);
+		}
+		void RowMerger2::get_row(Sparse::Row& r)
+		{
+			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
+			r.Resize(s);
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
+			{
+				if (1.0 + vals[i] != 1.0)
+				{
+					r.GetIndex(k) = inds[i];
+					r.GetValue(k) = vals[i];
+					k++;
+				}
+			}
+			r.Resize(k);
+		}
+
 		////////class RowMerger
 				/*
 
@@ -631,8 +714,8 @@ namespace INMOST
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
 			{
 				ind = GetIndex(k);
-				beg = std::lower_bound(beg, inds.end(), ind);
-				//while (*beg != ind) beg++;
+				//beg = std::lower_bound(beg, inds.end(), ind);
+				while (*beg != ind) beg++;
 				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - inds.cbegin());
 				vals[pos] += GetValue(k) * coef;
 			}

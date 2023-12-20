@@ -69,7 +69,9 @@ namespace INMOST
 		entries.GetInterval(beg, end);
 		if (end > beg)
 		{
-			merger.bitset.resize(end - beg, false);
+			//merger.bitset.resize(end - beg, false);
+			if (end - beg > merger.bitset.size()) merger.bitset.resize(end - beg);
+			std::fill(merger.bitset.begin(), merger.bitset.begin() + end - beg, 0);
 			r.GetIndices(beg, merger.bitset, merger.inds);
 			entries.GetIndices(beg, merger.bitset, merger.inds);
 			merger.set_vals();
@@ -88,7 +90,9 @@ namespace INMOST
 		entries.GetInterval(beg, end);
 		if (end > beg)
 		{
-			merger.bitset.resize(end - beg, false);
+			//merger.bitset.resize(end - beg, false);
+			if (end - beg > merger.bitset.size()) merger.bitset.resize(end - beg);
+			std::fill(merger.bitset.begin(), merger.bitset.begin() + end - beg, 0);
 			expr.GetIndices(beg, merger.bitset, merger.inds);
 			entries.GetIndices(beg, merger.bitset, merger.inds);
 			merger.set_vals();
