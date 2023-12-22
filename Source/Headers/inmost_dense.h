@@ -186,10 +186,16 @@ namespace INMOST
 
 	template<class A, template<class> class Op> struct Op1 { typedef Op< typename remove_cvref<A>::type > type; };
 	template<template<class> class Op> struct Op1<INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<template<class> class Op> struct Op1<value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<class A, class B, template<class,class> class Op> struct Op2 { typedef Op< typename remove_cvref<A>::type, typename remove_cvref<B>::type > type; };
 	template<class A, template<class, class> class Op> struct Op2<A, INMOST_DATA_REAL_TYPE, Op> { typedef Op< typename remove_cvref<A>::type, const_expression> type; };
+	template<class A, template<class, class> class Op> struct Op2<A, value_reference, Op> { typedef Op< typename remove_cvref<A>::type, const_expression> type; };
 	template<class B, template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, B, Op> { typedef Op<const_expression, typename remove_cvref<B>::type > type; };
-	template<template<class,class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<class B, template<class, class> class Op> struct Op2<value_reference, B, Op> { typedef Op<const_expression, typename remove_cvref<B>::type > type; };
+	template<template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<template<class, class> class Op> struct Op2<value_reference, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<template<class, class> class Op> struct Op2<value_reference, value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
 	
 	class AbstractMatrixBase
 	{
@@ -602,28 +608,26 @@ namespace INMOST
 		MatrixMulCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>
 			operator*(const typeB& coef) const
 		{ return MatrixMulCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>(*this, coef); }
-		/*
+		
 #if defined(USE_AUTODIFF)
 		/// Multiply the matrix by a coefficient.
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<class A>
-		//Matrix<typename Promote<Var, variable>::type>
-		MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
-			operator*(shell_expression<A> const& coef) const;// { return operator*(variable(coef)); }
+		MatrixMulCoef<Var, variable, RetType, typename Promote<Var, variable>::type>
+			operator*(shell_expression<A> const& coef) const { return operator*(variable(coef)); }
 #endif //USE_AUTODIFF
-		*/
-		/*
+		
+		
 #if defined(USE_AUTODIFF)
 		/// Divide the matrix by a coefficient of a different type.
 		/// @param coef Coefficient.
 		/// @return Matrix divided by the coefficient.
 		template<class A>
-		//Matrix<typename Promote<Var, variable>::type>
-		MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
-			operator/(shell_expression<A> const& coef) const;// { return operator/(variable(coef)); }
+		MatrixDivCoef<Var, variable, RetType, typename Promote<Var, variable>::type>
+			operator/(shell_expression<A> const& coef) const { return operator/(variable(coef)); }
 #endif //USE_AUTODIFF
-		*/
+		
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
 		/// Throws exception if matrix is not invertible. See Mesh::PseudoSolve for
 		/// singular matrices.
@@ -4764,18 +4768,18 @@ template<typename typeA, typename typeB, typename retB>
 INMOST::MatrixMulCoef<typeB, typeA, retB, typename INMOST::Promote<typeB, typeA>::type>
 operator *(const typeA & coef, const INMOST::AbstractMatrixReadOnly<typeB, retB>& other)
 {return INMOST::MatrixMulCoef<typeB, typeA, retB, typename INMOST::Promote<typeB, typeA>::type>(other, coef);}
-/*
+
 #if defined(USE_AUTODIFF)
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
-template<class A, typename typeB>
-INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>
-operator *(INMOST::shell_expression<A> const& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-{return INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, INMOST::variable(coef));}
+template<class A, typename typeB, typename retB>
+INMOST::MatrixMulCoef<typeB, INMOST::variable, retB, typename INMOST::Promote<typeB, INMOST::variable>::type>
+operator *(INMOST::shell_expression<A> const& coef, const INMOST::AbstractMatrixReadOnly<typeB, retB>& other)
+{return INMOST::MatrixMulCoef<typeB, INMOST::variable, retB, typename INMOST::Promote<typeB, INMOST::variable>::type>(other, INMOST::variable(coef));}
 #endif //USE_AUTODIFF
-*/
+
 template<typename T, typename R>
 __INLINE bool check_nans(const INMOST::AbstractMatrixReadOnly<T,R> & A) {return A.CheckNans();}
 template<typename T, typename R>
