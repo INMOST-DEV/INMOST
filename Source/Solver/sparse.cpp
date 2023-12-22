@@ -71,7 +71,7 @@ namespace INMOST
 		inline void RowMerger2::radix_sort()
 		{
 			temp.resize(inds.size());
-			unsigned int i, size = inds.size();
+			unsigned int i, size = static_cast<unsigned int>(inds.size());
 			const unsigned int kHist = 2048;
 			unsigned int  b0[kHist * 3];
 			unsigned int* b1 = b0 + kHist;
@@ -1758,7 +1758,7 @@ namespace INMOST
 #if defined(USE_OMP)
 #pragma omp for
 #endif
-				for (INMOST_DATA_INTEGER_TYPE it = Z.GetFirstIndex(); it < Z.GetLastIndex(); ++it)
+				for (INMOST_DATA_INTEGER_TYPE it = Z.GetFirstIndex(); it < static_cast<INMOST_DATA_INTEGER_TYPE>(Z.GetLastIndex()); ++it)
 				{
 					Z[it].Clear();
 					merger.PushRow(alpha, X[it]);

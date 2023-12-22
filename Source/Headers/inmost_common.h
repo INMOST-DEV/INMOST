@@ -320,7 +320,7 @@ namespace INMOST
 
 namespace INMOST
 {
-	template<typename Var>
+	template<typename Var, typename RetType>
 	class AbstractMatrixReadOnly;
 
 	template<typename Var>
@@ -338,8 +338,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixDiag;
 
-	template<typename Var>
-	class ConstMatrixRepack;
+	template<typename Var, typename Ret>
+	class AbstractMatrixRepack;
 
 	template<typename Var>
 	class MatrixRepack;
@@ -347,73 +347,61 @@ namespace INMOST
 	template<typename Var>
 	class SubMatrix;
 
-	template<typename Var>
-	class SubMatrixConst;
+	template<typename Var, typename Ret>
+	class AbstractSubMatrix;
 	
-	template<typename Var>
-	class ConstSubMatrix;
-	
-	template<typename Var>
-	class BlockOfMatrix;
-	
-	template<typename Var>
-	class ConstBlockOfMatrix;
+	template<typename Var, typename Ret>
+	class AbstractBlockOfMatrix;
 
 	template<typename Var>
 	class MatrixConcatRows;
 
-	template<typename Var>
-	class ConstMatrixConcatRows;
-
-	template<typename VarA, typename VarB, typename VarR>
-	class ConstMatrixConcatRows2;
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class AbstractMatrixConcatRows;
 
 	template<typename Var>
 	class MatrixConcatCols;
 
-	template<typename Var>
-	class ConstMatrixConcatCols;
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class AbstractMatrixConcatCols;
 
-	template<typename VarA, typename VarB, typename VarR>
-	class ConstMatrixConcatCols2;
-
-	template<typename Var>
+	template<typename Var, typename Ret>
 	class MatrixUnaryMinus;
 
-	template<typename VarA, typename VarB>
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixSum;
 
-	template<typename VarA, typename VarB>
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixDifference;
 
 	template<typename Var>
 	class MatrixTranspose;
 
-	template<typename Var>
-	class ConstMatrixTranspose;
+	template<typename Var, typename Ret>
+	class AbstractMatrixTranspose;
 
-	template<typename Var>
-	class ConstMatrixConjugate;
+	template<typename Var, typename Ret>
+	class AbstractMatrixConjugate;
 
-	template<typename Var>
-	class ConstMatrixConjugateTranspose;
+	template<typename Var, typename Ret>
+	class AbstractMatrixConjugateTranspose;
 
-	template<typename VarA, typename VarB>
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class KroneckerProduct;
 
-	template<typename VarA, typename VarB, typename VarR>
+	template<typename VarA, typename VarB, typename RetA, typename VarAB>
 	class MatrixMulCoef;
 
-	template<typename VarA, typename VarB, typename VarR>
+	template<typename VarA, typename VarB, typename RetA, typename VarAB>
 	class MatrixDivCoef;
 
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixMulShellCoef;
+	//template<typename VarA, typename VarB, typename RetA, typename RetB>
+	//class MatrixMulShellCoef;
 
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixDivShellCoef;
+	//template<typename VarA, typename VarB, typename RetA, typename RetB>
+	//class MatrixDivShellCoef;
 
-	template<typename VarA, typename VarB, typename VarR>
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixMul;
 	
 	template<typename Var, typename Storage = std::vector<Var> >

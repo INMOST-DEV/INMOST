@@ -180,6 +180,16 @@ namespace INMOST
 	template<> struct Promote<double, hessian_variable> { typedef hessian_variable type; };
 #endif //USE_FP64
 #endif //USE_AUTODIFF
+
+	template<class T>
+	struct remove_cvref { typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;};
+
+	template<class A, template<class> class Op> struct Op1 { typedef Op< typename remove_cvref<A>::type > type; };
+	template<template<class> class Op> struct Op1<INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<class A, class B, template<class,class> class Op> struct Op2 { typedef Op< typename remove_cvref<A>::type, typename remove_cvref<B>::type > type; };
+	template<class A, template<class, class> class Op> struct Op2<A, INMOST_DATA_REAL_TYPE, Op> { typedef Op< typename remove_cvref<A>::type, const_expression> type; };
+	template<class B, template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, B, Op> { typedef Op<const_expression, typename remove_cvref<B>::type > type; };
+	template<template<class,class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
 	
 	class AbstractMatrixBase
 	{
@@ -189,7 +199,7 @@ namespace INMOST
 	};
 
 
-	template<typename Var>
+	template<typename Var, typename RetType>
 	class AbstractMatrixReadOnly : public AbstractMatrixBase
 	{
 	private:
@@ -219,18 +229,36 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		virtual Var compute(enumerator i, enumerator j) const = 0;
+		virtual RetType compute(enumerator i, enumerator j) const = 0;
 		//TODO: comment this and use compute in internal functions
-		Var operator()(enumerator i, enumerator j) const {return compute(i,j);}
+		RetType operator()(enumerator i, enumerator j) const {return compute(i,j);}
 		/// Check all matrix entries for not a number.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckNans() const { return Matrix<Var>(*this).CheckNans(); }
+		bool CheckNans() const 
+		{
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					if (check_nans(compute(i, j))) return true;
+			return false;
+		}
 		/// Check all matrix entries for infinity.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckInfs() const { return Matrix<Var>(*this).CheckInfs();}
+		bool CheckInfs() const 
+		{ 
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					if (check_infs(compute(i, j))) return true;
+			return false;
+		}
 		/// Check all matrix entries for not a number and infinity.
 		/// Also checks derivatives for matrices of variables.
-		bool CheckNansInfs() const { return Matrix<Var>(*this).CheckNansInfs(); }
+		bool CheckNansInfs() const 
+		{ 
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					if (check_nans_infs(compute(i, j))) return true;
+			return false;
+		}
 		/// Matrix determinant
 		Var Det() const
 		{
@@ -282,58 +310,58 @@ namespace INMOST
 		/// Transpose current matrix.
 		/// @return Transposed matrix.
 		//Matrix<Var> Transpose() const;
-		ConstMatrixTranspose<Var> Transpose() const { return ConstMatrixTranspose<Var>(*this); }
+		AbstractMatrixTranspose<Var, RetType> Transpose() const { return AbstractMatrixTranspose<Var, RetType>(*this); }
 		/// Transpose and conjugate current matrix.
 		/// @return Transposed and conjugated matrix.
-		ConstMatrixConjugateTranspose<Var> ConjugateTranspose() const { return ConstMatrixConjugateTranspose<Var>(*this); }
+		AbstractMatrixConjugateTranspose<Var, RetType> ConjugateTranspose() const { return AbstractMatrixConjugateTranspose<Var, RetType>(*this); }
 		/// Conjugate  current matrix.
 		/// @return Conjugated matrix.
-		ConstMatrixConjugate<Var> Conjugate() const { return ConstMatrixConjugate<Var>(*this); }
+		AbstractMatrixConjugate<Var, RetType> Conjugate() const { return AbstractMatrixConjugate<Var>(*this, RetType); }
 		/// Cross-product operation for a vector.
 		/// Both right hand side and left hand side should be a vector
 		/// @param other The right hand side of cross product.
 		/// @return The cross product of current and right hand side vector.
 		/// \warning Works for 3x1 vector and 3xm m-vectors as right hand side.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			CrossProduct(const AbstractMatrixReadOnly<typeB>& other) const;
+			CrossProduct(const AbstractMatrixReadOnly<typeB, retB>& other) const;
 		/// Transformation matrix from current vector to provided vector using shortest arc rotation.
 		/// @param other Vector to transform to.
 		/// @return A sqaure (rotation) matrix that transforms current vector into right hand side vector.
 		/// \warning Works only for 3x1 vectors.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			Transform(const AbstractMatrixReadOnly<typeB>& other) const;
+			Transform(const AbstractMatrixReadOnly<typeB, retB>& other) const;
 		/// Subtract a matrix.
 		/// @param other The matrix to be subtracted.
 		/// @return Difference of current matrix with another matrix.
-		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		MatrixDifference<Var,typeB>
-			operator-(const AbstractMatrixReadOnly<typeB>& other) const;
+		template<typename typeB, typename retB>
+		MatrixDifference<Var, typeB, RetType, retB>
+			operator-(const AbstractMatrixReadOnly<typeB, retB>& other) const
+		{ return MatrixDifference<Var, typeB, RetType, retB>(*this, other);	}
 		/// Add a matrix.
 		/// @param other The matrix to be added.
 		/// @return Sum of current matrix with another matrix.
-		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		MatrixSum<Var,typeB>
-			operator+(const AbstractMatrixReadOnly<typeB>& other) const;
+		template<typename typeB, typename retB>
+		MatrixSum<Var, typeB, RetType, retB>
+			operator+(const AbstractMatrixReadOnly<typeB, retB>& other) const
+		{ return MatrixSum<Var, typeB, RetType, retB>(*this, other); }
 		/// Multiply the matrix by another matrix.
 		/// @param other Matrix to be multiplied from right.
 		/// @return Matrix multipled by another matrix.
-		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		MatrixMul<Var,typeB, typename Promote<Var,typeB>::type>
-			operator*(const AbstractMatrixReadOnly<typeB>& other) const;
+		template<typename typeB, typename retB>
+		MatrixMul<Var, typeB, RetType, retB>
+			operator*(const AbstractMatrixReadOnly<typeB, retB>& other) const
+		{ return MatrixMul<Var, typeB, RetType, retB>(*this, other); }
 		/// Unary minus. Change sign of each element of the matrix.
-		MatrixUnaryMinus<Var> operator-() const { return MatrixUnaryMinus<Var>(*this); }
+		MatrixUnaryMinus<Var, RetType> operator-() const { return MatrixUnaryMinus<Var, RetType>(*this); }
 		/// Kronecker product, latex symbol \otimes.
 		/// @param other Matrix on the right of the Kronecker product.
 		/// @return Result of the Kronecker product of current and another matrix.
-		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		KroneckerProduct<Var, typeB>
-			Kronecker(const AbstractMatrixReadOnly<typeB>& other) const;
+		template<typename typeB, typename retB>
+		KroneckerProduct<Var, typeB, RetType, retB>
+			Kronecker(const AbstractMatrixReadOnly<typeB, retB>& other) const
+		{ return KroneckerProduct<Var, typeB, RetType, retB>(*this, other); }
 		/// Inverts matrix using Crout-LU decomposition with full pivoting for
 		/// maximum element. Works well for non-singular matrices, for singular
 		/// matrices look see Matrix::PseudoInvert.
@@ -344,9 +372,19 @@ namespace INMOST
 		/// @return Inverse matrix.
 		/// @see Matrix::PseudoInvert.
 		/// \todo (test) Activate and test implementation with Solve.
-		Matrix<Var> Invert(int* ierr = NULL) const;
+		Matrix<Var> Invert(int* ierr = NULL) const
+		{
+			Matrix<Var> ret(Cols(), Rows());
+			ret = Solve(MatrixUnit<Var>(Rows()), ierr);
+			return ret;
+		}
 		/// Inverts symmetric positive-definite matrix using Cholesky decomposition.
-		Matrix<Var> CholeskyInvert(int* ierr = NULL) const;
+		Matrix<Var> CholeskyInvert(int* ierr = NULL) const
+		{
+			Matrix<Var> ret(Rows(), Rows());
+			ret = CholeskySolve(MatrixUnit<Var>(Rows()), ierr);
+			return ret;
+		}
 		/// Finds X in A*X=B, where A and B are general matrices.
 		/// Converts system into A^T*A*X=A^T*B.
 		/// Inverts matrix A^T*A using Crout-LU decomposition with full pivoting for
@@ -364,9 +402,9 @@ namespace INMOST
 		/// 1. Test implementation.
 		/// 2. Maximum product transversal + block pivoting instead of pivoting
 		///    by maximum element.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			Solve(const AbstractMatrixReadOnly<typeB>& B, int* ierr = NULL) const;
+			Solve(const AbstractMatrixReadOnly<typeB, retB>& B, int* ierr = NULL) const;
 		/// Finds X in A*X=B, where A is a square symmetric positive definite matrix.
 		/// Uses Cholesky decomposition algorithm.
 		/// @param B Right hand side matrix.
@@ -376,9 +414,9 @@ namespace INMOST
 		///             on which the failure occurred (starting from 1), in case of no failure *ierr = 0.
 		/// @see Matrix::PseudoInvert.
 		/// @return Inverse matrix,
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			CholeskySolve(const AbstractMatrixReadOnly<typeB>& B, int* ierr = NULL) const;
+			CholeskySolve(const AbstractMatrixReadOnly<typeB, retB>& B, int* ierr = NULL) const;
 		/// Calculate sum of the diagonal elements of the matrix.
 		/// @return Trace of the matrix.
 		Var Trace() const
@@ -397,9 +435,9 @@ namespace INMOST
 			{
 				for (enumerator l = 0; l < Cols(); ++l)
 				{
-					//if (__isinf__(real_part(get_value((*this)(k, l)))))
+					//if (__isinf__(real_part(get_value(compute(k, l)))))
 					//	sout << std::setw(12) << "inf";
-					//else if (std::isnan(get_value((*this)(k, l))))
+					//else if (std::isnan(get_value(compute(k, l))))
 					//	sout << std::setw(12) << "nan";
 					//else 
 					if (fabs(get_value(compute(k, l))) > threshold)
@@ -428,9 +466,9 @@ namespace INMOST
 		/// same indices in the current and the provided matrix.
 		/// @param other Provided matrix.
 		/// @return Dot product of two matrices.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		typename Promote<Var, typeB>::type
-			DotProduct(const AbstractMatrixReadOnly<typeB>& other) const
+			DotProduct(const AbstractMatrixReadOnly<typeB, retB>& other) const
 		{
 			assert(Cols() == other.Cols());
 			assert(Rows() == other.Rows());
@@ -444,24 +482,8 @@ namespace INMOST
 		/// same indices in the current and the provided matrix.
 		/// @param other Provided matrix.
 		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type
-			DotProduct(const AbstractMatrix<typeB>& other) const
-		{
-			assert(Cols() == other.Cols());
-			assert(Rows() == other.Rows());
-			typename Promote<Var, typeB>::type ret = 0.0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret += compute(i, j) * other.get(i, j);
-			return ret;
-		}
-		/// Computes dot product by summing up multiplication of entries with the
-		/// same indices in the current and the provided matrix.
-		/// @param other Provided matrix.
-		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type operator ^(const AbstractMatrixReadOnly<typeB>& other) const
+		template<typename typeB, typename retB>
+		typename Promote<Var, typeB>::type operator ^(const AbstractMatrixReadOnly<typeB, retB>& other) const
 		{
 			return DotProduct(other);
 		}
@@ -520,9 +542,9 @@ namespace INMOST
 		///             In case of failure *ierr = 1, in case of no failure *ierr = 0.
 		/// @return A pair of the solution matrix X and boolean. If boolean is true,
 		///         then the matrix was inverted successfully.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			PseudoSolve(const AbstractMatrixReadOnly<typeB>& B, INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
+			PseudoSolve(const AbstractMatrixReadOnly<typeB, retB>& B, INMOST_DATA_REAL_TYPE tol = 0, int* ierr = NULL) const;
 		/// Extract submatrix of a matrix.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -532,12 +554,25 @@ namespace INMOST
 		/// @param jbeg Starting column in the original matrix.
 		/// @param jend Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		Matrix<Var> ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const;
+		Matrix<Var> ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
+		{
+			assert(ibeg < Rows());
+			assert(iend < Rows());
+			assert(jbeg < Cols());
+			assert(jend < Cols());
+			Matrix<Var> ret(iend - ibeg, jend - jbeg);
+			for (enumerator i = ibeg; i < iend; ++i)
+			{
+				for (enumerator j = jbeg; j < jend; ++j)
+					ret(i - ibeg, j - jbeg) = compute(i, j);
+			}
+			return ret;
+		}
 		/// Change representation of the matrix into matrix of another size.
 		/// Useful to change representation from matrix into vector and back.
 		/// Replaces original number of columns and rows with a new one.
 		/// @return Matrix with same entries and provided number of rows and columns.
-		ConstMatrixRepack<Var> Repack(enumerator rows, enumerator cols) const {return ConstMatrixRepack<Var>(*this, rows, cols);}
+		AbstractMatrixRepack<Var, RetType> Repack(enumerator rows, enumerator cols) const {return AbstractMatrixRepack<Var, RetType>(*this, rows, cols);}
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -547,7 +582,8 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
+		AbstractSubMatrix<Var, RetType> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
+		{ return AbstractSubMatrix<Var, RetType>(*this, first_row, last_row, first_col, last_col); }
 		/// Define matrix as a part of a matrix of larger size with in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, if i in [offset_row,offset_row+n),
@@ -557,14 +593,16 @@ namespace INMOST
 		/// @param offset_row Offset for row number.
 		/// @param offset_col Offset for column number.
 		/// @return Submatrix of the original matrix.
-		ConstBlockOfMatrix<Var> BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col) const;
+		AbstractBlockOfMatrix<Var, RetType> BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col) const
+		{ return AbstractBlockOfMatrix<Var, RetType>(*this, nrows, ncols, offset_row, offset_col); }
 		/// Multiply the matrix by a coefficient.
 		/// @param coef Coefficient.
 		/// @return Matrix multiplied by the coefficient.
 		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>
-			operator*(const typeB& coef) const;
+		MatrixMulCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>
+			operator*(const typeB& coef) const
+		{ return MatrixMulCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>(*this, coef); }
+		/*
 #if defined(USE_AUTODIFF)
 		/// Multiply the matrix by a coefficient.
 		/// @param coef Coefficient.
@@ -574,13 +612,8 @@ namespace INMOST
 		MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
 			operator*(shell_expression<A> const& coef) const;// { return operator*(variable(coef)); }
 #endif //USE_AUTODIFF
-		/// Divide the matrix by a coefficient of a different type.
-		/// @param coef Coefficient.
-		/// @return Matrix divided by the coefficient.
-		template<typename typeB>
-		//Matrix<typename Promote<Var, typeB>::type>
-		MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
-			operator/(const typeB & coef) const;
+		*/
+		/*
 #if defined(USE_AUTODIFF)
 		/// Divide the matrix by a coefficient of a different type.
 		/// @param coef Coefficient.
@@ -590,29 +623,29 @@ namespace INMOST
 		MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
 			operator/(shell_expression<A> const& coef) const;// { return operator/(variable(coef)); }
 #endif //USE_AUTODIFF
+		*/
 		/// Performs B^{-1}*A, multiplication by inverse matrix from left.
 		/// Throws exception if matrix is not invertible. See Mesh::PseudoSolve for
 		/// singular matrices.
 		/// @param other Matrix to be inverted and multiplied from left.
 		/// @return Multiplication of current matrix by inverse of another
 		/// @see Matrix::PseudoInvert.
-		template<typename typeB>
+		template<typename typeB, typename retB>
 		Matrix<typename Promote<Var, typeB>::type>
-			operator/(const AbstractMatrixReadOnly<typeB>& other) const
+			operator/(const AbstractMatrixReadOnly<typeB, retB>& other) const
 		{
 			Matrix<typename Promote<Var, typeB>::type> ret(other.Cols(), Cols());
 			ret = other.Solve(*this);
 			return ret;
 		}
-		/// Concatenate B matrix as columns of current matrix.
-		/// Assumes that number of rows of current matrix is
-		/// equal to number of rows of B matrix.
-		/// @param B Matrix to be concatenated to current matrix.
-		/// @return Result of concatenation of current matrix and parameter.
-		/// @see Matrix::ConcatRows
-		ConstMatrixConcatCols<Var> ConcatCols(const AbstractMatrixReadOnly<Var>& B) const
+		/// Divide the matrix by a coefficient of a different type.
+		/// @param coef Coefficient.
+		/// @return Matrix divided by the coefficient.
+		template<typename typeB>
+		MatrixDivCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>
+			operator/(const typeB& coef) const
 		{
-			return ConstMatrixConcatCols<Var>(*this, B);
+			return MatrixDivCoef<Var, typeB, RetType, typename Promote<Var, typeB>::type>(*this, coef);
 		}
 		/// Concatenate B matrix as columns of current matrix.
 		/// Assumes that number of rows of current matrix is
@@ -620,11 +653,11 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatRows
-		template<typename VarB>
-		ConstMatrixConcatCols2<Var, VarB, typename Promote<Var, VarB>::type>
-			ConcatCols(const AbstractMatrixReadOnly<VarB>& B) const
+		template<typename VarB, typename RetB>
+		AbstractMatrixConcatCols<Var, VarB, RetType, RetB>
+			ConcatCols(const AbstractMatrixReadOnly<VarB, RetB>& B) const
 		{
-			return ConstMatrixConcatCols2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
+			return AbstractMatrixConcatCols<Var, VarB, RetType, RetB>(*this, B);
 		}
 		/// Concatenate B matrix as rows of current matrix.
 		/// Assumes that number of colums of current matrix is
@@ -632,52 +665,49 @@ namespace INMOST
 		/// @param B Matrix to be concatenated to current matrix.
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatCols
-		ConstMatrixConcatRows<Var> ConcatRows(const AbstractMatrixReadOnly<Var>& B) const
+		template<typename VarB, typename RetB>
+		AbstractMatrixConcatRows<Var,VarB,RetType,RetB> 
+			ConcatRows(const AbstractMatrixReadOnly<VarB, RetB>& B) const
 		{
-			return ConstMatrixConcatRows<Var>(*this, B);
+			return AbstractMatrixConcatRows<Var, VarB, RetType, RetB>(*this, B);
 		}
-		/// Concatenate B matrix as rows of current matrix.
-		/// Assumes that number of colums of current matrix is
-		/// equal to number of columns of B matrix.
-		/// @param B Matrix to be concatenated to current matrix.
-		/// @return Result of concatenation of current matrix and parameter.
-		/// @see Matrix::ConcatCols
-		template<typename VarB>
-		ConstMatrixConcatRows2<Var,VarB,typename Promote<Var,VarB>::type> 
-			ConcatRows(const AbstractMatrixReadOnly<VarB>& B) const
+		/// Convert into matrix.
+		/// @return Matrix with same entries.
+		Matrix<Var> MakeMatrix()
 		{
-			return ConstMatrixConcatRows2<Var, VarB, typename Promote<Var, VarB>::type>(*this, B);
+			Matrix<Var> ret(Rows(), Cols());
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					ret(i, j) = compute(i, j);
+			return ret;
 		}
 		/// Destructor
 		virtual ~AbstractMatrixReadOnly() {}
-		/// Retrieve number of indices of derivatives.
-		__INLINE virtual INMOST_DATA_ENUM_TYPE GetMatrixCount() const
-		{
-			INMOST_DATA_ENUM_TYPE cnt = 0;
-			for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
-				for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
-					cnt += GetCount(compute(i, j));
-			return cnt;
-		}
 	};
 	/// Abstract class for a matrix,
 	/// used to abstract away all the data storage and access
 	/// and provide common implementation of the algorithms.
 	template<typename Var>
-	class AbstractMatrix : public AbstractMatrixReadOnly<Var>
+	class AbstractMatrix : public AbstractMatrixReadOnly<Var, const Var&>
 	{
 	public:
-	 	using AbstractMatrixReadOnly<Var>::operator ();
-		using AbstractMatrixReadOnly<Var>::compute;
-		using AbstractMatrixReadOnly<Var>::Rows;
-		using AbstractMatrixReadOnly<Var>::Cols;
-		using AbstractMatrixReadOnly<Var>::Transpose;
-		using AbstractMatrixReadOnly<Var>::BlockOf;
-		using AbstractMatrixReadOnly<Var>::Repack;
-		using AbstractMatrixReadOnly<Var>::ConcatRows;
-		using AbstractMatrixReadOnly<Var>::ConcatCols;
 		
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator;
+	 	using AbstractMatrixReadOnly<Var, const Var&>::operator ();
+		using AbstractMatrixReadOnly<Var, const Var&>::Transpose;
+		using AbstractMatrixReadOnly<Var, const Var&>::Repack;
+		using AbstractMatrixReadOnly<Var, const Var&>::ConcatRows;
+		using AbstractMatrixReadOnly<Var, const Var&>::ConcatCols;
+		/*
+		using AbstractMatrixReadOnly<Var, const Var&>::compute;
+		using AbstractMatrixReadOnly<Var, const Var&>::Rows;
+		using AbstractMatrixReadOnly<Var, const Var&>::Cols;
+		using AbstractMatrixReadOnly<Var, const Var&>::Transpose;
+		using AbstractMatrixReadOnly<Var, const Var&>::BlockOf;
+		using AbstractMatrixReadOnly<Var, const Var&>::Repack;
+		using AbstractMatrixReadOnly<Var, const Var&>::ConcatRows;
+		using AbstractMatrixReadOnly<Var, const Var&>::ConcatCols;
+		typedef typename AbstractMatrixReadOnly<Var, const Var&>::enumerator enumerator;
+		*/
 		/// Construct empty matrix.
 		AbstractMatrix() {}
 		/*
@@ -688,7 +718,7 @@ namespace INMOST
 			Resize(b.Rows(),b.Cols());
 			for(enumerator i = 0; i < b.Rows(); ++i)
 				for(enumerator j = 0; j < b.Cols(); ++j)
-					(*this)(i,j) = b(i,j);
+					get(i,j) = b(i,j);
 		}
 		/// Construct from matrix of another type.
 		/// @param other Another matrix of different type.
@@ -698,7 +728,7 @@ namespace INMOST
 			Resize(b.Rows(),b.Cols());
 			for(enumerator i = 0; i < b.Rows(); ++i)
 				for(enumerator j = 0; j < b.Cols(); ++j)
-					assign((*this)(i,j),b(i,j));
+					assign(get(i,j),b(i,j));
 		}
 		*/
 		/// Assign matrix of the same type.
@@ -707,21 +737,21 @@ namespace INMOST
 		AbstractMatrix & operator =(AbstractMatrix const & other)
 		{
 			Resize(other.Rows(),other.Cols());
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other.get(i,j));
+			for (enumerator i = 0; i < other.Rows(); ++i)
+				for (enumerator j = 0; j < other.Cols(); ++j)
+					assign(get(i, j), other.get(i, j));
 			return *this;
 		}
 		/// Assign matrix of another type.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
-		template<typename typeB>
-		AbstractMatrix & operator =(AbstractMatrixReadOnly<typeB> const & other)
+		template<typename typeB, typename retB>
+		AbstractMatrix & operator =(AbstractMatrixReadOnly<typeB, retB> const & other)
 		{
 			Resize(other.Rows(),other.Cols());
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other.compute(i,j));
+			for (enumerator i = 0; i < other.Rows(); ++i)
+				for (enumerator j = 0; j < other.Cols(); ++j)
+					assign(get(i, j), other.compute(i, j));
 			return *this;
 		}
 		/// Assign value to all entries of the matrix.
@@ -729,71 +759,102 @@ namespace INMOST
 		/// @return Reference to matrix.
 		AbstractMatrix & operator =(Var const & b)
 		{
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					assign((*this)(i,j),b);
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), b);
 			return *this;
 		}
 		/// Access element of the matrix by row and column indices.
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to element.
-		virtual Var & operator () (enumerator i, enumerator j) = 0;
+		__INLINE Var& operator () (enumerator i, enumerator j) { return get(i, j); }
 		/// Access element of the matrix by row and column indices.
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		virtual const Var & get(enumerator i, enumerator j) const = 0;
-		//TODO: comment this and use get in internal functions
-		const Var & operator()(enumerator i, enumerator j) const {return get(i,j);}
+		virtual Var& get(enumerator i, enumerator j) = 0;
+		/// Access element of the matrix by row and column indices.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		virtual const Var& get(enumerator i, enumerator j) const = 0;
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Column index.
+		/// @param j Row index.
+		/// @return Reference to constant element.
+		__INLINE const Var& compute(enumerator i, enumerator j) const { return get(i, j); }
 		/// Resize the matrix into different size.
 		/// @param nrows New number of rows.
 		/// @param ncols New number of columns.
 		virtual void Resize(enumerator rows, enumerator cols) = 0;
 		/// Set all the elements of the matrix to zero.
-		void Zero()
+		virtual void Zero()
 		{
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					(*this)(i,j) = 0.0;
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), 0.0);
 		}
 		///Exchange contents of two matrices.
 		virtual void Swap(AbstractMatrix<Var> & b);
 		/// Subtract a matrix and store result in the current.
 		/// @param other The matrix to be subtracted.
 		/// @return Reference to the current matrix.
-		template<typename typeB>
-		AbstractMatrix & operator-=(const AbstractMatrixReadOnly<typeB> & other);
-		/// Subtract a matrix and store result in the current.
-		/// @param other The matrix to be subtracted.
-		/// @return Reference to the current matrix.
-		template<typename typeB>
-		AbstractMatrix& operator-=(const AbstractMatrix<typeB>& other);
+		template<typename typeB, typename retB>
+		AbstractMatrix & operator-=(const AbstractMatrixReadOnly<typeB, retB> & other)
+		{
+			assert(Rows() == other.Rows());
+			assert(Cols() == other.Cols());
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), sub(get(i, j), other.compute(i, j)));
+			return *this;
+		}
 		/// Add a matrix and store result in the current.
 		/// @param other The matrix to be added.
 		/// @return Reference to the current matrix.
-		template<typename typeB>
-		AbstractMatrix & operator+=(const AbstractMatrixReadOnly<typeB> & other);
-		/// Add a matrix and store result in the current.
-		/// @param other The matrix to be added.
-		/// @return Reference to the current matrix.
-		template<typename typeB>
-		AbstractMatrix& operator+=(const AbstractMatrix<typeB>& other);
+		template<typename typeB, typename retB>
+		AbstractMatrix & operator+=(const AbstractMatrixReadOnly<typeB, retB> & other)
+		{
+			assert(Rows() == other.Rows());
+			assert(Cols() == other.Cols());
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), add(get(i, j), other.compute(i, j)));
+			return *this;
+		}
 		/// Multiply matrix with another matrix in-place.
 		/// @param B Another matrix to the right in multiplication.
 		/// @return Reference to current matrix.
-		template<typename typeB>
-		AbstractMatrix & operator*=(const AbstractMatrixReadOnly<typeB> & B);
+		template<typename typeB, typename retB>
+		AbstractMatrix & operator*=(const AbstractMatrixReadOnly<typeB, retB> & B)
+		{
+			(*this) = (*this) * B;
+			return *this;
+		}
 		/// Multiply the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
 		template<typename typeB>
-		AbstractMatrix & operator*=(typeB coef);
+		AbstractMatrix & operator*=(typeB coef)
+		{
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), mul(get(i, j), coef));
+			return *this;
+		}
 		/// Divide the matrix by the coefficient of the same type and store the result.
 		/// @param coef Coefficient.
 		/// @return Reference to the current matrix.
 		template<typename typeB>
-		AbstractMatrix & operator/=(typeB coef);
+		AbstractMatrix & operator/=(typeB coef)
+		{
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = 0; j < Cols(); ++j)
+					assign(get(i, j), div(get(i, j), coef));
+			return *this;
+		}
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -803,18 +864,8 @@ namespace INMOST
 		/// @param first_col Starting column in the original matrix.
 		/// @param last_col Last column (excluded) in the original matrix.
 		/// @return Submatrix of the original matrix.
-		SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		SubMatrixConst<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
-		/// Define matrix as a part of a matrix of larger size with in-place manipulation of elements.
-		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
-		/// Then the method returns B = {a_ij}, if i in [offset_row,offset_row+n),
-		/// and j in [offset_col,offset_col+m) and B = {0} otherwise.
-		/// @param nrows Number of rows in larger matrix.
-		/// @param ncols Number of columns in larger matrix.
-		/// @param offset_row Offset for row number.
-		/// @param offset_col Offset for column number.
-		/// @return Submatrix of the original matrix.
-		BlockOfMatrix<Var> BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col);
+		SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
+		{ return SubMatrix<Var>(*this, first_row, last_row, first_col, last_col); }
 		/// Transpose the current matrix with access to elements.
 		/// @return Transposed matrix.
 		//Matrix<Var> Transpose() const;
@@ -838,178 +889,6 @@ namespace INMOST
 		/// @return Result of concatenation of current matrix and parameter.
 		/// @see Matrix::ConcatCols
 		MatrixConcatRows<Var> ConcatRows(AbstractMatrix<Var>& B) { return MatrixConcatRows<Var>(*this, B); }
-		/// Check all matrix entries for not a number.
-		/// Also checks derivatives for matrices of variables.
-		bool CheckNans() const
-		{
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					if (check_nans(compute(i, j))) return true;
-			return false;
-		}
-		/// Check all matrix entries for infinity.
-		/// Also checks derivatives for matrices of variables.
-		bool CheckInfs() const
-		{
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					if (check_infs(compute(i, j))) return true;
-			return false;
-		}
-		/// Check all matrix entries for not a number and infinity.
-		/// Also checks derivatives for matrices of variables.
-		bool CheckNansInfs() const
-		{
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					if (check_nans_infs(compute(i, j))) return true;
-			return false;
-		}
-		/// Transformation matrix from current vector to provided vector using shortest arc rotation.
-		/// @param other Vector to transform to.
-		/// @return A sqaure (rotation) matrix that transforms current vector into right hand side vector.
-		/// \warning Works only for 3x1 vectors.
-		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			Transform(const AbstractMatrix<typeB>& other) const;
-		/// Transformation matrix from current vector to provided vector using shortest arc rotation.
-		/// @param other Vector to transform to.
-		/// @return A sqaure (rotation) matrix that transforms current vector into right hand side vector.
-		/// \warning Works only for 3x1 vectors.
-		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			Transform(const AbstractMatrixReadOnly<typeB>& other) const;
-		/// Cross-product operation for a vector.
-		/// Both right hand side and left hand side should be a vector
-		/// @param other The right hand side of cross product.
-		/// @return The cross product of current and right hand side vector.
-		/// \warning Works for 3x1 vector and 3xm m-vectors as right hand side.
-		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			CrossProduct(const AbstractMatrix<typeB>& other) const;
-		/// Cross-product operation for a vector.
-		/// Both right hand side and left hand side should be a vector
-		/// @param other The right hand side of cross product.
-		/// @return The cross product of current and right hand side vector.
-		/// \warning Works for 3x1 vector and 3xm m-vectors as right hand side.
-		template<typename typeB>
-		Matrix<typename Promote<Var, typeB>::type>
-			CrossProduct(const AbstractMatrixReadOnly<typeB>& other) const;
-		/// Computes dot product by summing up multiplication of entries with the
-		/// same indices in the current and the provided matrix.
-		/// @param other Provided matrix.
-		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type
-			DotProduct(const AbstractMatrix<typeB>& other) const
-		{
-			assert(Cols() == other.Cols());
-			assert(Rows() == other.Rows());
-			typename Promote<Var, typeB>::type ret = 0.0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret += get(i, j) * other.get(i, j);
-			return ret;
-		}
-		/// Computes dot product by summing up multiplication of entries with the
-		/// same indices in the current and the provided matrix.
-		/// @param other Provided matrix.
-		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type
-			DotProduct(const AbstractMatrixReadOnly<typeB>& other) const
-		{
-			assert(Cols() == other.Cols());
-			assert(Rows() == other.Rows());
-			typename Promote<Var, typeB>::type ret = 0.0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret += get(i, j) * other.compute(i, j);
-			return ret;
-		}
-		/// Computes dot product by summing up multiplication of entries with the
-		/// same indices in the current and the provided matrix.
-		/// @param other Provided matrix.
-		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type operator ^(const AbstractMatrix<typeB>& other) const
-		{
-			return DotProduct(other);
-		}
-		/// Computes dot product by summing up multiplication of entries with the
-		/// same indices in the current and the provided matrix.
-		/// @param other Provided matrix.
-		/// @return Dot product of two matrices.
-		template<typename typeB>
-		typename Promote<Var, typeB>::type operator ^(const AbstractMatrixReadOnly<typeB>& other) const
-		{
-			return DotProduct(other);
-		}
-		/// Computes frobenious norm of the matrix.
-		/// @return Frobenius norm of the matrix.
-		typename SelfPromote<Var>::type FrobeniusNorm() const
-		{
-			typename SelfPromote<Var>::type ret = 0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret += pow(get(i, j), 2);
-			return sqrt(ret);
-		}
-		/// Computes maximum absolute value of the matrix.
-		/// @return Maximum norm of the matrix.
-		Var MaxNorm() const
-		{
-			Var ret = 0;
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret = std::max<Var>(ret, get(i, j));
-			return ret;
-		}
-		/// Calculate sum of the diagonal elements of the matrix.
-		/// @return Trace of the matrix.
-		Var Trace() const
-		{
-			assert(Cols() == Rows());
-			Var ret = 0.0;
-			for (enumerator i = 0; i < Rows(); ++i) ret += get(i, i);
-			return ret;
-		}
-		/// Output matrix to screen.
-		/// Does not output derivatices.
-		/// @param threshold Elements smaller then the number are considered to be zero.
-		void Print(INMOST_DATA_REAL_TYPE threshold = 1.0e-10, std::ostream& sout = std::cout) const
-		{
-			for (enumerator k = 0; k < Rows(); ++k)
-			{
-				for (enumerator l = 0; l < Cols(); ++l)
-				{
-					//if (__isinf__(real_part(get_value((*this)(k, l)))))
-					//	sout << std::setw(12) << "inf";
-					//else if (std::isnan(get_value((*this)(k, l))))
-					//	sout << std::setw(12) << "nan";
-					//else 
-					if (fabs(get_value(compute(k, l))) > threshold)
-						sout << std::setw(12) << get_value(get(k, l));
-					else
-						sout << std::setw(12) << 0;
-					sout << " ";
-				}
-				sout << std::endl;
-			}
-		}
-		/// Check if the matrix is symmetric.
-		/// @return Returns true if the matrix is symmetric, otherwise false.
-		bool isSymmetric(INMOST_DATA_REAL_TYPE eps = 1.0e-7) const
-		{
-			if (Rows() != Cols()) return false;
-			for (enumerator k = 0; k < Rows(); ++k)
-			{
-				for (enumerator l = k + 1; l < Rows(); ++l)
-					if (fabs(get(k, l) - get(l, k)) > eps)
-						return false;
-			}
-			return true;
-		}
 		/// Maximum product transversal.
 		/// Computes unsymmetric reordering that maximizes product on diagonal.
 		/// Returns reordering matrix P and scaling matrix S that transforms matrix into I-dominant matrix.
@@ -1020,15 +899,6 @@ namespace INMOST
 		/// 1. Test rescaling.
 		/// 2. Test on non-square matrices.
 		void MPT(INMOST_DATA_ENUM_TYPE* Perm, INMOST_DATA_REAL_TYPE* SL = NULL, INMOST_DATA_REAL_TYPE* SR = NULL) const;
-		/// Retrieve number of indices of derivatives.
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const
-		{
-			INMOST_DATA_ENUM_TYPE cnt = 0;
-			for (INMOST_DATA_ENUM_TYPE i = 0; i < Rows(); ++i)
-				for (INMOST_DATA_ENUM_TYPE j = 0; j < Cols(); ++j)
-					cnt += GetCount(get(i, j));
-			return cnt;
-		}
 		/// Destructor
 		virtual ~AbstractMatrix() {};
 	};
@@ -1037,10 +907,12 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class SymmetricMatrix : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::get;
+		*/
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -1105,16 +977,13 @@ namespace INMOST
 			return A;
 		}
 		/// Construct a matrix with provided sizes and fills with value.
-		/// @param pn Number of rows.
-		/// @param pm Number of columns.
+		/// @param pn Number of rows and columns.
 		/// @param c Value to fill the matrix.
 		SymmetricMatrix(enumerator pn, const Var & c) : space(pn*(pn+1)/2,c), n(pn) {}
 		/// Copy matrix.
 		/// @param other Another matrix of the same type.
 		SymmetricMatrix(const SymmetricMatrix & other) : space(other.space), n(other.n)
 		{
-			//for(enumerator i = 0; i < n*m; ++i)
-			//	space[i] = other.space[i];
 		}
 		/// Construct matrix from matrix of different type.
 		/// Function assumes that the other matrix is square and symmetric.
@@ -1122,27 +991,13 @@ namespace INMOST
 		/// Uses assign function declared in inmost_expression.h.
 		/// Copies derivative information if possible.
 		/// @param other Another matrix of different type.
-		template<typename typeB>
-		SymmetricMatrix(const AbstractMatrixReadOnly<typeB> & other) : space(other.Rows()*(other.Rows()+1)/2), n(other.Rows())
-		{
-			assert(other.Rows() == other.Cols());
-			for(enumerator i = 0; i < n; ++i)
-				for(enumerator j = i; j < n; ++j)
-					assign((*this)(i,j),other.compute(i,j));
-		}
-		/// Construct matrix from matrix of different type.
-		/// Function assumes that the other matrix is square and symmetric.
-		/// Copies only top-right triangular part.
-		/// Uses assign function declared in inmost_expression.h.
-		/// Copies derivative information if possible.
-		/// @param other Another matrix of different type.
-		template<typename typeB>
-		SymmetricMatrix(const AbstractMatrix<typeB>& other) : space(other.Rows()* (other.Rows() + 1) / 2), n(other.Rows())
+		template<typename typeB, typename retB>
+		SymmetricMatrix(const AbstractMatrixReadOnly<typeB, retB> & other) : space(other.Rows()*(other.Rows()+1)/2), n(other.Rows())
 		{
 			assert(other.Rows() == other.Cols());
 			for (enumerator i = 0; i < n; ++i)
 				for (enumerator j = i; j < n; ++j)
-					assign((*this)(i, j), other.get(i, j));
+					assign(get(i, j), other.compute(i, j));
 		}
 		/// Delete matrix.
 		~SymmetricMatrix() {}
@@ -1157,6 +1012,13 @@ namespace INMOST
 			if( space.size() != (nrows+1)*nrows/2 )
 				space.resize((nrows+1)*nrows/2);
 			n = nrows;
+		}
+		/// Set all the elements of the matrix to zero.
+		void Zero()
+		{
+			for (enumerator i = 0; i < Rows(); ++i)
+				for (enumerator j = i; j < Cols(); ++j)
+					assign(get(i, j), 0.0);
 		}
 		/// Assign matrix of the same type.
 		/// @param other Another matrix of the same type.
@@ -1173,13 +1035,14 @@ namespace INMOST
 			}
 			return *this;
 		}
+		
 		/// Assign matrix of another type.
 		/// Function assumes that the other matrix is square and symmetric.
 		/// Copies only top-right triangular part.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
-		template<typename typeB>
-		SymmetricMatrix& operator =(AbstractMatrix<typeB> const& other)
+		template<typename typeB, typename retB>
+		SymmetricMatrix & operator =(AbstractMatrixReadOnly<typeB, retB> const & other)
 		{
 			assert(other.Rows() == other.Cols());
 			if (Rows() != other.Rows())
@@ -1187,36 +1050,19 @@ namespace INMOST
 			n = other.Rows();
 			for (enumerator i = 0; i < other.Rows(); ++i)
 				for (enumerator j = i; j < other.Cols(); ++j)
-					assign((*this)(i, j), other.get(i, j));
-			return *this;
-		}
-		/// Assign matrix of another type.
-		/// Function assumes that the other matrix is square and symmetric.
-		/// Copies only top-right triangular part.
-		/// @param other Another matrix of different type.
-		/// @return Reference to matrix.
-		template<typename typeB>
-		SymmetricMatrix & operator =(AbstractMatrixReadOnly<typeB> const & other)
-		{
-			assert(other.Rows() == other.Cols());
-			if (Rows() != other.Rows())
-				space.resize((other.Rows() + 1) * other.Rows() / 2);
-			n = other.Rows();
-			for (enumerator i = 0; i < other.Rows(); ++i)
-				for (enumerator j = i; j < other.Cols(); ++j)
-					assign((*this)(i, j), other.compute(i, j));
+					assign(get(i, j), other.compute(i, j));
 			return *this;
 		}
 		/// Access element of the matrix by row and column indices.
 		/// @param i Column index.
 		/// @param j Row index.
-		/// @return Reference to element.
-		__INLINE Var & operator()(enumerator i, enumerator j)
+		/// @return Reference to const element.
+		__INLINE Var& get(enumerator i, enumerator j)
 		{
 			assert(i < n);
 			assert(j < n);
-			if( i > j ) std::swap(i,j);
-			return space[j+n*i-i*(i+1)/2];
+			if (i > j) std::swap(i, j);
+			return space[j + n * i - i * (i + 1) / 2];
 		}
 		/// Access element of the matrix by row and column indices.
 		/// @param i Column index.
@@ -1229,19 +1075,6 @@ namespace INMOST
 			if (i > j) std::swap(i, j);
 			return space[j + n * i - i * (i + 1) / 2];
 		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Column index.
-		/// @param j Row index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			assert(i < n);
-			assert(j < n);
-			if( i > j ) std::swap(i,j);
-			return space[j+n*i-i*(i+1)/2];
-		}
-		
 		/// Return raw pointer to matrix data, stored in row-wise format.
 		/// @return Pointer to data.
 		__INLINE Var * data() {return space.data();}
@@ -1257,10 +1090,11 @@ namespace INMOST
 		__INLINE enumerator Cols() const {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of rows.
-		__INLINE enumerator & Rows() {return n;}
+		//__INLINE enumerator & Rows() {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
-		__INLINE enumerator & Cols() {return n;}
+		//__INLINE enumerator & Cols() {return n;}
+
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -1281,7 +1115,7 @@ namespace INMOST
 		/// @return Matrix of the tensor of size matsize by matsize.
 		static SymmetricMatrix<Var> FromTensor(const Var * K, enumerator size, enumerator matsize = 3)
 		{
-			SymmetricMatrix<Var> Kc(matsize,matsize);
+			SymmetricMatrix<Var> Kc(matsize);
 			if( matsize == 1 )
 			{
 				assert(size == 1);
@@ -1398,13 +1232,16 @@ namespace INMOST
 		/// @param pn Number of rows and columns in the matrix.
 		/// @param c Value to put onto diagonal.
 		/// @return Returns a unit matrix.
+		/*
 		static SymmetricMatrix<Var> Unit(enumerator pn, const Var & c = 1.0)
 		{
-			SymmetricMatrix<Var> ret(pn,0.0);
+			SymmetricMatrix<Var> ret(pn);
+			ret.Zero();
 			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
 			return ret;
 		}
-		
+		*/
+
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
 		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
 		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
@@ -1457,10 +1294,12 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class Matrix : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::get;
+		*/
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -1476,7 +1315,7 @@ namespace INMOST
 			for(enumerator k = row+1; k < n; ++k)
 			{
 				for(enumerator l = 0; l < m; ++l)
-					(*this)(k-1,l) = (*this)(k,l);
+					get(k-1,l) = get(k,l);
 			}
 			space.resize((n-1)*m);
 			--n;
@@ -1495,7 +1334,7 @@ namespace INMOST
 			for(enumerator k = last; k < n; ++k)
 			{
 				for(enumerator l = 0; l < m; ++l)
-					(*this)(k-shift,l) = (*this)(k,l);
+					get(k-shift,l) = get(k,l);
 			}
 			space.resize((n-shift)*m);
 			n-=shift;
@@ -1509,9 +1348,9 @@ namespace INMOST
 			for(enumerator k = 0; k < n; ++k)
 			{
 				for(enumerator l = 0; l < col; ++l)
-					tmp(k,l) = (*this)(k,l);
+					tmp(k,l) = get(k,l);
 				for(enumerator l = col+1; l < m; ++l)
-					tmp(k,l-1) = (*this)(k,l);
+					tmp(k,l-1) = get(k,l);
 			}
 			this->Swap(tmp);
 		}
@@ -1530,9 +1369,9 @@ namespace INMOST
 			for(enumerator k = 0; k < n; ++k)
 			{
 				for(enumerator l = 0; l < first; ++l)
-					tmp(k,l) = (*this)(k,l);
+					tmp(k,l) = get(k,l);
 				for(enumerator l = last; l < m; ++l)
-					tmp(k,l-shift) = (*this)(k,l);
+					tmp(k,l-shift) = get(k,l);
 			}
 			this->Swap(tmp);
 		}
@@ -1549,16 +1388,16 @@ namespace INMOST
 			for(enumerator k = 0; k < firstrow; ++k)
 			{
 				for(enumerator l = 0; l < firstcol; ++l)
-					tmp(k,l) = (*this)(k,l);
+					tmp(k,l) = get(k,l);
 				for(enumerator l = lastcol; l < m; ++l)
-					tmp(k,l-shiftcol) = (*this)(k,l);
+					tmp(k,l-shiftcol) = get(k,l);
 			}
 			for(enumerator k = lastrow; k < n; ++k)
 			{
 				for(enumerator l = 0; l < firstcol; ++l)
-					tmp(k-shiftrow,l) = (*this)(k,l);
+					tmp(k-shiftrow,l) = get(k,l);
 				for(enumerator l = lastcol; l < m; ++l)
-					tmp(k-shiftrow,l-shiftcol) = (*this)(k,l);
+					tmp(k-shiftrow,l-shiftcol) = get(k,l);
 			}
 			this->Swap(tmp);
 		}
@@ -1631,31 +1470,31 @@ namespace INMOST
 		/// @param other Another matrix of the same type.
 		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
 		{
-			//for(enumerator i = 0; i < n*m; ++i)
-			//	space[i] = other.space[i];
 		}
 		/// Construct matrix from matrix of different type.
 		/// Uses assign function declared in inmost_expression.h.
 		/// Copies derivative information if possible.
 		/// @param other Another matrix of different type.
-		template<typename typeB>
-		Matrix(const AbstractMatrixReadOnly<typeB> & other) : space(other.Cols()*other.Rows()), n(other.Rows()), m(other.Cols())
+		template<typename typeB, typename retB>
+		Matrix(const AbstractMatrixReadOnly<typeB, retB> & other) : space(other.Cols()*other.Rows()), n(other.Rows()), m(other.Cols())
 		{
 			for(enumerator i = 0; i < n; ++i)
 				for(enumerator j = 0; j < m; ++j)
-					assign((*this)(i,j),other.compute(i,j));
+					assign(get(i,j),other.compute(i,j));
 		}
 		/// Construct matrix from matrix of different type.
 		/// Uses assign function declared in inmost_expression.h.
 		/// Copies derivative information if possible.
 		/// @param other Another matrix of different type.
+		/*
 		template<typename typeB>
 		Matrix(const AbstractMatrix<typeB>& other) : space(other.Cols()* other.Rows()), n(other.Rows()), m(other.Cols())
 		{
 			for (enumerator i = 0; i < n; ++i)
 				for (enumerator j = 0; j < m; ++j)
-					assign((*this)(i, j), other.get(i, j));
+					assign(get(i, j), other.get(i, j));
 		}
+		*/
 		/// Delete matrix.
 		~Matrix() {}
 		/// Resize the matrix into different size.
@@ -1687,8 +1526,8 @@ namespace INMOST
 		/// Assign matrix of another type.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
-		template<typename typeB>
-		Matrix & operator =(AbstractMatrixReadOnly<typeB> const & other)
+		template<typename typeB, typename retB>
+		Matrix & operator =(AbstractMatrixReadOnly<typeB, retB> const & other)
 		{
 			if( Cols()*Rows() != other.Cols()*other.Rows() )
 				space.resize(other.Cols()*other.Rows());
@@ -1696,12 +1535,13 @@ namespace INMOST
 			m = other.Cols();
 			for(enumerator i = 0; i < other.Rows(); ++i)
 				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other.compute(i,j));
+					assign(get(i,j),other.compute(i,j));
 			return *this;
 		}
 		/// Assign matrix of another type.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
+		/*
 		template<typename typeB>
 		Matrix& operator =(AbstractMatrix<typeB> const& other)
 		{
@@ -1711,30 +1551,21 @@ namespace INMOST
 			m = other.Cols();
 			for (enumerator i = 0; i < other.Rows(); ++i)
 				for (enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i, j), other.get(i, j));
+					assign(get(i, j), other.get(i, j));
 			return *this;
 		}
-		/// Access element of the matrix by row and column indices.
+		*/
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
 		/// @param i Column index.
 		/// @param j Row index.
-		/// @return Reference to element.
-		__INLINE Var & operator()(enumerator i, enumerator j)
+		/// @return Reference to constant element.
+		__INLINE Var& get(enumerator i, enumerator j)
 		{
 			assert(i < n);
 			assert(j < m);
-			assert(i*m+j < n*m); //overflow check?
-			return space[i*m+j];
-		}
-		/// Access element of the matrix by row and column indices.
-		/// @param i Column index.
-		/// @param j Row index.
-		/// @return Element copy.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			assert(i < n);
-			assert(j < m);
-			assert(i*m+j < n*m); //overflow check?
-			return space[i*m+j];
+			assert(i * m + j < n * m); //overflow check?
+			return space[i * m + j];
 		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -1763,10 +1594,11 @@ namespace INMOST
 		__INLINE enumerator Cols() const {return m;}
 		/// Obtain number of rows.
 		/// @return Reference to number of rows.
-		__INLINE enumerator & Rows() {return n;}
+		//__INLINE enumerator & Rows() {return n;}
 		/// Obtain number of rows.
 		/// @return Reference to number of columns.
-		__INLINE enumerator & Cols() {return m;}
+		//__INLINE enumerator & Cols() {return m;}
+
 		/// Construct row permutation matrix from array of new positions for rows.
 		/// Row permutation matrix multiplies matrix from left.
 		/// Column permutation matrix is obtained by transposition and is multiplied
@@ -1980,12 +1812,6 @@ namespace INMOST
 		static MatrixUnit<Var> Unit(enumerator pn, const Var & c = 1.0)
 		{
 			return MatrixUnit<Var>(pn, c);
-			/*
-			Matrix<Var> ret(pn,pn);
-			ret.Zero();
-			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
-			return ret;
-			*/
 		}
 		/// Matix with 1 row, Create a matrix of size 1 by pn and
 		/// fills it with c.
@@ -2106,11 +1932,13 @@ namespace INMOST
 	template<typename Var>
 	class SubMatrix : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::operator =;
 		using AbstractMatrix<Var>::get;
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		AbstractMatrix<Var> * M;
 		enumerator brow; //< First row in matrix M.
@@ -2133,68 +1961,6 @@ namespace INMOST
 		SubMatrix(AbstractMatrix<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
 		{}
 		SubMatrix(const SubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
-		/// Assign matrix of another type to submatrix.
-		/// @param other Another matrix of different type.
-		/// @return Reference to current submatrix.
-		template<typename typeB>
-		SubMatrix& operator =(AbstractMatrixReadOnly<typeB> const& other)
-		{
-			assert(Cols() == other.Cols());
-			assert(Rows() == other.Rows());
-			for (enumerator i = 0; i < other.Rows(); ++i)
-				for (enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i, j), other.compute(i, j));
-			return *this;
-		}
-		/// Assign matrix of another type to submatrix.
-		/// @param other Another matrix of different type.
-		/// @return Reference to current submatrix.
-		template<typename typeB>
-		SubMatrix & operator =(AbstractMatrix<typeB> const & other)
-		{
-			assert( Cols() == other.Cols() );
-			assert( Rows() == other.Rows() );
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other.get(i,j));
-			return *this;
-		}
-		/// Assign submatrix of another type to submatrix.
-		/// @param other Another submatrix of different type.
-		/// @return Reference to current submatrix.
-		template<typename typeB>
-		SubMatrix & operator =(SubMatrix<typeB> const & other)
-		{
-			assert( Cols() == other.Cols() );
-			assert( Rows() == other.Rows() );
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign((*this)(i,j),other.get(i,j));
-			return *this;
-		}
-		/// Access element of the matrix by row and column indices.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to element.
-		__INLINE Var & operator()(enumerator i, enumerator j)
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
-			return (*M)(i+brow,j+bcol);
-		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Element copy.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
-			return (*M)(i+brow,j+bcol);
-		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
@@ -2207,18 +1973,17 @@ namespace INMOST
 			assert(i * Cols() + j < Rows()* Cols()); //overflow check?
 			return M->get(i + brow, j + bcol);
 		}
-		/// Convert submatrix into matrix.
-		/// Note, that modifying returned matrix does
-		/// not affect elements of the submatrix or original matrix
-		/// used to create submatrix.
-		/// @return Matrix with same entries as submatrix.
-		::INMOST::Matrix<Var> MakeMatrix()
+		/// Access element of the matrix by row and column indices
+		/// without right to change the element.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to const element.
+		__INLINE Var& get(enumerator i, enumerator j)
 		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j);
-			return ret;
+			assert(i < Rows());
+			assert(j < Cols());
+			assert(i * Cols() + j < Rows() * Cols()); //overflow check?
+			return M->get(i + brow, j + bcol);
 		}
 		/// This is a stub function to fulfill abstract
 		/// inheritance. SubMatrix cannot change it's size,
@@ -2228,105 +1993,21 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
             (void)cols; (void)rows;
+			throw Impossible;
 		}
 	};
 
 	/// This class allows for in-place operations on submatrix of the matrix elements.
-	template<typename Var>
-	class SubMatrixConst : public AbstractMatrix<Var>
+	template<typename Var, typename Ret>
+	class AbstractSubMatrix : public AbstractMatrixReadOnly<Var, Ret>
 	{
+		/*
 	public:
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::operator =;
-		using AbstractMatrix<Var>::get;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, Ret>::compute;
+		typedef typename AbstractMatrixReadOnly<Var, Ret>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		const AbstractMatrix<Var>* M;
-		enumerator brow; //< First row in matrix M.
-		enumerator erow; //< Last row in matrix M.
-		enumerator bcol; //< First column in matrix M.
-		enumerator ecol; //< Last column in matrix M.
-	public:
-		/// Number of rows in submatrix.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return erow - brow; }
-		/// Number of columns in submatrix.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return ecol - bcol; }
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param first_row First row in the matrix.
-		/// @param last_row Last row in the matrix.
-		/// @param first_column First column in the matrix.
-		/// @param last_column Last column in the matrix.
-		SubMatrixConst(const AbstractMatrix<Var>& rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
-		{}
-		SubMatrixConst(const SubMatrixConst& b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
-		/// Access element of the matrix by row and column indices.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to element.
-		__INLINE Var& operator()(enumerator i, enumerator j)
-		{
-			throw Impossible;
-		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Element copy.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			assert(i * Cols() + j < Rows() * Cols()); //overflow check?
-			return (*M)(i + brow, j + bcol);
-		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to const element.
-		__INLINE const Var& get(enumerator i, enumerator j) const
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			assert(i * Cols() + j < Rows() * Cols()); //overflow check?
-			return M->get(i + brow, j + bcol);
-		}
-		/// Convert submatrix into matrix.
-		/// Note, that modifying returned matrix does
-		/// not affect elements of the submatrix or original matrix
-		/// used to create submatrix.
-		/// @return Matrix with same entries as submatrix.
-		::INMOST::Matrix<Var> MakeMatrix()
-		{
-			::INMOST::Matrix<Var> ret(Rows(), Cols());
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					ret(i, j) = (*this)(i, j);
-			return ret;
-		}
-		/// This is a stub function to fulfill abstract
-		/// inheritance. SubMatrix cannot change it's size,
-		/// since it just points to a part of the original matrix.
-		void Resize(enumerator rows, enumerator cols)
-		{
-			assert(Cols() == cols);
-			assert(Rows() == rows);
-			(void)cols; (void)rows;
-		}
-	};
-	
-	/// This class allows for in-place operations on submatrix of the matrix elements.
-	template<typename Var>
-	class ConstSubMatrix : public AbstractMatrixReadOnly<Var>
-	{
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		const AbstractMatrixReadOnly<Var> * M;
+		const AbstractMatrixReadOnly<Var, Ret> * M;
 		enumerator brow; //< First row in matrix M.
 		enumerator erow; //< Last row in matrix M.
 		enumerator bcol; //< First column in matrix M.
@@ -2344,47 +2025,34 @@ namespace INMOST
 		/// @param last_row Last row in the matrix.
 		/// @param first_column First column in the matrix.
 		/// @param last_column Last column in the matrix.
-		ConstSubMatrix(const AbstractMatrixReadOnly<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
+		AbstractSubMatrix(const AbstractMatrixReadOnly<Var, Ret> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
 		{}
-		ConstSubMatrix(const ConstSubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
-		
+		AbstractSubMatrix(const AbstractSubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
+		__INLINE Ret compute(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
 			assert(i*Cols()+j < Rows()*Cols()); //overflow check?
 			return M->compute(i+brow,j+bcol);
 		}
-		/// Convert submatrix into matrix.
-		/// Note, that modifying returned matrix does
-		/// not affect elements of the submatrix or original matrix
-		/// used to create submatrix.
-		/// @return Matrix with same entries as submatrix.
-		::INMOST::Matrix<Var> MakeMatrix()
-		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j);
-			return ret;
-		}
 	};
 	
 	/// This class allows to address a matrix as a block of an empty matrix of larger size.
-	template<typename Var>
-	class BlockOfMatrix : public AbstractMatrix<Var>
+	template<typename Var, typename Ret>
+	class AbstractBlockOfMatrix : public AbstractMatrixReadOnly<Var, typename Op1<typename remove_cvref<Ret>::type,branch_zero_expression>::type >
 	{
+		/*
 	public:
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::operator =;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, typename Op1<Ret, branch_zero_expression>::type >::compute;
+		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Ret, branch_zero_expression>::type >::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		AbstractMatrix<Var> * M;
+		const AbstractMatrixReadOnly<Var,Ret> * M;
 		enumerator nrows; //< Number of rows in larger matrix.
 		enumerator ncols; //< Number of colums in larger matrix.
 		enumerator orow; //< Row offset in larger matrix.
@@ -2402,170 +2070,34 @@ namespace INMOST
 		/// @param num_cols Number of columns in the larger matrix.
 		/// @param first_row Offset for row index in the larger matrix.
 		/// @param first_column Offset for column index in the larger matrix.
-		BlockOfMatrix(AbstractMatrix<Var> & rM, enumerator num_rows, enumerator num_cols, enumerator offset_row, enumerator offset_col) : M(&rM), nrows(num_rows), ncols(num_cols), orow(offset_row), ocol(offset_col)
+		AbstractBlockOfMatrix(const AbstractMatrixReadOnly<Var,Ret> & rM, enumerator num_rows, enumerator num_cols, enumerator offset_row, enumerator offset_col) : M(&rM), nrows(num_rows), ncols(num_cols), orow(offset_row), ocol(offset_col)
 		{}
-		BlockOfMatrix(const BlockOfMatrix & b) : M(b.M), nrows(b.nrows), ncols(b.ncols), orow(b.orow), ocol(b.ocol) {}
-		/// Assign matrix of another type to the block of matrix.
-		/// \warning Only part of the matrix related to non-empty block is copied, other entries are ignored.
-		/// @param other Another matrix of different type.
-		/// @return Reference to current submatrix.
-		template<typename typeB>
-		BlockOfMatrix & operator =(AbstractMatrix<typeB> const & other)
-		{
-			assert( Cols() == other.Cols() );
-			assert( Rows() == other.Rows() );
-			for(enumerator i = orow; i < orow+M->Rows(); ++i)
-				for(enumerator j = ocol; j < ocol+M->Cols(); ++j)
-					assign((*M)(i-orow,j-ocol),other(i,j));
-			return *this;
-		}
-		/// Assign matrix of another type to the block of matrix.
-		/// \warning Only part of the matrix related to non-empty block is copied, other entries are ignored.
-		/// @return Reference to current submatrix.
-		template<typename typeB>
-		BlockOfMatrix & operator =(BlockOfMatrix<typeB> const & other)
-		{
-			assert( Cols() == other.Cols() );
-			assert( Rows() == other.Rows() );
-			for(enumerator i = orow; i < orow+M->Rows(); ++i)
-				for(enumerator j = ocol; j < ocol+M->Cols(); ++j)
-					assign((*M)(i-orow,j-ocol),other(i,j));
-			return *this;
-		}
-		/// Access element of the matrix by row and column indices.
-		/// @param i Column index.
-		/// @param j Row index.
-		/// @return Reference to element.
-		__INLINE Var & operator()(enumerator i, enumerator j)
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
-			{
-				static Var zero(0.0);
-				assert(zero == 0.0);
-				return zero;
-			}
-			else
-				return (*M)(i-orow,j-ocol);
-		}
+		AbstractBlockOfMatrix(const AbstractBlockOfMatrix & b) : M(b.M), nrows(b.nrows), ncols(b.ncols), orow(b.orow), ocol(b.ocol) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
+		__INLINE typename Op1<typename remove_cvref<Ret>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
-			if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
-				return Var(0.0);
-			else
-				return M->compute(i-orow,j-ocol);
+			return cond_zero(!(i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols()), M->compute(i - orow, j - ocol));
+			//if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
+			//	return Var(0.0);
+			//else
+			//	return M->compute(i-orow,j-ocol);
 		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// If indices are out of block matrix bounds, assert will fire in Debug mode.
-		/// In Release mode this check is omitted.
-		/// @param i Column index.
-		/// @param j Row index.
-		/// @return Reference to constant element.
-		__INLINE const Var & get(enumerator i, enumerator j) const
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			assert(! (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols()) );
-			return M->get(i-orow,j-ocol);
-		}
-		/// Convert block of matrix into matrix.
-		/// Note, that modifying returned matrix does
-		/// not affect elements of the matrix or original matrix
-		/// used to create block of matrix.
-		/// @return Matrix with same entries as block of matrix including empty elements.
-		::INMOST::Matrix<Var> MakeMatrix()
-		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j);
-			return ret;
-		}
-		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
-		/// since it just points to a part of the larger empty matrix.
-		void Resize(enumerator rows, enumerator cols)
-		{
-			assert(Cols() == cols);
-			assert(Rows() == rows);
-            (void)cols; (void)rows;
-		}
-	};
-	
-	/// This class allows to address a matrix as a block of an empty matrix of larger size.
-	template<typename Var>
-	class ConstBlockOfMatrix : public AbstractMatrixReadOnly<Var>
-	{
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		const AbstractMatrixReadOnly<Var> * M;
-		enumerator nrows; //< Number of rows in larger matrix.
-		enumerator ncols; //< Number of colums in larger matrix.
-		enumerator orow; //< Row offset in larger matrix.
-		enumerator ocol; //< Column offset in larger matrix.
-	public:
-		/// Number of rows in submatrix.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const {return nrows;}
-		/// Number of columns in submatrix.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const {return ncols;}
-		/// Create submatrix for a matrix.
-		/// @param rM Reference to the matrix that stores elements.
-		/// @param num_rows Number of rows in the larger matrix.
-		/// @param num_cols Number of columns in the larger matrix.
-		/// @param first_row Offset for row index in the larger matrix.
-		/// @param first_column Offset for column index in the larger matrix.
-		ConstBlockOfMatrix(const AbstractMatrixReadOnly<Var> & rM, enumerator num_rows, enumerator num_cols, enumerator offset_row, enumerator offset_col) : M(&rM), nrows(num_rows), ncols(num_cols), orow(offset_row), ocol(offset_col)
-		{}
-		ConstBlockOfMatrix(const ConstBlockOfMatrix & b) : M(b.M), nrows(b.nrows), ncols(b.ncols), orow(b.orow), ocol(b.ocol) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Column index.
-		/// @param j Row index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			assert(i < Rows());
-			assert(j < Cols());
-			if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
-				return Var(0.0);
-			else
-				return M->compute(i-orow,j-ocol);
-		}
-		/// Convert block of matrix into matrix.
-		/// Note, that modifying returned matrix does
-		/// not affect elements of the matrix or original matrix
-		/// used to create block of matrix.
-		/// @return Matrix with same entries as block of matrix including empty elements.
-		::INMOST::Matrix<Var> MakeMatrix()
-		{
-			::INMOST::Matrix<Var> ret(Rows(),Cols());
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret(i,j) = (*this)(i,j);
-			return ret;
-		}
-
 	};
 
 	template<typename Var>
-	class MatrixUnit : public AbstractMatrixReadOnly< Var >
+	class MatrixUnit : public AbstractMatrixReadOnly< Var, typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::compute;
+		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2578,19 +2110,21 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var compute(enumerator i, enumerator j) const 
+		__INLINE typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return i == j ? c : Var(0.0); 
+			return cond_zero(i == j, c);
+			//return i == j ? c : Var(0.0); 
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
 	};
 
 	template<typename Var>
-	class MatrixRow : public AbstractMatrixReadOnly< Var >
+	class MatrixRow : public AbstractMatrixReadOnly< Var, const Var & >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, const Var &>::compute;
+		typedef typename AbstractMatrixReadOnly<Var, const Var &>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2603,16 +2137,17 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var compute(enumerator i, enumerator j) const { return c; }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
+		__INLINE const Var & compute(enumerator i, enumerator j) const { return c; }
 	};
 
 	template<typename Var>
-	class MatrixCol : public AbstractMatrixReadOnly< Var >
+	class MatrixCol : public AbstractMatrixReadOnly< Var, const Var & >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, const Var &>::compute;
+		typedef typename AbstractMatrixReadOnly<Var, const Var &>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2625,16 +2160,17 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return 1; }
-		__INLINE Var compute(enumerator i, enumerator j) const { return c; }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return GetCount(c); }
+		__INLINE const Var & compute(enumerator i, enumerator j) const { return c; }
 	};
 
 	template<typename Var>
-	class MatrixDiag : public AbstractMatrixReadOnly< Var >
+	class MatrixDiag : public AbstractMatrixReadOnly< Var, typename Op1<typename remove_cvref<Var>::type,branch_zero_expression>::type >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::compute;
+		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		enumerator n;
 		Var* diag;
@@ -2647,29 +2183,24 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE Var compute(enumerator i, enumerator j) const 
+		__INLINE typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return i == j ? diag[i] : Var(0.0); 
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const 
-		{ 
-			INMOST_DATA_ENUM_TYPE cnt = 0;
-			for (enumerator k = 0; k < n; ++k)
-				cnt += GetCount(diag[k]);
-			return cnt; 
+			return cond_zero(i == j, diag[i]);
+			//return i == j ? diag[i] : Var(0.0); 
 		}
 	};
 
-	template<typename VarA, typename VarB>
-	class MatrixSum : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class MatrixSum : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,addition_expression>::type >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::compute;
-		typedef typename AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type >::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, addition_expression>::type >::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, addition_expression>::type>::compute;
+		*/
 	private:
-		//static thread_private< typename Promote<VarA, VarB>::type > tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const AbstractMatrixReadOnly<VarB>* B;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2677,7 +2208,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixSum(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		MatrixSum(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
 			: A(&rA), B(&rB) 
 		{
 			assert(A->Rows() == B->Rows());
@@ -2689,25 +2220,25 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, addition_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return A->compute(i,j) + B->compute(i,j);
+			return add(A->compute(i, j), B->compute(i, j));
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 	//template<typename VarA, typename VarB>
 	//thread_private< typename Promote<VarA, VarB>::type > MatrixSum<VarA,VarB>::tmp;
 
-	template<typename VarA, typename VarB>
-	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,subtraction_expression>::type >
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::compute;
-		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, subtraction_expression>::type>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, subtraction_expression>::type >::operator();
+		*/
 	private:
-		//static thread_private< typename Promote<VarA, VarB>::type > tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const AbstractMatrixReadOnly<VarB>* B;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2715,7 +2246,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixDifference(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		MatrixDifference(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
 			: A(&rA), B(&rB)
 		{
 			assert(A->Rows() == B->Rows());
@@ -2727,23 +2258,22 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, subtraction_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return A->compute(i, j) - B->compute(i, j);
+			return sub(A->compute(i, j), B->compute(i, j));
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
-	//template<typename VarA, typename VarB>
-	//thread_private< typename Promote<VarA, VarB>::type > MatrixDifference<VarA, VarB>::tmp;
 
-	template<typename Var>
-	class ConstMatrixTranspose : public AbstractMatrixReadOnly<Var>
+	template<typename Var, typename Ret>
+	class AbstractMatrixTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		typedef typename AbstractMatrixReadOnly<Var, Ret>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, Ret>::compute;
+		*/
 	private:
-		const AbstractMatrixReadOnly<Var>* A;
+		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2751,27 +2281,27 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Rows(); }
-		ConstMatrixTranspose(const AbstractMatrixReadOnly<Var>& rA)
+		AbstractMatrixTranspose(const AbstractMatrixReadOnly<Var, Ret>& rA)
 			: A(&rA) {}
-		ConstMatrixTranspose(const ConstMatrixTranspose& b) : A(b.A) {}
+		AbstractMatrixTranspose(const AbstractMatrixTranspose& b) : A(b.A) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const { return A->compute(j, i); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
+		__INLINE Ret compute(enumerator i, enumerator j) const { return A->compute(j, i); }
 	};
 
-	template<typename Var>
-	class ConstMatrixConjugateTranspose : public AbstractMatrixReadOnly<Var>
+	template<typename Var, typename Ret>
+	class AbstractMatrixConjugateTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var, Ret>::compute;
+		typedef typename AbstractMatrixReadOnly<Var,Ret>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		const AbstractMatrixReadOnly<Var>* A;
-		//static thread_private<Var> tmp;
+		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2779,29 +2309,27 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Rows(); }
-		ConstMatrixConjugateTranspose(const AbstractMatrixReadOnly<Var>& rA)
+		AbstractMatrixConjugateTranspose(const AbstractMatrixReadOnly<Var, Ret>& rA)
 			: A(&rA) {}
-		ConstMatrixConjugateTranspose(const ConstMatrixConjugateTranspose& b) : A(b.A) {}
+		AbstractMatrixConjugateTranspose(const AbstractMatrixConjugateTranspose& b) : A(b.A) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const { return conj(A->compute(j, i)); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
+		__INLINE Ret compute(enumerator i, enumerator j) const { return conj(A->compute(j, i)); }
 	};
-	//template<typename Var>
-	//thread_private<Var> ConstMatrixConjugateTranspose<Var>::tmp;
-
-	template<typename Var>
-	class ConstMatrixConjugate : public AbstractMatrixReadOnly<Var>
+	
+	template<typename Var, typename Ret>
+	class AbstractMatrixConjugate : public AbstractMatrixReadOnly<Var,Ret>
 	{
+		/*
 	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		using AbstractMatrixReadOnly<Var,Ret>::compute;
+		typedef typename AbstractMatrixReadOnly<Var,Ret>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		const AbstractMatrixReadOnly<Var>* A;
-		//static thread_private<Var> tmp;
+		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2809,29 +2337,30 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		ConstMatrixConjugate(const AbstractMatrixReadOnly<Var>& rA)
+		AbstractMatrixConjugate(const AbstractMatrixReadOnly<Var,Ret>& rA)
 			: A(&rA) {}
-		ConstMatrixConjugate(const ConstMatrixConjugate& b) : A(b.A) {}
+		AbstractMatrixConjugate(const AbstractMatrixConjugate& b) : A(b.A) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const { return conj(A->compute(i, j)); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
+		__INLINE Ret compute(enumerator i, enumerator j) const { return conj(A->compute(i, j)); }
 	};
 	//template<typename Var>
 	//thread_private<Var> ConstMatrixConjugate<Var>::tmp;
 
-	template<typename Var>
-	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var>
+	template<typename Var, typename Ret>
+	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var, typename Op1<typename remove_cvref<Ret>::type,unary_minus_expression>::type >
 	{
+		/*
 	public:
 		using AbstractMatrixReadOnly<Var>::compute;
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		//static thread_private<Var> tmp;
-		const AbstractMatrixReadOnly<Var>* A;
+		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2839,7 +2368,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixUnaryMinus(const AbstractMatrixReadOnly<Var>& rA)
+		MatrixUnaryMinus(const AbstractMatrixReadOnly<Var, Ret>& rA)
 			: A(&rA) {}
 		MatrixUnaryMinus(const MatrixUnaryMinus& b) : A(b.A) {}
 		/// Access element of the matrix by row and column indices
@@ -2847,8 +2376,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
+		__INLINE typename Op1<typename remove_cvref<Ret>::type, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
 	};
 	//template<typename Var>
 	//thread_private<Var> MatrixUnaryMinus<Var>::tmp;
@@ -2856,11 +2384,13 @@ namespace INMOST
 	template<typename Var>
 	class MatrixTranspose : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		using AbstractMatrix<Var>::operator ();
 		using AbstractMatrix<Var>::get;
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		*/
 		AbstractMatrix<Var>* A;
 	public:
 		/// Number of rows.
@@ -2877,74 +2407,36 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const { return A->compute(j, i); }
+		__INLINE const Var & get(enumerator i, enumerator j) const { return A->get(j, i); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to element.
-		__INLINE Var& operator()(enumerator i, enumerator j) { return (*A)(j, i); }
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to element.
-		__INLINE const Var& get(enumerator i, enumerator j) const { return A->get(j, i); }
+		__INLINE Var& get(enumerator i, enumerator j) { return A->get(j, i); }
 		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// inheritance. 
 		/// since it just points to a part of the larger empty matrix.
 		void Resize(enumerator rows, enumerator cols)
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
+			throw Impossible;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
-	template<typename Var>
-	class ConstMatrixConcatRows : public AbstractMatrixReadOnly<Var>
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class AbstractMatrixConcatRows : public AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,branch_expression>::type >
 	{
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		const AbstractMatrixReadOnly<Var>* A;
-		const AbstractMatrixReadOnly<Var>* B;
-	public:
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows() + B->Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols(); }
-		ConstMatrixConcatRows(const AbstractMatrixReadOnly<Var>& rA, const AbstractMatrixReadOnly<Var>& rB)
-			: A(&rA), B(&rB) {
-			assert(A->Cols() == B->Cols());
-		}
-		ConstMatrixConcatRows(const ConstMatrixConcatRows& b) : A(b.A), B(b.B) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			return i < A->Rows() ? A->compute(i, j) : B->compute(i - A->Rows(), j);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
-	};
-
-	template<typename VarA, typename VarB, typename VarR>
-	class ConstMatrixConcatRows2 : public AbstractMatrixReadOnly<VarR>
-	{
+		/*
 	public:
 		using AbstractMatrixReadOnly<VarR>::compute;
 		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const AbstractMatrixReadOnly<VarB>* B;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2952,34 +2444,31 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		ConstMatrixConcatRows2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
-			: A(&rA), B(&rB) {
+		AbstractMatrixConcatRows(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
+			: A(&rA), B(&rB) 
+		{
 			assert(A->Cols() == B->Cols());
 		}
-		ConstMatrixConcatRows2(const ConstMatrixConcatRows2& b) : A(b.A), B(b.B) {}
+		AbstractMatrixConcatRows(const AbstractMatrixConcatRows& b) : A(b.A), B(b.B) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type compute(enumerator i, enumerator j) const
 		{
-			if (i < A->Rows())
-				return A->compute(i, j);
-			else
-				return B->compute(i - A->Rows(), j);
+			return cond_both(i < A->Rows(), A->compute(i, j), B->compute(i - A->Rows(), j));
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> ConstMatrixConcatRows2<VarA, VarB, VarR>::tmp;
-
+	
 	template<typename Var>
 	class MatrixConcatRows : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		using AbstractMatrix<Var>::operator();
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
@@ -2997,19 +2486,10 @@ namespace INMOST
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const 
-		{ 
-			return i < A->Rows() ? A->compute(i, j) : B->compute(i - A->Rows(), j);
-		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
 		/// @return Reference to element.
-		__INLINE Var& operator()(enumerator i, enumerator j)  
+		__INLINE Var& get(enumerator i, enumerator j)  
 		{ 
-			return i < A->Rows() ? (*A)(i, j) : (*B)(i - A->Rows(), j);
+			return i < A->Rows() ? A->get(i, j) : B->get(i - A->Rows(), j);
 		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -3021,60 +2501,29 @@ namespace INMOST
 			return i < A->Rows() ? A->get(i, j) : B->get(i - A->Rows(), j);
 		}
 		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// inheritance. 
 		/// since it just points to a part of the larger empty matrix.
 		void Resize(enumerator rows, enumerator cols)
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
+			throw Impossible;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
-	template<typename Var>
-	class ConstMatrixConcatCols : public AbstractMatrixReadOnly<Var>
+	
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class AbstractMatrixConcatCols : public AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type >
 	{
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		const AbstractMatrixReadOnly<Var>* A;
-		const AbstractMatrixReadOnly<Var>* B;
-	public:
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		ConstMatrixConcatCols(const AbstractMatrixReadOnly<Var>& rA, const AbstractMatrixReadOnly<Var>& rB)
-			: A(&rA), B(&rB) {
-			assert(A->Rows() == B->Rows());
-		}
-		ConstMatrixConcatCols(const ConstMatrixConcatCols& b) : A(b.A), B(b.B) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			return j < A->Cols() ? A->compute(i, j) : B->compute(i, j - A->Cols());
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
-	};
-
-	template<typename VarA, typename VarB, typename VarR>
-	class ConstMatrixConcatCols2 : public AbstractMatrixReadOnly<VarR>
-	{
+		/*
 	public:
 		using AbstractMatrixReadOnly<VarR>::compute;
 		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const AbstractMatrixReadOnly<VarB>* B;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -3082,36 +2531,34 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		ConstMatrixConcatCols2(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		AbstractMatrixConcatCols(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
 			: A(&rA), B(&rB) {
 			assert(A->Rows() == B->Rows());
 		}
-		ConstMatrixConcatCols2(const ConstMatrixConcatCols2& b) : A(b.A), B(b.B) {}
+		AbstractMatrixConcatCols(const AbstractMatrixConcatCols& b) : A(b.A), B(b.B) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type compute(enumerator i, enumerator j) const
 		{
-			if (j < A->Cols())
-				return A->compute(i, j);
-			else
-				return B->compute(i, j - A->Cols());
+			return cond_both(j < A->Cols(), A->compute(i, j), B->compute(i, j - A->Cols()));
+			//if (j < A->Cols()) return A->compute(i, j);
+			//else return B->compute(i, j - A->Cols());
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> ConstMatrixConcatCols2<VarA, VarB, VarR>::tmp;
-
+	
 	template<typename Var>
 	class MatrixConcatCols : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::get;
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
 	private:
+		*/
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
 	public:
@@ -3128,17 +2575,8 @@ namespace INMOST
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
-		{
-			return j < A->Cols() ? A->compute(i, j) : B->compute(i, j - A->Cols());
-		}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
 		/// @return Reference to element.
-		__INLINE Var& operator()(enumerator i, enumerator j) 
+		__INLINE Var& get(enumerator i, enumerator j) 
 		{
 			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
 		}
@@ -3152,25 +2590,27 @@ namespace INMOST
 			return j < A->Cols() ? A->get(i, j) : B->get(i, j - A->Cols());
 		}
 		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// inheritance. 
 		/// since it just points to a part of the larger empty matrix.
 		void Resize(enumerator rows, enumerator cols)
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
+			throw Impossible;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
 
-	template<typename Var>
-	class ConstMatrixRepack : public AbstractMatrixReadOnly<Var>
+	template<typename Var, typename Ret>
+	class AbstractMatrixRepack : public AbstractMatrixReadOnly<Var, Ret>
 	{
+		/*
 	public:
 		using AbstractMatrixReadOnly<Var>::compute;
 		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		const AbstractMatrixReadOnly<Var>* A;
+		const AbstractMatrixReadOnly<Var, Ret>* A;
 		enumerator n, m;
 	public:
 		/// Number of rows.
@@ -3179,29 +2619,30 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return m; }
-		ConstMatrixRepack(const AbstractMatrixReadOnly<Var>& rA, enumerator n, enumerator m)
+		AbstractMatrixRepack(const AbstractMatrixReadOnly<Var, Ret>& rA, enumerator n, enumerator m)
 			: A(&rA), n(n), m(m) { assert(A->Rows() * A->Cols() == n * m); }
-		ConstMatrixRepack(const ConstMatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
+		AbstractMatrixRepack(const AbstractMatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const
+		__INLINE Ret compute(enumerator i, enumerator j) const
 		{
 			enumerator ind = i * m + j;
 			return A->compute(ind / A->Cols(), ind % A->Cols());
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
 	template<typename Var>
 	class MatrixRepack : public AbstractMatrix<Var>
 	{
+		/*
 	public:
 		using AbstractMatrix<Var>::operator();
 		using AbstractMatrix<Var>::get;
 		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		AbstractMatrix<Var>* A;
 		enumerator n, m;
@@ -3218,24 +2659,13 @@ namespace INMOST
 		}
 		MatrixRepack(const MatrixRepack& b) : A(b.A), n(b.n), m(b.m) {}
 		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE Var compute(enumerator i, enumerator j) const 
-		{ 
-			enumerator p = i * m + j;
-			return A->compute(p / A->Cols(), p % A->Cols());
-			//return A->data()[i * m + j]; 
-		}
-		/// Access element of the matrix by row and column indices
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to element.
-		__INLINE Var & operator()(enumerator i, enumerator j) 
+		__INLINE Var & get(enumerator i, enumerator j) 
 		{ 
 			enumerator p = i * m + j;
-			return (*A)(p / A->Cols(), p % A->Cols());
+			return get(p / A->Cols(), p % A->Cols());
 			//return A->data()[i * m + j]; 
 		}
 		/// Access element of the matrix by row and column indices
@@ -3250,35 +2680,38 @@ namespace INMOST
 			//return A->data()[i * m + j]; 
 		}
 		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// inheritance. 
 		/// since it just points to a part of the larger empty matrix.
 		void Resize(enumerator rows, enumerator cols)
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
+			throw Impossible;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount(); }
 	};
 
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixMul : public AbstractMatrix< VarR >
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class MatrixMul : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
+		/*
 	public:
 		using AbstractMatrix< VarR >::operator();
 		using AbstractMatrix< VarR >::get;
 		typedef typename AbstractMatrix< VarR >::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		Matrix<VarR> M;
+		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
 		/// This is a stub function to fulfill abstract
-		/// inheritance. BlockOfMatrix cannot change it's size,
+		/// inheritance. 
 		/// since it just points to a part of the larger empty matrix.
 		void Resize(enumerator rows, enumerator cols)
 		{
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
+			throw Impossible;
 		}
 		/// Number of rows.
 		/// @return Number of rows.
@@ -3286,7 +2719,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return M.Cols(); }
-		MatrixMul(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		MatrixMul(const AbstractMatrixReadOnly<VarA,RetA>& rA, const AbstractMatrixReadOnly<VarB,RetB>& rB)
 		{
 			assert(rA.Cols() == rB.Rows());
 			const AbstractMatrix<VarA>* pA = dynamic_cast<const AbstractMatrix<VarA> *>(&rA);
@@ -3309,36 +2742,30 @@ namespace INMOST
 					M(i, j) = (*pA)(i, i + 1, 0, pA->Cols()).DotProduct((*pB)(0, pB->Rows(), j, j + 1).Transpose());
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const { return M.get(i, j); }
 		/// Access element of the matrix by row and column indices.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to element.
-		__INLINE VarR& operator()(enumerator i, enumerator j) { return M(i, j); }
+		__INLINE typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) { return M.get(i, j); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE const VarR& get(enumerator i, enumerator j) const { return M.get(i, j); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return M.GetMatrixCount(); }
+		__INLINE const typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) const { return M.get(i, j); }
 	};
 
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixMulCoef : public AbstractMatrixReadOnly< VarR >
+	template<typename VarA, typename VarB, typename RetA, typename VarAB>
+	class MatrixMulCoef : public AbstractMatrixReadOnly< VarAB, typename Op2< typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, multiplication_expression>::type >
 	{
+		/*
 	public:
 		using AbstractMatrixReadOnly< VarR >::compute;
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const VarB* coef;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const VarB * coef;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -3346,7 +2773,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixMulCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+		MatrixMulCoef(const AbstractMatrixReadOnly<VarA, RetA>& rA, const VarB& rcoef)
 			: A(&rA), coef(&rcoef) {}
 		MatrixMulCoef(const MatrixMulCoef& b) : A(b.A), coef(b.coef) {}
 		/// Access element of the matrix by row and column indices
@@ -3354,22 +2781,20 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const { return A->compute(i, j) * (*coef); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(*coef); }
+		__INLINE typename Op2< typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, multiplication_expression>::type compute(enumerator i, enumerator j) const { return mul(A->compute(i, j), *coef); }
 	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> MatrixMulCoef<VarA, VarB, VarR>::tmp;
-
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixDivCoef : public AbstractMatrixReadOnly< VarR >
+	
+	template<typename VarA, typename VarB, typename RetA, typename VarAB>
+	class MatrixDivCoef : public AbstractMatrixReadOnly< VarAB, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, division_expression>::type >
 	{
+		/*
 	public:
 		using AbstractMatrixReadOnly< VarR >::compute;
 		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const VarB* coef;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const VarB * coef;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -3377,7 +2802,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixDivCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
+		MatrixDivCoef(const AbstractMatrixReadOnly<VarA, RetA>& rA, const VarB& rcoef)
 			: A(&rA), coef(&rcoef) {}
 		MatrixDivCoef(const MatrixDivCoef& b)
 			: A(b.A), coef(b.coef) {}
@@ -3386,11 +2811,11 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const { return A->compute(i, j) / (*coef); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(*coef); }
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, division_expression>::type compute(enumerator i, enumerator j) const { return div(A->compute(i, j), *coef); }
 	};
 	//template<typename VarA, typename VarB, typename VarR>
 	//thread_private<VarR> MatrixDivCoef<VarA, VarB, VarR>::tmp;
+	/*
 #if defined(USE_AUTODIFF)
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixMulShellCoef : public AbstractMatrixReadOnly< VarR >
@@ -3418,11 +2843,8 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE VarR compute(enumerator i, enumerator j) const { return A->compute(i, j) * coef; }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(coef); }
 	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> MatrixMulShellCoef<VarA, VarB, VarR>::tmp;
-
+	
 	template<typename VarA, typename VarB, typename VarR>
 	class MatrixDivShellCoef : public AbstractMatrixReadOnly< VarR >
 	{
@@ -3450,21 +2872,23 @@ namespace INMOST
 		/// @param j Column index.
 		/// @return Reference to constant element.
 		__INLINE VarR compute(enumerator i, enumerator j) const { return (A->compute(i, j) / coef); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + GetCount(coef); }
 	};
 	//template<typename VarA, typename VarB, typename VarR>
 	//thread_private<VarR> MatrixDivShellCoef<VarA, VarB, VarR>::tmp;
 #endif //USE_AUTODIFF
-	template<typename VarA, typename VarB>
-	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >
+	*/
+	template<typename VarA, typename VarB, typename RetA, typename RetB>
+	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,multiplication_expression>::type >
 	{
+		/*
 	public:
 		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::compute;
 		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
+		*/
 	private:
 		//static thread_private< typename Promote<VarA, VarB>::type > tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const AbstractMatrixReadOnly<VarB>* B;
+		const AbstractMatrixReadOnly<VarA, RetA>* A;
+		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -3472,7 +2896,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols() * B->Cols(); }
-		KroneckerProduct(const AbstractMatrixReadOnly<VarA>& rA, const AbstractMatrixReadOnly<VarB>& rB)
+		KroneckerProduct(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
 			: A(&rA), B(&rB) {}
 		KroneckerProduct(const KroneckerProduct& b) : A(b.A), B(b.B) {}
 		/// Access element of the matrix by row and column indices
@@ -3480,14 +2904,11 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Promote<VarA, VarB>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, multiplication_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return A->compute(i / B->Rows(), j / B->Cols()) * B->compute(i % B->Rows(), j % B->Cols());
+			return mul(A->compute(i / B->Rows(), j / B->Cols()), B->compute(i % B->Rows(), j % B->Cols()));
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetMatrixCount() const { return A->GetMatrixCount() + B->GetMatrixCount(); }
 	};
-	//template<typename VarA, typename VarB>
-	//thread_private<typename Promote<VarA, VarB>::type> KroneckerProduct<VarA, VarB>::tmp;
 	
 	template<typename Var>
 	void
@@ -3498,12 +2919,12 @@ namespace INMOST
 		(*this) = tmp;
 	}
 	
-	template<typename Var>
-	template<typename typeB>
+	template<typename Var, typename RetType>
+	template<typename typeB, typename retB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::CrossProduct(const AbstractMatrixReadOnly<typeB> & B) const
+	AbstractMatrixReadOnly<Var, RetType>::CrossProduct(const AbstractMatrixReadOnly<typeB,retB> & B) const
 	{
-		const AbstractMatrixReadOnly<Var> & A = *this;
+		const AbstractMatrixReadOnly<Var,RetType> & A = *this;
 		assert(A.Rows() == 3);
 		assert(A.Cols() == 1);
 		assert(B.Rows() == 3);
@@ -3516,53 +2937,13 @@ namespace INMOST
 		}
 		return ret;
 	}
-
-
-	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var, typeB>::type>
-		AbstractMatrix<Var>::CrossProduct(const AbstractMatrix<typeB>& B) const
-	{
-		const AbstractMatrix<Var>& A = *this;
-		assert(A.Rows() == 3);
-		assert(A.Cols() == 1);
-		assert(B.Rows() == 3);
-		Matrix<typename Promote<Var, typeB>::type> ret(3, B.Cols()); //check RVO
-		for (enumerator k = 0; k < B.Cols(); ++k)
-		{
-			ret(0, k) = (A.get(1, 0) * B.get(2, k) - A.get(2, 0) * B.get(1, k));
-			ret(1, k) = (A.get(2, 0) * B.get(0, k) - A.get(0, 0) * B.get(2, k));
-			ret(2, k) = (A.get(0, 0) * B.get(1, k) - A.get(1, 0) * B.get(0, k));
-		}
-		return ret;
-	}
-
-	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var, typeB>::type>
-		AbstractMatrix<Var>::CrossProduct(const AbstractMatrixReadOnly<typeB>& B) const
-	{
-		const AbstractMatrix<Var>& A = *this;
-		assert(A.Rows() == 3);
-		assert(A.Cols() == 1);
-		assert(B.Rows() == 3);
-		Matrix<typename Promote<Var, typeB>::type> ret(3, B.Cols()); //check RVO
-		for (enumerator k = 0; k < B.Cols(); ++k)
-		{
-			ret(0, k) = (A.get(1, 0) * B.compute(2, k) - A.get(2, 0) * B.compute(1, k));
-			ret(1, k) = (A.get(2, 0) * B.compute(0, k) - A.get(0, 0) * B.compute(2, k));
-			ret(2, k) = (A.get(0, 0) * B.compute(1, k) - A.get(1, 0) * B.compute(0, k));
-		}
-		return ret;
-	}
-
-	
-	template<typename Var>
-	template<typename typeB>
+		
+	template<typename Var, typename RetType>
+	template<typename typeB, typename retB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::Transform(const AbstractMatrixReadOnly<typeB> & B) const
+	AbstractMatrixReadOnly<Var, RetType>::Transform(const AbstractMatrixReadOnly<typeB, retB> & B) const
 	{
-		const AbstractMatrixReadOnly<Var> & A = *this;
+		const AbstractMatrixReadOnly<Var, RetType> & A = *this;
 		assert(A.Rows() == 3);
 		assert(A.Cols() == 1);
 		assert(B.Rows() == 3);
@@ -3595,101 +2976,13 @@ namespace INMOST
 	}
 
 
-
-	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var, typeB>::type>
-		AbstractMatrix<Var>::Transform(const AbstractMatrix<typeB>& B) const
-	{
-		const AbstractMatrix<Var>& A = *this;
-		assert(A.Rows() == 3);
-		assert(A.Cols() == 1);
-		assert(B.Rows() == 3);
-		assert(B.Cols() == 1);
-		typedef typename Promote<Var, typeB>::type var_t;
-		Matrix<var_t> Q(3, 3);
-		var_t x, y, z, w, n, l;
-
-		x = -(B.get(1, 0) * A.get(2, 0) - B.get(2, 0) * A.get(1, 0));
-		y = -(B.get(2, 0) * A.get(0, 0) - B.get(0, 0) * A.get(2, 0));
-		z = -(B.get(0, 0) * A.get(1, 0) - B.get(1, 0) * A.get(0, 0));
-		w = A.FrobeniusNorm() * B.FrobeniusNorm() + A.DotProduct(B);
-
-		l = B.FrobeniusNorm() / A.FrobeniusNorm();
-		n = 2 * l / (x * x + y * y + z * z + w * w);
-
-		Q(0, 0) = l - (y * y + z * z) * n;
-		Q(0, 1) = (x * y - z * w) * n;
-		Q(0, 2) = (x * z + y * w) * n;
-
-		Q(1, 0) = (x * y + z * w) * n;
-		Q(1, 1) = l - (x * x + z * z) * n;
-		Q(1, 2) = (y * z - x * w) * n;
-
-		Q(2, 0) = (x * z - y * w) * n;
-		Q(2, 1) = (y * z + x * w) * n;
-		Q(2, 2) = l - (x * x + y * y) * n;
-
-		return Q;
-	}
-
-
-	template<typename Var>
-	template<typename typeB>
-	Matrix<typename Promote<Var, typeB>::type>
-		AbstractMatrix<Var>::Transform(const AbstractMatrixReadOnly<typeB>& B) const
-	{
-		const AbstractMatrix<Var>& A = *this;
-		assert(A.Rows() == 3);
-		assert(A.Cols() == 1);
-		assert(B.Rows() == 3);
-		assert(B.Cols() == 1);
-		typedef typename Promote<Var, typeB>::type var_t;
-		Matrix<var_t> Q(3, 3);
-		var_t x, y, z, w, n, l;
-
-		x = -(B.compute(1, 0) * A.get(2, 0) - B.compute(2, 0) * A.get(1, 0));
-		y = -(B.compute(2, 0) * A.get(0, 0) - B.compute(0, 0) * A.get(2, 0));
-		z = -(B.compute(0, 0) * A.get(1, 0) - B.compute(1, 0) * A.get(0, 0));
-		w = A.FrobeniusNorm() * B.FrobeniusNorm() + A.DotProduct(B);
-
-		l = B.FrobeniusNorm() / A.FrobeniusNorm();
-		n = 2 * l / (x * x + y * y + z * z + w * w);
-
-		Q(0, 0) = l - (y * y + z * z) * n;
-		Q(0, 1) = (x * y - z * w) * n;
-		Q(0, 2) = (x * z + y * w) * n;
-
-		Q(1, 0) = (x * y + z * w) * n;
-		Q(1, 1) = l - (x * x + z * z) * n;
-		Q(1, 2) = (y * z - x * w) * n;
-
-		Q(2, 0) = (x * z - y * w) * n;
-		Q(2, 1) = (y * z + x * w) * n;
-		Q(2, 2) = l - (x * x + y * y) * n;
-
-		return Q;
-	}
-	
+	/*
 	template<typename Var>
 	template<typename typeB>
 	MatrixDifference<Var,typeB>
 	AbstractMatrixReadOnly<Var>::operator-(const AbstractMatrixReadOnly<typeB> & other) const
 	{
 		return MatrixDifference<Var, typeB>(*this, other);
-	}
-
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var>&
-		AbstractMatrix<Var>::operator-=(const AbstractMatrix<typeB>& other)
-	{
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		for (enumerator i = 0; i < Rows(); ++i)
-			for (enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i, j), (*this)(i, j) - other.get(i, j));
-		return *this;
 	}
 	
 	template<typename Var>
@@ -3701,7 +2994,7 @@ namespace INMOST
 		assert(Cols() == other.Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i,j),(*this)(i,j)-other.compute(i,j));
+				assign(get(i,j),get(i,j)-other.compute(i,j));
 		return *this;
 	}
 	
@@ -3713,18 +3006,6 @@ namespace INMOST
 		return MatrixSum<Var, typeB>(*this, other);
 	}
 	
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var>&
-		AbstractMatrix<Var>::operator+=(const AbstractMatrix<typeB>& other)
-	{
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		for (enumerator i = 0; i < Rows(); ++i)
-			for (enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i, j), (*this)(i, j) + other.get(i, j));
-		return *this;
-	}
 
 	template<typename Var>
 	template<typename typeB>
@@ -3735,17 +3016,18 @@ namespace INMOST
 		assert(Cols() == other.Cols());
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i,j),(*this)(i,j)+other.compute(i,j));
+				assign(get(i,j),get(i,j)+other.compute(i,j));
 		return *this;
 	}
 
 	template<typename Var>
-	template<typename typeB>
+	template<typename typeB, typename retB>
 	MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>
-	AbstractMatrixReadOnly<Var>::operator*(const AbstractMatrixReadOnly<typeB> & other) const
+	AbstractMatrixReadOnly<Var, retB>::operator*(const AbstractMatrixReadOnly<typeB, retB> & other) const
 	{
 		return MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>(*this, other);
 	}
+	
 #if 1
 #if defined(USE_AUTODIFF)
 	template<>
@@ -3873,8 +3155,8 @@ namespace INMOST
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
-					value += (*this)(i,j).GetValue()*other(i,j);
-					merger->AddRow(other(i,j),(*this)(i,j).GetRow());
+					value += get(i,j).GetValue()*other(i,j);
+					merger->AddRow(other(i,j),get(i,j).GetRow());
 				}
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
@@ -3955,9 +3237,9 @@ namespace INMOST
 			for(enumerator i = 0; i < Rows(); ++i)
 				for(enumerator j = 0; j < Cols(); ++j)
 				{
-					value += (*this)(i,j).GetValue()*other(i,j).GetValue();
-					merger->AddRow(other(i,j).GetValue(),(*this)(i,j).GetRow());
-					merger->AddRow((*this)(i,j).GetValue(),other(i,j).GetRow());
+					value += get(i,j).GetValue()*other(i,j).GetValue();
+					merger->AddRow(other(i,j).GetValue(),get(i,j).GetRow());
+					merger->AddRow(get(i,j).GetValue(),other(i,j).GetRow());
 				}
 			ret.SetValue(value);
 			merger->RetrieveRow(ret.GetRow());
@@ -3974,6 +3256,7 @@ namespace INMOST
 	}
 #endif //USE_AUTODIFF
 #endif //if 0
+	
 	template<typename Var>
 	template<typename typeB>
 	AbstractMatrix<Var> &
@@ -4008,9 +3291,10 @@ namespace INMOST
 	{
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i,j),(*this)(i,j)*coef);
+				assign(get(i,j),get(i,j)*coef);
 		return *this;
 	}
+	
 #if defined(USE_AUTODIFF)
 	template<typename Var>
 	template<typename A>
@@ -4020,7 +3304,7 @@ namespace INMOST
 		return MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
 	}
 #endif //USE_AUTODIFF
-
+	
 	template<typename Var>
 	template<typename typeB>
 	MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
@@ -4036,7 +3320,7 @@ namespace INMOST
 	{
 		for(enumerator i = 0; i < Rows(); ++i)
 			for(enumerator j = 0; j < Cols(); ++j)
-				assign((*this)(i,j),(*this)(i,j)/coef);
+				assign(get(i,j),get(i,j)/coef);
 		return *this;
 	}
 	
@@ -4065,14 +3349,14 @@ namespace INMOST
 		ret = CholeskySolve(MatrixUnit<Var>(Rows()),ierr);
 		return ret;
 	}
+	*/
 	
-	
-	template<typename Var>
-	template<typename typeB>
+	template<typename Var, typename RetType>
+	template<typename typeB, typename retB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::CholeskySolve(const AbstractMatrixReadOnly<typeB> & B, int * ierr) const
+	AbstractMatrixReadOnly<Var,RetType>::CholeskySolve(const AbstractMatrixReadOnly<typeB,retB> & B, int * ierr) const
 	{
-		const AbstractMatrixReadOnly<Var> & A = *this;
+		const AbstractMatrixReadOnly<Var, RetType> & A = *this;
 		assert(A.Rows() == A.Cols());
 		assert(A.Rows() == B.Rows());
 		enumerator n = A.Rows();
@@ -4176,17 +3460,17 @@ namespace INMOST
 		return ret;
 	}
 
-	template<typename Var>
-	template<typename typeB>
+	template<typename Var, typename RetType>
+	template<typename typeB, typename retB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::Solve(const AbstractMatrixReadOnly<typeB> & B, int * ierr) const
+	AbstractMatrixReadOnly<Var, RetType>::Solve(const AbstractMatrixReadOnly<typeB, retB> & B, int * ierr) const
 	{
 		// for A^T B
 		assert(Rows() == B.Rows());
 		
 		if( Rows() != Cols() )
 		{
-			ConstMatrixTranspose<Var> At = this->Transpose(); //m by n matrix
+			AbstractMatrixTranspose<Var,RetType> At = this->Transpose(); //m by n matrix
 			return (At * (*this)).Solve(At * B, ierr);
 		}
 		Matrix<typename Promote<Var,typeB>::type> AtB = B; //m by l matrix
@@ -4334,6 +3618,7 @@ namespace INMOST
 		return ret;
 	}
 	
+	/*
 	template<typename Var>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
@@ -4346,14 +3631,15 @@ namespace INMOST
 		for(enumerator i = ibeg; i < iend; ++i)
 		{
 			for(enumerator j = jbeg; j < jend; ++j)
-				ret(i-ibeg,j-jbeg) = (*this)(i,j);
+				ret(i-ibeg,j-jbeg) = compute(i,j);
 		}
 		return ret;
 	}
+	*/
 	
-	template<typename Var>
+	template<typename Var, typename RetType>
 	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, int * ierr) const
+	AbstractMatrixReadOnly<Var, RetType>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, int * ierr) const
 	{
 		Matrix<Var> ret(Cols(),Rows());
 		Matrix<Var> U,S,V;
@@ -4375,15 +3661,15 @@ namespace INMOST
 			else
 				S(k, k) = 0.0;
 		}
-		//ret = V*S*U.Transpose();
-		ret = V.ConjugateTranspose().Transpose() * S * U.ConjugateTranspose();
+		ret = V * S * U.Transpose();
+		//ret = V.ConjugateTranspose().Transpose() * S * U.ConjugateTranspose();
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
 
-	template<typename Var>
+	template<typename Var, typename RetType>
 	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::Root(INMOST_DATA_ENUM_TYPE iter, INMOST_DATA_REAL_TYPE tol, int *ierr) const
+	AbstractMatrixReadOnly<Var, RetType>::Root(INMOST_DATA_ENUM_TYPE iter, INMOST_DATA_REAL_TYPE tol, int *ierr) const
 	{
 		assert(Rows() == Cols());
 		Matrix<Var> ret(Cols(),Cols());
@@ -4406,9 +3692,9 @@ namespace INMOST
 		}
 		return ret;
 	}
-	template<typename Var>
+	template<typename Var, typename RetType>
 	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
+	AbstractMatrixReadOnly<Var, RetType>::Power(INMOST_DATA_REAL_TYPE n, int * ierr) const
 	{
 		Matrix<Var> ret(Cols(),Rows());
 		Matrix<Var> U, S, V;
@@ -4433,10 +3719,10 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	template<typename Var>
-	template<typename typeB>
+	template<typename Var, typename RetType>
+	template<typename typeB, typename retB>
 	Matrix<typename Promote<Var,typeB>::type>
-	AbstractMatrixReadOnly<Var>::PseudoSolve(const AbstractMatrixReadOnly<typeB> & B, INMOST_DATA_REAL_TYPE tol, int * ierr) const
+	AbstractMatrixReadOnly<Var, RetType>::PseudoSolve(const AbstractMatrixReadOnly<typeB, retB> & B, INMOST_DATA_REAL_TYPE tol, int * ierr) const
 	{
 		Matrix<typename Promote<Var,typeB>::type> ret(Cols(),B.Cols());
 		Matrix<Var> U,S,V;
@@ -4462,15 +3748,11 @@ namespace INMOST
 		return ret;
 	}
 	
+	/*
 	template<typename Var>
 	SubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
 	{
 		return SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
-	}
-	template<typename Var>
-	SubMatrixConst<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
-	{
-		return SubMatrixConst<Var>(*this, first_row, last_row, first_col, last_col);
 	}
 	template<typename Var>
 	ConstSubMatrix<Var> AbstractMatrixReadOnly<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
@@ -4488,7 +3770,7 @@ namespace INMOST
 	{
 		return ConstBlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
 	}
-	
+	*/
 	
 	template<class T> struct make_integer;
 	template<> struct make_integer<float> {typedef int type;};
@@ -4804,8 +4086,8 @@ namespace INMOST
 		}
 	}
 	
-	template<typename Var>
-	bool AbstractMatrixReadOnly<Var>::cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const
+	template<typename Var, typename RetType>
+	bool AbstractMatrixReadOnly<Var, RetType>::cSVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V) const
 	{
 		int m = Rows();
 		int n = Cols();
@@ -5109,8 +4391,8 @@ namespace INMOST
 		return true;
 	}
 
-	template<typename Var>
-	bool AbstractMatrixReadOnly<Var>::SVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V, bool order_singular_values, bool nonnegative) const
+	template<typename Var, typename RetType>
+	bool AbstractMatrixReadOnly<Var, RetType>::SVD(AbstractMatrix<Var>& U, AbstractMatrix<Var>& Sigma, AbstractMatrix<Var>& V, bool order_singular_values, bool nonnegative) const
 	{
 		int flag, i, its, j, jj, k, l, nm;
 		int n = Rows();
@@ -5478,45 +4760,12 @@ namespace INMOST
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
 /// @return Matrix, each entry multiplied by a constant.
-template<typename typeB>
-//INMOST::Matrix<typename INMOST::Promote<INMOST_DATA_REAL_TYPE,typeB>::type>
-INMOST::MatrixMulCoef<typeB, INMOST_DATA_REAL_TYPE, typename INMOST::Promote<INMOST_DATA_REAL_TYPE, typeB>::type>
-operator *(const INMOST_DATA_REAL_TYPE& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-//{return other*coef;}
-{return INMOST::MatrixMulCoef<typeB, INMOST_DATA_REAL_TYPE, typename INMOST::Promote<INMOST_DATA_REAL_TYPE, typeB>::type>(other, coef);}
+template<typename typeA, typename typeB, typename retB>
+INMOST::MatrixMulCoef<typeB, typeA, retB, typename INMOST::Promote<typeB, typeA>::type>
+operator *(const typeA & coef, const INMOST::AbstractMatrixReadOnly<typeB, retB>& other)
+{return INMOST::MatrixMulCoef<typeB, typeA, retB, typename INMOST::Promote<typeB, typeA>::type>(other, coef);}
+/*
 #if defined(USE_AUTODIFF)
-/// Multiplication of matrix by a unknown from left.
-/// Takes account for derivatives of variable.
-/// @param coef Variable coefficient multiplying matrix.
-/// @param other Matrix to be multiplied.
-/// @return Matrix, each entry multiplied by a variable.
-template<typename typeB>
-//INMOST::Matrix<typename INMOST::Promote<INMOST::unknown,typeB>::type>
-INMOST::MatrixMulCoef<typeB, INMOST::unknown, typename INMOST::Promote<INMOST::unknown, typeB>::type>
-operator *(const INMOST::unknown& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-//{return other*coef;}
-{return INMOST::MatrixMulCoef<typeB, INMOST::unknown, typename INMOST::Promote<INMOST::unknown, typeB>::type>(other, coef);}
-/// Multiplication of matrix by a variable from left.
-/// Takes account for derivatives of variable.
-/// @param coef Variable coefficient multiplying matrix.
-/// @param other Matrix to be multiplied.
-/// @return Matrix, each entry multiplied by a variable.
-template<typename typeB>
-//INMOST::Matrix<typename INMOST::Promote<INMOST::variable,typeB>::type>
-INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>
-operator *(const INMOST::variable& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-//{return other*coef;}
-{return INMOST::MatrixMulCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, coef);}
-/// Multiplication of matrix by a variable with first and
-/// second order derivatives from left.
-/// Takes account for first and second order derivatives of variable.
-/// @param coef Variable coefficient multiplying matrix.
-/// @param other Matrix to be multiplied.
-/// @return Matrix, each entry multiplied by a variable.
-template<typename typeB>
-INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>
-operator *(const INMOST::hessian_variable& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
-{return INMOST::MatrixMulCoef<typeB, INMOST::hessian_variable, typename INMOST::Promote<INMOST::hessian_variable, typeB>::type>(other, coef);}
 /// Multiplication of matrix by constant from left.
 /// @param coef Constant coefficient multiplying matrix.
 /// @param other Matrix to be multiplied.
@@ -5526,12 +4775,12 @@ INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INM
 operator *(INMOST::shell_expression<A> const& coef, const INMOST::AbstractMatrixReadOnly<typeB>& other)
 {return INMOST::MatrixMulShellCoef<typeB, INMOST::variable, typename INMOST::Promote<INMOST::variable, typeB>::type>(other, INMOST::variable(coef));}
 #endif //USE_AUTODIFF
-
-template<typename T>
-__INLINE bool check_nans(const INMOST::AbstractMatrixReadOnly<T> & A) {return A.CheckNans();}
-template<typename T>
-__INLINE bool check_infs(const INMOST::AbstractMatrixReadOnly<T> & A) {return A.CheckInfs();}
-template<typename T>
-__INLINE bool check_nans_infs(const INMOST::AbstractMatrixReadOnly<T> & A) {return A.CheckNansInfs();}
+*/
+template<typename T, typename R>
+__INLINE bool check_nans(const INMOST::AbstractMatrixReadOnly<T,R> & A) {return A.CheckNans();}
+template<typename T, typename R>
+__INLINE bool check_infs(const INMOST::AbstractMatrixReadOnly<T,R> & A) {return A.CheckInfs();}
+template<typename T, typename R>
+__INLINE bool check_nans_infs(const INMOST::AbstractMatrixReadOnly<T,R> & A) {return A.CheckNansInfs();}
 
 #endif //INMOST_DENSE_INCLUDED
