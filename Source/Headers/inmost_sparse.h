@@ -645,10 +645,11 @@ namespace INMOST
 			std::vector<Sparse::bit_type> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds, temp;
-			RowMerger2() { bitset.reserve(1048576); }
+			RowMerger2() { bitset.resize(1048576); }
 			inline void radix_sort();
 			inline void naive_sort();
 			void clear();
+			void set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
 			void set_vals();
 			void get_row(Sparse::Row& r);
 		};

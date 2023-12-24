@@ -2,6 +2,7 @@
 #define INMOST_DENSE_INCLUDED
 #include "inmost_common.h"
 #include "inmost_expression.h"
+//#include "inmost_variable.h"
 #include <iomanip>
 #include <stdarg.h>
 
@@ -181,30 +182,237 @@ namespace INMOST
 #endif //USE_FP64
 #endif //USE_AUTODIFF
 
-	template<class T>
-	struct remove_cvref { typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;};
+	// begin for matrices
+	// all these pool expressions are needed to avoid dangling
+	template<class A, class B> __INLINE         binary_pool_expression<branch_expression<A, B>, A, B> branch(bool cond, shell_expression<A> const& Left, shell_expression<B> const& Right) 
+	{ 
+		binary_pool<branch_expression<A, B>, A, B> pool(cond, Left, Right);
+		return binary_pool_expression<branch_expression<A, B>, A, B>(pool); 
+	}
+	template<class A>          __INLINE          unary_pool_expression<const_branch_expression<A>, A> branch(bool cond, shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		unary_pool<const_branch_expression<A>, A> pool(cond, Left, Right);
+		return unary_pool_expression<const_branch_expression<A>, A>(pool); 
+	}
+	template<class B>          __INLINE          unary_pool_expression<const_branch_expression<B>, B> branch(bool cond, INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
+	{ 
+		unary_pool<const_branch_expression<B>, B> pool(!cond, Right, Left);
+		return unary_pool_expression<const_branch_expression<B>, B>(pool); 
+	}
+	__INLINE                                                                    INMOST_DATA_REAL_TYPE branch(bool cond, INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		return cond ? Left : Right; 
+	}
+	template<class A, class B> __INLINE       binary_pool_expression<addition_expression<A, B>, A, B> add(shell_expression<A> const& Left, shell_expression<B> const& Right) 
+	{ 
+		binary_pool< addition_expression<A, B>, A, B> pool(Left, Right);
+		return binary_pool_expression< addition_expression<A, B>, A, B>(pool); 
+	}
+	template<class A>          __INLINE        unary_pool_expression<const_addition_expression<A>, A> add(shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		unary_pool<const_addition_expression<A>, A> pool(Left, Right);
+		return unary_pool_expression<const_addition_expression<A>, A>(pool); 
+	}
+	template<class B>          __INLINE        unary_pool_expression<const_addition_expression<B>, B> add(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
+	{ 
+		return unary_pool<const_addition_expression<B>, B> pool(Right, Left);
+		return unary_pool_expression<const_addition_expression<B>, B>(pool);
+	}
+	__INLINE                                                                    INMOST_DATA_REAL_TYPE add(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left + Right; }
+	template<class A, class B> __INLINE    binary_pool_expression<subtraction_expression<A, B>, A, B> sub(shell_expression<A> const& Left, shell_expression<B> const& Right) 
+	{ 
+		binary_pool< subtraction_expression<A, B>, A, B> pool(Left, Right);
+		return binary_pool_expression< subtraction_expression<A, B>, A, B>(pool); 
+	}
+	template<class A>          __INLINE        unary_pool_expression<const_addition_expression<A>, A> sub(shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		unary_pool<const_addition_expression<A>, A> pool(Left, -Right);
+		return unary_pool_expression<const_addition_expression<A>, A>(pool); 
+	}
+	template<class B>          __INLINE     unary_pool_expression<const_subtraction_expression<B>, B> sub(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
+	{ 
+		unary_pool<const_subtraction_expression<B>, B> pool(Right, Left);
+		return unary_pool_expression<const_subtraction_expression<B>, B>(pool); 
+	}
+	__INLINE                                                                    INMOST_DATA_REAL_TYPE sub(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		return Left - Right; 
+	}
+	template<class A, class B> __INLINE binary_pool_expression<multiplication_expression<A, B>, A, B> mul(shell_expression<A> const& Left, shell_expression<B> const& Right) 
+	{ 
+		binary_pool<multiplication_expression<A, B>, A, B> pool(Left, Right);
+		return binary_pool_expression<multiplication_expression<A, B>, A, B>(pool); 
+	}
+	template<class A>          __INLINE  unary_pool_expression<const_multiplication_expression<A>, A> mul(shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		unary_pool<const_multiplication_expression<A>, A> pool(Left, Right);
+		return unary_pool_expression<const_multiplication_expression<A>, A>(pool); 
+	}
+	template<class B>          __INLINE  unary_pool_expression<const_multiplication_expression<B>, B> mul(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
+	{ 
+		unary_pool<const_multiplication_expression<B>, B> pool(Right, Left);
+		return unary_pool_expression<const_multiplication_expression<B>, B>(pool); 
+	}
+	__INLINE                                                                    INMOST_DATA_REAL_TYPE mul(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		return Left * Right; 
+	}
+	template<class A, class B> __INLINE       binary_pool_expression<division_expression<A, B>, A, B> div(shell_expression<A> const& Left, shell_expression<B> const& Right) 
+	{ 
+		binary_pool<division_expression<A, B>, A, B> pool(Left, Right);
+		return binary_pool_expression<division_expression<A, B>, A, B>(pool); 
+	}
+	template<class A>          __INLINE        unary_pool_expression<const_division_expression<A>, A> div(shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		unary_pool<const_division_expression<A>, A> pool(Left, Right);
+		return unary_pool_expression<const_division_expression<A>, A>(pool); 
+	}
+	template<class B>          __INLINE            unary_pool_expression<reciprocal_expression<B>, B> div(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
+	{ 
+		unary_pool<reciprocal_expression<B>, B> pool(Right, Left);
+		return unary_pool_expression<reciprocal_expression<B>, B>(pool); 
+	}
+	__INLINE                                                                    INMOST_DATA_REAL_TYPE div(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) 
+	{ 
+		return Left / Right; 
+	}
+	// end for matrices
 
-	template<class A, template<class> class Op> struct Op1 { typedef Op< typename remove_cvref<A>::type > type; };
-	template<template<class> class Op> struct Op1<INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<template<class> class Op> struct Op1<value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<class A, class B, template<class,class> class Op> struct Op2 { typedef Op< typename remove_cvref<A>::type, typename remove_cvref<B>::type > type; };
-	template<class A, template<class, class> class Op> struct Op2<A, INMOST_DATA_REAL_TYPE, Op> { typedef Op< typename remove_cvref<A>::type, const_expression> type; };
-	template<class A, template<class, class> class Op> struct Op2<A, value_reference, Op> { typedef Op< typename remove_cvref<A>::type, const_expression> type; };
-	template<class B, template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, B, Op> { typedef Op<const_expression, typename remove_cvref<B>::type > type; };
-	template<class B, template<class, class> class Op> struct Op2<value_reference, B, Op> { typedef Op<const_expression, typename remove_cvref<B>::type > type; };
-	template<template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<template<class, class> class Op> struct Op2<value_reference, INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<template<class, class> class Op> struct Op2<INMOST_DATA_REAL_TYPE, value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
-	template<template<class, class> class Op> struct Op2<value_reference, value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
 	
+
+	template<class A> struct OpRef { typedef A type; };
+	template<> struct OpRef<variable> { typedef const_multivar_expression_reference type; };
+	template<> struct OpRef<hessian_variable> { typedef const_hessian_multivar_expression_reference type; };
+
+	template<class A, template<class> class Op> struct Op1 { typedef unary_pool_expression<Op<A>, A> type; };
+	template<template<class> class Op> struct Op1<INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+
+	template<class A, class B> struct OpAdd { typedef binary_pool_expression<addition_expression<A, B>, A, B> type; };
+	template<class A> struct OpAdd<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class B> struct OpAdd<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_addition_expression<B>, B> type; };
+	template<> struct OpAdd<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+
+	template<class A, class B> struct OpSub { typedef binary_pool_expression<subtraction_expression<A, B>, A, B> type; };
+	template<class A> struct OpSub<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class B> struct OpSub<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_subtraction_expression<B>, B> type; };
+	template<> struct OpSub<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+
+	template<class A, class B> struct OpMul { typedef binary_pool_expression<multiplication_expression<A, B>, A, B> type; };
+	template<class A> struct OpMul<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_multiplication_expression<A>, A> type; };
+	template<class A> struct OpMul<A, value_reference> { typedef unary_pool_expression<const_multiplication_expression<A>, A> type; };
+	template<class B> struct OpMul<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_multiplication_expression<B>, B> type; };
+	template<class B> struct OpMul<value_reference, B> { typedef unary_pool_expression<const_multiplication_expression<B>, B> type; };
+	template<> struct OpMul<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+
+	template<class A, class B> struct OpDiv { typedef binary_pool_expression<division_expression<A, B>, A, B> type; };
+	template<class A> struct OpDiv<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_division_expression<A>, A> type; };
+	template<class B> struct OpDiv<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<reciprocal_expression<B>, B> type; };
+	template<> struct OpDiv<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+
+	template<class A, class B> struct OpCond { typedef binary_pool_expression<branch_expression<A, B>, A, B> type; };
+	template<class A> struct OpCond<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_branch_expression<A>, A> type; };
+	template<class B> struct OpCond<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_branch_expression<B>, B> type; };
+	template<> struct OpCond<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+
 	class AbstractMatrixBase
 	{
-	protected:
+	public:
 		typedef Sparse::RowMerger2 merger_type;
+		static merger_type& GetMerger() { return *merger; }
+	protected:
 		static thread_private<merger_type> merger;
 	};
 
+	template<typename VarA, typename RetA, typename VarB, typename RetB>
+	__INLINE typename Promote<VarA, VarB>::type DotProduct(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		typename Promote<VarA, VarB>::type ret = 0.0;
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+				ret += A.compute(i, j) * B.compute(i, j);
+		return ret;
+	}
 
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetInterval(beg, end);
+			}
+		ret.SetValue(value);
+		if (end > beg)
+		{
+			m.set_bitset(beg, end);
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+			m.set_vals();
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
+			m.get_row(ret.GetRow());
+		}
+		return ret;
+	}
+
+	template<typename RetA>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B)
+	{
+		return DotProduct(B, A);
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetInterval(beg, end);
+				B.compute(i, j).GetInterval(beg, end);
+			}
+		ret.SetValue(value);
+		if (end > beg)
+		{
+			m.set_bitset(beg, end);
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+				{
+					A.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+				}
+			m.set_vals();
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+				{
+					A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
+					B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
+				}
+			m.get_row(ret.GetRow());
+		}
+		return ret;
+	}
+
+	
 	template<typename Var, typename RetType>
 	class AbstractMatrixReadOnly : public AbstractMatrixBase
 	{
@@ -476,6 +684,7 @@ namespace INMOST
 		typename Promote<Var, typeB>::type
 			DotProduct(const AbstractMatrixReadOnly<typeB, retB>& other) const
 		{
+			/*
 			assert(Cols() == other.Cols());
 			assert(Rows() == other.Rows());
 			typename Promote<Var, typeB>::type ret = 0.0;
@@ -483,6 +692,8 @@ namespace INMOST
 				for (enumerator j = 0; j < Cols(); ++j)
 					ret += compute(i, j) * other.compute(i, j);
 			return ret;
+			*/
+			return INMOST::DotProduct(*this, other);
 		}
 		/// Computes dot product by summing up multiplication of entries with the
 		/// same indices in the current and the provided matrix.
@@ -692,49 +903,17 @@ namespace INMOST
 	/// used to abstract away all the data storage and access
 	/// and provide common implementation of the algorithms.
 	template<typename Var>
-	class AbstractMatrix : public AbstractMatrixReadOnly<Var, const Var&>
+	class AbstractMatrix : public AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>
 	{
 	public:
 		
-	 	using AbstractMatrixReadOnly<Var, const Var&>::operator ();
-		using AbstractMatrixReadOnly<Var, const Var&>::Transpose;
-		using AbstractMatrixReadOnly<Var, const Var&>::Repack;
-		using AbstractMatrixReadOnly<Var, const Var&>::ConcatRows;
-		using AbstractMatrixReadOnly<Var, const Var&>::ConcatCols;
-		/*
-		using AbstractMatrixReadOnly<Var, const Var&>::compute;
-		using AbstractMatrixReadOnly<Var, const Var&>::Rows;
-		using AbstractMatrixReadOnly<Var, const Var&>::Cols;
-		using AbstractMatrixReadOnly<Var, const Var&>::Transpose;
-		using AbstractMatrixReadOnly<Var, const Var&>::BlockOf;
-		using AbstractMatrixReadOnly<Var, const Var&>::Repack;
-		using AbstractMatrixReadOnly<Var, const Var&>::ConcatRows;
-		using AbstractMatrixReadOnly<Var, const Var&>::ConcatCols;
-		typedef typename AbstractMatrixReadOnly<Var, const Var&>::enumerator enumerator;
-		*/
+	 	using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::operator ();
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Transpose;
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Repack;
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::ConcatRows;
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::ConcatCols;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
-		/*
-		/// Construct from matrix of the same type.
-		/// @param other Another matrix of the same type.
-		AbstractMatrix(const AbstractMatrix & b)
-		{
-			Resize(b.Rows(),b.Cols());
-			for(enumerator i = 0; i < b.Rows(); ++i)
-				for(enumerator j = 0; j < b.Cols(); ++j)
-					get(i,j) = b(i,j);
-		}
-		/// Construct from matrix of another type.
-		/// @param other Another matrix of different type.
-		template<typename typeB>
-		AbstractMatrix(const AbstractMatrix<typeB> & b)
-		{
-			Resize(b.Rows(),b.Cols());
-			for(enumerator i = 0; i < b.Rows(); ++i)
-				for(enumerator j = 0; j < b.Cols(); ++j)
-					assign(get(i,j),b(i,j));
-		}
-		*/
 		/// Assign matrix of the same type.
 		/// @param other Another matrix of the same type.
 		/// @return Reference to matrix.
@@ -788,7 +967,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE const Var& compute(enumerator i, enumerator j) const { return get(i, j); }
+		__INLINE typename OpRef<Var>::type compute(enumerator i, enumerator j) const { return typename OpRef<Var>::type(get(i, j)); }
 		/// Resize the matrix into different size.
 		/// @param nrows New number of rows.
 		/// @param ncols New number of columns.
@@ -812,7 +991,7 @@ namespace INMOST
 			assert(Cols() == other.Cols());
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					assign(get(i, j), sub(get(i, j), other.compute(i, j)));
+					assign(get(i, j), sub(compute(i, j), other.compute(i, j)));
 			return *this;
 		}
 		/// Add a matrix and store result in the current.
@@ -825,7 +1004,7 @@ namespace INMOST
 			assert(Cols() == other.Cols());
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					assign(get(i, j), add(get(i, j), other.compute(i, j)));
+					assign(get(i, j), add(compute(i, j), other.compute(i, j)));
 			return *this;
 		}
 		/// Multiply matrix with another matrix in-place.
@@ -845,7 +1024,7 @@ namespace INMOST
 		{
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					assign(get(i, j), mul(get(i, j), coef));
+					assign(get(i, j), mul(compute(i, j), coef));
 			return *this;
 		}
 		/// Divide the matrix by the coefficient of the same type and store the result.
@@ -856,7 +1035,7 @@ namespace INMOST
 		{
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					assign(get(i, j), div(get(i, j), coef));
+					assign(get(i, j), div(compute(i, j), coef));
 			return *this;
 		}
 		/// Extract submatrix of a matrix for in-place manipulation of elements.
@@ -911,12 +1090,6 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class SymmetricMatrix : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::get;
-		*/
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -986,9 +1159,7 @@ namespace INMOST
 		SymmetricMatrix(enumerator pn, const Var & c) : space(pn*(pn+1)/2,c), n(pn) {}
 		/// Copy matrix.
 		/// @param other Another matrix of the same type.
-		SymmetricMatrix(const SymmetricMatrix & other) : space(other.space), n(other.n)
-		{
-		}
+		SymmetricMatrix(const SymmetricMatrix & other) : space(other.space), n(other.n) {}
 		/// Construct matrix from matrix of different type.
 		/// Function assumes that the other matrix is square and symmetric.
 		/// Copies only top-right triangular part.
@@ -1092,13 +1263,6 @@ namespace INMOST
 		/// Obtain number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const {return n;}
-		/// Obtain number of rows.
-		/// @return Reference to number of rows.
-		//__INLINE enumerator & Rows() {return n;}
-		/// Obtain number of rows.
-		/// @return Reference to number of columns.
-		//__INLINE enumerator & Cols() {return n;}
-
 		/// Convert values in array into square matrix.
 		/// Supports the following representation, depending on the size
 		/// of input array and size of side of final tensors' matrix:
@@ -1231,44 +1395,6 @@ namespace INMOST
 			for(enumerator k = 0; k < size; ++k) ret(k,k) = 1.0/r[k];
 			return ret;
 		}
-		/// Unit matrix. Creates a square matrix of size pn by pn
-		/// and fills the diagonal with c.
-		/// @param pn Number of rows and columns in the matrix.
-		/// @param c Value to put onto diagonal.
-		/// @return Returns a unit matrix.
-		/*
-		static SymmetricMatrix<Var> Unit(enumerator pn, const Var & c = 1.0)
-		{
-			SymmetricMatrix<Var> ret(pn);
-			ret.Zero();
-			for(enumerator i = 0; i < pn; ++i) ret(i,i) = c;
-			return ret;
-		}
-		*/
-
-		/// Extract submatrix of a matrix for in-place manipulation of elements.
-		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
-		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
-		/// and j in [jbeg,jend).
-		/// @param first_row Starting row in the original matrix.
-		/// @param last_row Last row (excluded) in the original matrix.
-		/// @param first_col Starting column in the original matrix.
-		/// @param last_col Last column (excluded) in the original matrix.
-		/// @return Submatrix of the original matrix.
-		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
-		/// Extract submatrix of a matrix for in-place manipulation of elements.
-		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
-		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
-		/// and j in [jbeg,jend).
-		/// @param first_row Starting row in the original matrix.
-		/// @param last_row Last row (excluded) in the original matrix.
-		/// @param first_col Starting column in the original matrix.
-		/// @param last_col Last column (excluded) in the original matrix.
-		/// @return Submatrix of the original matrix.
-		//::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
-		//::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	
 	/// Class for linear algebra operations on dense matrices.
@@ -1298,12 +1424,6 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class Matrix : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::get;
-		*/
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -1486,19 +1606,6 @@ namespace INMOST
 				for(enumerator j = 0; j < m; ++j)
 					assign(get(i,j),other.compute(i,j));
 		}
-		/// Construct matrix from matrix of different type.
-		/// Uses assign function declared in inmost_expression.h.
-		/// Copies derivative information if possible.
-		/// @param other Another matrix of different type.
-		/*
-		template<typename typeB>
-		Matrix(const AbstractMatrix<typeB>& other) : space(other.Cols()* other.Rows()), n(other.Rows()), m(other.Cols())
-		{
-			for (enumerator i = 0; i < n; ++i)
-				for (enumerator j = 0; j < m; ++j)
-					assign(get(i, j), other.get(i, j));
-		}
-		*/
 		/// Delete matrix.
 		~Matrix() {}
 		/// Resize the matrix into different size.
@@ -1518,9 +1625,9 @@ namespace INMOST
 		{
 			if( this != &other )
 			{
-				if( n*m != other.n*other.m )
-					space.resize(other.n*other.m);
-				for(enumerator i = 0; i < other.n*other.m; ++i)
+				if (n * m != other.n * other.m)
+					space.resize(other.n * other.m);
+				for (enumerator i = 0; i < other.n * other.m; ++i)
 					space[i] = other.space[i];
 				n = other.n;
 				m = other.m;
@@ -1530,22 +1637,6 @@ namespace INMOST
 		/// Assign matrix of another type.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
-		template<typename typeB, typename retB>
-		Matrix & operator =(AbstractMatrixReadOnly<typeB, retB> const & other)
-		{
-			if( Cols()*Rows() != other.Cols()*other.Rows() )
-				space.resize(other.Cols()*other.Rows());
-			n = other.Rows();
-			m = other.Cols();
-			for(enumerator i = 0; i < other.Rows(); ++i)
-				for(enumerator j = 0; j < other.Cols(); ++j)
-					assign(get(i,j),other.compute(i,j));
-			return *this;
-		}
-		/// Assign matrix of another type.
-		/// @param other Another matrix of different type.
-		/// @return Reference to matrix.
-		/*
 		template<typename typeB>
 		Matrix& operator =(AbstractMatrix<typeB> const& other)
 		{
@@ -1558,7 +1649,21 @@ namespace INMOST
 					assign(get(i, j), other.get(i, j));
 			return *this;
 		}
-		*/
+		/// Assign matrix of another type.
+		/// @param other Another matrix of different type.
+		/// @return Reference to matrix.
+		template<typename typeB, typename retB>
+		Matrix & operator =(AbstractMatrixReadOnly<typeB, retB> const & other)
+		{
+			if (Cols() * Rows() != other.Cols() * other.Rows())
+				space.resize(other.Cols() * other.Rows());
+			n = other.Rows();
+			m = other.Cols();
+			for (enumerator i = 0; i < other.Rows(); ++i)
+				for (enumerator j = 0; j < other.Cols(); ++j)
+					assign(get(i, j), other.compute(i, j));
+			return *this;
+		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Column index.
@@ -1596,13 +1701,6 @@ namespace INMOST
 		/// Obtain number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const {return m;}
-		/// Obtain number of rows.
-		/// @return Reference to number of rows.
-		//__INLINE enumerator & Rows() {return n;}
-		/// Obtain number of rows.
-		/// @return Reference to number of columns.
-		//__INLINE enumerator & Cols() {return m;}
-
 		/// Construct row permutation matrix from array of new positions for rows.
 		/// Row permutation matrix multiplies matrix from left.
 		/// Column permutation matrix is obtained by transposition and is multiplied
@@ -1908,41 +2006,11 @@ namespace INMOST
 			} while( repeat );
 			return V;
 		}
-		/// Extract submatrix of a matrix for in-place manipulation of elements.
-		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
-		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
-		/// and j in [jbeg,jend).
-		/// @param first_row Starting row in the original matrix.
-		/// @param last_row Last row (excluded) in the original matrix.
-		/// @param first_col Starting column in the original matrix.
-		/// @param last_col Last column (excluded) in the original matrix.
-		/// @return Submatrix of the original matrix.
-		//::INMOST::SubMatrix<Var,storage_type> SubMatrix(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-		
-		/// Extract submatrix of a matrix for in-place manipulation of elements.
-		/// Let A = {a_ij}, i in [0,n), j in [0,m) be original matrix.
-		/// Then the method returns B = {a_ij}, i in [ibeg,iend),
-		/// and j in [jbeg,jend).
-		/// @param first_row Starting row in the original matrix.
-		/// @param last_row Last row (excluded) in the original matrix.
-		/// @param first_col Starting column in the original matrix.
-		/// @param last_col Last column (excluded) in the original matrix.
-		/// @return Submatrix of the original matrix.
-		//::INMOST::SubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col);
-
-		//::INMOST::ConstSubMatrix<Var> operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const;
 	};
 	/// This class allows for in-place operations on submatrix of the matrix elements.
 	template<typename Var>
 	class SubMatrix : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::operator =;
-		using AbstractMatrix<Var>::get;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		AbstractMatrix<Var> * M;
 		enumerator brow; //< First row in matrix M.
@@ -1962,8 +2030,7 @@ namespace INMOST
 		/// @param last_row Last row in the matrix.
 		/// @param first_column First column in the matrix.
 		/// @param last_column Last column in the matrix.
-		SubMatrix(AbstractMatrix<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column)
-		{}
+		SubMatrix(AbstractMatrix<Var> & rM, enumerator first_row, enumerator last_row, enumerator first_column, enumerator last_column) : M(&rM), brow(first_row), erow(last_row), bcol(first_column), ecol(last_column) {}
 		SubMatrix(const SubMatrix & b) : M(b.M), brow(b.brow), erow(b.erow), bcol(b.bcol), ecol(b.ecol) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -2005,11 +2072,6 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractSubMatrix : public AbstractMatrixReadOnly<Var, Ret>
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, Ret>::compute;
-		typedef typename AbstractMatrixReadOnly<Var, Ret>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var, Ret> * M;
 		enumerator brow; //< First row in matrix M.
@@ -2048,13 +2110,8 @@ namespace INMOST
 	
 	/// This class allows to address a matrix as a block of an empty matrix of larger size.
 	template<typename Var, typename Ret>
-	class AbstractBlockOfMatrix : public AbstractMatrixReadOnly<Var, typename Op1<typename remove_cvref<Ret>::type,branch_zero_expression>::type >
+	class AbstractBlockOfMatrix : public AbstractMatrixReadOnly<Var, typename Op1<Ret, const_branch_expression>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, typename Op1<Ret, branch_zero_expression>::type >::compute;
-		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Ret, branch_zero_expression>::type >::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var,Ret> * M;
 		enumerator nrows; //< Number of rows in larger matrix.
@@ -2082,26 +2139,17 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Op1<typename remove_cvref<Ret>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op1<Ret, const_branch_expression>::type compute(enumerator i, enumerator j) const
 		{
 			assert(i < Rows());
 			assert(j < Cols());
-			return cond_zero(!(i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols()), M->compute(i - orow, j - ocol));
-			//if (i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols())
-			//	return Var(0.0);
-			//else
-			//	return M->compute(i-orow,j-ocol);
+			return branch(!(i < orow || i >= orow + M->Rows() || j < ocol || j >= ocol + M->Cols()), M->compute(i - orow, j - ocol), 0.0);
 		}
 	};
 
 	template<typename Var>
-	class MatrixUnit : public AbstractMatrixReadOnly< Var, typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type >
+	class MatrixUnit : public AbstractMatrixReadOnly< Var, typename Op1<Var, const_branch_expression>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::compute;
-		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2114,21 +2162,15 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op1<Var, const_branch_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return cond_zero(i == j, c);
-			//return i == j ? c : Var(0.0); 
+			return branch(i == j, c, 0.0);
 		}
 	};
 
 	template<typename Var>
 	class MatrixRow : public AbstractMatrixReadOnly< Var, const Var & >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, const Var &>::compute;
-		typedef typename AbstractMatrixReadOnly<Var, const Var &>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2147,11 +2189,6 @@ namespace INMOST
 	template<typename Var>
 	class MatrixCol : public AbstractMatrixReadOnly< Var, const Var & >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, const Var &>::compute;
-		typedef typename AbstractMatrixReadOnly<Var, const Var &>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		enumerator n;
 		Var c;
@@ -2168,13 +2205,8 @@ namespace INMOST
 	};
 
 	template<typename Var>
-	class MatrixDiag : public AbstractMatrixReadOnly< Var, typename Op1<typename remove_cvref<Var>::type,branch_zero_expression>::type >
+	class MatrixDiag : public AbstractMatrixReadOnly< Var, typename Op1<Var, const_branch_expression>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::compute;
-		typedef typename AbstractMatrixReadOnly<Var, typename Op1<Var, branch_zero_expression>::type>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		enumerator n;
 		Var* diag;
@@ -2187,21 +2219,16 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE typename Op1<typename remove_cvref<Var>::type, branch_zero_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename Op1<Var, const_branch_expression>::type compute(enumerator i, enumerator j) const
 		{
-			return cond_zero(i == j, diag[i]);
+			return branch(i == j, diag[i], 0.0);
 			//return i == j ? diag[i] : Var(0.0); 
 		}
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class MatrixSum : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,addition_expression>::type >
+	class MatrixSum : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpAdd<RetA, RetB>::type>
 	{
-		/*
-	public:
-		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, addition_expression>::type >::enumerator enumerator; //< Integer type for indexes.
-		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, addition_expression>::type>::compute;
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2224,22 +2251,15 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, addition_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename OpAdd<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
 			return add(A->compute(i, j), B->compute(i, j));
 		}
 	};
-	//template<typename VarA, typename VarB>
-	//thread_private< typename Promote<VarA, VarB>::type > MatrixSum<VarA,VarB>::tmp;
-
+	
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,subtraction_expression>::type >
+	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpSub<RetA, RetB>::type >
 	{
-		/*
-	public:
-		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, subtraction_expression>::type>::enumerator enumerator; //< Integer type for indexes.
-		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<RetA, RetB, subtraction_expression>::type >::operator();
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2262,7 +2282,7 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, subtraction_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename OpSub<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
 			return sub(A->compute(i, j), B->compute(i, j));
 		}
@@ -2271,11 +2291,6 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
-		/*
-	public:
-		typedef typename AbstractMatrixReadOnly<Var, Ret>::enumerator enumerator; //< Integer type for indexes.
-		using AbstractMatrixReadOnly<Var, Ret>::compute;
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
@@ -2285,8 +2300,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Rows(); }
-		AbstractMatrixTranspose(const AbstractMatrixReadOnly<Var, Ret>& rA)
-			: A(&rA) {}
+		AbstractMatrixTranspose(const AbstractMatrixReadOnly<Var, Ret>& rA) : A(&rA) {}
 		AbstractMatrixTranspose(const AbstractMatrixTranspose& b) : A(b.A) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -2299,11 +2313,6 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixConjugateTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var, Ret>::compute;
-		typedef typename AbstractMatrixReadOnly<Var,Ret>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
@@ -2327,11 +2336,6 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixConjugate : public AbstractMatrixReadOnly<Var,Ret>
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var,Ret>::compute;
-		typedef typename AbstractMatrixReadOnly<Var,Ret>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
@@ -2351,19 +2355,11 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE Ret compute(enumerator i, enumerator j) const { return conj(A->compute(i, j)); }
 	};
-	//template<typename Var>
-	//thread_private<Var> ConstMatrixConjugate<Var>::tmp;
 
 	template<typename Var, typename Ret>
-	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var, typename Op1<typename remove_cvref<Ret>::type,unary_minus_expression>::type >
+	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var, typename Op1<Ret, unary_minus_expression>::type>
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
-		//static thread_private<Var> tmp;
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
 		/// Number of rows.
@@ -2380,21 +2376,12 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op1<typename remove_cvref<Ret>::type, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
+		__INLINE typename Op1<Ret, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
 	};
-	//template<typename Var>
-	//thread_private<Var> MatrixUnaryMinus<Var>::tmp;
-
+	
 	template<typename Var>
 	class MatrixTranspose : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		using AbstractMatrix<Var>::operator ();
-		using AbstractMatrix<Var>::get;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		*/
 		AbstractMatrix<Var>* A;
 	public:
 		/// Number of rows.
@@ -2431,13 +2418,8 @@ namespace INMOST
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class AbstractMatrixConcatRows : public AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,branch_expression>::type >
+	class AbstractMatrixConcatRows : public AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type, typename OpCond<RetA, RetB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<VarR>::compute;
-		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2459,20 +2441,15 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename OpCond<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
-			return cond_both(i < A->Rows(), A->compute(i, j), B->compute(i - A->Rows(), j));
+			return branch(i < A->Rows(), A->compute(i, j), B->compute(i - A->Rows(), j));
 		}
 	};
 	
 	template<typename Var>
 	class MatrixConcatRows : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		using AbstractMatrix<Var>::operator();
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
@@ -2518,13 +2495,8 @@ namespace INMOST
 
 	
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class AbstractMatrixConcatCols : public AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type >
+	class AbstractMatrixConcatCols : public AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename OpCond<RetA, RetB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<VarR>::compute;
-		typedef typename AbstractMatrixReadOnly<VarR>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2545,24 +2517,15 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, branch_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename OpCond<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
-			return cond_both(j < A->Cols(), A->compute(i, j), B->compute(i, j - A->Cols()));
-			//if (j < A->Cols()) return A->compute(i, j);
-			//else return B->compute(i, j - A->Cols());
+			return branch(j < A->Cols(), A->compute(i, j), B->compute(i, j - A->Cols()));
 		}
 	};
 	
 	template<typename Var>
 	class MatrixConcatCols : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::get;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-	private:
-		*/
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
 	public:
@@ -2608,11 +2571,6 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixRepack : public AbstractMatrixReadOnly<Var, Ret>
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly<Var>::compute;
-		typedef typename AbstractMatrixReadOnly<Var>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 		enumerator n, m;
@@ -2641,12 +2599,6 @@ namespace INMOST
 	template<typename Var>
 	class MatrixRepack : public AbstractMatrix<Var>
 	{
-		/*
-	public:
-		using AbstractMatrix<Var>::operator();
-		using AbstractMatrix<Var>::get;
-		typedef typename AbstractMatrix<Var>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		AbstractMatrix<Var>* A;
 		enumerator n, m;
@@ -2698,12 +2650,6 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixMul : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrix< VarR >::operator();
-		using AbstractMatrix< VarR >::get;
-		typedef typename AbstractMatrix< VarR >::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
@@ -2760,13 +2706,8 @@ namespace INMOST
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename VarAB>
-	class MatrixMulCoef : public AbstractMatrixReadOnly< VarAB, typename Op2< typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, multiplication_expression>::type >
+	class MatrixMulCoef : public AbstractMatrixReadOnly< VarAB, typename OpMul<RetA, VarB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly< VarR >::compute;
-		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const VarB * coef;
@@ -2785,17 +2726,12 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2< typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, multiplication_expression>::type compute(enumerator i, enumerator j) const { return mul(A->compute(i, j), *coef); }
+		__INLINE typename OpMul<RetA, VarB>::type compute(enumerator i, enumerator j) const { return mul(A->compute(i, j), *coef); }
 	};
 	
 	template<typename VarA, typename VarB, typename RetA, typename VarAB>
-	class MatrixDivCoef : public AbstractMatrixReadOnly< VarAB, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, division_expression>::type >
+	class MatrixDivCoef : public AbstractMatrixReadOnly< VarAB, typename OpDiv<RetA, VarB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly< VarR >::compute;
-		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const VarB * coef;
@@ -2815,82 +2751,13 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<VarB>::type, division_expression>::type compute(enumerator i, enumerator j) const { return div(A->compute(i, j), *coef); }
+		__INLINE typename OpDiv<RetA, VarB>::type compute(enumerator i, enumerator j) const { return div(A->compute(i, j), *coef); }
 	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> MatrixDivCoef<VarA, VarB, VarR>::tmp;
-	/*
-#if defined(USE_AUTODIFF)
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixMulShellCoef : public AbstractMatrixReadOnly< VarR >
-	{
-	public:
-		using AbstractMatrixReadOnly< VarR >::compute;
-		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
-	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const variable coef;
-	public:
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixMulShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
-			: A(&rA), coef(rcoef) {}
-		MatrixMulShellCoef(const MatrixMulShellCoef& b) : A(b.A), coef(b.coef) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const { return A->compute(i, j) * coef; }
-	};
-	
-	template<typename VarA, typename VarB, typename VarR>
-	class MatrixDivShellCoef : public AbstractMatrixReadOnly< VarR >
-	{
-	public:
-		using AbstractMatrixReadOnly< VarR >::compute;
-		typedef typename AbstractMatrixReadOnly< VarR >::enumerator enumerator; //< Integer type for indexes.
-	private:
-		//static thread_private<VarR> tmp;
-		const AbstractMatrixReadOnly<VarA>* A;
-		const variable coef;
-	public:
-		/// Number of rows.
-		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows(); }
-		/// Number of columns.
-		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols(); }
-		MatrixDivShellCoef(const AbstractMatrixReadOnly<VarA>& rA, const VarB& rcoef)
-			: A(&rA), coef(rcoef) {}
-		MatrixDivShellCoef(const MatrixDivShellCoef& b)
-			: A(b.A), coef(b.coef) {}
-		/// Access element of the matrix by row and column indices
-		/// without right to change the element.
-		/// @param i Row index.
-		/// @param j Column index.
-		/// @return Reference to constant element.
-		__INLINE VarR compute(enumerator i, enumerator j) const { return (A->compute(i, j) / coef); }
-	};
-	//template<typename VarA, typename VarB, typename VarR>
-	//thread_private<VarR> MatrixDivShellCoef<VarA, VarB, VarR>::tmp;
-#endif //USE_AUTODIFF
-	*/
+
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type,multiplication_expression>::type >
+	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpMul<RetA, RetB>::type >
 	{
-		/*
-	public:
-		using AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type >::compute;
-		typedef typename AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type>::enumerator enumerator; //< Integer type for indexes.
-		*/
 	private:
-		//static thread_private< typename Promote<VarA, VarB>::type > tmp;
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
 	public:
@@ -2908,15 +2775,14 @@ namespace INMOST
 		/// @param i Column index.
 		/// @param j Row index.
 		/// @return Reference to constant element.
-		__INLINE typename Op2<typename remove_cvref<RetA>::type, typename remove_cvref<RetB>::type, multiplication_expression>::type compute(enumerator i, enumerator j) const
+		__INLINE typename OpMul<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
 			return mul(A->compute(i / B->Rows(), j / B->Cols()), B->compute(i % B->Rows(), j % B->Cols()));
 		}
 	};
 	
 	template<typename Var>
-	void
-	AbstractMatrix<Var>::Swap(AbstractMatrix<Var> & b)
+	void AbstractMatrix<Var>::Swap(AbstractMatrix<Var> & b)
 	{
 		Matrix<Var> tmp = b;
 		b = (*this);
@@ -2978,382 +2844,6 @@ namespace INMOST
 		
 		return Q;
 	}
-
-
-	/*
-	template<typename Var>
-	template<typename typeB>
-	MatrixDifference<Var,typeB>
-	AbstractMatrixReadOnly<Var>::operator-(const AbstractMatrixReadOnly<typeB> & other) const
-	{
-		return MatrixDifference<Var, typeB>(*this, other);
-	}
-	
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var> &
-	AbstractMatrix<Var>::operator-=(const AbstractMatrixReadOnly<typeB> & other)
-	{
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(get(i,j),get(i,j)-other.compute(i,j));
-		return *this;
-	}
-	
-	template<typename Var>
-	template<typename typeB>
-	MatrixSum<Var,typeB>
-	AbstractMatrixReadOnly<Var>::operator+(const AbstractMatrixReadOnly<typeB> & other) const
-	{
-		return MatrixSum<Var, typeB>(*this, other);
-	}
-	
-
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var> &
-	AbstractMatrix<Var>::operator+=(const AbstractMatrixReadOnly<typeB> & other)
-	{
-		assert(Rows() == other.Rows());
-		assert(Cols() == other.Cols());
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(get(i,j),get(i,j)+other.compute(i,j));
-		return *this;
-	}
-
-	template<typename Var>
-	template<typename typeB, typename retB>
-	MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>
-	AbstractMatrixReadOnly<Var, retB>::operator*(const AbstractMatrixReadOnly<typeB, retB> & other) const
-	{
-		return MatrixMul<Var, typeB, typename Promote<Var, typeB>::type>(*this, other);
-	}
-	
-#if 1
-#if defined(USE_AUTODIFF)
-	template<>
-	template<>
-	__INLINE Promote<INMOST_DATA_REAL_TYPE,variable>::type
-	AbstractMatrix<INMOST_DATA_REAL_TYPE>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
-	{
-		assert(Cols() == other.Cols());
-		assert(Rows() == other.Rows());
-		variable ret = 0.0;
-		if( true )
-		{
-			AbstractMatrixBase::merger_type& m = *merger;
-#if 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j) * other.get(i, j).GetValue();
-					other.get(i, j).GetInterval(beg, end);
-				}
-			ret.SetValue(value);
-			if (end > beg)
-			{
-				m.bitset.resize(end - beg, false);
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-						other.get(i, j).GetIndices(beg, m.bitset, m.inds);
-				m.set_vals();
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-						other.get(i, j).GetValues(this->get(i, j), m.inds, m.vals);
-				m.get_row(ret.GetRow());
-			}
-#elif 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j) * other.get(i, j).GetValue();
-					other.get(i, j).GetIndices(m.indset);
-				}
-			ret.SetValue(value);
-			m.set_vals();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					other.get(i, j).GetValues(this->get(i, j), m.inds, m.vals);
-			m.get_row(ret.GetRow());
-#else
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i,j)*other(i,j).GetValue();
-					merger->AddRow(this->get(i,j),other.get(i,j).GetRow());
-				}
-			ret.SetValue(value);
-			merger->RetrieveRow(ret.GetRow());
-			merger->Clear();
-#endif
-		}
-		else
-		{
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret += get(i, j) * other.get(i, j);
-		}
-		return ret;
-	}
-	
-	template<>
-	template<>
-	__INLINE Promote<variable,INMOST_DATA_REAL_TYPE>::type
-	AbstractMatrix<variable>::DotProduct<INMOST_DATA_REAL_TYPE>(const AbstractMatrix<INMOST_DATA_REAL_TYPE> & other) const
-	{
-		assert(Cols() == other.Cols());
-		assert(Rows() == other.Rows());
-		variable ret = 0.0;
-		if( true )
-		{
-			AbstractMatrixBase::merger_type& m = *merger;
-#if 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j).GetValue() * other.get(i, j);
-					this->get(i, j).GetInterval(beg, end);
-				}
-			ret.SetValue(value);
-			if (end > beg)
-			{
-				m.bitset.resize(end - beg, false);
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-						this->get(i, j).GetIndices(beg, m.bitset, m.inds);
-				m.set_vals();
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-						this->get(i, j).GetValues(other.get(i, j), m.inds, m.vals);
-				m.get_row(ret.GetRow());
-			}
-#elif 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j).GetValue() * other.get(i, j);
-					this->get(i, j).GetIndices(m.indset);
-				}
-			ret.SetValue(value);
-			m.set_vals();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-					this->get(i, j).GetValues(other.get(i, j), m.inds, m.vals);
-			m.get_row(ret.GetRow());
-#else
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-				{
-					value += get(i,j).GetValue()*other(i,j);
-					merger->AddRow(other(i,j),get(i,j).GetRow());
-				}
-			ret.SetValue(value);
-			merger->RetrieveRow(ret.GetRow());
-			merger->Clear();
-#endif
-		}
-		else
-		{
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret += compute(i,j)*other.compute(i,j);
-		}
-		return ret;
-	}
-	
-	template<>
-	template<>
-	__INLINE Promote<variable,variable>::type
-	AbstractMatrix<variable>::DotProduct<variable>(const AbstractMatrix<variable> & other) const
-	{
-		assert(Cols() == other.Cols());
-		assert(Rows() == other.Rows());
-		Promote<variable,variable>::type ret = 0.0;
-		if( true )
-		{
-			AbstractMatrixBase::merger_type& m = *merger;
-#if 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j).GetValue() * other.get(i, j).GetValue();
-					this->get(i, j).GetInterval(beg, end);
-					other.get(i, j).GetInterval(beg, end);
-				}
-			ret.SetValue(value);
-			if (end > beg)
-			{
-				m.bitset.resize(end - beg, false);
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-					{
-						this->get(i, j).GetIndices(beg, m.bitset, m.inds);
-						other.get(i, j).GetIndices(beg, m.bitset, m.inds);
-					}
-				m.set_vals();
-				for (enumerator i = 0; i < Rows(); ++i)
-					for (enumerator j = 0; j < Cols(); ++j)
-					{
-						this->get(i, j).GetValues(other.get(i, j).GetValue(), m.inds, m.vals);
-						other.get(i, j).GetValues(this->get(i, j).GetValue(), m.inds, m.vals);
-					}
-				m.get_row(ret.GetRow());
-			}
-#elif 1
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			m.clear();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					value += this->get(i, j).GetValue() * other.get(i, j).GetValue();
-					this->get(i, j).GetIndices(m.indset);
-					other.get(i, j).GetIndices(m.indset);
-				}
-			ret.SetValue(value);
-			m.set_vals();
-			for (enumerator i = 0; i < Rows(); ++i)
-				for (enumerator j = 0; j < Cols(); ++j)
-				{
-					this->get(i, j).GetValues(other.get(i, j).GetValue(), m.inds, m.vals);
-					other.get(i, j).GetValues(this->get(i, j).GetValue(), m.inds, m.vals);
-				}
-			m.get_row(ret.GetRow());
-#else
-			INMOST_DATA_REAL_TYPE value = 0.0;
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-				{
-					value += get(i,j).GetValue()*other(i,j).GetValue();
-					merger->AddRow(other(i,j).GetValue(),get(i,j).GetRow());
-					merger->AddRow(get(i,j).GetValue(),other(i,j).GetRow());
-				}
-			ret.SetValue(value);
-			merger->RetrieveRow(ret.GetRow());
-			merger->Clear();
-#endif
-		}
-		else
-		{
-			for(enumerator i = 0; i < Rows(); ++i)
-				for(enumerator j = 0; j < Cols(); ++j)
-					ret += compute(i,j)*other.compute(i,j);
-		}
-		return ret;
-	}
-#endif //USE_AUTODIFF
-#endif //if 0
-	
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var> &
-	AbstractMatrix<Var>::operator*=(const AbstractMatrixReadOnly<typeB> & B)
-	{
-		(*this) = (*this)*B;
-		return *this;
-	}
-	
-	template<typename Var>
-	template<typename typeB>
-	MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>
-	AbstractMatrixReadOnly<Var>::operator*(const typeB& coef) const
-	{
-		return MatrixMulCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
-	}
-
-#if defined(USE_AUTODIFF)
-	template<typename Var>
-	template<typename A>
-	MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
-		AbstractMatrixReadOnly<Var>::operator*(shell_expression<A> const & coef) const
-	{
-		return MatrixMulShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
-	}
-#endif //USE_AUTODIFF
-	
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var> &
-	AbstractMatrix<Var>::operator*=(typeB coef)
-	{
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(get(i,j),get(i,j)*coef);
-		return *this;
-	}
-	
-#if defined(USE_AUTODIFF)
-	template<typename Var>
-	template<typename A>
-	MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>
-	AbstractMatrixReadOnly<Var>::operator/(shell_expression<A> const & coef) const
-	{
-		return MatrixDivShellCoef<Var, shell_expression<A>, typename Promote<Var, variable>::type>(*this, coef);
-	}
-#endif //USE_AUTODIFF
-	
-	template<typename Var>
-	template<typename typeB>
-	MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>
-		AbstractMatrixReadOnly<Var>::operator/(const typeB& coef) const
-	{
-		return MatrixDivCoef<Var, typeB, typename Promote<Var, typeB>::type>(*this, coef);
-	}
-	
-	template<typename Var>
-	template<typename typeB>
-	AbstractMatrix<Var> &
-	AbstractMatrix<Var>::operator/=(typeB coef)
-	{
-		for(enumerator i = 0; i < Rows(); ++i)
-			for(enumerator j = 0; j < Cols(); ++j)
-				assign(get(i,j),get(i,j)/coef);
-		return *this;
-	}
-	
-	template<typename Var>
-	template<typename typeB>
-	KroneckerProduct<Var,typeB>
-	AbstractMatrixReadOnly<Var>::Kronecker(const AbstractMatrixReadOnly<typeB> & other) const
-	{
-		return KroneckerProduct<Var, typeB>(*this, other);
-	}
-	
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::Invert(int * ierr) const
-	{
-		Matrix<Var> ret(Cols(),Rows());
-		ret = Solve(MatrixUnit<Var>(Rows()),ierr);
-		return ret;
-	}
-	
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::CholeskyInvert(int * ierr) const
-	{
-		Matrix<Var> ret(Rows(),Rows());
-		ret = CholeskySolve(MatrixUnit<Var>(Rows()),ierr);
-		return ret;
-	}
-	*/
 	
 	template<typename Var, typename RetType>
 	template<typename typeB, typename retB>
@@ -3622,25 +3112,6 @@ namespace INMOST
 		return ret;
 	}
 	
-	/*
-	template<typename Var>
-	Matrix<Var>
-	AbstractMatrixReadOnly<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
-	{
-		assert(ibeg < Rows());
-		assert(iend < Rows());
-		assert(jbeg < Cols());
-		assert(jend < Cols());
-		Matrix<Var> ret(iend-ibeg,jend-jbeg);
-		for(enumerator i = ibeg; i < iend; ++i)
-		{
-			for(enumerator j = jbeg; j < jend; ++j)
-				ret(i-ibeg,j-jbeg) = compute(i,j);
-		}
-		return ret;
-	}
-	*/
-	
 	template<typename Var, typename RetType>
 	Matrix<Var>
 	AbstractMatrixReadOnly<Var, RetType>::PseudoInvert(INMOST_DATA_REAL_TYPE tol, int * ierr) const
@@ -3751,30 +3222,6 @@ namespace INMOST
 		if( ierr ) *ierr = 0;
 		return ret;
 	}
-	
-	/*
-	template<typename Var>
-	SubMatrix<Var> AbstractMatrix<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col)
-	{
-		return SubMatrix<Var>(*this,first_row,last_row,first_col,last_col);
-	}
-	template<typename Var>
-	ConstSubMatrix<Var> AbstractMatrixReadOnly<Var>::operator()(enumerator first_row, enumerator last_row, enumerator first_col, enumerator last_col) const
-	{
-		return ConstSubMatrix<Var>(*this, first_row, last_row, first_col, last_col);
-	}
-	
-	template<typename Var>
-	BlockOfMatrix<Var> AbstractMatrix<Var>::BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col)
-	{
-		return BlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
-	}
-	template<typename Var>
-	ConstBlockOfMatrix<Var> AbstractMatrixReadOnly<Var>::BlockOf(enumerator nrows, enumerator ncols, enumerator offset_row, enumerator offset_col) const
-	{
-		return ConstBlockOfMatrix<Var>(*this,nrows,ncols,offset_row,offset_col);
-	}
-	*/
 	
 	template<class T> struct make_integer;
 	template<> struct make_integer<float> {typedef int type;};
@@ -4698,6 +4145,8 @@ namespace INMOST
 		std::swap(n, m);
 		return true;
 	}
+
+
 	
 	/// shortcut for matrix of integer values.
 	typedef Matrix<INMOST_DATA_INTEGER_TYPE> iMatrix;

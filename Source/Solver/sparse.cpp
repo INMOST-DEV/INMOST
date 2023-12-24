@@ -125,6 +125,11 @@ namespace INMOST
 			//std::copy(indset.begin(), indset.end(), inds.begin());
 			vals.resize(inds.size(), 0.0);
 		}
+		void RowMerger2::set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+		{
+			if (end - beg > bitset.size()) bitset.resize(end - beg);
+			std::fill(bitset.begin(), bitset.begin() + (end - beg), 0);
+		}
 		void RowMerger2::get_row(Sparse::Row& r)
 		{
 			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());

@@ -1313,6 +1313,112 @@ namespace INMOST
 		}
 	};
 	
+
+	class const_multivar_expression_reference : public shell_expression<const_multivar_expression_reference>
+	{
+		const multivar_expression& arg;
+	public:
+		/// Copy constructor, sets links to the same reference of value and entries
+		const_multivar_expression_reference(const const_multivar_expression_reference& other)
+			: arg(other.arg) {}
+		/// Copy constructor from multivar_expression, sets links to the same reference of value and entries
+		const_multivar_expression_reference(const multivar_expression& other)
+			: arg(other) {}
+		/// Retrieve value
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return arg.GetValue(); }
+		/// Retrieve derivatives with multiplier into Sparse::RowMerger structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		/// Retrieve derivatives with multiplier into Sparse::Row structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
+		{
+			arg.GetHessian(multJ, J, multH, H);
+		}
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
+		{
+			arg.GetInterval(beg, end);
+		}
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		{
+			arg.GetIndices(shift, bitset, inds);
+		}
+		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
+		{
+			arg.GetIndices(indset);
+		}
+		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			arg.GetValues(coef, inds, vals);
+		}
+		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			arg.GetValues(coef, inds, vals);
+		}
+	};
+
+	class const_hessian_multivar_expression_reference : public shell_expression<const_hessian_multivar_expression_reference>
+	{
+		const hessian_multivar_expression& arg;
+	public:
+		/// Copy constructor, sets links to the same reference of value and entries
+		const_hessian_multivar_expression_reference(const const_hessian_multivar_expression_reference& other)
+			: arg(other.arg) {}
+		/// Copy constructor from multivar_expression, sets links to the same reference of value and entries
+		const_hessian_multivar_expression_reference(const multivar_expression& other)
+			: arg(other) {}
+		/// Retrieve value
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return arg.GetValue(); }
+		/// Retrieve derivatives with multiplier into Sparse::RowMerger structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		/// Retrieve derivatives with multiplier into Sparse::Row structure.
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const
+		{
+			arg.GetJacobian(mult, r);
+		}
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
+		{
+			arg.GetHessian(multJ, J, multH, H);
+		}
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
+		{
+			arg.GetInterval(beg, end);
+		}
+		void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		{
+			arg.GetIndices(shift, bitset, inds);
+		}
+		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
+		{
+			arg.GetIndices(indset);
+		}
+		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			arg.GetValues(coef, inds, vals);
+		}
+		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
+		{
+			arg.GetValues(coef, inds, vals);
+		}
+	};
 	
 	template<class A>
 	class const_multiplication_expression : public shell_expression<const_multiplication_expression<A> >
@@ -2912,8 +3018,8 @@ namespace INMOST
 		branch_expression(const branch_expression & other)
 		:cond(other.cond), left(other.left), right(other.right),
 		value(other.value) {}
-        branch_expression(const branch_expression & other, bool pcond, const A & pleft, const B & pright)
-                :cond(pcond), left(pleft), right(pright),
+        branch_expression(const branch_expression & other, const A & pleft, const B & pright)
+                :cond(other.cond), left(pleft), right(pright),
                  value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
@@ -2978,54 +3084,55 @@ namespace INMOST
 	};
 
 	template<class A>
-	class branch_zero_expression : public shell_expression<branch_zero_expression<A> >
+	class const_branch_expression : public shell_expression<const_branch_expression<A> >
 	{
 		bool cond;
-		const A& arg;
+		const A& left;
+		INMOST_DATA_REAL_TYPE right;
 		INMOST_DATA_REAL_TYPE value;
 	public:
-		branch_zero_expression(const shell_expression<A>& parg) : arg(parg) {value = 0.0;}
-		branch_zero_expression(bool pcond, const shell_expression<A>& parg) : cond(pcond), arg(parg)
+		const_branch_expression(const shell_expression<A>& pleft, INMOST_DATA_REAL_TYPE pright) : left(pleft), right(pright) {value = 0.0;}
+		const_branch_expression(bool pcond, const shell_expression<A>& pleft, INMOST_DATA_REAL_TYPE pright) : cond(pcond), left(pleft), right(pright)
 		{
-			value = cond ? arg.GetValue() : 0.0;
+			value = cond ? left.GetValue() : right;
 		}
-		branch_zero_expression(const branch_zero_expression& other)
-			:cond(other.cond), arg(other.arg), value(other.value) {}
-		branch_zero_expression(const branch_zero_expression& other, bool pcond, const A& parg)
-			:cond(pcond), arg(parg), value(other.value) {}
+		const_branch_expression(const const_branch_expression& other)
+			:cond(other.cond), left(other.left), right(other.right), value(other.value) {}
+		const_branch_expression(const const_branch_expression& other, const A& pleft)
+			:cond(other.cond), left(pleft), right(other.right), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { if (cond) arg.GetJacobian(mult, r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { if (cond) arg.GetJacobian(mult, r); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { if (cond) arg.GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { if (cond) left.GetJacobian(mult, r);}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { if (cond) left.GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { if (cond) left.GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
 		{
-			if (cond) arg.GetHessian(multJ, J, multH, H);
+			if (cond) left.GetHessian(multJ, J, multH, H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return cond ? arg.GetCount() : 0; }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return cond ? left.GetCount() : 0; }
 		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
 		{
-			if (cond) arg.GetInterval(beg, end);
+			if (cond) left.GetInterval(beg, end);
 		}
 		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
-			if (cond) arg.GetIndices(shift, bitset, inds);
+			if (cond) left.GetIndices(shift, bitset, inds);
 		}
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
 		{
-			if (cond) arg.GetIndices(indset);
+			if (cond) left.GetIndices(indset);
 		}
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
-			if (cond) arg.GetValues(coef, inds, vals);
+			if (cond) left.GetValues(coef, inds, vals);
 		}
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
-			if (cond) arg.GetValues(coef, inds, vals);
+			if (cond) left.GetValues(coef, inds, vals);
 		}
 		void SetCondition(bool _cond)
 		{
 			cond = _cond;
-			value = cond ? left.GetValue() : 0.0;
+			value = cond ? left.GetValue() : right;
 		}
 	};
 	
@@ -3193,6 +3300,132 @@ namespace INMOST
 		INMOST_DATA_REAL_TYPE * GetTableValues() {return vals;}
 		INMOST_DATA_ENUM_TYPE GetSize() const {return size;}
 	};
+
+	template<class Op, class A>
+	class unary_pool
+	{
+		A arg;
+		Op operand;
+
+		unary_pool& operator = (unary_pool const& other) { arg = other.arg; operand.assign(other.operand, arg); return *this; }
+	public:
+		unary_pool(const A& parg) : arg(parg), operand(arg) {}
+		unary_pool(const A& parg, INMOST_DATA_REAL_TYPE pmult) : arg(parg), operand(arg, pmult) {}
+		unary_pool(bool cond, const A& parg, INMOST_DATA_REAL_TYPE pright) : arg(parg), operand(cond, arg, pright) {}
+		unary_pool(const unary_pool& other) : arg(other.arg), operand(other.operand, arg) {}
+
+		const shell_expression<A>& get_arg() { return arg; }
+		Op& get_op() { return operand; }
+		const Op& get_op() const { return operand; }
+	};
+
+
+
+	template<class Op, class A, class B>
+	class binary_pool
+	{
+
+		A left;
+		B right;
+		Op operand;
+
+		binary_pool& operator = (binary_pool const& other) { left = other.left; right = other.right; operand.assign(other.operand, left, right); return *this; }
+	public:
+		binary_pool(const A& pleft, const B& pright) : left(pleft), right(pright), operand(left, right) {}
+		binary_pool(bool cond, const A& pleft, const B& pright) : left(pleft), right(pright), operand(cond, left, right) {}
+		binary_pool(const binary_pool& other) : left(other.left), right(other.right), operand(other.operand, left, right) {}
+
+		const shell_expression<A>& get_left() { return left; }
+		const shell_expression<B>& get_right() { return right; }
+		Op& get_op() { return operand; }
+		const Op& get_op() const { return operand; }
+		~binary_pool() {}
+	};
+
+	template<class Op, class A, class B, class C>
+	class ternary_pool
+	{
+		A cond;
+		B left;
+		C right;
+		Op operand;
+
+		ternary_pool& operator =(ternary_pool const& other) { cond = other.cond; left = other.left; right = other.right; operand.assign(other.operand, cond, left, right); return *this; }
+	public:
+		ternary_pool(const A& pcond, const B& pleft, const C& pright) : cond(pcond), left(pleft), right(pright), operand(cond, left, right) {}
+		ternary_pool(const ternary_pool& other) : cond(other.cond), left(other.left), right(other.right), operand(other.operand, cond, left, right) {}
+
+		const shell_expression<A>& get_cond() { return cond; }
+		const shell_expression<B>& get_left() { return left; }
+		const shell_expression<C>& get_right() { return right; }
+		Op& get_op() { return operand; }
+		const Op& get_op() const { return operand; }
+		~ternary_pool() {}
+	};
+
+	template<class A, class ArgA>
+	class unary_pool_expression : public shell_expression<unary_pool_expression<A, ArgA> >
+	{
+		unary_pool<A, ArgA> pool;
+	public:
+		unary_pool_expression(const unary_pool<A, ArgA>& ppool) : pool(ppool) {}
+		unary_pool_expression(const unary_pool_expression& other) : pool(other.pool) {}
+		unary_pool_expression& operator = (unary_pool_expression const& other) { pool = other.pool; return *this; }
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+	};
+
+	template<class A, class ArgA, class ArgB>
+	class binary_pool_expression : public shell_expression<binary_pool_expression<A, ArgA, ArgB> >
+	{
+		binary_pool<A, ArgA, ArgB> pool;
+	public:
+		binary_pool_expression(const binary_pool<A, ArgA, ArgB>& ppool) : pool(ppool) {}
+		binary_pool_expression(const binary_pool_expression& other) : pool(other.pool) {}
+		binary_pool_expression& operator = (binary_pool_expression const& other) { pool = other.pool; return *this; }
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+	};
+
+	template<class A, class ArgA, class ArgB, class ArgC>
+	class ternary_pool_expression : public shell_expression<ternary_pool_expression<A, ArgA, ArgB, ArgC> >
+	{
+		ternary_pool<A, ArgA, ArgB, ArgC> pool;
+	public:
+		ternary_pool_expression(const ternary_pool<A, ArgA, ArgB, ArgC>& ppool) : pool(ppool) {}
+		ternary_pool_expression(const ternary_pool_expression& other) : pool(other.pool) {}
+		ternary_pool_expression& operator = (ternary_pool_expression const& other) { pool = other.pool; return *this; }
+		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
+		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
+		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
+		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
+		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(shift, bitset, inds); }
+		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
+	};
+
 	
 	typedef multivar_expression variable;
 	typedef multivar_dense_expression variable_dense;
@@ -3335,31 +3568,6 @@ template<class A>          __INLINE                                           vo
                            __INLINE                                           void    assign(INMOST::multivar_expression_reference & Arg,         double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
                            __INLINE                                           void    assign(INMOST::hessian_multivar_expression_reference & Arg, double Val) {Arg = (INMOST_DATA_REAL_TYPE)Val; }
 #endif //USE_FP64
-// begin for matrices
-template<class A>          __INLINE                              INMOST::branch_zero_expression<A> cond_zero(bool cond, INMOST::shell_expression<A> const& Arg) { return INMOST::branch_zero_expression<A>(cond, Arg); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE cond_zero(bool cond, INMOST_DATA_REAL_TYPE Arg) { return cond ? Arg : 0.0; }
-template<class A, class B> __INLINE                                 INMOST::branch_expression<A,B> cond_both(bool cond, INMOST::shell_expression<A> const& Left, INMOST::shell_expression<B> const& Right) { return INMOST::branch_expression<A,B>(cond, Left,Right); }
-template<class A>          __INLINE          INMOST::branch_expression<A,INMOST::const_expression> cond_both(bool cond, INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::branch_expression<A, INMOST::const_expression>(cond, Left, INMOST::const_expression(Right)); }
-template<class B>          __INLINE          INMOST::branch_expression<INMOST::const_expression,B> cond_both(bool cond, INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right) { return INMOST::branch_expression<INMOST::const_expression, B>(cond, INMOST::const_expression(Left), Right); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE cond_both(bool cond, INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return cond ? Left : Right; }
-template<class A, class B> __INLINE                              INMOST::addition_expression<A, B> add(INMOST::shell_expression<A> const& Left, INMOST::shell_expression<B> const& Right) { return INMOST::addition_expression<A, B>(Left, Right); }
-template<class A>          __INLINE       INMOST::addition_expression<A, INMOST::const_expression> add(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::addition_expression<A, INMOST::const_expression>(Left, INMOST::const_expression(Right)); }
-template<class B>          __INLINE       INMOST::addition_expression<INMOST::const_expression, B> add(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right) { return INMOST::addition_expression<INMOST::const_expression, B>(INMOST::const_expression(Left), Right); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE add(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left + Right; }
-template<class A, class B> __INLINE                           INMOST::subtraction_expression<A, B> sub(INMOST::shell_expression<A> const& Left, INMOST::shell_expression<B> const& Right) { return INMOST::subtraction_expression<A, B>(Left, Right); }
-template<class A>          __INLINE    INMOST::subtraction_expression<A, INMOST::const_expression> sub(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::subtraction_expression<A, INMOST::const_expression>(Left, INMOST::const_expression(Right)); }
-template<class B>          __INLINE    INMOST::subtraction_expression<INMOST::const_expression, B> sub(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right) { return INMOST::subtraction_expression<INMOST::const_expression, B>(INMOST::const_expression(Left), Right); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE sub(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left - Right; }
-template<class A, class B> __INLINE                        INMOST::multiplication_expression<A, B> mul(INMOST::shell_expression<A> const& Left, INMOST::shell_expression<B> const& Right) { return INMOST::multiplication_expression<A, B>(Left, Right); }
-template<class A>          __INLINE INMOST::multiplication_expression<A, INMOST::const_expression> mul(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::multiplication_expression<A, INMOST::const_expression>(Left, INMOST::const_expression(Right)); }
-template<class B>          __INLINE INMOST::multiplication_expression<INMOST::const_expression, B> mul(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right) { return INMOST::multiplication_expression<INMOST::const_expression, B>(INMOST::const_expression(Left), Right); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE mul(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left * Right; }
-template<class A, class B> __INLINE                              INMOST::division_expression<A, B> div(INMOST::shell_expression<A> const& Left, INMOST::shell_expression<B> const& Right) { return INMOST::division_expression<A, B>(Left, Right); }
-template<class A>          __INLINE       INMOST::division_expression<A, INMOST::const_expression> div(INMOST::shell_expression<A> const& Left, INMOST_DATA_REAL_TYPE Right) { return INMOST::division_expression<A, INMOST::const_expression>(Left, INMOST::const_expression(Right)); }
-template<class B>          __INLINE       INMOST::division_expression<INMOST::const_expression, B> div(INMOST_DATA_REAL_TYPE Left, INMOST::shell_expression<B> const& Right) { return INMOST::division_expression<INMOST::const_expression, B>(INMOST::const_expression(Left), Right); }
-__INLINE                                                                     INMOST_DATA_REAL_TYPE div(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left / Right; }
-
-// end for matrices
 template<class A>          __INLINE                 INMOST::soft_abs_expression<A> soft_fabs(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol = 0) { return INMOST::soft_abs_expression<A>(Arg,tol); }
 __INLINE                                                     INMOST_DATA_REAL_TYPE soft_fabs(INMOST_DATA_REAL_TYPE Arg, INMOST_DATA_REAL_TYPE tol = 0) {return ::sqrt(Arg*Arg+tol*tol);}
 template<class A>          __INLINE                INMOST::soft_sign_expression<A> soft_sign(INMOST::shell_expression<A> const & Arg, INMOST_DATA_REAL_TYPE tol = 0) { return INMOST::soft_sign_expression<A>(Arg,tol); }
