@@ -146,6 +146,79 @@ namespace INMOST
 			r.Resize(k);
 		}
 
+		void RowMerger3::clear()
+		{
+			inds.clear();
+			vals.clear();
+		}
+
+		void RowMerger3::set_vals()
+		{
+			vals.resize(inds.size(), 0.0);
+		}
+
+		/*
+		inline void RowMerger3::merge_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r, std::vector<INMOST_DATA_ENUM_TYPE>& temp)
+		{
+			std::vector<INMOST_DATA_ENUM_TYPE>::iterator first1 = inds.begin(), last1 = inds.begin();
+			Sparse:Row::const_iterator first2 = r.Begin(), last2 = r.End();
+			temp.clear();
+			while(first1 != last1)
+			{
+				if (first2 == last2)
+				{
+					temp.insert(temp.end(), first1, last1);
+					break;
+				}
+					
+				if (first2->first < *first1)
+				{
+					temp.push_back(first2->first);
+					first2++;
+				}
+				else
+				{
+					temp.push_back(*first1);
+					if (!(*first1 < first2->first))
+						++first2;
+					++first1;
+				}
+			}
+			temp.insert(temp.end(), first2, last2);
+			inds.swap(temp);
+		}
+
+		inline void RowMerger3::insert_index(std::vector<INMOST_DATA_ENUM_TYPE>& inds, INMOST_DATA_ENUM_TYPE ind)
+		{
+			std::vector<INMOST_DATA_ENUM_TYPE>::iterator it = std::lower_bound(inds.begin(), inds.end(), ind);
+			if (*it != ind) inds.insert(it, ind);
+		}
+
+		inline void RowMerger3::set_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r)
+		{
+			inds.resize(r.Size());
+			for (unsigned k = 0; k < r.Size(); ++k)
+				inds[k] = r.GetIndex(k);
+		}
+		*/
+
+
+		void RowMerger3::get_row(Sparse::Row& r)
+		{
+			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
+			r.Resize(s);
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
+			{
+				if (1.0 + vals[i] != 1.0)
+				{
+					r.GetIndex(k) = inds[i];
+					r.GetValue(k) = vals[i];
+					k++;
+				}
+			}
+			r.Resize(k);
+		}
+
 		////////class RowMerger
 				/*
 
@@ -708,6 +781,47 @@ namespace INMOST
 			std::set<INMOST_DATA_ENUM_TYPE>::const_iterator hint = indset.cend();
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
 				hint = indset.insert(hint, GetIndex(k));
+		}
+
+		void Row::GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
+		{
+			std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator first1 = inds.begin(), last1 = inds.end();
+			const_iterator first2 = Begin(), last2 = End();
+			temp.clear();
+			temp.reserve(inds.size() + Size());
+			while (first1 != last1)
+			{
+				if (first2 == last2)
+				{
+					temp.insert(temp.end(), first1, last1);
+					break;
+				}
+
+				if (first2->first < *first1)
+				{
+					temp.push_back(first2->first);
+					first2++;
+				}
+				else
+				{
+					temp.push_back(*first1);
+					if (!(*first1 < first2->first))
+						++first2;
+					++first1;
+				}
+			}
+			for (const_iterator it = first2; it < last2; ++it)
+				temp.push_back(it->first);
+			//temp.insert(temp.end(), first2, last2);
+			inds.swap(temp);
+		}
+
+		void Row::GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		{
+			assert(inds.empty());
+			inds.resize(Size());
+			for (unsigned k = 0; k < Size(); ++k)
+				inds[k] = GetIndex(k);
 		}
 		
 		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const

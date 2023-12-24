@@ -60,6 +60,28 @@ namespace INMOST
 		*/
 	}
 
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger3& merger)
+	{
+		merger.clear();		
+		r.GetIndices(merger.inds);
+		entries.GetIndices(merger.inds, merger.temp);
+		merger.set_vals();
+		r.GetValues(coefa, merger.inds, merger.vals);
+		entries.GetValues(coefb, merger.inds, merger.vals);
+		merger.get_row(entries);
+	}
+
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger3& merger)
+	{
+		merger.clear();
+		entries.GetIndices(merger.inds);
+		expr.GetIndices(merger.inds, merger.temp);
+		merger.set_vals();
+		expr.GetValues(coefa, merger.inds, merger.vals);
+		entries.GetValues(coefb, merger.inds, merger.vals);
+		merger.get_row(entries);
+	}
+
 #if 1
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
 	{

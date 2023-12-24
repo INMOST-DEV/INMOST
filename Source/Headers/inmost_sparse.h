@@ -278,6 +278,10 @@ namespace INMOST
 			/// Retrive indices
 			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
+			/// Merge row indices with indices in array.
+			void                    GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const;
+			/// Replace indices in array.
+			void                    GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			/// Retrive values
 			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
 			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& indset, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
@@ -651,6 +655,18 @@ namespace INMOST
 			void clear();
 			void set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
 			void set_vals();
+			void get_row(Sparse::Row& r);
+		};
+		struct RowMerger3
+		{
+			std::vector<INMOST_DATA_REAL_TYPE> vals;
+			std::vector<INMOST_DATA_ENUM_TYPE> inds;
+			std::vector<INMOST_DATA_ENUM_TYPE> temp;
+			//static inline void merge_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r, std::vector<INMOST_DATA_ENUM_TYPE>& temp);
+			//static inline void insert_index(std::vector<INMOST_DATA_ENUM_TYPE>& inds, INMOST_DATA_ENUM_TYPE ind);
+			//static inline void set_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row & r);
+			void set_vals();
+			void clear();
 			void get_row(Sparse::Row& r);
 		};
 		/// This class may be used to sum multiple sparse rows.

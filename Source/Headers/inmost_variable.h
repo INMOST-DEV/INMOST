@@ -353,6 +353,11 @@ namespace INMOST
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetIndices(indset);
 		}
+		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetIndices(inds, temp);
+		}
 		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)

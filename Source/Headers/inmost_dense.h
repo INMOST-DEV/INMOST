@@ -286,41 +286,98 @@ namespace INMOST
 
 	template<class A, template<class> class Op> struct Op1 { typedef unary_pool_expression<Op<A>, A> type; };
 	template<template<class> class Op> struct Op1<INMOST_DATA_REAL_TYPE, Op> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<template<class> class Op> struct Op1<INMOST_DATA_INTEGER_TYPE, Op> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<template<class> class Op> struct Op1<value_reference, Op> { typedef INMOST_DATA_REAL_TYPE type; };
 
 	template<class A, class B> struct OpAdd { typedef binary_pool_expression<addition_expression<A, B>, A, B> type; };
 	template<class A> struct OpAdd<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class A> struct OpAdd<A, INMOST_DATA_INTEGER_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class A> struct OpAdd<A, value_reference> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
 	template<class B> struct OpAdd<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_addition_expression<B>, B> type; };
+	template<class B> struct OpAdd<INMOST_DATA_INTEGER_TYPE, B> { typedef unary_pool_expression<const_addition_expression<B>, B> type; };
+	template<class B> struct OpAdd<value_reference, B> { typedef unary_pool_expression<const_addition_expression<B>, B> type; };
 	template<> struct OpAdd<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct OpAdd<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpAdd<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 
 	template<class A, class B> struct OpSub { typedef binary_pool_expression<subtraction_expression<A, B>, A, B> type; };
 	template<class A> struct OpSub<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class A> struct OpSub<A, INMOST_DATA_INTEGER_TYPE> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
+	template<class A> struct OpSub<A, value_reference> { typedef unary_pool_expression<const_addition_expression<A>, A> type; };
 	template<class B> struct OpSub<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_subtraction_expression<B>, B> type; };
+	template<class B> struct OpSub<INMOST_DATA_INTEGER_TYPE, B> { typedef unary_pool_expression<const_subtraction_expression<B>, B> type; };
+	template<class B> struct OpSub<value_reference, B> { typedef unary_pool_expression<const_subtraction_expression<B>, B> type; };
 	template<> struct OpSub<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct OpSub<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpSub<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 
 	template<class A, class B> struct OpMul { typedef binary_pool_expression<multiplication_expression<A, B>, A, B> type; };
 	template<class A> struct OpMul<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_multiplication_expression<A>, A> type; };
+	template<class A> struct OpMul<A, INMOST_DATA_INTEGER_TYPE> { typedef unary_pool_expression<const_multiplication_expression<A>, A> type; };
 	template<class A> struct OpMul<A, value_reference> { typedef unary_pool_expression<const_multiplication_expression<A>, A> type; };
 	template<class B> struct OpMul<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_multiplication_expression<B>, B> type; };
+	template<class B> struct OpMul<INMOST_DATA_INTEGER_TYPE, B> { typedef unary_pool_expression<const_multiplication_expression<B>, B> type; };
 	template<class B> struct OpMul<value_reference, B> { typedef unary_pool_expression<const_multiplication_expression<B>, B> type; };
 	template<> struct OpMul<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct OpMul<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct OpMul<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct OpMul<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpMul<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
 	template<> struct OpMul<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
-
+	
 	template<class A, class B> struct OpDiv { typedef binary_pool_expression<division_expression<A, B>, A, B> type; };
 	template<class A> struct OpDiv<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_division_expression<A>, A> type; };
+	template<class A> struct OpDiv<A, INMOST_DATA_INTEGER_TYPE> { typedef unary_pool_expression<const_division_expression<A>, A> type; };
+	template<class A> struct OpDiv<A, value_reference> { typedef unary_pool_expression<const_division_expression<A>, A> type; };
 	template<class B> struct OpDiv<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<reciprocal_expression<B>, B> type; };
+	template<class B> struct OpDiv<INMOST_DATA_INTEGER_TYPE, B> { typedef unary_pool_expression<reciprocal_expression<B>, B> type; };
+	template<class B> struct OpDiv<value_reference, B> { typedef unary_pool_expression<reciprocal_expression<B>, B> type; };
 	template<> struct OpDiv<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct OpDiv<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpDiv<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 
 	template<class A, class B> struct OpCond { typedef binary_pool_expression<branch_expression<A, B>, A, B> type; };
 	template<class A> struct OpCond<A, INMOST_DATA_REAL_TYPE> { typedef unary_pool_expression<const_branch_expression<A>, A> type; };
+	template<class A> struct OpCond<A, INMOST_DATA_INTEGER_TYPE> { typedef unary_pool_expression<const_branch_expression<A>, A> type; };
+	template<class A> struct OpCond<A, value_reference> { typedef unary_pool_expression<const_branch_expression<A>, A> type; };
 	template<class B> struct OpCond<INMOST_DATA_REAL_TYPE, B> { typedef unary_pool_expression<const_branch_expression<B>, B> type; };
+	template<class B> struct OpCond<INMOST_DATA_INTEGER_TYPE, B> { typedef unary_pool_expression<const_branch_expression<B>, B> type; };
+	template<class B> struct OpCond<value_reference, B> { typedef unary_pool_expression<const_branch_expression<B>, B> type; };
 	template<> struct OpCond<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<INMOST_DATA_REAL_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<INMOST_DATA_REAL_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_INTEGER_TYPE type; };
+	template<> struct OpCond<INMOST_DATA_INTEGER_TYPE, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<value_reference, INMOST_DATA_REAL_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<value_reference, INMOST_DATA_INTEGER_TYPE> { typedef INMOST_DATA_REAL_TYPE type; };
+	template<> struct OpCond<value_reference, value_reference> { typedef INMOST_DATA_REAL_TYPE type; };
 
 	class AbstractMatrixBase
 	{
 	public:
-		typedef Sparse::RowMerger2 merger_type;
+		typedef Sparse::RowMerger3 merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -344,6 +401,7 @@ namespace INMOST
 		variable ret = 0.0;
 		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
 		INMOST_DATA_REAL_TYPE value = 0.0;
+#if 0
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
@@ -365,6 +423,21 @@ namespace INMOST
 					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
 			m.get_row(ret.GetRow());
 		}
+#else
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetIndices(m.inds, m.temp);
+			}
+		ret.SetValue(value);
+		m.set_vals();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
+		m.get_row(ret.GetRow());
+#endif
 		return ret;
 	}
 
@@ -381,6 +454,7 @@ namespace INMOST
 		variable ret = 0.0;
 		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
 		INMOST_DATA_REAL_TYPE value = 0.0;
+#if 0
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
@@ -409,6 +483,24 @@ namespace INMOST
 				}
 			m.get_row(ret.GetRow());
 		}
+#else
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetIndices(m.inds, m.temp);
+				B.compute(i, j).GetIndices(m.inds, m.temp);
+			}
+		ret.SetValue(value);
+		m.set_vals();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
+				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
+			}
+		m.get_row(ret.GetRow());
+#endif
 		return ret;
 	}
 
@@ -2011,6 +2103,8 @@ namespace INMOST
 	template<typename Var>
 	class SubMatrix : public AbstractMatrix<Var>
 	{
+	public:
+		using AbstractMatrix<Var>::operator =;
 	private:
 		AbstractMatrix<Var> * M;
 		enumerator brow; //< First row in matrix M.
@@ -2064,7 +2158,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
             (void)cols; (void)rows;
-			throw Impossible;
+			if( Cols() != cols || Rows() != rows) throw Impossible;
 		}
 	};
 
@@ -2413,7 +2507,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
-			throw Impossible;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
 		}
 	};
 
@@ -2489,7 +2583,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
-			throw Impossible;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
 		}
 	};
 
@@ -2564,7 +2658,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
-			throw Impossible;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
 		}
 	};
 
@@ -2643,7 +2737,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
-			throw Impossible;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
 		}
 	};
 
@@ -2661,7 +2755,7 @@ namespace INMOST
 			assert(Cols() == cols);
 			assert(Rows() == rows);
 			(void)cols; (void)rows;
-			throw Impossible;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
 		}
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2710,7 +2804,7 @@ namespace INMOST
 	{
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
-		const VarB * coef;
+		VarB coef;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2719,14 +2813,14 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
 		MatrixMulCoef(const AbstractMatrixReadOnly<VarA, RetA>& rA, const VarB& rcoef)
-			: A(&rA), coef(&rcoef) {}
+			: A(&rA), coef(rcoef) {}
 		MatrixMulCoef(const MatrixMulCoef& b) : A(b.A), coef(b.coef) {}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename OpMul<RetA, VarB>::type compute(enumerator i, enumerator j) const { return mul(A->compute(i, j), *coef); }
+		__INLINE typename OpMul<RetA, VarB>::type compute(enumerator i, enumerator j) const { return mul(A->compute(i, j), coef); }
 	};
 	
 	template<typename VarA, typename VarB, typename RetA, typename VarAB>
@@ -2734,7 +2828,7 @@ namespace INMOST
 	{
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
-		const VarB * coef;
+		VarB coef;
 	public:
 		/// Number of rows.
 		/// @return Number of rows.
@@ -2743,7 +2837,7 @@ namespace INMOST
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return A->Cols(); }
 		MatrixDivCoef(const AbstractMatrixReadOnly<VarA, RetA>& rA, const VarB& rcoef)
-			: A(&rA), coef(&rcoef) {}
+			: A(&rA), coef(rcoef) {}
 		MatrixDivCoef(const MatrixDivCoef& b)
 			: A(b.A), coef(b.coef) {}
 		/// Access element of the matrix by row and column indices
@@ -2751,7 +2845,7 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename OpDiv<RetA, VarB>::type compute(enumerator i, enumerator j) const { return div(A->compute(i, j), *coef); }
+		__INLINE typename OpDiv<RetA, VarB>::type compute(enumerator i, enumerator j) const { return div(A->compute(i, j), coef); }
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
