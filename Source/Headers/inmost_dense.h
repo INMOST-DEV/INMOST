@@ -2849,30 +2849,60 @@ namespace INMOST
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class KroneckerProduct : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpMul<RetA, RetB>::type >
+	class KroneckerProduct : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
 	private:
-		const AbstractMatrixReadOnly<VarA, RetA>* A;
-		const AbstractMatrixReadOnly<VarB, RetB>* B;
+		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
+		/// This is a stub function to fulfill abstract
+		/// inheritance. 
+		/// since it just points to a part of the larger empty matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+			(void)cols; (void)rows;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
+		}
 		/// Number of rows.
 		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows() * B->Rows(); }
+		__INLINE enumerator Rows() const { return M.Rows(); }
 		/// Number of columns.
 		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols() * B->Cols(); }
+		__INLINE enumerator Cols() const { return M.Cols(); }
 		KroneckerProduct(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
-			: A(&rA), B(&rB) {}
-		KroneckerProduct(const KroneckerProduct& b) : A(b.A), B(b.B) {}
+		{
+			const AbstractMatrix<VarA>* pA = dynamic_cast<const AbstractMatrix<VarA> *>(&rA);
+			const AbstractMatrix<VarB>* pB = dynamic_cast<const AbstractMatrix<VarB> *>(&rB);
+			if (!pA)
+			{
+				static thread_private< Matrix<VarA> > tmpA;
+				*tmpA = rA;
+				pA = &(*tmpA);
+			}
+			if (!pB)
+			{
+				static thread_private< Matrix<VarB> > tmpB;
+				*tmpB = rB;
+				pB = &(*tmpB);
+			}
+			M.Resize(rA.Rows() * rB.Rows(), rA.Cols() * rB.Cols());
+			for (enumerator i = 0; i < M.Rows(); ++i)
+				for (enumerator j = 0; j < M.Cols(); ++j)
+					M(i, j) = pA->get(i / pB->Rows(), j / pB->Cols()) * pB->get(i % pB->Rows(), j % pB->Cols());
+		}
+		KroneckerProduct(const KroneckerProduct& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to element.
+		__INLINE typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) { return M.get(i, j); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
-		/// @param i Column index.
-		/// @param j Row index.
+		/// @param i Row index.
+		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename OpMul<RetA, RetB>::type compute(enumerator i, enumerator j) const
-		{
-			return mul(A->compute(i / B->Rows(), j / B->Cols()), B->compute(i % B->Rows(), j % B->Cols()));
-		}
+		__INLINE const typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) const { return M.get(i, j); }
 	};
 	
 	template<typename Var>
