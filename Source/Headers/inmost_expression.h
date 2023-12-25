@@ -34,7 +34,7 @@ namespace INMOST
 	class basic_expression
 	{
 	protected:
-		typedef Sparse::RowMerger3 merger_type;
+		typedef Sparse::RowMerger merger_type;
 		static thread_private<merger_type> merger;
 	public:
 		basic_expression() {}

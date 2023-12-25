@@ -377,7 +377,7 @@ namespace INMOST
 	class AbstractMatrixBase
 	{
 	public:
-		typedef Sparse::RowMerger3 merger_type;
+		typedef Sparse::RowMerger merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -423,7 +423,7 @@ namespace INMOST
 					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
 			m.get_row(ret.GetRow());
 		}
-#else
+#elif 0
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
 			for (unsigned j = 0; j < A.Cols(); ++j)
@@ -437,6 +437,17 @@ namespace INMOST
 			for (unsigned j = 0; j < A.Cols(); ++j)
 				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
 		m.get_row(ret.GetRow());
+#else
+		m.Clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetJacobian(A.Compute(i, j).GetValue(), m);
+				//m.AddRow(A.compute(i, j), B.compute(i, j).GetRow());
+			}
+		ret.SetValue(value);
+		m.RetrieveRow(ret.GetRow());
 #endif
 		return ret;
 	}
@@ -483,7 +494,7 @@ namespace INMOST
 				}
 			m.get_row(ret.GetRow());
 		}
-#else
+#elif 0
 		for (unsigned i = 0; i < A.Rows(); ++i)
 			for (unsigned j = 0; j < A.Cols(); ++j)
 			{
@@ -500,6 +511,19 @@ namespace INMOST
 				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
 			}
 		m.get_row(ret.GetRow());
+#else
+		m.Clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
+				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
+				//m.AddRow(B.compute(i, j).GetValue(), A.compute(i, j).GetRow());
+				//m.AddRow(A.compute(i, j).GetValue(), B.compute(i, j).GetRow());
+			}
+		ret.SetValue(value);
+		m.RetrieveRow(ret.GetRow());
 #endif
 		return ret;
 	}
