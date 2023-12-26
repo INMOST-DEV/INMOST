@@ -443,7 +443,7 @@ namespace INMOST
 			for (unsigned j = 0; j < A.Cols(); ++j)
 			{
 				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetJacobian(A.Compute(i, j).GetValue(), m);
+				B.compute(i, j).GetJacobian(A.compute(i, j), m);
 				//m.AddRow(A.compute(i, j), B.compute(i, j).GetRow());
 			}
 		ret.SetValue(value);
