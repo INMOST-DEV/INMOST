@@ -377,7 +377,7 @@ namespace INMOST
 	class AbstractMatrixBase
 	{
 	public:
-		typedef Sparse::RowMerger merger_type;
+		typedef basic_expression::merger_type merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -395,13 +395,29 @@ namespace INMOST
 	}
 
 	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
 	{
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
 		variable ret = 0.0;
-		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
 		INMOST_DATA_REAL_TYPE value = 0.0;
-#if 0
+		m.Clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetJacobian(A.compute(i, j), m);
+			}
+		ret.SetValue(value);
+		m.RetrieveRow(ret.GetRow());
+		return ret;
+	}
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
@@ -423,7 +439,16 @@ namespace INMOST
 					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
 			m.get_row(ret.GetRow());
 		}
-#elif 0
+		return ret;
+	}
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3 & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
 			for (unsigned j = 0; j < A.Cols(); ++j)
@@ -437,35 +462,35 @@ namespace INMOST
 			for (unsigned j = 0; j < A.Cols(); ++j)
 				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
 		m.get_row(ret.GetRow());
-#else
+		return ret;
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
 		m.Clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
 			for (unsigned j = 0; j < A.Cols(); ++j)
 			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetJacobian(A.compute(i, j), m);
-				//m.AddRow(A.compute(i, j), B.compute(i, j).GetRow());
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
+				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
 			}
 		ret.SetValue(value);
 		m.RetrieveRow(ret.GetRow());
-#endif
 		return ret;
 	}
 
-	template<typename RetA>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B)
-	{
-		return DotProduct(B, A);
-	}
-
+	
 	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
 	{
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
 		variable ret = 0.0;
-		AbstractMatrixBase::merger_type& m = AbstractMatrixBase::GetMerger();
 		INMOST_DATA_REAL_TYPE value = 0.0;
-#if 0
 		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 		m.clear();
 		for (unsigned i = 0; i < A.Rows(); ++i)
@@ -494,7 +519,15 @@ namespace INMOST
 				}
 			m.get_row(ret.GetRow());
 		}
-#elif 0
+		return ret;
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
 		for (unsigned i = 0; i < A.Rows(); ++i)
 			for (unsigned j = 0; j < A.Cols(); ++j)
 			{
@@ -511,21 +544,26 @@ namespace INMOST
 				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
 			}
 		m.get_row(ret.GetRow());
-#else
-		m.Clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
-				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
-				//m.AddRow(B.compute(i, j).GetValue(), A.compute(i, j).GetRow());
-				//m.AddRow(A.compute(i, j).GetValue(), B.compute(i, j).GetRow());
-			}
-		ret.SetValue(value);
-		m.RetrieveRow(ret.GetRow());
-#endif
 		return ret;
+	}
+
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
+	}
+
+	template<typename RetA>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B)
+	{
+		return DotProduct(B, A, AbstractMatrixBase::GetMerger());
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
 	}
 
 	

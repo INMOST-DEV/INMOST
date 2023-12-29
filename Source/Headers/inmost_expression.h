@@ -33,8 +33,10 @@ namespace INMOST
 
 	class basic_expression
 	{
+	public:
+		typedef Sparse::RowMerger2 merger_type;
+		static merger_type& GetMerger() { return *merger; }
 	protected:
-		typedef Sparse::RowMerger merger_type;
 		static thread_private<merger_type> merger;
 	public:
 		basic_expression() {}
@@ -153,7 +155,8 @@ namespace INMOST
 			if (index != ENUMUNDEF)
 			{
 				std::vector<INMOST_DATA_ENUM_TYPE>::iterator it = std::lower_bound(inds.begin(), inds.end(), index);
-				if (it == inds.end() || *it != index) inds.insert(it, index);
+				if (it == inds.end() || *it != index) 
+					inds.insert(it, index);
 			}
 		}
 		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
