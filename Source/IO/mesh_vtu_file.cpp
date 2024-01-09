@@ -753,7 +753,6 @@ namespace INMOST
 							newcells[q] = CreateFace(hnodes).first->GetHandle();
 							have_faces = true;
 						}
-						break;
 					}
 					else if (ctype == 6) //VTK_TRIANGLE_STRIP
 					{
@@ -783,7 +782,6 @@ namespace INMOST
 							newcells[q] = CreateFace(hnodes).first->GetHandle();
 							have_faces = true;
 						}
-						break;
 					}
 					else if (ctype == 8) //VTK_PIXEL
 					{
