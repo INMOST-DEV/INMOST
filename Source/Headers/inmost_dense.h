@@ -2325,7 +2325,7 @@ namespace INMOST
 	};
 
 	template<typename Var>
-	class MatrixRow : public AbstractMatrixReadOnly< Var, const Var & >
+	class MatrixRow : public AbstractMatrixReadOnly< Var, typename OpRef<Var>::type >
 	{
 	private:
 		enumerator n;
@@ -2339,11 +2339,11 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return n; }
-		__INLINE const Var & compute(enumerator i, enumerator j) const { return c; }
+		__INLINE typename OpRef<Var>::type compute(enumerator i, enumerator j) const { return c; }
 	};
 
 	template<typename Var>
-	class MatrixCol : public AbstractMatrixReadOnly< Var, const Var & >
+	class MatrixCol : public AbstractMatrixReadOnly< Var, typename OpRef<Var>::type >
 	{
 	private:
 		enumerator n;
@@ -2357,7 +2357,7 @@ namespace INMOST
 		/// Number of columns.
 		/// @return Number of columns.
 		__INLINE enumerator Cols() const { return 1; }
-		__INLINE const Var & compute(enumerator i, enumerator j) const { return c; }
+		__INLINE  typename OpRef<Var>::type compute(enumerator i, enumerator j) const { return c; }
 	};
 
 	template<typename Var>
