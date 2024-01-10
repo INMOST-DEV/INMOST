@@ -215,7 +215,7 @@ namespace INMOST
 	}
 	template<class B>          __INLINE        unary_pool_expression<const_addition_expression<B>, B> add(INMOST_DATA_REAL_TYPE Left, shell_expression<B> const& Right) 
 	{ 
-		return unary_pool<const_addition_expression<B>, B> pool(Right, Left);
+		unary_pool<const_addition_expression<B>, B> pool(Right, Left);
 		return unary_pool_expression<const_addition_expression<B>, B>(pool);
 	}
 	__INLINE                                                                    INMOST_DATA_REAL_TYPE add(INMOST_DATA_REAL_TYPE Left, INMOST_DATA_REAL_TYPE Right) { return Left + Right; }
@@ -377,6 +377,7 @@ namespace INMOST
 	class AbstractMatrixBase
 	{
 	public:
+		typedef INMOST_DATA_ENUM_TYPE enumerator; 
 		typedef basic_expression::merger_type merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
@@ -384,189 +385,28 @@ namespace INMOST
 	};
 
 	template<typename VarA, typename RetA, typename VarB, typename RetB>
-	__INLINE typename Promote<VarA, VarB>::type DotProduct(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		typename Promote<VarA, VarB>::type ret = 0.0;
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-				ret += A.compute(i, j) * B.compute(i, j);
-		return ret;
-	}
-
+	__INLINE typename Promote<VarA, VarB>::type DotProduct(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B);
+#if defined(USE_AUTODIFF)
 	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		m.Clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetJacobian(A.compute(i, j), m);
-			}
-		ret.SetValue(value);
-		m.RetrieveRow(ret.GetRow());
-		return ret;
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger& m);
 	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetInterval(beg, end);
-			}
-		ret.SetValue(value);
-		if (end > beg)
-		{
-			m.set_bitset(beg, end);
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
-			m.set_vals();
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
-			m.get_row(ret.GetRow());
-		}
-		return ret;
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2& m);
 	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetIndices(m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.set_vals();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m);
 	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		m.Clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
-				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
-			}
-		ret.SetValue(value);
-		m.RetrieveRow(ret.GetRow());
-		return ret;
-	}
-
-	
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger& m);
 	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetInterval(beg, end);
-				B.compute(i, j).GetInterval(beg, end);
-			}
-		ret.SetValue(value);
-		if (end > beg)
-		{
-			m.set_bitset(beg, end);
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-				{
-					A.compute(i, j).GetIndices(beg, m.bitset, m.inds);
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
-				}
-			m.set_vals();
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-				{
-					A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
-					B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
-				}
-			m.get_row(ret.GetRow());
-		}
-		return ret;
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2& m);
 	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetIndices(m.inds, m.temp);
-				B.compute(i, j).GetIndices(m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.set_vals();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
-				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
-			}
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m);
 	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
-	{
-		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B);
 	template<typename RetA>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B)
-	{
-		return DotProduct(B, A, AbstractMatrixBase::GetMerger());
-	}
-
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B);
 	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
-	{
-		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
-	}
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B);	
+#endif
 
-	
 	template<typename Var, typename RetType>
 	class AbstractMatrixReadOnly : public AbstractMatrixBase
 	{
@@ -585,7 +425,6 @@ namespace INMOST
 			//return sqrt(a * conj(a) + b * conj(b));
 		}
 	public:
-		typedef INMOST_DATA_ENUM_TYPE enumerator;
 		/// Obtain number of rows.
 		/// @return Number of rows.
 		virtual enumerator Rows() const = 0;
@@ -684,7 +523,7 @@ namespace INMOST
 		AbstractMatrixConjugateTranspose<Var, RetType> ConjugateTranspose() const { return AbstractMatrixConjugateTranspose<Var, RetType>(*this); }
 		/// Conjugate  current matrix.
 		/// @return Conjugated matrix.
-		AbstractMatrixConjugate<Var, RetType> Conjugate() const { return AbstractMatrixConjugate<Var>(*this, RetType); }
+		AbstractMatrixConjugate<Var, RetType> Conjugate() const { return AbstractMatrixConjugate<Var, RetType>(*this); }
 		/// Cross-product operation for a vector.
 		/// Both right hand side and left hand side should be a vector
 		/// @param other The right hand side of cross product.
@@ -1060,12 +899,14 @@ namespace INMOST
 	class AbstractMatrix : public AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>
 	{
 	public:
-		
+		typedef typename AbstractMatrixBase::enumerator enumerator;	
 	 	using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::operator ();
 		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Transpose;
 		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Repack;
 		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::ConcatRows;
 		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::ConcatCols;
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Rows;
+		using AbstractMatrixReadOnly<Var, typename OpRef<Var>::type>::Cols;
 		/// Construct empty matrix.
 		AbstractMatrix() {}
 		/// Assign matrix of the same type.
@@ -1244,6 +1085,8 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class SymmetricMatrix : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -1578,6 +1421,8 @@ namespace INMOST
 	template<typename Var, typename storage_type>
 	class Matrix : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	protected:
 		storage_type space; //< Array of row-wise stored elements.
 		enumerator n; //< Number of rows.
@@ -2166,6 +2011,7 @@ namespace INMOST
 	class SubMatrix : public AbstractMatrix<Var>
 	{
 	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 		using AbstractMatrix<Var>::operator =;
 	private:
 		AbstractMatrix<Var> * M;
@@ -2228,6 +2074,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractSubMatrix : public AbstractMatrixReadOnly<Var, Ret>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var, Ret> * M;
 		enumerator brow; //< First row in matrix M.
@@ -2268,6 +2116,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractBlockOfMatrix : public AbstractMatrixReadOnly<Var, typename Op1<Ret, const_branch_expression>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var,Ret> * M;
 		enumerator nrows; //< Number of rows in larger matrix.
@@ -2306,6 +2156,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixUnit : public AbstractMatrixReadOnly< Var, typename Op1<Var, const_branch_expression>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		enumerator n;
 		Var c;
@@ -2327,6 +2179,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixRow : public AbstractMatrixReadOnly< Var, typename OpRef<Var>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		enumerator n;
 		Var c;
@@ -2345,6 +2199,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixCol : public AbstractMatrixReadOnly< Var, typename OpRef<Var>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		enumerator n;
 		Var c;
@@ -2363,6 +2219,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixDiag : public AbstractMatrixReadOnly< Var, typename Op1<Var, const_branch_expression>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		enumerator n;
 		Var* diag;
@@ -2385,6 +2243,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixSum : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpAdd<RetA, RetB>::type>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2416,6 +2276,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixDifference : public AbstractMatrixReadOnly< typename Promote<VarA, VarB>::type, typename OpSub<RetA, RetB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2447,6 +2309,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
@@ -2469,6 +2333,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixConjugateTranspose : public AbstractMatrixReadOnly<Var, Ret>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
@@ -2492,6 +2358,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixConjugate : public AbstractMatrixReadOnly<Var,Ret>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var,Ret>* A;
 	public:
@@ -2515,6 +2383,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class MatrixUnaryMinus : public AbstractMatrixReadOnly<Var, typename Op1<Ret, unary_minus_expression>::type>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 	public:
@@ -2538,6 +2408,9 @@ namespace INMOST
 	template<typename Var>
 	class MatrixTranspose : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
+	private:
 		AbstractMatrix<Var>* A;
 	public:
 		/// Number of rows.
@@ -2576,6 +2449,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class AbstractMatrixConcatRows : public AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type, typename OpCond<RetA, RetB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2606,6 +2481,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixConcatRows : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
@@ -2653,6 +2530,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class AbstractMatrixConcatCols : public AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename OpCond<RetA, RetB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		const AbstractMatrixReadOnly<VarB, RetB>* B;
@@ -2682,6 +2561,9 @@ namespace INMOST
 	template<typename Var>
 	class MatrixConcatCols : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
+	private:
 		AbstractMatrix<Var>* A;
 		AbstractMatrix<Var>* B;
 	public:
@@ -2727,6 +2609,8 @@ namespace INMOST
 	template<typename Var, typename Ret>
 	class AbstractMatrixRepack : public AbstractMatrixReadOnly<Var, Ret>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<Var, Ret>* A;
 		enumerator n, m;
@@ -2755,6 +2639,8 @@ namespace INMOST
 	template<typename Var>
 	class MatrixRepack : public AbstractMatrix<Var>
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		AbstractMatrix<Var>* A;
 		enumerator n, m;
@@ -2806,6 +2692,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class MatrixMul : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
@@ -2864,6 +2752,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename VarAB>
 	class MatrixMulCoef : public AbstractMatrixReadOnly< VarAB, typename OpMul<RetA, VarB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		VarB coef;
@@ -2888,6 +2778,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename VarAB>
 	class MatrixDivCoef : public AbstractMatrixReadOnly< VarAB, typename OpDiv<RetA, VarB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		const AbstractMatrixReadOnly<VarA, RetA>* A;
 		VarB coef;
@@ -2913,6 +2805,8 @@ namespace INMOST
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
 	class KroneckerProduct : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
+	public:
+		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
 		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
@@ -4365,7 +4259,179 @@ namespace INMOST
 	__INLINE iaSymmetricMatrix iaSymmetricMatrixMake(INMOST_DATA_INTEGER_TYPE * p, iaSymmetricMatrix::enumerator n) {return iaSymmetricMatrix(shell<INMOST_DATA_INTEGER_TYPE>(p,n*(n+1)/2),n);}
 	__INLINE raSymmetricMatrix raSymmetricMatrixMake(INMOST_DATA_REAL_TYPE * p, raSymmetricMatrix::enumerator n) {return raSymmetricMatrix(shell<INMOST_DATA_REAL_TYPE>(p,n*(n+1)/2),n);}
 	__INLINE caSymmetricMatrix caSymmetricMatrixMake(INMOST_DATA_CPLX_TYPE* p, caSymmetricMatrix::enumerator n) { return caSymmetricMatrix(shell<INMOST_DATA_CPLX_TYPE>(p, n * (n + 1) / 2), n); }
+
+
+	template<typename VarA, typename RetA, typename VarB, typename RetB>
+	__INLINE typename Promote<VarA, VarB>::type DotProduct(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		typename Promote<VarA, VarB>::type ret = 0.0;
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+				ret += A.compute(i, j) * B.compute(i, j);
+		return ret;
+	}
+
+
 #if defined(USE_AUTODIFF)
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetInterval(beg, end);
+			}
+		ret.SetValue(value);
+		if (end > beg)
+		{
+			m.set_bitset(beg, end);
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+			m.set_vals();
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
+			m.get_row(ret.GetRow());
+		}
+		return ret;
+	}
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3 & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetIndices(m.inds, m.temp);
+			}
+		ret.SetValue(value);
+		m.set_vals();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
+		m.get_row(ret.GetRow());
+		return ret;
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		m.Clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
+				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
+			}
+		ret.SetValue(value);
+		m.RetrieveRow(ret.GetRow());
+		return ret;
+	}
+
+	
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetInterval(beg, end);
+				B.compute(i, j).GetInterval(beg, end);
+			}
+		ret.SetValue(value);
+		if (end > beg)
+		{
+			m.set_bitset(beg, end);
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+				{
+					A.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+				}
+			m.set_vals();
+			for (unsigned i = 0; i < A.Rows(); ++i)
+				for (unsigned j = 0; j < A.Cols(); ++j)
+				{
+					A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
+					B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
+				}
+			m.get_row(ret.GetRow());
+		}
+		return ret;
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetIndices(m.inds, m.temp);
+				B.compute(i, j).GetIndices(m.inds, m.temp);
+			}
+		ret.SetValue(value);
+		m.set_vals();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
+				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
+			}
+		m.get_row(ret.GetRow());
+		return ret;
+	}
+
+
+	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
+	}
+
+	template<typename RetA>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& B)
+	{
+		return DotProduct(B, A, AbstractMatrixBase::GetMerger());
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
+	{
+		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
+	}
+
+
+
+
 	/// shortcut for matrix of variables with single unit entry of first order derivative.
 	typedef Matrix<unknown> uMatrix;
 	/// shortcut for matrix of variables with first order derivatives.
