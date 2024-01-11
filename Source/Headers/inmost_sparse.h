@@ -250,6 +250,7 @@ namespace INMOST
 			}
 			/// Clear all data of the current row.
 			void                    Clear() { data.clear(); }
+			void                    Reserve(INMOST_DATA_ENUM_TYPE size) { data.reserve(size); }
 			/// Exchange all the data with another row.
 			/// @param other Another row.
 			void                    Swap(Row & other) { data.swap(other.data); }
@@ -278,6 +279,8 @@ namespace INMOST
 			/// Retrive indices
 			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
+			/// Merge row indices and values with indices and values in array.
+			void                    GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const;
 			/// Merge row indices with indices in array.
 			void                    GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const;
 			/// Replace indices in array.
@@ -310,6 +313,7 @@ namespace INMOST
 			void                    MoveRow(Row & source) {data = source.data;} //here move constructor and std::move may be used in future
 			/// Set the vector entries by zeroes.
 			void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
+			void                    Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row.
 			void                    Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
@@ -662,10 +666,14 @@ namespace INMOST
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds;
 			std::vector<INMOST_DATA_ENUM_TYPE> temp;
-			//static inline void merge_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r, std::vector<INMOST_DATA_ENUM_TYPE>& temp);
-			//static inline void insert_index(std::vector<INMOST_DATA_ENUM_TYPE>& inds, INMOST_DATA_ENUM_TYPE ind);
-			//static inline void set_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row & r);
 			void set_vals();
+			void clear();
+			void get_row(Sparse::Row& r);
+		};
+		struct RowMerger4
+		{
+			Sparse::Row inds;
+			Sparse::Row temp;
 			void clear();
 			void get_row(Sparse::Row& r);
 		};

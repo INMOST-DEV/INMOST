@@ -82,6 +82,22 @@ namespace INMOST
 		merger.get_row(entries);
 	}
 
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger4& merger)
+	{
+		merger.clear();
+		r.GetPairs(coefa, merger.inds, merger.temp);
+		entries.GetPairs(coefb, merger.inds, merger.temp);
+		merger.get_row(entries);
+	}
+
+	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger4& merger)
+	{
+		merger.clear();
+		expr.GetPairs(coefa, merger.inds, merger.temp);
+		entries.GetPairs(coefb, merger.inds, merger.temp);
+		merger.get_row(entries);
+	}
+
 #if 1
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger)
 	{

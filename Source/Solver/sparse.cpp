@@ -220,6 +220,16 @@ namespace INMOST
 			r.Resize(k);
 		}
 
+		void RowMerger4::clear()
+		{
+			inds.Clear();
+		}
+
+		void RowMerger4::get_row(Sparse::Row& r)
+		{
+			r.Swap(inds);
+		}
+
 		////////class RowMerger
 				/*
 
@@ -791,6 +801,37 @@ namespace INMOST
 			std::set<INMOST_DATA_ENUM_TYPE>::const_iterator hint = indset.cend();
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
 				hint = indset.insert(hint, GetIndex(k));
+		}
+
+		void Row::GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
+		{
+			const_iterator first1 = inds.Begin(), last1 = inds.End();
+			const_iterator first2 = Begin(), last2 = End();
+			temp.Clear();
+			temp.Reserve(inds.Size() + Size());
+			while (first1 != last1 && first2 != last2)
+			{
+				if (first2->first < first1->first)
+				{
+					temp.Push(first2->first, first2->second * coef);
+					first2++;
+				}
+				else
+				{
+					temp.Push(first1->first, first1->second);
+					if (!(first1->first < first2->first))
+					{
+						temp.rBegin()->second += first2->second * coef;
+						++first2;
+					}
+					++first1;
+				}
+			}
+			for (const_iterator it = first1; it < last1; ++it)
+				temp.Push(it->first, it->second);
+			for (const_iterator it = first2; it < last2; ++it)
+				temp.Push(it->first, it->second * coef);
+			inds.Swap(temp);
 		}
 
 		void Row::GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
