@@ -12,7 +12,7 @@ namespace INMOST
 {
 	namespace Sparse
 	{
-		typedef bool bit_type; //for RowMerger2
+		typedef char bit_type; //for RowMerger2
 
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// Retrieve MPI type for row entry type.

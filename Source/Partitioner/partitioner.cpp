@@ -566,8 +566,10 @@ namespace INMOST
 			mysize = 0;
 			for(Mesh::iteratorCell it = m->BeginCell(); it != m->EndCell(); ++it) if( it->GetStatus() != Element::Ghost ) mysize++;
 			vtxdist[0] = 0;
+#if defined(USE_MPI)
 			REPORT_MPI(result = MPI_Allgather(&mysize,1,IDX_T,&vtxdist[1],1,IDX_T,m->GetCommunicator()));
 			if( result != MPI_SUCCESS ) throw Impossible;
+#endif
 			EXIT_BLOCK();
 			
 #if defined(USE_PARTITIONER_METIS)
@@ -649,7 +651,9 @@ namespace INMOST
 				{
 					std::vector<real_t> l_tpwgts(ncon);
 					for(idx_t q = 0; q < ncon; q++) l_tpwgts[q] = static_cast<real_t>(m->RealArray(m->GetHandle(),GetWeight())[q]);
+#if defined(USE_MPI)
 					REPORT_MPI(MPI_Allgather(&l_tpwgts[0],ncon,IDX_T,&tpwgts[0],ncon,IDX_T,m->GetCommunicator()));
+#endif
 					
 					for(idx_t j = 0; j < ncon; j++)
 					{
@@ -1204,10 +1208,10 @@ namespace INMOST
 			ENTER_BLOCK();
 			if( time_output ) time = Timer();
 			
-			MPI_Comm comm = m->GetCommunicator(), split;
-
+			INMOST_MPI_Comm comm = m->GetCommunicator(), split = comm;
+#if defined(USE_MPI)
 			MPI_Comm_split(comm, vtxdist[rank+1]-vtxdist[rank] ? 0 : MPI_UNDEFINED, rank, &split);
-
+#endif
 			//std::cout << "rank " << rank << " size " << vtxdist[rank+1]-vtxdist[rank] << std::endl;
 			if(vtxdist[rank+1]-vtxdist[rank])
 			{
@@ -1303,7 +1307,9 @@ namespace INMOST
 				}
 			}
 #endif //USE_PARTITIONER_METIS
-			 MPI_Comm_free(&split);
+#if defined(USE_MPI)
+				MPI_Comm_free(&split);
+#endif
 			}
 
 			EXIT_BLOCK();
