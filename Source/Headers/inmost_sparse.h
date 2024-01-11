@@ -676,23 +676,25 @@ namespace INMOST
 		/// set total size of the matrix as interval of the RowMerger.
 		class RowMerger
 		{
-			//typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
-			//typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
-			//typedef robin_hood::unordered_node_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
-			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> container;
-			//typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> container;
+			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 		public:
 			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
 			//const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
 			class iterator
 			{
 			private:
-				INMOST_DATA_ENUM_TYPE pos;
+				//INMOST_DATA_ENUM_TYPE pos;
+				typename RowMerger::map_container::const_iterator it;
 				RowMerger * merger; ///< Link to associated storage for linked list.
-				iterator(RowMerger* pmerger) : pos(pmerger->First), merger(pmerger) {}
-				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : pos(pos), merger(pmerger) {}
+				iterator(RowMerger* pmerger) : it(pmerger->pos.begin()), merger(pmerger) {}
+				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : it(merger->pos.find(pos)), merger(pmerger) {}
+				iterator(typename RowMerger::map_container::const_iterator pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
 			public:
-				iterator(const iterator & other) : pos(other.pos), merger(other.merger) {}
+				iterator(const iterator & other) : it(other.it), merger(other.merger) {}
 				~iterator() {}
 				//INMOST_DATA_REAL_TYPE & operator *() {return merger->vals[merger->pos[pos]];}
 				//INMOST_DATA_REAL_TYPE operator *() const {return merger->vals[merger->pos[pos]];}
@@ -700,40 +702,32 @@ namespace INMOST
 				//const INMOST_DATA_REAL_TYPE * operator ->() const {return &merger->vals[merger->pos[pos]];}
 				//iterator& operator ++() { pos = merger->next[merger->[pos]]; return *this; }
 				//iterator operator ++(int) { return iterator(merger->next[merger->[pos]], merger); }
-				INMOST_DATA_REAL_TYPE& operator *() { return merger->vals[merger->get_pos(pos)]; }
-				INMOST_DATA_REAL_TYPE operator *() const { return merger->vals[merger->get_pos(pos)]; }
-				INMOST_DATA_REAL_TYPE* operator ->() { return &merger->vals[merger->get_pos(pos)]; }
-				const INMOST_DATA_REAL_TYPE* operator ->() const { return &merger->vals[merger->get_pos(pos)]; }
-				iterator & operator ++(){ pos = merger->next[merger->get_pos(pos)]; return *this;}
-				iterator operator ++(int) { return iterator(merger->next[merger->get_pos(pos)], merger); }
-				iterator & operator = (const iterator & other) {merger = other.merger; pos = other.pos; return *this;}
-				bool operator ==(const iterator & other) const {return merger == other.merger && pos == other.pos;}
-				bool operator !=(const iterator & other) const {return merger != other.merger || pos != other.pos;}
-				bool operator < (const iterator & other) const {return merger == other.merger && pos < other.pos;}
-				bool operator <=(const iterator & other) const {return merger == other.merger && pos <= other.pos;}
-				bool operator > (const iterator & other) const {return merger == other.merger && pos > other.pos;}
-				bool operator >=(const iterator & other) const {return merger == other.merger && pos >= other.pos;}
+				INMOST_DATA_REAL_TYPE& operator *() { return merger->vals[it->second]; }
+				INMOST_DATA_REAL_TYPE operator *() const { return merger->vals[it->second]; }
+				INMOST_DATA_REAL_TYPE* operator ->() { return &merger->vals[it->second]; }
+				const INMOST_DATA_REAL_TYPE* operator ->() const { return &merger->vals[it->second]; }
+				iterator & operator ++(){ it++; return *this;}
+				iterator operator ++(int) { RowMerger::map_container::const_iterator jt = std::next(it); return iterator(jt, merger); }
+				iterator & operator = (const iterator & other) {merger = other.merger; it = other.it; return *this;}
+				bool operator ==(const iterator & other) const {return merger == other.merger && it == other.it;}
+				bool operator !=(const iterator & other) const {return merger != other.merger || it != other.it;}
 				friend class RowMerger;
 			};
 			//typedef container::iterator iterator;
 		private:
 			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
-			INMOST_DATA_ENUM_TYPE First; ///< First position.
+			//INMOST_DATA_ENUM_TYPE First; ///< First position.
 			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
-			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			typedef robin_hood::unordered_flat_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			map_container pos;  //Position in vals and next array (huge array)
 			//mutable void* judy_array;
 			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
+#if 0
 			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
 			//interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
+#endif
 			//container data;
 			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos) const;
 			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos);
-			void ins_pos(INMOST_DATA_ENUM_TYPE pos, INMOST_DATA_ENUM_TYPE k);
 		public:
 			/// Default constructor without size specified.
 			RowMerger();
@@ -796,12 +790,12 @@ namespace INMOST
 			//bool Empty() const { return data.empty(); }
 			/// Retrive/add an entry from/to linked list.
 			/// @param pos Position in the list.
-			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE pos) { return vals[get_pos(pos)]; } 
+			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE ipos) { return vals[get_pos(ipos)]; } 
 			/// Retrive an entry from linked list.
 			/// \warning
 			/// Will fire an exception if there is no entry.
 			/// @param pos Position in the list.
-			INMOST_DATA_REAL_TYPE operator [] (INMOST_DATA_ENUM_TYPE pos) const { return vals[get_pos(pos)]; }
+			INMOST_DATA_REAL_TYPE operator [] (INMOST_DATA_ENUM_TYPE ipos) const { return vals[get_pos(ipos)]; }
 			/// Operation of the form c = alpha a + beta b
 			/// \warning
 			/// Linked list must be clear before operation.
@@ -821,7 +815,7 @@ namespace INMOST
 			iterator Begin() {return iterator(this);}
 			//iterator Begin() { return data.begin(); }
 			///Retrive iterator for the position beyond the last element.
-			iterator End() {iterator ret(this); ret.pos = EOL; return ret;}
+			iterator End() {return iterator(pos.end(), this);}
 			//iterator End() { return data.end(); }
 		};
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
