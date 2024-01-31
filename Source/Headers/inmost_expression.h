@@ -34,7 +34,7 @@ namespace INMOST
 	class basic_expression
 	{
 	public:
-		typedef Sparse::RowMerger4 merger_type;
+		typedef Sparse::RowMerger3 merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -1454,7 +1454,7 @@ namespace INMOST
 		const_hessian_multivar_expression_reference(const const_hessian_multivar_expression_reference& other)
 			: arg(other.arg) {}
 		/// Copy constructor from multivar_expression, sets links to the same reference of value and entries
-		const_hessian_multivar_expression_reference(const multivar_expression& other)
+		const_hessian_multivar_expression_reference(const hessian_multivar_expression& other)
 			: arg(other) {}
 		/// Retrieve value
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return arg.GetValue(); }

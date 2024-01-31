@@ -699,7 +699,7 @@ namespace INMOST
 				typename RowMerger::map_container::const_iterator it;
 				RowMerger * merger; ///< Link to associated storage for linked list.
 				iterator(RowMerger* pmerger) : it(pmerger->pos.begin()), merger(pmerger) {}
-				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : it(merger->pos.find(pos)), merger(pmerger) {}
+				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : it(pmerger->pos.find(pos)), merger(pmerger) {}
 				iterator(typename RowMerger::map_container::const_iterator pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
 			public:
 				iterator(const iterator & other) : it(other.it), merger(other.merger) {}
