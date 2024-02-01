@@ -222,17 +222,23 @@ namespace INMOST
 		ReleaseMarker(used, NODE);
 		
 		f << "POINTS " << num_nodes << " double\n";
-		for(Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) if( it->IntegerDF(set_id) != -1 )
 		{
-			Storage::real_array coords = it->RealArray(CoordsTag());
-			for(integer i = 0; i < dim; i++) 
+			std::ios save(NULL);
+			save.copyfmt(f);
+			f << std::scientific << std::setprecision(15);
+			for (Mesh::iteratorNode it = BeginNode(); it != EndNode(); it++) if (it->IntegerDF(set_id) != -1)
 			{
-				double temp = coords[i];
-				f << temp << " ";
+				Storage::real_array coords = it->RealArray(CoordsTag());
+				for (integer i = 0; i < dim; i++)
+				{
+					double temp = coords[i];
+					f << temp << " ";
+				}
+				for (integer i = dim; i < 3; i++)
+					f << "0 ";
+				f << "\n";
 			}
-			for(integer i = dim; i < 3; i++)
-				f << "0 ";
-			f << "\n";
+			f.copyfmt(save);
 		}
 		{
 			std::vector<int> values;
