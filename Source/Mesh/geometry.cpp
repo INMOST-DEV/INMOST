@@ -2749,8 +2749,6 @@ namespace INMOST
 			real nt[3] = { 0,0,0 };
 			real x0[3] = { 0,0,0 }, v0[3] = { 0,0,0 };
 			ComputeCentroid(me, coords, x0);
-			if (print_geometric_alg)
-				std::cout << "my centroid " << x0[0] << " " << x0[1] << " " << x0[2] << std::endl;
 			for (unsigned j = 0; j < faces.size(); j++)
 			{
 				//compute normal to face
@@ -2763,14 +2761,6 @@ namespace INMOST
 				n0[0] = n0[1] = n0[2] = 0;
 				a = 0;
 				ComputeCentroid(faces[j], coords, v0);
-				if (print_geometric_alg)
-				{
-					std::cout << "# face " << faces[j].LocalID() << " orientation " << s;
-					if (faces[j].BackCell().isValid()) std::cout << " back " << faces[j].BackCell().LocalID();
-					if (faces[j].FrontCell().isValid()) std::cout << " front " << faces[j].FrontCell().LocalID();
-					std::cout << " center " << v0[0] << " " << v0[1] << " " << v0[2];
-					std::cout << std::endl;
-				}
 				real_array v1, v2;
 				for (int i = 0; i < (int)nodes.size(); i++)
 				{
@@ -2782,8 +2772,6 @@ namespace INMOST
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
-				if (print_geometric_alg)
-					std::cout << "normal " << n0[0] << " " << n0[1] << " " << n0[2] << std::endl;
 				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
@@ -2801,14 +2789,6 @@ namespace INMOST
 					for (int q = 0; q < mdim; ++q)
 						x[q] += at * ((v0[q] - x0[q]) + (v1[q] - x0[q]) + (v2[q] - x0[q])) / 3.0;
 					a += at;
-					if (print_geometric_alg)
-					{
-						std::cout << "nodes " << nodes[0].LocalID() << " " << nodes[i].LocalID() << " " << nodes[i + 1].LocalID() << std::endl;
-						std::cout << "add center";
-						for(int q = 0; q < 3; ++q)
-							std::cout << " " << at * ((v0[q] - x0[q]) + (v1[q] - x0[q]) + (v2[q] - x0[q])) / 3.0;
-						std::cout << " area " << at << " sign " << ss << std::endl;
-					}
 				}
 				if (a)
 				{
@@ -2821,11 +2801,7 @@ namespace INMOST
 					for (int q = 0; q < 3; ++q) x[q] -= x0[q];
 				}
 				volp = vec_dot_product(x, n0, 3) / 3.0;
-				if (print_geometric_alg)
-					std::cout << "centroid " << x[0] << " " << x[1] << " " << x[2] << " area " << a << " volp " << volp << " sign " << s << std::endl;
 				vol += s * volp;
-				if (print_geometric_alg)
-					std::cout << " add " << s * volp << " vol " << vol << std::endl;
 			}
 			if (ornt)
 			{
@@ -2833,8 +2809,6 @@ namespace INMOST
 				faces.RemPrivateMarker(rev);
 				me.GetMeshLink()->ReleasePrivateMarker(rev);
 			}
-			if (print_geometric_alg)
-				std::cout << "final vol " << vol << std::endl;
 			assert(vol > 0);
 			ret = vol;
 		}

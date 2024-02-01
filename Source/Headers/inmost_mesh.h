@@ -1303,7 +1303,6 @@ namespace INMOST
 	class Mesh : public TagManager, public Storage //implemented in mesh.cpp
 	{
 	public:
-		bool print_geometric_alg = false; // debug geometric algorithm
 #if defined(CHECKS_MARKERS)
 		bool check_shared_mrk, check_private_mrk;
 #endif
