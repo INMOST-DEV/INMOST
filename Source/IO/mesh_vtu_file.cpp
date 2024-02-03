@@ -32,6 +32,28 @@ namespace INMOST
 		return digits;
 	}
 
+	static int get_file_num(int rank, std::vector<INMOST_DATA_INTEGER_TYPE>& need_faces_all, bool need_faces)
+	{
+		if (need_faces)
+		{
+			int ret = 0;
+			if (need_faces_all[rank])
+			{
+				for (size_t k = 0; k < rank; ++k)
+					if (need_faces_all[k]) ret++;
+			}
+			else
+			{
+				for (size_t k = 0; k < need_faces_all.size(); ++k)
+					if (need_faces_all[k]) ret++;
+				for (size_t k = 0; k < rank; ++k)
+					if (!need_faces_all[k]) ret++;
+			}
+			return ret;
+		}
+		else return rank;
+	}
+
 	
 	void Mesh::SavePVTU(std::string file)
 	{
@@ -43,7 +65,16 @@ namespace INMOST
 		std::string::size_type l=name.find_last_of("/\\");
 		std::string fname=name.substr(l+1,name.length());
 		
-		
+		std::vector<INMOST_DATA_INTEGER_TYPE> need_faces_all(GetProcessorsNumber(), 0);
+		bool need_faces = false;
+		for (Mesh::iteratorCell jt = BeginCell(); jt != EndCell() && !need_faces; ++jt)
+			need_faces |= VtkElementType(jt->GetGeometricType()) == 42;
+		if (need_faces) need_faces_all[GetProcessorRank()] = 1;
+		Integrate(&need_faces_all[0], GetProcessorsNumber());
+		for (size_t k = 0; k < need_faces_all.size(); ++k)
+			need_faces |= need_faces_all[k];
+		//need_faces = AggregateMax(need_faces ? 1 : 0) ? 1 : 0;
+
 		
 		if( GetProcessorRank() == 0 )
 		{
@@ -114,10 +145,41 @@ namespace INMOST
 				fh << "\t\t<PPoints>" << std::endl;
 				fh << "\t\t\t<PDataArray";
 				fh << " type=\"Float64\"";
+				fh << " Name=\"Points\"";
 				fh << " NumberOfComponents=\"3\"";
-				fh << " Format=\"ascii\"";
+				fh << " format=\"ascii\"";
 				fh << "/>" << std::endl;
 				fh << "\t\t</PPoints>" << std::endl;
+				fh << "\t\t<PCells>" << std::endl;
+				fh << "\t\t\t<PDataArray";
+				fh << " type=\"Int64\"";
+				fh << " Name=\"connectivity\"";
+				fh << " format=\"ascii\"";
+				fh << "/>" << std::endl;
+				fh << "\t\t\t<PDataArray";
+				fh << " type=\"Int64\"";
+				fh << " Name=\"offsets\"";
+				fh << " format=\"ascii\"";
+				fh << "/>" << std::endl;
+				fh << "\t\t\t<PDataArray";
+				fh << " type=\"UInt8\"";
+				fh << " Name=\"types\"";
+				fh << " format=\"ascii\"";
+				fh << "/>" << std::endl;
+				if (need_faces)
+				{
+					fh << "\t\t\t<PDataArray";
+					fh << " type=\"Int64\"";
+					fh << " Name=\"faces\"";
+					fh << " format=\"ascii\"";
+					fh << "/>" << std::endl;
+					fh << "\t\t\t<PDataArray";
+					fh << " type=\"Int64\"";
+					fh << " Name=\"faceoffsets\"";
+					fh << " format=\"ascii\"";
+					fh << "/>" << std::endl;
+				}
+				fh << "\t\t</PCells>" << std::endl;
 				for (int k = 0; k < GetProcessorsNumber(); ++k)
 				{
 					std::stringstream filename;
@@ -140,11 +202,12 @@ namespace INMOST
 		if (fail) throw BadFileName;
 		
 		{
+			int filenum = get_file_num(GetProcessorRank(), need_faces_all, need_faces);
 			std::stringstream filename;
 			filename << name << 'p';
-			for(int q = getdigits(GetProcessorRank()+1); q < getdigits(GetProcessorsNumber()); ++q) 
+			for(int q = getdigits(filenum+1); q < getdigits(GetProcessorsNumber()); ++q) 
 				filename << '0'; //leading zeros
-			filename << (GetProcessorRank()+1);
+			filename << (filenum+1);
 			filename << ".vtu";
 			Save(filename.str());
 		}
@@ -403,7 +466,7 @@ namespace INMOST
 		f << "\t\t\t</Points>" << std::endl;
 		f << "\t\t\t<Cells>" << std::endl;
 		
-		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">" << std::endl;
+		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"connectivity\" Format=\"ascii\">" << std::endl;
 		for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt) if( keep_ghost || jt->GetStatus() != Element::Ghost )
 		{
 			ElementArray<Node> nodes(this); //= jt->getNodes();
@@ -414,7 +477,7 @@ namespace INMOST
 			f << std::endl;
 		}
 		f << "\t\t\t\t</DataArray>" << std::endl;
-		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">" << std::endl;
+		f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"offsets\" Format=\"ascii\">" << std::endl;
 		{
 			size_t offset = 0;
 			for(Mesh::iteratorCell jt = BeginCell(); jt != EndCell(); ++jt)  if (keep_ghost || jt->GetStatus() != Element::Ghost)
@@ -435,6 +498,7 @@ namespace INMOST
 			if( etype == 42 ) need_faces = true;
 		}
 		f << "\t\t\t\t</DataArray>" << std::endl;
+		need_faces = AggregateMax(need_faces ? 1 : 0) ? 1 : 0;
 		if( need_faces )
 		{
 			f << "\t\t\t\t<DataArray type=\"Int64\" Name=\"faces\" format=\"ascii\">" << std::endl;	
