@@ -2711,14 +2711,15 @@ namespace INMOST
 			{
 				ret = 0;
 				real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 }, n0[3] = { 0,0,0 };// , ss, at;
-				real_array v0, v1, v2;
-				v0 = coords[nodes[0]];
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				real v0[3] = { 0,0,0 };
+				real_array v1, v2;
+				ComputeCentroid(e, coords, v0);
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
@@ -2746,6 +2747,8 @@ namespace INMOST
 			real x[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, s, ss;
 			real l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
 			real nt[3] = { 0,0,0 };
+			real x0[3] = { 0,0,0 }, v0[3] = { 0,0,0 };
+			ComputeCentroid(me, coords, x0);
 			for (unsigned j = 0; j < faces.size(); j++)
 			{
 				//compute normal to face
@@ -2757,23 +2760,24 @@ namespace INMOST
 				x[0] = x[1] = x[2] = 0;
 				n0[0] = n0[1] = n0[2] = 0;
 				a = 0;
-				real_array v0 = coords[nodes[0]], v1, v2;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				ComputeCentroid(faces[j], coords, v0);
+				real_array v1, v2;
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -2783,7 +2787,7 @@ namespace INMOST
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					//same as faces[j].Barycenter(x)
 					for (int q = 0; q < mdim; ++q)
-						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						x[q] += at * ((v0[q] - x0[q]) + (v1[q] - x0[q]) + (v2[q] - x0[q])) / 3.0;
 					a += at;
 				}
 				if (a)
@@ -2791,7 +2795,11 @@ namespace INMOST
 					for (int q = 0; q < 3; ++q)
 						x[q] = x[q] / a;
 				}
-				else ComputeCentroid(e, coords, x);
+				else
+				{
+					ComputeCentroid(faces[j], coords, x);
+					for (int q = 0; q < 3; ++q) x[q] -= x0[q];
+				}
 				volp = vec_dot_product(x, n0, 3) / 3.0;
 				vol += s * volp;
 			}
@@ -2856,25 +2864,25 @@ namespace INMOST
 			{
 				real nt[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
 				real c[3] = { 0,0,0 }, n0[3] = { 0,0,0 }, ss, xf[3] = { 0,0,0 };
-				real_array v0 = coords[nodes[0]], v1, v2;
+				real_array v1, v2;
 				ComputeCentroid(e, coords, xf);
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), xf, l1, mdim);
+					vec_diff(v2.data(), xf, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
 				real a = 0, at;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), xf, l1, mdim);
+					vec_diff(v2.data(), xf, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -2882,7 +2890,7 @@ namespace INMOST
 					if (ss) ss /= fabs(ss);
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < mdim; ++q)
-						c[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
+						c[q] += at * ((v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
 					a += at;
 				}
 				if (a)
@@ -2907,8 +2915,9 @@ namespace INMOST
 			real vol = 0, a, at, volp;
 			real x[3] = { 0,0,0 }, nt[3] = { 0,0,0 }, s;
 			real c[3] = { 0,0,0 };// , c2[3] = { 0,0,0 };
-			real n0[3] = { 0,0,0 }, ss, xc[3] = { 0,0,0 }, xf[3] = { 0,0,0 };
+			real n0[3] = { 0,0,0 }, ss, xc[3] = { 0,0,0 };
 			real l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
+			real v0[3] = { 0,0,0 };
 			ComputeCentroid(e, coords, xc);
 			for (unsigned j = 0; j < faces.size(); j++)
 			{
@@ -2921,24 +2930,24 @@ namespace INMOST
 				n0[0] = n0[1] = n0[2] = 0;
 				x[0] = x[1] = x[2] = 0;
 				a = 0;
-				real_array v0 = coords[nodes[0]], v1, v2;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				real_array v1, v2;
+				ComputeCentroid(faces[j], coords, v0);
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
-				ComputeCentroid(faces[j], coords, xf);
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -2948,7 +2957,7 @@ namespace INMOST
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < 3; ++q)
 					{
-						x[q] += at * ((v0[q] - xf[q]) + (v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
+						x[q] += at * ((v1[q] - v0[q]) + (v2[q] - v0[q])) / 3.0;
 						c[q] += s * nt[q] * (pow((v0[q] - xc[q]) + (v1[q] - xc[q]), 2) + pow((v0[q] - xc[q]) + (v2[q] - xc[q]), 2) + pow((v1[q] - xc[q]) + (v2[q] - xc[q]), 2)) / 24.0;
 					}
 					a += at;
@@ -2956,9 +2965,9 @@ namespace INMOST
 				if (a)
 				{
 					for (int q = 0; q < 3; ++q)
-						x[q] = x[q] / a + xf[q];
+						x[q] = x[q] / a + (v0[q] - xc[q]);
 				}
-				else for (int q = 0; q < 3; ++q) x[q] = xf[q];
+				else for (int q = 0; q < 3; ++q) x[q] = (v0[q] - xc[q]);
 				volp = s * vec_dot_product(x, n0, 3) / 3.0;
 				vol += volp;
 			}
@@ -2991,14 +3000,14 @@ namespace INMOST
 		{
 			ElementArray<Node> nodes = e.getNodes();
 			real n[3] = { 0,0,0 }, l1[3] = { 0,0,0 }, l2[3] = { 0,0,0 };
-			real nt[3] = { 0,0,0 };
-			real_array v0 = coords[nodes[0]];
-			for (int i = 1; i < (int)nodes.size() - 1; i++)
+			real nt[3] = { 0,0,0 }, v0[3] = { 0,0,0 };
+			ComputeCentroid(e, coords, v0);
+			for (int i = 0; i < (int)nodes.size(); i++)
 			{
 				real_array v1 = coords[nodes[i]];
-				real_array v2 = coords[nodes[i + 1]];
-				vec_diff(v1.data(), v0.data(), l1, mdim);
-				vec_diff(v2.data(), v0.data(), l2, mdim);
+				real_array v2 = coords[nodes[(i + 1) % nodes.size()]];
+				vec_diff(v1.data(), v0, l1, mdim);
+				vec_diff(v2.data(), v0, l2, mdim);
 				vec_cross_product(l1, l2, nt);
 				for (int q = 0; q < 3; ++q)
 					n[q] += nt[q] * 0.5;
@@ -3054,14 +3063,15 @@ namespace INMOST
 			{
 				ret = 0;
 				variable nt[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. };
-				var_array v0, v1, v2;
-				v0 = coords[nodes[0]];
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				variable v0[3] = { 0.,0.,0. };
+				var_array v1, v2;
+				ComputeCentroid(e, coords, v0);
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
@@ -3089,6 +3099,8 @@ namespace INMOST
 			variable x[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. }, s, ss;
 			variable l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
 			variable nt[3] = { 0.,0.,0. };
+			variable x0[3] = { 0,0,0 }, v0[3] = { 0,0,0 };
+			ComputeCentroid(me, coords, x0);
 			for (unsigned j = 0; j < faces.size(); j++)
 			{
 				//compute normal to face
@@ -3100,23 +3112,24 @@ namespace INMOST
 				x[0] = x[1] = x[2] = 0;
 				n0[0] = n0[1] = n0[2] = 0;
 				a = 0;
-				var_array v0 = coords[nodes[0]], v1, v2;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				ComputeCentroid(faces[j], coords, v0);
+				var_array v1, v2;
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -3126,7 +3139,7 @@ namespace INMOST
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					//same as faces[j].Barycenter(x)
 					for (int q = 0; q < mdim; ++q)
-						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						x[q] += at * ((v0[q] - x0[q]) + (v1[q] - x0[q]) + (v2[q] - x0[q])) / 3.0;
 					a += at;
 				}
 				if (get_value(a))
@@ -3134,7 +3147,11 @@ namespace INMOST
 					for (int q = 0; q < 3; ++q)
 						x[q] = x[q] / a;
 				}
-				else ComputeCentroid(e, coords, x);
+				else
+				{
+					ComputeCentroid(e, coords, x);
+					for (int q = 0; q < 3; ++q) x[q] -= x0[q];
+				}
 				volp = vec_dot_product(x, n0, 3) / 3.0;
 				vol += s * volp;
 			}
@@ -3199,25 +3216,26 @@ namespace INMOST
 			{
 				*ret = 0;
 				variable nt[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
-				variable c[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. }, ss;
-				var_array v0 = coords[nodes[0]], v1, v2;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				variable c[3] = { 0.,0.,0. }, n0[3] = { 0.,0.,0. }, ss, xf[3] = { 0.,0.,0. };
+				var_array v1, v2;
+				ComputeCentroid(e, coords, xf);
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), xf, l1, mdim);
+					vec_diff(v2.data(), xf, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
 				variable a = 0, at;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), xf, l1, mdim);
+					vec_diff(v2.data(), xf, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -3225,15 +3243,15 @@ namespace INMOST
 					if (get_value(ss)) ss /= fabs(ss);
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < mdim; ++q)
-						c[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
+						c[q] += at * ((v1[q] - xf[q]) + (v2[q] - xf[q])) / 3.0;
 					a += at;
 				}
 				if (get_value(a))
 				{
 					for (int q = 0; q < mdim; ++q)
-						ret[q] = c[q] / a;
+						ret[q] = c[q] / a + xf[q];
 				}
-				else ComputeCentroid(e, coords, ret);
+				else for (int q = 0; q < mdim; ++q) ret[q] = xf[q];
 			}
 		}
 		else if (edim == 3)
@@ -3250,8 +3268,10 @@ namespace INMOST
 			variable vol = 0., a, at, volp;
 			variable x[3] = { 0.,0.,0. }, nt[3] = { 0.,0.,0. }, s;
 			variable c[3] = { 0.,0.,0. };// , c2[3] = { 0,0,0 };
-			variable n0[3] = { 0.,0.,0. }, ss;// , xc[3] = { 0,0,0 };
+			variable n0[3] = { 0.,0.,0. }, ss , xc[3] = { 0.,0.,0. };
 			variable l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
+			variable v0[3] = { 0,0,0 };
+			ComputeCentroid(e, coords, xc);
 			for (unsigned j = 0; j < faces.size(); j++)
 			{
 				//compute normal to face
@@ -3263,23 +3283,24 @@ namespace INMOST
 				n0[0] = n0[1] = n0[2] = 0;
 				x[0] = x[1] = x[2] = 0;
 				a = 0;
-				var_array v0 = coords[nodes[0]], v1, v2;
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				var_array v1, v2;
+				ComputeCentroid(faces[j], coords, v0);
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						n0[q] += nt[q] * 0.5;
 				}
-				for (int i = 1; i < (int)nodes.size() - 1; i++)
+				for (int i = 0; i < (int)nodes.size(); i++)
 				{
 					v1 = coords[nodes[i]];
-					v2 = coords[nodes[i + 1]];
-					vec_diff(v1.data(), v0.data(), l1, mdim);
-					vec_diff(v2.data(), v0.data(), l2, mdim);
+					v2 = coords[nodes[(i + 1) % nodes.size()]];
+					vec_diff(v1.data(), v0, l1, mdim);
+					vec_diff(v2.data(), v0, l2, mdim);
 					vec_cross_product(l1, l2, nt);
 					for (int q = 0; q < 3; ++q)
 						nt[q] *= 0.5;
@@ -3289,17 +3310,17 @@ namespace INMOST
 					at = sqrt(vec_dot_product(nt, nt, 3)) * ss;
 					for (int q = 0; q < 3; ++q)
 					{
-						x[q] += at * (v0[q] + v1[q] + v2[q]) / 3.0;
-						c[q] += s * nt[q] * (pow(v0[q] + v1[q], 2) + pow(v1[q] + v2[q], 2) + pow(v2[q] + v0[q], 2)) / 24.0;
+						x[q] += at * ((v1[q] - v0[q]) + (v2[q] - v0[q])) / 3.0;
+						c[q] += s * nt[q] * (pow((v0[q] - xc[q]) + (v1[q] - xc[q]), 2) + pow((v0[q] - xc[q]) + (v2[q] - xc[q]), 2) + pow((v1[q] - xc[q]) + (v2[q] - xc[q]), 2)) / 24.0;
 					}
 					a += at;
 				}
 				if (get_value(a))
 				{
 					for (int q = 0; q < 3; ++q)
-						x[q] = x[q] / a;
+						x[q] = x[q] / a + (v0[q] - xc[q]);
 				}
-				else ComputeCentroid(e, coords, x);
+				else for (int q = 0; q < 3; ++q) x[q] = (v0[q] - xc[q]);
 				volp = s * vec_dot_product(x, n0, 3) / 3.0;
 				vol += volp;
 			}
@@ -3317,11 +3338,9 @@ namespace INMOST
 			if (get_value(vol))
 			{
 				for (int q = 0; q < mdim; ++q)
-					c[q] = c[q] / vol;// +xc[q];
-				for (int q = 0; q < mdim; ++q)
-					ret[q] = c[q];
+					ret[q] = c[q] / vol + xc[q];
 			}
-			else ComputeCentroid(e, coords, ret);
+			else for (int q = 0; q < mdim; ++q) ret[q] = xc[q];
 		}
 	}
 
@@ -3334,14 +3353,14 @@ namespace INMOST
 		{
 			ElementArray<Node> nodes = e.getNodes();
 			variable n[3] = { 0.,0.,0. }, l1[3] = { 0.,0.,0. }, l2[3] = { 0.,0.,0. };
-			variable nt[3] = { 0.,0.,0. };
-			var_array v0 = coords[nodes[0]];
-			for (int i = 1; i < (int)nodes.size() - 1; i++)
+			variable nt[3] = { 0.,0.,0. }, v0[3] = { 0.,0.,0. };
+			ComputeCentroid(e, coords, v0);
+			for (int i = 0; i < (int)nodes.size(); i++)
 			{
 				var_array v1 = coords[nodes[i]];
-				var_array v2 = coords[nodes[i + 1]];
-				vec_diff(v1.data(), v0.data(), l1, mdim);
-				vec_diff(v2.data(), v0.data(), l2, mdim);
+				var_array v2 = coords[nodes[(i + 1) % nodes.size()]];
+				vec_diff(v1.data(), v0, l1, mdim);
+				vec_diff(v2.data(), v0, l2, mdim);
 				vec_cross_product(l1, l2, nt);
 				for (int q = 0; q < 3; ++q)
 					n[q] += nt[q] * 0.5;

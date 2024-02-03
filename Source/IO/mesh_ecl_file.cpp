@@ -4377,13 +4377,15 @@ namespace INMOST
 				ReleasePrivateMarker(mrk);
 			}
 			if (verbosity > 0)
+			{
 				std::cout << "Finished tops/bottoms/cells time " << Timer() - ttt << std::endl;
-				
-			if( compute_tran )
-				std::cout << "Compute tran is set! perm is " << (perm.empty()? "empty" : "present") << std::endl;
-			else
-				std::cout << "Compute tran is not set!" << std::endl;
-			
+
+				if (compute_tran)
+					std::cout << "Compute tran is set! perm is " << (perm.empty() ? "empty" : "present") << std::endl;
+				else
+					std::cout << "Compute tran is not set!" << std::endl;
+			}
+
 			if( compute_tran && !perm.empty() )
 			{
 				if( verbosity > 0 )
