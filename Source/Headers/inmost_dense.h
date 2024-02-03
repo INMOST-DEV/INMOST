@@ -4281,6 +4281,24 @@ namespace INMOST
 	}
 
 	template<typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger5& m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j) * B.compute(i, j).GetValue();
+				B.compute(i, j).GetJacobian(A.compute(i, j), m);
+			}
+		ret.SetValue(value);
+		m.get_row(ret.GetRow());
+		return ret;
+	}
+
+	template<typename RetB>
 	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
 	{
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
@@ -4368,6 +4386,25 @@ namespace INMOST
 			}
 		ret.SetValue(value);
 		m.RetrieveRow(ret.GetRow());
+		return ret;
+	}
+
+	template<typename RetA, typename RetB>
+	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger5& m)
+	{
+		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
+		variable ret = 0.0;
+		INMOST_DATA_REAL_TYPE value = 0.0;
+		m.clear();
+		for (unsigned i = 0; i < A.Rows(); ++i)
+			for (unsigned j = 0; j < A.Cols(); ++j)
+			{
+				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
+				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
+				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
+			}
+		ret.SetValue(value);
+		m.get_row(ret.GetRow());
 		return ret;
 	}
 

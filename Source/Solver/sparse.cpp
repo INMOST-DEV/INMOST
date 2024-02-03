@@ -3,7 +3,6 @@
 #include "inmost_dense.h"
 #include <fstream>
 #include <sstream>
-#include "../Misc/judy.h"
 
 namespace INMOST
 {
@@ -230,6 +229,71 @@ namespace INMOST
 			r.Swap(inds);
 		}
 
+		void RowMerger5::clear()
+		{
+#if defined(TEST_HASHTABLE)
+			table.Clear();
+#elif defined(TEST_JUDY1)
+			table.clear();
+#else
+			table.clear();
+#endif
+			vals.clear();
+		}
+
+		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+		{
+#if defined(TEST_HASHTABLE)
+			HashTable::iterator it = table.find(ind);
+			if (it == table.end())
+			{
+				table.Insert(ind)->second = vals.size();
+				vals.push_back(val);
+			}
+			else vals[it->second] += val;
+#elif defined(TEST_JUDY1)
+			uint64_t test = table.find(ind + 1);
+			if (!table.success())
+			{
+				table.insert(ind + 1, vals.size() + 1);
+				vals.push_back(val);
+			}
+			else vals[test - 1] += val;
+#else
+#endif
+		}
+
+		void RowMerger5::get_row(Sparse::Row& r)
+		{
+			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(vals.size());
+			r.Resize(s);
+#if defined(TEST_HASHTABLE)
+			for (HashTable::iterator it = table.begin(); it != table.end(); ++it)
+			{
+				if (1.0 + vals[it->second] != 1.0)
+				{
+					r.GetIndex(k) = it->first;
+					r.GetValue(k) = vals[it->second];
+					k++;
+				}
+			}
+#elif defined(TEST_JUDY1)
+			const judyLArray< uint64_t, uint64_t>::pair * it = &table.begin();
+			while (table.success())
+			{
+				if (1.0 + vals[it->value - 1] != 1.0)
+				{
+					r.GetIndex(k) = it->key - 1;
+					r.GetValue(k) = vals[it->value - 1];
+					k++;
+				}
+				it = &table.next();
+			}
+#else
+#endif
+			r.Resize(k);
+		}
+
 		////////class RowMerger
 				/*
 
@@ -380,7 +444,42 @@ namespace INMOST
 			next.clear();
 			Nonzeros = 0;
 		}
-
+#elif defined(TEST_HASHTABLE)
+	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
+	{
+		const map_container::Cell * f = pos.Lookup(ind);
+		if (f != NULL)
+			return f->second;
+		else throw Impossible;
+	}
+	void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE val)
+	{
+		pos.Insert(ind)->second = val;
+	}
+	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
+	{
+		map_container::Cell* f = pos.Lookup(ind);
+		if (f != NULL)
+			return f->second;
+		else
+		{
+			ins_pos(ind, Nonzeros);
+			vals.push_back(0.0);
+			return Nonzeros++;
+		}
+	}
+	RowMerger::RowMerger() : Nonzeros(0)
+	{
+		vals.reserve(1024);
+		//pos.reserve(2048);
+		//pos.max_load_factor(0.25);
+	}
+	void RowMerger::Clear()
+	{
+		pos.Clear();
+		vals.clear();
+		Nonzeros = 0;
+	}
 #else
 	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
 	{
@@ -396,10 +495,14 @@ namespace INMOST
 			return f->second;
 		else
 		{
-			pos[ind] = Nonzeros;
+			ins_pos(ind, Nonzeros);
 			vals.push_back(0.0);
 			return Nonzeros++;
 		}
+	}
+	void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE val)
+	{
+		pos[ind] = val;
 	}
 	RowMerger::RowMerger() : Nonzeros(0) 
 	{
@@ -468,7 +571,7 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE k = 0;
 				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
 				{
-					pos[it->first] = k;
+					ins_pos(it->first, k);
 					vals[k] = it->second * coef;
 					++k;
 				}
@@ -805,6 +908,7 @@ namespace INMOST
 
 		void Row::GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
 		{
+			INMOST_DATA_REAL_TYPE val;
 			const_iterator first1 = inds.Begin(), last1 = inds.End();
 			const_iterator first2 = Begin(), last2 = End();
 			temp.Clear();
@@ -813,17 +917,21 @@ namespace INMOST
 			{
 				if (first2->first < first1->first)
 				{
-					temp.Push(first2->first, first2->second * coef);
+					val = first2->second * coef;
+					if(1. + val != 1.) temp.Push(first2->first, val);
 					first2++;
 				}
 				else
 				{
-					temp.Push(first1->first, first1->second);
 					if (!(first1->first < first2->first))
 					{
-						temp.rBegin()->second += first2->second * coef;
+						val = first2->second * coef + first1->second;
+						if(1. + val != 1.)
+							temp.Push(first1->first, val);
 						++first2;
 					}
+					else if( 1. + first1->second != 1.)
+						temp.Push(first1->first, first1->second);
 					++first1;
 				}
 			}

@@ -306,6 +306,11 @@ namespace INMOST
 			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetJacobian(mult,r);
 		}
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
+		{
+			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
+				it->GetJacobian(mult, r);
+		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)

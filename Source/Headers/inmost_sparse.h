@@ -7,6 +7,15 @@
 #include "robin_hood.h"
 
 #define ASSUME_SORTED
+//#define TEST_HASHTABLE
+#define TEST_JUDY1
+
+#if defined(TEST_JUDY1)
+#include "judyLArray.h"
+#endif
+#if defined(TEST_HASHTABLE)
+#include "hashtable.h"
+#endif
 
 namespace INMOST
 {
@@ -677,6 +686,20 @@ namespace INMOST
 			void clear();
 			void get_row(Sparse::Row& r);
 		};
+		struct RowMerger5
+		{
+#if defined(TEST_HASHTABLE)
+			HashTable table;
+#elif defined(TEST_JUDY1)
+			judyLArray<uint64_t, uint64_t> table;
+#else
+			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table;
+#endif
+			std::vector<INMOST_DATA_REAL_TYPE> vals;
+			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
+			void clear();
+			void get_row(Sparse::Row& r);
+		};
 		/// This class may be used to sum multiple sparse rows.
 		/// \warning
 		/// In parallel column indices of the matrix may span wider then
@@ -684,38 +707,36 @@ namespace INMOST
 		/// set total size of the matrix as interval of the RowMerger.
 		class RowMerger
 		{
+#if defined(TEST_HASHTABLE)
+			typedef HashTable map_container;
+#else
 			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
 			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
+#endif
 		public:
 			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
 			//const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
 			class iterator
 			{
 			private:
-				//INMOST_DATA_ENUM_TYPE pos;
-				typename RowMerger::map_container::const_iterator it;
+				typedef typename RowMerger::map_container::iterator it_type;
+				it_type it;
 				RowMerger * merger; ///< Link to associated storage for linked list.
 				iterator(RowMerger* pmerger) : it(pmerger->pos.begin()), merger(pmerger) {}
 				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : it(pmerger->pos.find(pos)), merger(pmerger) {}
-				iterator(typename RowMerger::map_container::const_iterator pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
+				iterator(it_type pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
 			public:
 				iterator(const iterator & other) : it(other.it), merger(other.merger) {}
 				~iterator() {}
-				//INMOST_DATA_REAL_TYPE & operator *() {return merger->vals[merger->pos[pos]];}
-				//INMOST_DATA_REAL_TYPE operator *() const {return merger->vals[merger->pos[pos]];}
-				//INMOST_DATA_REAL_TYPE * operator ->() {return &merger->vals[merger->pos[pos]];}
-				//const INMOST_DATA_REAL_TYPE * operator ->() const {return &merger->vals[merger->pos[pos]];}
-				//iterator& operator ++() { pos = merger->next[merger->[pos]]; return *this; }
-				//iterator operator ++(int) { return iterator(merger->next[merger->[pos]], merger); }
 				INMOST_DATA_REAL_TYPE& operator *() { return merger->vals[it->second]; }
 				INMOST_DATA_REAL_TYPE operator *() const { return merger->vals[it->second]; }
 				INMOST_DATA_REAL_TYPE* operator ->() { return &merger->vals[it->second]; }
 				const INMOST_DATA_REAL_TYPE* operator ->() const { return &merger->vals[it->second]; }
 				iterator & operator ++(){ it++; return *this;}
-				iterator operator ++(int) { RowMerger::map_container::const_iterator jt = std::next(it); return iterator(jt, merger); }
+				iterator operator ++(int) { return iterator(it++, merger); }
 				iterator & operator = (const iterator & other) {merger = other.merger; it = other.it; return *this;}
 				bool operator ==(const iterator & other) const {return merger == other.merger && it == other.it;}
 				bool operator !=(const iterator & other) const {return merger != other.merger || it != other.it;}
@@ -736,6 +757,7 @@ namespace INMOST
 			//container data;
 			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos) const;
 			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos);
+			void ins_pos(INMOST_DATA_ENUM_TYPE pos, INMOST_DATA_ENUM_TYPE val);
 		public:
 			/// Default constructor without size specified.
 			RowMerger();
