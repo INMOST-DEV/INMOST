@@ -61,10 +61,10 @@ namespace INMOST
 #define _m1(x)	(x >> 11 & 0x7FF)
 #define _m2(x)	(x >> 22 )
 
-		inline static  unsigned int flip(const unsigned int* fp)
+		inline static  unsigned int flip(unsigned int fp)
 		{
-			unsigned int mask = -((int)(*fp >> 31)) | 0x80000000;
-			return *fp ^ mask;
+			unsigned int mask = -((int)(fp >> 31)) | 0x80000000;
+			return fp ^ mask;
 		}
 
 		inline void RowMerger2::radix_sort()
@@ -78,7 +78,7 @@ namespace INMOST
 			memset(b0, 0, sizeof(unsigned int) * kHist * 3);
 			for (i = 0; i < size; i++)
 			{
-				unsigned int fi = flip((unsigned int*)&inds[i]);
+				unsigned int fi = flip(inds[i]);
 				++b0[_m0(fi)]; ++b1[_m1(fi)]; ++b2[_m2(fi)];
 			}
 			{
@@ -90,9 +90,9 @@ namespace INMOST
 					b2[kHist - 1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist - 1];
 				}
 			}
-			for (i = 0; i < size; i++) temp[++b0[_m0(flip((unsigned int*)&inds[i]))]] = inds[i];
-			for (i = 0; i < size; i++) inds[++b1[_m1(flip((unsigned int*)&temp[i]))]] = temp[i];
-			for (i = 0; i < size; i++) temp[++b2[_m2(flip((unsigned int*)&inds[i]))]] = inds[i];
+			for (i = 0; i < size; i++) temp[++b0[_m0(flip(inds[i]))]] = inds[i];
+			for (i = 0; i < size; i++) inds[++b1[_m1(flip(temp[i]))]] = temp[i];
+			for (i = 0; i < size; i++) temp[++b2[_m2(flip(inds[i]))]] = inds[i];
 			for (i = 0; i < size; i++) inds[i] = temp[i];
 		}
 
@@ -112,6 +112,8 @@ namespace INMOST
 		{
 			//indset.clear();
 			//bitset.clear();
+			for(size_t k = 0; k < inds.size(); ++k)
+				bitset[inds[k] - inds[0]] = 0;
 			vals.clear();
 			inds.clear();
 		}
@@ -126,14 +128,15 @@ namespace INMOST
 		}
 		void RowMerger2::set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
 		{
-			if (end - beg > bitset.size()) bitset.resize(end - beg);
-			std::fill(bitset.begin(), bitset.begin() + (end - beg), 0);
+			if (end - beg > bitset.size()) 
+				bitset.resize(end - beg, 0);
+			//std::fill(bitset.begin(), bitset.begin() + (end - beg), 0);
 		}
 		void RowMerger2::get_row(Sparse::Row& r)
 		{
 			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
 			r.Resize(s);
-			for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
+			for (INMOST_DATA_ENUM_TYPE i = 0; i < s; ++i)
 			{
 				if (1.0 + vals[i] != 1.0)
 				{

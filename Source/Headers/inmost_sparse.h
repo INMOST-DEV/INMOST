@@ -21,7 +21,7 @@ namespace INMOST
 {
 	namespace Sparse
 	{
-		typedef char bit_type; //for RowMerger2
+		typedef bool bit_type; //for RowMerger2
 
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// Retrieve MPI type for row entry type.
@@ -662,7 +662,7 @@ namespace INMOST
 			std::vector<Sparse::bit_type> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds, temp;
-			RowMerger2() { bitset.resize(1048576); }
+			RowMerger2() { bitset.resize(1048576, 0); }
 			inline void radix_sort();
 			inline void naive_sort();
 			void clear();
