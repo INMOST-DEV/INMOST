@@ -72,7 +72,7 @@ namespace INMOST
 		if (need_faces) need_faces_all[GetProcessorRank()] = 1;
 		Integrate(&need_faces_all[0], GetProcessorsNumber());
 		for (size_t k = 0; k < need_faces_all.size(); ++k)
-			need_faces |= need_faces_all[k];
+			need_faces |= need_faces_all[k] ? true : false;
 		//need_faces = AggregateMax(need_faces ? 1 : 0) ? 1 : 0;
 
 		

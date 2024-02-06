@@ -233,8 +233,6 @@ namespace INMOST
 		{
 #if defined(TEST_HASHTABLE)
 			table.Clear();
-#elif defined(TEST_JUDY1)
-			table.clear();
 #else
 			table.clear();
 #endif
@@ -255,11 +253,40 @@ namespace INMOST
 			uint64_t test = table.find(ind + 1);
 			if (!table.success())
 			{
-				table.insert(ind + 1, vals.size() + 1);
-				vals.push_back(val);
+				if (val)
+				{
+					table.insert(ind + 1, vals.size() + 1);
+					vals.push_back(val);
+				}
 			}
 			else vals[test - 1] += val;
 #else
+			if (1.0 + val != 1.0)
+			{
+				/*
+				INMOST_DATA_ENUM_TYPE& key = table[ind];
+				if (key == 0)
+				{
+					key = vals.size() + 1;
+					vals.push_back(val);
+				}
+				else vals[key - 1] += val;
+				*/
+				table_t::iterator test = table.find(ind);
+				if (test == table.end())
+				{
+					table[ind] = vals.size();
+					vals.push_back(val);
+				}
+				else vals[test->second] += val;
+				/*
+				std::pair<table_t::iterator, bool> test
+					= table.insert(std::make_pair(ind, static_cast<INMOST_DATA_ENUM_TYPE>(vals.size())));
+				if (test.second)
+					vals.push_back(val);
+				else vals[test.first->second] += val;
+				*/
+			}
 #endif
 		}
 
@@ -269,14 +296,12 @@ namespace INMOST
 			r.Resize(s);
 #if defined(TEST_HASHTABLE)
 			for (HashTable::iterator it = table.begin(); it != table.end(); ++it)
-			{
 				if (1.0 + vals[it->second] != 1.0)
 				{
 					r.GetIndex(k) = it->first;
 					r.GetValue(k) = vals[it->second];
 					k++;
 				}
-			}
 #elif defined(TEST_JUDY1)
 			const judyLArray< uint64_t, uint64_t>::pair * it = &table.begin();
 			while (table.success())
@@ -290,6 +315,13 @@ namespace INMOST
 				it = &table.next();
 			}
 #else
+			for(table_t::iterator it = table.begin(); it != table.end(); ++it)
+				if (1.0 + vals[it->second] != 1.0)
+				{
+					r.GetIndex(k) = it->first;
+					r.GetValue(k) = vals[it->second];
+					k++;
+				}
 #endif
 			r.Resize(k);
 		}

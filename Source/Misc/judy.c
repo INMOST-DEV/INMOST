@@ -39,7 +39,7 @@
 
 #include <memory.h>
 #include <stdlib.h>
-
+#include <string.h>
 #ifdef linux
 #  define _FILE_OFFSET_BITS 64
 #  define _LARGEFILE_SOURCE
@@ -90,7 +90,8 @@ int JudySize[] = {
 #endif
 };
 
-judyvalue JudyMask[9] = {
+judyvalue JudyMask[9] = 
+{
     0, 0xff, 0xffff, 0xffffff, 0xffffffff,
 #if JUDY_key_size > 4
     0xffffffffffULL, 0xffffffffffffULL, 0xffffffffffffffULL, 0xffffffffffffffffULL
@@ -106,24 +107,22 @@ Judy * judy_open( unsigned int max, unsigned int depth ) {
     Judy * judy;
     unsigned int amt;
 
-    max++;        // allow for zero terminator on keys
+    if (depth)
+        max = JUDY_key_size * depth;
+    else 
+        max++;        // allow for zero terminator on keys
 
-    if( ( seg = malloc( JUDY_seg ) ) ) {
+    if( ( seg = malloc( JUDY_seg ) ) ) 
+    {
         seg->seg = NULL;
         seg->next = JUDY_seg;
-    } else {
-#if defined(STANDALONE) || defined(ASKITIS)
-        judy_abort( "No virtual memory" );
-#else
-        return NULL;
-#endif
-    }
+    } 
+    else  return NULL;
 
     amt = sizeof( Judy ) + max * sizeof( JudyStack );
 
-    if( amt & ( JUDY_cache_line - 1 ) ) {
+    if( amt & ( JUDY_cache_line - 1 ) )
         amt |= JUDY_cache_line - 1, amt++;
-    }
 
 #if defined(STANDALONE) || defined(ASKITIS)
     MaxMem += JUDY_seg;
@@ -140,17 +139,18 @@ Judy * judy_open( unsigned int max, unsigned int depth ) {
     return judy;
 }
 
-void judy_close( Judy * judy ) {
+void judy_close( Judy * judy ) 
+{
     JudySeg * seg, *nxt = judy->seg;
 
-    while( ( seg = nxt ) ) {
+    while( ( seg = nxt ) )
         nxt = seg->seg, free( seg );
-    }
 }
 
 //    allocate judy node
 
-void * judy_alloc( Judy * judy, unsigned int type ) {
+void * judy_alloc( Judy * judy, unsigned int type ) 
+{
     unsigned int amt, idx, min;
     JudySeg * seg;
     void ** block;
@@ -163,25 +163,23 @@ void * judy_alloc( Judy * judy, unsigned int type ) {
         return NULL;
 #endif
 
-    if( type == JUDY_radix ) {
+    if( type == JUDY_radix )
         type = JUDY_radix_equiv;
-    }
 
 #ifndef ASKITIS
-    if( type == JUDY_span ) {
+    if( type == JUDY_span )
         type = JUDY_span_equiv;
-    }
 #endif
 
     amt = JudySize[type];
 
-    if( amt & 0x07 ) {
+    if( amt & 0x07 )
         amt |= 0x07, amt += 1;
-    }
 
     //    see if free block is already available
 
-    if( ( block = judy->reuse[type] ) ) {
+    if( ( block = judy->reuse[type] ) ) 
+    {
         judy->reuse[type] = *block;
         memset( block, 0, amt );
         return ( void * )block;
@@ -192,9 +190,11 @@ void * judy_alloc( Judy * judy, unsigned int type ) {
 
     if( type >= JUDY_1 )
         for( idx = type; idx++ < JUDY_max; )
-            if( block = judy->reuse[idx] ) {
+            if( block = judy->reuse[idx] ) 
+            {
                 judy->reuse[idx] = *block;
-                while( idx-- > type ) {
+                while( idx-- > type ) 
+                {
                     judy->reuse[idx] = block + JudySize[idx] / sizeof( void * );
                     block[JudySize[idx] / sizeof( void * )] = 0;
                 }
@@ -204,13 +204,17 @@ void * judy_alloc( Judy * judy, unsigned int type ) {
 
     min = amt < JUDY_cache_line ? JUDY_cache_line : amt;
 
-    if( judy->seg->next < min + sizeof( *seg ) ) {
-        if( ( seg = malloc( JUDY_seg ) ) ) {
+    if( judy->seg->next < min + sizeof( *seg ) ) 
+    {
+        if( ( seg = malloc( JUDY_seg ) ) ) 
+        {
             seg->next = JUDY_seg;
             seg->seg = judy->seg;
             judy->seg = seg;
             seg->next -= ( JudySlot )seg & ( JUDY_cache_line - 1 );
-        } else {
+        } 
+        else 
+        {
 #if defined(STANDALONE) || defined(ASKITIS)
             judy_abort( "Out of virtual memory" );
 #else
@@ -228,7 +232,8 @@ void * judy_alloc( Judy * judy, unsigned int type ) {
 
     rtn = ( void ** )( ( unsigned char * )judy->seg + judy->seg->next - amt );
 
-    for( idx = type; amt & ( JUDY_cache_line - 1 ); amt <<= 1 ) {
+    for( idx = type; amt & ( JUDY_cache_line - 1 ); amt <<= 1 ) 
+    {
         block = ( void ** )( ( unsigned char * )judy->seg + judy->seg->next - 2 * amt );
         judy->reuse[idx++] = block;
         *block = 0;
@@ -252,17 +257,20 @@ void * judy_data( Judy * judy, unsigned int amt )
         return NULL;
 #endif
 
-    if( amt & ( JUDY_cache_line - 1 ) ) {
+    if( amt & ( JUDY_cache_line - 1 ) )
         amt |= ( JUDY_cache_line - 1 ), amt += 1;
-    }
 
-    if( judy->seg->next < amt + sizeof( *seg ) ) {
-        if( ( seg = malloc( JUDY_seg ) ) ) {
+    if( judy->seg->next < amt + sizeof( *seg ) ) 
+    {
+        if( ( seg = malloc( JUDY_seg ) ) ) 
+        {
             seg->next = JUDY_seg;
             seg->seg = judy->seg;
             judy->seg = seg;
             seg->next -= ( JudySlot )seg & ( JUDY_cache_line - 1 );
-        } else {
+        } 
+        else 
+        {
 #if defined(STANDALONE) || defined(ASKITIS)
             judy_abort( "Out of virtual memory" );
 #else
@@ -282,7 +290,8 @@ void * judy_data( Judy * judy, unsigned int amt )
     return block;
 }
 
-Judy * judy_clone( Judy * judy ) {
+Judy * judy_clone( Judy * judy ) 
+{
     Judy * clone;
     unsigned int amt;
 
@@ -293,15 +302,14 @@ Judy * judy_clone( Judy * judy ) {
     return clone;
 }
 
-void judy_free( Judy * judy, void * block, int type ) {
-    if( type == JUDY_radix ) {
+void judy_free( Judy * judy, void * block, int type ) 
+{
+    if( type == JUDY_radix )
         type = JUDY_radix_equiv;
-    }
 
 #ifndef ASKITIS
-    if( type == JUDY_span ) {
+    if( type == JUDY_span )
         type = JUDY_span_equiv;
-    }
 #endif
 
     *( ( void ** )( block ) ) = judy->reuse[type];
@@ -311,7 +319,8 @@ void judy_free( Judy * judy, void * block, int type ) {
 
 //    assemble key from current path
 
-unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
+unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) 
+{
     judyvalue * dest = ( judyvalue * )buff;
     unsigned int len = 0, idx = 0, depth;
     int slot, off, type;
@@ -319,23 +328,23 @@ unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
     unsigned char * base;
     int keysize;
 
-    if( judy->depth ) {
+    if( judy->depth )
         max = judy->depth * JUDY_key_size;
-    } else {
+    else
         max--;    // leave room for zero terminator
-    }
-
-    while( len < max && ++idx <= judy->level ) {
+    
+    while( len < max && ++idx <= judy->level ) 
+    {
         type = judy->stack[idx].next & 0x07;
         slot = judy->stack[idx].slot;
         depth = len / JUDY_key_size;
 
         if( judy->depth )
-            if( !( len & JUDY_key_mask ) ) {
+            if( !( len & JUDY_key_mask ) )
                 dest[depth] = 0;
-            }
 
-        switch( type ) {
+        switch( type ) 
+        {
             case JUDY_1:
             case JUDY_2:
             case JUDY_4:
@@ -348,15 +357,15 @@ unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
                 keysize = JUDY_key_size - ( judy->stack[idx].off & JUDY_key_mask );
                 base = ( unsigned char * )( judy->stack[idx].next & JUDY_mask );
 
-                if( judy->depth ) {
+                if( judy->depth ) 
+                {
                     value = *( judyvalue * )( base + slot * keysize );
                     value &= JudyMask[keysize];
                     dest[depth++] |= value;
                     len += keysize;
 
-                    if( depth < judy->depth ) {
+                    if( depth < judy->depth )
                         continue;
-                    }
 
                     return len;
                 }
@@ -365,37 +374,32 @@ unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
                 off = keysize;
 
                 while( off-- && len < max )
-                    if( buff[len] = base[slot * keysize + off] ) {
+                    if( buff[len] = base[slot * keysize + off] )
                         len++;
-                    } else {
+                    else
                         break;
-                    }
 #else
                 for( off = 0; off < keysize && len < max; off++ )
-                    if( buff[len] = base[slot * keysize + off] ) {
+                    if( buff[len] = base[slot * keysize + off] )
                         len++;
-                    } else {
+                    else
                         break;
-                    }
 #endif
                 continue;
 
             case JUDY_radix:
-                if( judy->depth ) {
+                if( judy->depth ) 
+                {
                     dest[depth] |= ( judyvalue )slot << ( JUDY_key_size - ( ++len & JUDY_key_mask ) ) * 8;
-                    if( !( len & JUDY_key_mask ) ) {
+                    if( !( len & JUDY_key_mask ) )
                         depth++;
-                    }
-                    if( depth < judy->depth ) {
+                    if( depth < judy->depth )
                         continue;
-                    }
-
                     return len;
                 }
 
-                if( !slot ) {
+                if( !slot )
                     break;
-                }
                 buff[len++] = ( unsigned char )slot;
                 continue;
 
@@ -404,9 +408,8 @@ unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
                 base = ( unsigned char * )( judy->stack[idx].next & JUDY_mask );
 
                 for( slot = 0; slot < JUDY_span_bytes && base[slot]; slot++ )
-                    if( len < max ) {
+                    if( len < max )
                         buff[len++] = base[slot];
-                    }
                 continue;
 #endif
         }
@@ -417,7 +420,8 @@ unsigned int judy_key( Judy * judy, unsigned char * buff, unsigned int max ) {
 
 //    find slot & setup cursor
 
-JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max ) {
+JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max ) 
+{
     judyvalue * src = ( judyvalue * )buff;
     int slot, size, keysize, tst, cnt;
     JudySlot next = *judy->root;
@@ -432,19 +436,19 @@ JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max 
     judy->level = 0;
 #endif
 
-    while( next ) {
+    while( next ) 
+    {
 #ifndef ASKITIS
-        if( judy->level < judy->max ) {
+        if( judy->level < judy->max )
             judy->level++;
-        }
 
         judy->stack[judy->level].next = next;
         judy->stack[judy->level].off = off;
 #endif
         size = JudySize[next & 0x07];
 
-        switch( next & 0x07 ) {
-
+        switch( next & 0x07 ) 
+        {
             case JUDY_1:
             case JUDY_2:
             case JUDY_4:
@@ -461,42 +465,44 @@ JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max 
                 slot = cnt;
                 value = 0;
 
-                if( judy->depth ) {
+                if( judy->depth ) 
+                {
                     value = src[depth++];
                     off |= JUDY_key_mask;
                     off++;
                     value &= JudyMask[keysize];
-                } else
-                    do {
+                } 
+                else
+                {
+                    do
+                    {
                         value <<= 8;
-                        if( off < max ) {
+                        if (off < max)
                             value |= buff[off];
-                        }
-                    } while( ++off & JUDY_key_mask );
+                    } while (++off & JUDY_key_mask);
+                }
 
                 //  find slot > key
 
-                while( slot-- ) {
+                while( slot-- ) 
+                {
                     test = *( judyvalue * )( base + slot * keysize );
 #if BYTE_ORDER == BIG_ENDIAN
                     test >>= 8 * ( JUDY_key_size - keysize );
 #else
                     test &= JudyMask[keysize];
 #endif
-                    if( test <= value ) {
+                    if( test <= value )
                         break;
-                    }
                 }
 #ifndef ASKITIS
                 judy->stack[judy->level].slot = slot;
 #endif
-                if( test == value ) {
-
+                if( test == value ) 
+                {
                     // is this a leaf?
-
-                    if( !judy->depth && !( value & 0xFF ) || judy->depth && depth == judy->depth ) {
+                    if( !judy->depth && !( value & 0xFF ) || judy->depth && depth == judy->depth )
                         return &node[-slot - 1];
-                    }
 
                     next = node[-slot - 1];
                     continue;
@@ -507,35 +513,31 @@ JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max 
             case JUDY_radix:
                 table = ( JudySlot * )( next & JUDY_mask ); // outer radix
 
-                if( judy->depth ) {
+                if( judy->depth )
                     slot = ( src[depth] >> ( ( JUDY_key_size - ++off & JUDY_key_mask ) * 8 ) ) & 0xff;
-                } else if( off < max ) {
+                else if( off < max )
                     slot = buff[off++];
-                } else {
+                else
                     slot = 0;
-                }
 #ifndef ASKITIS
                 //    put radix slot on judy stack
 
                 judy->stack[judy->level].slot = slot;
 #endif
-                if( ( next = table[slot >> 4] ) ) {
+                if( ( next = table[slot >> 4] ) )
                     table = ( JudySlot * )( next & JUDY_mask );    // inner radix
-                } else {
+                else
                     return NULL;
-                }
 
                 if( judy->depth )
-                    if( !( off & JUDY_key_mask ) ) {
+                    if( !( off & JUDY_key_mask ) )
                         depth++;
-                    }
 
                 if( !judy->depth && !slot || judy->depth && depth == judy->depth )    // leaf?
-                    if( table[slot & 0x0F] ) {  // occupied?
+                    if( table[slot & 0x0F] )  // occupied?
                         return &table[slot & 0x0F];
-                    } else {
+                    else
                         return NULL;
-                    }
 
                 next = table[slot & 0x0F];
                 continue;
@@ -545,15 +547,14 @@ JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max 
                 node = ( JudySlot * )( ( next & JUDY_mask ) + JudySize[JUDY_span] );
                 base = ( unsigned char * )( next & JUDY_mask );
                 cnt = tst = JUDY_span_bytes;
-                if( tst > ( int )( max - off ) ) {
+                if( tst > ( int )( max - off ) )
                     tst = max - off;
-                }
                 value = strncmp( ( const char * )base, ( const char * )( buff + off ), tst );
-                if( !value && tst < cnt && !base[tst] ) { // leaf?
+                if( !value && tst < cnt && !base[tst] ) // leaf?
                     return &node[-1];
-                }
 
-                if( !value && tst == cnt ) {
+                if( !value && tst == cnt ) 
+                {
                     next = node[-1];
                     off += cnt;
                     continue;
@@ -568,7 +569,8 @@ JudySlot * judy_slot( Judy * judy, const unsigned char * buff, unsigned int max 
 
 //    promote full nodes to next larger size
 
-JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value, int keysize ) {
+JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value, int keysize ) 
+{
     unsigned char * base = ( unsigned char * )( *next & JUDY_mask );
     int oldcnt, newcnt, slot;
 #if BYTE_ORDER == BIG_ENDIAN
@@ -594,9 +596,8 @@ JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value,
 
     memcpy( newbase + ( newcnt - oldcnt - 1 ) * keysize, base, idx * keysize ); // copy keys
 
-    for( slot = 0; slot < idx; slot++ ) {
+    for( slot = 0; slot < idx; slot++ )
         newnode[-( slot + newcnt - oldcnt )] = node[-( slot + 1 )];    // copy ptr
-    }
 
     //    fill in new node
 
@@ -605,9 +606,8 @@ JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value,
 #else
     i = keysize;
 
-    while( i-- ) {
+    while( i-- )
         newbase[( idx + newcnt - oldcnt - 1 ) * keysize + i] = value, value >>= 8;
-    }
 #endif
     result = &newnode[-( idx + newcnt - oldcnt )];
 
@@ -615,9 +615,8 @@ JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value,
 
     memcpy( newbase + ( idx + newcnt - oldcnt ) * keysize, base + ( idx * keysize ), ( oldcnt - slot ) * keysize ); // copy keys
 
-    for( ; slot < oldcnt; slot++ ) {
+    for( ; slot < oldcnt; slot++ )
         newnode[-( slot + newcnt - oldcnt + 1 )] = node[-( slot + 1 )];    // copy ptr
-    }
 
 #ifndef ASKITIS
     judy->stack[judy->level].next = *next;
@@ -631,7 +630,8 @@ JudySlot * judy_promote( Judy * judy, JudySlot * next, int idx, judyvalue value,
 //    make node with slot - start entries
 //    moving key over one offset
 
-void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, int slot, int keysize, unsigned char key, unsigned int depth ) {
+void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, int slot, int keysize, unsigned char key, unsigned int depth ) 
+{
     int size, idx, cnt = slot - start, newcnt;
     JudySlot * node, *oldnode;
     unsigned int type = JUDY_1 - 1;
@@ -640,7 +640,8 @@ void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, 
 
     //    if necessary, setup inner radix node
 
-    if( !( table = ( JudySlot * )( radix[key >> 4] & JUDY_mask ) ) ) {
+    if( !( table = ( JudySlot * )( radix[key >> 4] & JUDY_mask ) ) ) 
+    {
         table = judy_alloc( judy, JUDY_radix );
         radix[key >> 4] = ( JudySlot )table | JUDY_radix;
     }
@@ -649,14 +650,16 @@ void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, 
 
     // is this slot a leaf?
 
-    if( !judy->depth && ( !key || !keysize ) || judy->depth && !keysize && depth == judy->depth ) {
+    if( !judy->depth && ( !key || !keysize ) || judy->depth && !keysize && depth == judy->depth ) 
+    {
         table[key & 0x0F] = oldnode[-start - 1];
         return;
     }
 
     //    calculate new node big enough to contain slots
 
-    do {
+    do 
+    {
         type++;
         size = JudySize[type];
         newcnt = size / ( sizeof( JudySlot ) + keysize );
@@ -671,7 +674,8 @@ void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, 
     //    allocate node and copy old contents
     //    shorten keys by 1 byte during copy
 
-    for( idx = 0; idx < cnt; idx++ ) {
+    for( idx = 0; idx < cnt; idx++ ) 
+    {
 #if BYTE_ORDER != BIG_ENDIAN
         memcpy( base + ( newcnt - idx - 1 ) * keysize, old + ( start + cnt - idx - 1 ) * ( keysize + 1 ), keysize );
 #else
@@ -683,7 +687,8 @@ void judy_radix( Judy * judy, JudySlot * radix, unsigned char * old, int start, 
 
 //    decompose full node to radix nodes
 
-void judy_splitnode( Judy * judy, JudySlot * next, unsigned int size, unsigned int keysize, unsigned int depth ) {
+void judy_splitnode( Judy * judy, JudySlot * next, unsigned int size, unsigned int keysize, unsigned int depth ) 
+{
     int cnt, slot, start = 0;
     unsigned int key = 0x0100, nxt;
     JudySlot * newradix;
@@ -697,19 +702,18 @@ void judy_splitnode( Judy * judy, JudySlot * next, unsigned int size, unsigned i
     newradix = judy_alloc( judy, JUDY_radix );
     *next = ( JudySlot )newradix | JUDY_radix;
 
-    for( slot = 0; slot < cnt; slot++ ) {
+    for( slot = 0; slot < cnt; slot++ ) 
+    {
 #if BYTE_ORDER != BIG_ENDIAN
         nxt = base[slot * keysize + keysize - 1];
 #else
         nxt = base[slot * keysize];
 #endif
 
-        if( key > 0xFF ) {
+        if( key > 0xFF )
             key = nxt;
-        }
-        if( nxt == key ) {
+        if( nxt == key )
             continue;
-        }
 
         //    decompose portion of old node into radix nodes
 
@@ -724,23 +728,25 @@ void judy_splitnode( Judy * judy, JudySlot * next, unsigned int size, unsigned i
 
 //    return first leaf
 
-JudySlot * judy_first( Judy * judy, JudySlot next, unsigned int off, unsigned int depth ) {
+JudySlot * judy_first( Judy * judy, JudySlot next, unsigned int off, unsigned int depth ) 
+{
     JudySlot * table, *inner;
     unsigned int keysize, size;
     JudySlot * node;
     int slot, cnt;
     unsigned char * base;
 
-    while( next ) {
-        if( judy->level < judy->max ) {
+    while( next ) 
+    {
+        if( judy->level < judy->max )
             judy->level++;
-        }
 
         judy->stack[judy->level].off = off;
         judy->stack[judy->level].next = next;
         size = JudySize[next & 0x07];
 
-        switch( next & 0x07 ) {
+        switch( next & 0x07 ) 
+        {
             case JUDY_1:
             case JUDY_2:
             case JUDY_4:
@@ -756,19 +762,16 @@ JudySlot * judy_first( Judy * judy, JudySlot next, unsigned int off, unsigned in
                 cnt = size / ( sizeof( JudySlot ) + keysize );
 
                 for( slot = 0; slot < cnt; slot++ )
-                    if( node[-slot - 1] ) {
+                    if( node[-slot - 1] )
                         break;
-                    }
 
                 judy->stack[judy->level].slot = slot;
 #if BYTE_ORDER != BIG_ENDIAN
-                if( !judy->depth && !base[slot * keysize] || judy->depth && ++depth == judy->depth ) {
+                if( !judy->depth && !base[slot * keysize] || judy->depth && ++depth == judy->depth )
                     return &node[-slot - 1];
-                }
 #else
-                if( !judy->depth && !base[slot * keysize + keysize - 1] || judy->depth && ++depth == judy->depth ) {
+                if( !judy->depth && !base[slot * keysize + keysize - 1] || judy->depth && ++depth == judy->depth )
                     return &node[-slot - 1];
-                }
 #endif
                 next = node[-slot - 1];
                 off = ( off | JUDY_key_mask ) + 1;
@@ -777,33 +780,32 @@ JudySlot * judy_first( Judy * judy, JudySlot next, unsigned int off, unsigned in
                 off++;
 
                 if( judy->depth )
-                    if( !( off & JUDY_key_mask ) ) {
+                    if( !( off & JUDY_key_mask ) )
                         depth++;
-                    }
 
                 table = ( JudySlot * )( next & JUDY_mask );
                 for( slot = 0; slot < 256; slot++ )
-                    if( ( inner = ( JudySlot * )( table[slot >> 4] & JUDY_mask ) ) ) {
-                        if( ( next = inner[slot & 0x0F] ) ) {
+                    if( ( inner = ( JudySlot * )( table[slot >> 4] & JUDY_mask ) ) ) 
+                    {
+                        if( ( next = inner[slot & 0x0F] ) ) 
+                        {
                             judy->stack[judy->level].slot = slot;
-                            if( !judy->depth && !slot || judy->depth && depth == judy->depth ) {
+                            if( !judy->depth && !slot || judy->depth && depth == judy->depth )
                                 return &inner[slot & 0x0F];
-                            } else {
+                            else
                                 break;
-                            }
                         }
-                    } else {
+                    } 
+                    else
                         slot |= 0x0F;
-                    }
                 continue;
 #ifndef ASKITIS
             case JUDY_span:
                 node = ( JudySlot * )( ( next & JUDY_mask ) + JudySize[JUDY_span] );
                 base = ( unsigned char * )( next & JUDY_mask );
                 cnt = JUDY_span_bytes;
-                if( !base[cnt - 1] ) {  // leaf node?
+                if( !base[cnt - 1] )  // leaf node?
                     return &node[-1];
-                }
                 next = node[-1];
                 off += cnt;
                 continue;
@@ -815,22 +817,24 @@ JudySlot * judy_first( Judy * judy, JudySlot next, unsigned int off, unsigned in
 
 //    return last leaf cell pointer
 
-JudySlot * judy_last( Judy * judy, JudySlot next, unsigned int off, unsigned int depth ) {
+JudySlot * judy_last( Judy * judy, JudySlot next, unsigned int off, unsigned int depth ) 
+{
     JudySlot * table, *inner;
     unsigned int keysize, size;
     JudySlot * node;
     int slot, cnt;
     unsigned char * base;
 
-    while( next ) {
-        if( judy->level < judy->max ) {
+    while( next ) 
+    {
+        if( judy->level < judy->max )
             judy->level++;
-        }
 
         judy->stack[judy->level].next = next;
         judy->stack[judy->level].off = off;
         size = JudySize[next & 0x07];
-        switch( next & 0x07 ) {
+        switch( next & 0x07 ) 
+        {
             case JUDY_1:
             case JUDY_2:
             case JUDY_4:
@@ -1115,9 +1119,11 @@ JudySlot * judy_del( Judy * judy ) {
                 node[-1] = 0;
                 memset( base, 0, keysize );
 
-                if( node[-cnt] ) {    // does node have any slots left?
+                if( node[-cnt] ) 
+                {    // does node have any slots left?
                     judy->stack[judy->level].slot++;
-                    return judy_prv( judy );
+                    //return judy_prv( judy );
+                    return NULL;
                 }
 
                 judy_free( judy, base, type );
@@ -1130,18 +1136,19 @@ JudySlot * judy_del( Judy * judy ) {
                 inner[slot & 0x0F] = 0;
                 high = slot & 0xF0;
 
-                for( cnt = 16; cnt--; )
-                    if( inner[cnt] ) {
-                        return judy_prv( judy );
-                    }
+                for (cnt = 16; cnt--; )
+                    if (inner[cnt])
+                        //return judy_prv( judy );
+                        return NULL;
 
                 judy_free( judy, inner, JUDY_radix );
                 table[slot >> 4] = 0;
 
-                for( cnt = 16; cnt--; )
-                    if( table[cnt] ) {
-                        return judy_prv( judy );
-                    }
+                for (cnt = 16; cnt--; )
+                    if (table[cnt])
+                        //return judy_prv( judy );
+                        return NULL;
+                    
 
                 judy_free( judy, table, JUDY_radix );
                 judy->level--;

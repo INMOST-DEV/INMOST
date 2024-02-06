@@ -8,7 +8,7 @@
 
 #define ASSUME_SORTED
 //#define TEST_HASHTABLE
-#define TEST_JUDY1
+//#define TEST_JUDY1
 
 #if defined(TEST_JUDY1)
 #include "judyLArray.h"
@@ -693,7 +693,9 @@ namespace INMOST
 #elif defined(TEST_JUDY1)
 			judyLArray<uint64_t, uint64_t> table;
 #else
-			std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table;
+			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
+			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
+			table_t table;
 #endif
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
