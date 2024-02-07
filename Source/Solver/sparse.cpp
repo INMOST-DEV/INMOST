@@ -113,7 +113,8 @@ namespace INMOST
 		{
 			//indset.clear();
 			//bitset.clear();
-			for(size_t k = 0; k < inds.size(); ++k)
+			bitset[0] = 0;
+			for(size_t k = 1; k < inds.size(); ++k)
 				bitset[inds[k] - inds[0]] = 0;
 			vals.clear();
 			inds.clear();
@@ -121,13 +122,16 @@ namespace INMOST
 		void RowMerger2::set_vals()
 		{
 			//radix_sort();
-			//std::sort(inds.begin(), inds.end());
-			if (!inds.empty())
-				hybrid_inplace_msd_radix_sort(&inds[0], inds.size());
+			std::sort(inds.begin(), inds.end());
+			//if (!inds.empty())
+			//	hybrid_inplace_msd_radix_sort(&inds[0], inds.size());
 			//naive_sort();
 			//inds.resize(indset.size());
 			//std::copy(indset.begin(), indset.end(), inds.begin());
+			//if(vals.size() < inds.size())
+			//	vals.resize(inds.size());
 			vals.resize(inds.size(), 0.0);
+			//std::fill(vals.begin(),vals.begin()+inds.size(),0.0);
 		}
 		void RowMerger2::set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
 		{
@@ -1018,7 +1022,46 @@ namespace INMOST
 			for (unsigned k = 0; k < Size(); ++k)
 				inds[k] = GetIndex(k);
 		}
-		
+		//https://mhdm.dev/posts/sb_lower_bound/
+		template <class ForwardIt, class T>
+		constexpr ForwardIt sb_lower_bound(ForwardIt first, ForwardIt last, const T& value) 
+		{
+			auto length = last - first;
+			while (length > 0) 
+			{
+				auto rem = length % 2;
+				length /= 2;
+	     			if (first[length] < value)
+					first += length + rem;
+			}
+			return first;
+		}
+		template <class ForwardIt, class T>
+		constexpr ForwardIt sbm_lower_bound(ForwardIt first, ForwardIt last, const T& value)
+                {
+			auto length = last - first;
+			while (length & (length + 1)) 
+			{
+				auto step = length / 8 * 6 + 1; // MAGIC
+				if (first[step] < value) 
+				{
+					first += step + 1;
+					length -= step + 1;
+				} 
+				else 
+				{
+					length = step;
+					break;
+				}
+			}
+			while (length != 0) 
+			{
+				length /= 2;
+				if (first[length] < value) 
+      					first += length + 1;
+			}
+                        return first;
+		}		
 		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
 		{
 #if defined(ASSUME_SORTED)
@@ -1029,9 +1072,11 @@ namespace INMOST
 			{
 				ind = GetIndex(k);
 				//beg = std::lower_bound(beg, inds.end(), ind);
+				//beg = sbm_lower_bound(beg,inds.end(),ind);
 				while (*beg != ind) beg++;
 				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - inds.cbegin());
 				vals[pos] += GetValue(k) * coef;
+				beg++;
 			}
 #else
 			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
