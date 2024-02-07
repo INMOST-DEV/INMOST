@@ -17,6 +17,8 @@ namespace INMOST
         return v;
     }
 
+#ifndef TO_STRING
+#define TO_STRING
     template<typename T>
     std::string to_string(T value)
 	{
@@ -24,6 +26,7 @@ namespace INMOST
         ss << value;
         return ss.str();
     }
+#endif
     
     void split_string(const std::string & str, std::vector<std::string> & str_list, const std::string& delims = ",");
 
@@ -146,9 +149,9 @@ namespace INMOST
 	class BinaryHeapCustom
 	{
 		INMOST_DATA_ENUM_TYPE size_max, size;
-		array<INMOST_DATA_ENUM_TYPE> heap;
-		array<INMOST_DATA_ENUM_TYPE> index;
-		array<KeyType> keys;
+		std::vector<INMOST_DATA_ENUM_TYPE> heap;
+		std::vector<INMOST_DATA_ENUM_TYPE> index;
+		std::vector<KeyType> keys;
 		
 		void swap(INMOST_DATA_ENUM_TYPE i, INMOST_DATA_ENUM_TYPE j)
 		{
@@ -181,14 +184,24 @@ namespace INMOST
 			}
 		}
 	public:
+		BinaryHeapCustom()
+		{
+			size_max = 0;
+			size = 0;
+		}
 		BinaryHeapCustom(INMOST_DATA_ENUM_TYPE len)
 		{
+			Resize(len);
+		}
+		void Resize(INMOST_DATA_ENUM_TYPE len)
+		{
+			assert(size == 0);
 			size_max = len;
 			size = 0;
 			keys.resize(size_max);
-			heap.resize(size_max+1);
-			index.resize(size_max+1);
-			for(INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
+			heap.resize(size_max + 1);
+			index.resize(size_max + 1);
+			for (INMOST_DATA_ENUM_TYPE i = 0; i <= size_max; i++)
 				index[i] = ENUMUNDEF;
 		}
 		void PushHeap(INMOST_DATA_ENUM_TYPE i, KeyType key)

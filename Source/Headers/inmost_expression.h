@@ -34,7 +34,7 @@ namespace INMOST
 	class basic_expression
 	{
 	public:
-		typedef Sparse::RowMerger3 merger_type;
+		typedef Sparse::RowMerger5 merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -253,8 +253,9 @@ namespace INMOST
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
 		{
-			for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				r.add_value(it->first, mult * it->second);
+			r.add_row(&entries, mult);
+			//for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+			//	r.add_value(it->first, mult * it->second);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -676,8 +677,9 @@ namespace INMOST
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
 		{
-			for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-				r.add_value(it->first, it->second * mult);
+			r.add_row(&entries, mult);
+			//for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
+			//	r.add_value(it->first, it->second * mult);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -918,8 +920,9 @@ namespace INMOST
 		{
 			if (entries)
 			{
-				for (Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-					r.add_value(it->first, it->second * mult);
+				r.add_row(entries, mult);
+				//for (Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
+				//	r.add_value(it->first, it->second * mult);
 			}
 		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
@@ -1189,8 +1192,9 @@ namespace INMOST
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
 		{
-			for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
-				r.add_value(it->first, it->second * mult);
+			r.add_row(entries, mult);
+			//for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
+			//	r.add_value(it->first, it->second * mult);
 		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const

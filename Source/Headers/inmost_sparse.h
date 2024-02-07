@@ -5,6 +5,7 @@
 #include "inmost_common.h"
 #include <unordered_map>
 #include "robin_hood.h"
+#include "../Misc/utils.h"
 
 #define ASSUME_SORTED
 //#define TEST_HASHTABLE
@@ -313,6 +314,10 @@ namespace INMOST
 			const_reverse_iterator  rBegin() const { return data.rbegin(); }
 			/// An iterator pointing before the first position in the array of constant pairs of index and value.
 			const_reverse_iterator  rEnd() const { return data.rend(); }
+			/// Last element
+			entry&                  Back() {return data.back(); }
+			/// Last element
+			const entry&            Back() const { return data.back(); }
 #if defined(USE_SOLVER)
 			/// Return the scalar product of the current sparse row by a dense Vector.
 			INMOST_DATA_REAL_TYPE   RowVec(Vector & x) const; // returns A(row) * x
@@ -322,17 +327,17 @@ namespace INMOST
 			void                    MoveRow(Row & source) {data = source.data;} //here move constructor and std::move may be used in future
 			/// Set the vector entries by zeroes.
 			void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
-			void                    Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
+			__INLINE void           Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row.
-			void                    Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			__INLINE void           Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
 			/// Remove last element.
-			void                    Pop() { data.pop_back(); }
+			__INLINE void           Pop() { data.pop_back(); }
 			/// Resize row to specified size.
 			/// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
 			/// that allow for the modification of individual entries.
 			/// @param size New size of the row.
-			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
+			__INLINE void           Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
 			/// Output all entries of the row.
 			void                    Print(double eps = -1, std::ostream & sout = std::cout) const
 			{
@@ -341,7 +346,7 @@ namespace INMOST
 				if( k ) sout << std::endl;
 			}
 			/// Sort row
-			void                    Sort() { std::sort(data.begin(), data.end()); }
+			__INLINE void           Sort() { std::sort(data.begin(), data.end()); }
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
 			/// Add up two rows. Performs operation output=alpha*left+beta*right.
@@ -688,17 +693,20 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-#if defined(TEST_HASHTABLE)
-			HashTable table;
-#elif defined(TEST_JUDY1)
-			judyLArray<uint64_t, uint64_t> table;
-#else
-			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
-			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
-			table_t table;
-#endif
-			std::vector<INMOST_DATA_REAL_TYPE> vals;
-			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
+			BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			Sparse::Row leafs, store;
+			std::vector<INMOST_DATA_ENUM_TYPE> pos;
+			std::vector<INMOST_DATA_REAL_TYPE> coefs;
+			std::vector<const Sparse::Row*> links;
+			__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef) { if (!r->Empty() && 1.0 + coef != 1.0) { links.push_back(r); coefs.push_back(coef); } }
+			__INLINE void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+			{
+				struct CompareIndex	{ bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };
+				Sparse::Row::iterator it = std::lower_bound(leafs.Begin(), leafs.End(), ind, CompareIndex());
+				if (it == leafs.End() || it->first != ind)
+					leafs.Insert(it, ind, val);
+				else it->second += val;
+			}
 			void clear();
 			void get_row(Sparse::Row& r);
 		};

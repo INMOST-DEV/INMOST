@@ -240,102 +240,66 @@ namespace INMOST
 		{
 			r.Swap(inds);
 		}
-
+		/*
+		void RowMerger5::set_interval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
+		{
+			ind0 = beg;
+			if (pos.size() < end - beg)
+				pos.resize(end - beg, PUNDEF);
+		}
+		*/
 		void RowMerger5::clear()
 		{
-#if defined(TEST_HASHTABLE)
-			table.Clear();
-#else
-			table.clear();
-#endif
-			vals.clear();
+			leafs.Clear();
+			coefs.clear();
+			links.clear();
+			coefs.push_back(1.0);
+			links.push_back(&leafs);
 		}
 
-		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
-		{
-#if defined(TEST_HASHTABLE)
-			HashTable::iterator it = table.find(ind);
-			if (it == table.end())
-			{
-				table.Insert(ind)->second = vals.size();
-				vals.push_back(val);
-			}
-			else vals[it->second] += val;
-#elif defined(TEST_JUDY1)
-			uint64_t test = table.find(ind + 1);
-			if (!table.success())
-			{
-				if (val)
-				{
-					table.insert(ind + 1, vals.size() + 1);
-					vals.push_back(val);
-				}
-			}
-			else vals[test - 1] += val;
-#else
-			if (1.0 + val != 1.0)
-			{
-				/*
-				INMOST_DATA_ENUM_TYPE& key = table[ind];
-				if (key == 0)
-				{
-					key = vals.size() + 1;
-					vals.push_back(val);
-				}
-				else vals[key - 1] += val;
-				*/
-				table_t::iterator test = table.find(ind);
-				if (test == table.end())
-				{
-					table[ind] = static_cast<INMOST_DATA_ENUM_TYPE>(vals.size());
-					vals.push_back(val);
-				}
-				else vals[test->second] += val;
-				/*
-				std::pair<table_t::iterator, bool> test
-					= table.insert(std::make_pair(ind, static_cast<INMOST_DATA_ENUM_TYPE>(vals.size())));
-				if (test.second)
-					vals.push_back(val);
-				else vals[test.first->second] += val;
-				*/
-			}
-#endif
-		}
-
+		
+		
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
-			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(vals.size());
-			r.Resize(s);
-#if defined(TEST_HASHTABLE)
-			for (HashTable::iterator it = table.begin(); it != table.end(); ++it)
-				if (1.0 + vals[it->second] != 1.0)
-				{
-					r.GetIndex(k) = it->first;
-					r.GetValue(k) = vals[it->second];
-					k++;
-				}
-#elif defined(TEST_JUDY1)
-			const judyLArray< uint64_t, uint64_t>::pair * it = &table.begin();
-			while (table.success())
+			if (links.size() == 1) //only leafs are present
+				r.Swap(leafs);
+			else if (links.size() == 2 && leafs.Empty())
 			{
-				if (1.0 + vals[it->value - 1] != 1.0)
+				INMOST_DATA_ENUM_TYPE s = links[1]->Size();
+				r.Resize(s);
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
 				{
-					r.GetIndex(k) = it->key - 1;
-					r.GetValue(k) = vals[it->value - 1];
-					k++;
+					r.GetIndex(k) = links[1]->GetIndex(k);
+					r.GetValue(k) = links[1]->GetValue(k) * coefs[1];
 				}
-				it = &table.next();
 			}
-#else
-			for(table_t::iterator it = table.begin(); it != table.end(); ++it)
-				if (1.0 + vals[it->second] != 1.0)
+			else
+			{
+				heap.Resize(links.size());
+				pos.resize(links.size());
+				std::fill(pos.begin(), pos.end(), 0);
+				for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
+					if (!links[k]->Empty())
+						heap.PushHeap(k, links[k]->GetIndex(0));
+				store.Clear();
+				if (!heap.Empty())
 				{
-					r.GetIndex(k) = it->first;
-					r.GetValue(k) = vals[it->second];
-					k++;
+					//make store array non-empty to avoid check
+					INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
+					store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
+					if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+					//start merging
+					while (!heap.Empty())
+					{
+						k = heap.PopHeap();
+						if (store.Back().first == links[k]->GetIndex(pos[k]))
+							store.Back().second += links[k]->GetValue(pos[k]) * coefs[k];
+						else store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
+						if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+					}
 				}
-#endif
-			r.Resize(k);
+				r.Swap(store);
+			}
 		}
 
 		////////class RowMerger
