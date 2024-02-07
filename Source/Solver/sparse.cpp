@@ -3,6 +3,7 @@
 #include "inmost_dense.h"
 #include <fstream>
 #include <sstream>
+#include "radixsort.h"
 
 namespace INMOST
 {
@@ -120,7 +121,9 @@ namespace INMOST
 		void RowMerger2::set_vals()
 		{
 			//radix_sort();
-			std::sort(inds.begin(), inds.end());
+			//std::sort(inds.begin(), inds.end());
+			if (!inds.empty())
+				hybrid_inplace_msd_radix_sort(&inds[0], inds.size());
 			//naive_sort();
 			//inds.resize(indset.size());
 			//std::copy(indset.begin(), indset.end(), inds.begin());
@@ -130,6 +133,8 @@ namespace INMOST
 		{
 			if (end - beg > bitset.size()) 
 				bitset.resize(end - beg, 0);
+			inds.push_back(beg);
+			bitset[0] = 1;
 			//std::fill(bitset.begin(), bitset.begin() + (end - beg), 0);
 		}
 		void RowMerger2::get_row(Sparse::Row& r)
@@ -278,7 +283,7 @@ namespace INMOST
 				table_t::iterator test = table.find(ind);
 				if (test == table.end())
 				{
-					table[ind] = vals.size();
+					table[ind] = static_cast<INMOST_DATA_ENUM_TYPE>(vals.size());
 					vals.push_back(val);
 				}
 				else vals[test->second] += val;
@@ -919,13 +924,13 @@ namespace INMOST
 #endif
 		}
 
-		void Row::GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		void Row::GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{
 			INMOST_DATA_ENUM_TYPE ind, sind;
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) 
 			{
 				ind = GetIndex(k);
-				sind = ind - shift;
+				sind = ind - inds[0];
 				if (!bitset[sind])
 				{
 					bitset[sind] = true;

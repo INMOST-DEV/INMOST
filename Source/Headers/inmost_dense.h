@@ -4318,7 +4318,7 @@ namespace INMOST
 			m.set_bitset(beg, end);
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					B.compute(i, j).GetIndices(m.bitset, m.inds);
 			m.set_vals();
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
@@ -4431,8 +4431,8 @@ namespace INMOST
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
 				{
-					A.compute(i, j).GetIndices(beg, m.bitset, m.inds);
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					A.compute(i, j).GetIndices(m.bitset, m.inds);
+					B.compute(i, j).GetIndices(m.bitset, m.inds);
 				}
 			m.set_vals();
 			for (unsigned i = 0; i < A.Rows(); ++i)

@@ -128,8 +128,8 @@ namespace INMOST
 		{
 			//merger.bitset.resize(end - beg, false);
 			merger.set_bitset(beg, end);
-			r.GetIndices(beg, merger.bitset, merger.inds);
-			entries.GetIndices(beg, merger.bitset, merger.inds);
+			r.GetIndices(merger.bitset, merger.inds);
+			entries.GetIndices(merger.bitset, merger.inds);
 			merger.set_vals();
 			r.GetValues(coefa, merger.inds, merger.vals);
 			entries.GetValues(coefb, merger.inds, merger.vals);
@@ -148,8 +148,8 @@ namespace INMOST
 		{
 			//merger.bitset.resize(end - beg, false);
 			merger.set_bitset(beg, end);
-			expr.GetIndices(beg, merger.bitset, merger.inds);
-			entries.GetIndices(beg, merger.bitset, merger.inds);
+			expr.GetIndices(merger.bitset, merger.inds);
+			entries.GetIndices(merger.bitset, merger.inds);
 			merger.set_vals();
 			expr.GetValues(coefa, merger.inds, merger.vals);
 			entries.GetValues(coefb, merger.inds, merger.vals);

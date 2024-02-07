@@ -286,7 +286,7 @@ namespace INMOST
 			/// Retrive interval of nonzeroes
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
 			/// Retrive indices
-			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
+			void                    GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
 			/// Merge row indices and values with indices and values in array.
 			void                    GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const;
