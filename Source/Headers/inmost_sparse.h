@@ -4,8 +4,9 @@
 
 #include "inmost_common.h"
 #include <unordered_map>
+#include <queue>
 #include "robin_hood.h"
-#include "../Misc/utils.h"
+//#include "../Misc/utils.h"
 
 #define ASSUME_SORTED
 //#define TEST_HASHTABLE
@@ -693,12 +694,15 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-			BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			std::priority_queue< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > queue;
 			Sparse::Row leafs, store;
 			std::vector<INMOST_DATA_ENUM_TYPE> pos;
 			std::vector<INMOST_DATA_REAL_TYPE> coefs;
 			std::vector<const Sparse::Row*> links;
+			//std::unordered_map< const Sparse::Row*, INMOST_DATA_REAL_TYPE> rows;
 			__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef) { if (!r->Empty() && 1.0 + coef != 1.0) { links.push_back(r); coefs.push_back(coef); } }
+			//__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef) { if (!r->Empty() && 1.0 + coef != 1.0) { rows[r] += coef; } }
 			__INLINE void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
 			{
 				struct CompareIndex	{ bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };

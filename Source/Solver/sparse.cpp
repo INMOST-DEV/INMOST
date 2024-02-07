@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include "radixsort.h"
+#include <queue>
 
 namespace INMOST
 {
@@ -255,6 +256,8 @@ namespace INMOST
 			links.clear();
 			coefs.push_back(1.0);
 			links.push_back(&leafs);
+			//rows.clear();
+			//rows[&leafs] = 1.0;
 		}
 
 		
@@ -262,40 +265,54 @@ namespace INMOST
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
 			if (links.size() == 1) //only leafs are present
+			//if(rows.size() == 1)
 				r.Swap(leafs);
 			else if (links.size() == 2 && leafs.Empty())
+			//else if (rows.size() == 2 && leafs.Empty())
 			{
-				INMOST_DATA_ENUM_TYPE s = links[1]->Size();
+				const Sparse::Row* r2 = links[1];
+				INMOST_DATA_REAL_TYPE mult = coefs[1];
+				INMOST_DATA_ENUM_TYPE s = r2->Size();
 				r.Resize(s);
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
 				{
-					r.GetIndex(k) = links[1]->GetIndex(k);
-					r.GetValue(k) = links[1]->GetValue(k) * coefs[1];
+					r.GetIndex(k) = r2->GetIndex(k);
+					r.GetValue(k) = r2->GetValue(k) * mult;
 				}
 			}
 			else
 			{
-				heap.Resize(links.size());
+				
+				//heap.Resize(links.size());
 				pos.resize(links.size());
 				std::fill(pos.begin(), pos.end(), 0);
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
 					if (!links[k]->Empty())
-						heap.PushHeap(k, links[k]->GetIndex(0));
+						queue.push(std::make_pair(links[k]->GetIndex(0), k));
+						//heap.PushHeap(k, links[k]->GetIndex(0));
 				store.Clear();
-				if (!heap.Empty())
+				//if (!heap.Empty())
+				if(!queue.empty())
 				{
 					//make store array non-empty to avoid check
-					INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
+					//INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
+					INMOST_DATA_ENUM_TYPE k = queue.top().second;
+					queue.pop();
 					store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
-					if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+					//if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+					if (++pos[k] < links[k]->Size()) queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
 					//start merging
-					while (!heap.Empty())
+					//while (!heap.Empty())
+					while(!queue.empty())
 					{
-						k = heap.PopHeap();
+						//k = heap.PopHeap();
+						k = queue.top().second;
+						queue.pop();
 						if (store.Back().first == links[k]->GetIndex(pos[k]))
 							store.Back().second += links[k]->GetValue(pos[k]) * coefs[k];
 						else store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
-						if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+						//if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+						if (++pos[k] < links[k]->Size()) queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
 					}
 				}
 				r.Swap(store);
