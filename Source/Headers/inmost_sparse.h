@@ -695,7 +695,6 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-			const int LIST_SIZE = 1048576;
 			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
 			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
 			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > heap;

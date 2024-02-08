@@ -283,7 +283,7 @@ namespace INMOST
 			else it->second += val;
 			*/
 		}
-
+#define LIST_SIZE 65536
 		RowMerger5::RowMerger5() : list(LIST_SIZE, USHRT_MAX) {}
 
 		void RowMerger5::get_row(Sparse::Row& r)
@@ -332,16 +332,63 @@ namespace INMOST
 					}
 					//r.Swap(store);
 				}
-				/*
 				else if (true)
 				{
-					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, beg_next = ENUMUNDEF, size_max = 0, nlists = links.size();
+					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next; 
+					INMOST_DATA_ENUM_TYPE size_max = 0, nlists = links.size();
+					INMOST_DATA_ENUM_TYPE ind = 0, ind_last, ndone = 0;
 					pos.resize(links.size());
+					std::fill(pos.begin(), pos.end(), 0);
 					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
 					{
+						beg = std::min(links[k]->GetIndex(0), beg);
+						size_max += links[k]->Size();
+					}
+					store.Resize(size_max);
+					while (ndone != nlists)
+					{
+						end = beg + LIST_SIZE;
+						beg_next = ENUMUNDEF;
+						ind_last = ind;
+						//merge within list range
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k) if (pos[k] < links[k]->Size())
+						{
+							INMOST_DATA_ENUM_TYPE q = pos[k];
+							while (q < links[k]->Size() && links[k]->GetIndex(q) < end)
+							{
+								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
+								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
+								if (list[i] == USHRT_MAX)
+								{
+									if (1.0 + v != 1.0)
+									{
+										store.GetIndex(ind) = links[k]->GetIndex(q);
+										store.GetValue(ind) = v;
+										list[i] = ind++;
+									}
+								}
+								else store.GetValue(list[i]) += v;
+								++q;
+							}
+							pos[k] = q;
+							if (pos[k] < links[k]->Size())
+								beg_next = std::min(beg_next, links[k]->GetIndex(pos[k]));
+							else ndone++;
+						}
+						//clear list
+						for (INMOST_DATA_ENUM_TYPE q = ind_last; q < ind; ++q)
+							list[store.GetIndex(q) - beg] = USHRT_MAX;
+						//sort values within range
+						std::sort(store.Begin() + ind_last, store.Begin() + ind);
+						beg = beg_next;
+					}
+					r.Resize(ind);
+					for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
+					{
+						r.GetIndex(q) = store.GetIndex(q);
+						r.GetValue(q) = store.GetValue(q);
 					}
 				}
-				*/
 				else
 				{
 					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
