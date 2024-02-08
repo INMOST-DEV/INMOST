@@ -254,68 +254,173 @@ namespace INMOST
 			leafs.Clear();
 			coefs.clear();
 			links.clear();
-			coefs.push_back(1.0);
-			links.push_back(&leafs);
 			//rows.clear();
 			//rows[&leafs] = 1.0;
 		}
 
-		
-		
+		void RowMerger5::add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef)
+		{
+			if (!r->Empty() && 1.0 + coef != 1.0)
+			{
+				std::vector<const Sparse::Row*>::iterator it = std::find(links.begin(), links.end(), r);
+				if (it == links.end())
+				{
+					links.push_back(r);
+					coefs.push_back(coef);
+				}
+				else coefs[it - links.begin()] += coef;
+			}
+		}
+
+		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+		{
+			struct CompareIndex { bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };
+			Sparse::Row::iterator it = std::lower_bound(leafs.Begin(), leafs.End(), ind, CompareIndex());
+			if (it == leafs.End() || it->first != ind)
+				leafs.Insert(it, ind, val);
+			else it->second += val;
+		}
+
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
-			if (links.size() == 1) //only leafs are present
-			//if(rows.size() == 1)
+			if (links.empty()) //only leafs are present
 				r.Swap(leafs);
-			else if (links.size() == 2 && leafs.Empty())
-			//else if (rows.size() == 2 && leafs.Empty())
-			{
-				const Sparse::Row* r2 = links[1];
-				INMOST_DATA_REAL_TYPE mult = coefs[1];
-				INMOST_DATA_ENUM_TYPE s = r2->Size();
-				r.Resize(s);
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
-				{
-					r.GetIndex(k) = r2->GetIndex(k);
-					r.GetValue(k) = r2->GetValue(k) * mult;
-				}
-			}
 			else
 			{
-				
-				//heap.Resize(links.size());
-				pos.resize(links.size());
-				std::fill(pos.begin(), pos.end(), 0);
-				for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
-					if (!links[k]->Empty())
-						queue.push(std::make_pair(links[k]->GetIndex(0), k));
-						//heap.PushHeap(k, links[k]->GetIndex(0));
-				store.Clear();
-				//if (!heap.Empty())
-				if(!queue.empty())
+				if (!leafs.Empty())
 				{
-					//make store array non-empty to avoid check
-					//INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
-					INMOST_DATA_ENUM_TYPE k = queue.top().second;
-					queue.pop();
-					store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
-					//if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
-					if (++pos[k] < links[k]->Size()) queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
-					//start merging
-					//while (!heap.Empty())
-					while(!queue.empty())
+					links.push_back(&leafs);
+					coefs.push_back(1.0);
+				}
+				if (links.size() == 1)
+				{
+					INMOST_DATA_ENUM_TYPE s = links[0]->Size();
+					r.Resize(s);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
 					{
-						//k = heap.PopHeap();
-						k = queue.top().second;
-						queue.pop();
-						if (store.Back().first == links[k]->GetIndex(pos[k]))
-							store.Back().second += links[k]->GetValue(pos[k]) * coefs[k];
-						else store.Push(links[k]->GetIndex(pos[k]), links[k]->GetValue(pos[k]) * coefs[k]);
-						//if (++pos[k] < links[k]->Size()) heap.PushHeap(k, links[k]->GetIndex(pos[k]));
-						if (++pos[k] < links[k]->Size()) queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
+						r.GetIndex(k) = links[0]->GetIndex(k);
+						r.GetValue(k) = links[0]->GetValue(k) * coefs[0];
 					}
 				}
-				r.Swap(store);
+				else if (links.size() == 2)
+				{
+					Row::MergeSortedRows(coefs[0], *links[0], coefs[1], *links[1], store);
+					r.Swap(store);
+				}
+				else
+				{
+					pos.resize(links.size());
+					heap.Resize(links.size());
+					std::fill(pos.begin(), pos.end(), 0);
+					INMOST_DATA_ENUM_TYPE size_max = 0, ind = 0, nlists = links.size();
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
+					{
+						heap.PushHeap(k, links[k]->GetIndex(0));
+						//queue.push(std::make_pair(links[k]->GetIndex(0), k));
+						size_max += links[k]->Size();
+					}
+					//
+					if (!heap.Empty())
+					//if (!queue.empty())
+					{
+						store.Resize(size_max);
+						//make store array non-empty to avoid check
+						//INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
+						INMOST_DATA_ENUM_TYPE k;
+						INMOST_DATA_REAL_TYPE v;
+						while (ind == 0 && nlists > 2)
+						{
+							//k = queue.top().second;
+							//queue.pop();
+							k = heap.PopHeap();
+							v = links[k]->GetValue(pos[k]) * coefs[k];
+							if (1.0 + v != 1.0)
+							{
+								store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
+								store.GetValue(ind) = v;
+								++ind;
+							}
+							if (++pos[k] < links[k]->Size())
+								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
+								heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+							else nlists--;
+						}
+						//start merging
+						while (!heap.Empty() && nlists > 2)
+						//while (!queue.empty())
+						{
+							k = heap.PopHeap();
+							//k = queue.top().second;
+							//queue.pop();
+							v = links[k]->GetValue(pos[k]) * coefs[k];
+							if (1.0 + v != 1.0)
+							{
+								//if (store.Back().first == links[k]->GetIndex(pos[k]))
+									//store.Back().second += v;
+								if( store.GetIndex(ind - 1) == links[k]->GetIndex(pos[k]))
+									store.GetValue(ind - 1) += v;
+								else
+								{
+									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
+									store.GetValue(ind) = v;
+									++ind;
+								}
+							}
+							if (++pos[k] < links[k]->Size())
+								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
+								heap.PushHeap(k, links[k]->GetIndex(pos[k]));
+							else nlists--;
+						}
+						if (nlists == 2)
+						{
+							INMOST_DATA_ENUM_TYPE k1 = ENUMUNDEF, k2 = ENUMUNDEF;
+							for (INMOST_DATA_ENUM_TYPE i = 0; i < pos.size(); ++i)
+								if (pos[i] < links[i]->Size())
+								{
+									k1 = i;
+									break;
+								}
+							if (store.GetIndex(ind - 1) == links[k1]->GetIndex(pos[k1]))
+							{
+								store.GetValue(ind - 1) += links[k1]->GetValue(pos[k1]) * coefs[k1];
+								++pos[k1];
+							}
+							for (INMOST_DATA_ENUM_TYPE i = k1 + 1; i < pos.size(); ++i)
+								if (pos[i] < links[i]->Size())
+								{
+									k2 = i;
+									break;
+								}
+							if (store.GetIndex(ind - 1) == links[k2]->GetIndex(pos[k2]))
+							{
+								store.GetValue(ind - 1) += links[k2]->GetValue(pos[k2]) * coefs[k2];
+								++pos[k2];
+							}
+							Row::MergeSortedRows(coefs[k1], *links[k1], pos[k1], coefs[k2], *links[k2], pos[k2], store, ind);
+						}
+						else if (nlists)
+						{
+							k = heap.PopHeap(); //get list number
+							INMOST_DATA_ENUM_TYPE ipos = pos[k];
+							if (store.GetIndex(ind - 1) == links[k]->GetIndex(ipos))
+							{
+								store.GetValue(ind - 1) += links[k]->GetValue(ipos) * coefs[k];
+								++ipos;
+							}
+							while (ipos < links[k]->Size())
+							{
+								store.GetIndex(ind) = links[k]->GetIndex(ipos);
+								store.GetValue(ind) = links[k]->GetValue(ipos) * coefs[k];
+								++ind;
+								++ipos;
+							}
+						}
+						heap.Clear();
+						store.Resize(ind);
+						r.Swap(store);
+					}
+					else r.Clear();
+				}
 			}
 		}
 
@@ -1088,19 +1193,25 @@ namespace INMOST
 			assert(right.isSorted());
 			output.Resize(left.Size()+right.Size());
 			INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
-			while( i < left.Size() && j < right.Size() )
+			MergeSortedRows(alpha, left, i, beta, right, j, output, q);
+			output.Resize(q);
+		}
+
+		void Row::MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE &i, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& j, Row& output, INMOST_DATA_ENUM_TYPE & q)
+		{
+			while (i < left.Size() && j < right.Size())
 			{
-				if( left.GetIndex(i) < right.GetIndex(j) )
+				if (left.GetIndex(i) < right.GetIndex(j))
 				{
 					output.GetIndex(q) = left.GetIndex(i);
-					output.GetValue(q) = alpha*left.GetValue(i);
+					output.GetValue(q) = alpha * left.GetValue(i);
 					++q;
 					++i;
 				}
-				else if( left.GetIndex(i) == right.GetIndex(j) )
+				else if (left.GetIndex(i) == right.GetIndex(j))
 				{
 					output.GetIndex(q) = left.GetIndex(i);
-					output.GetValue(q) = alpha*left.GetValue(i) + beta*right.GetValue(j);
+					output.GetValue(q) = alpha * left.GetValue(i) + beta * right.GetValue(j);
 					++q;
 					++i;
 					++j;
@@ -1108,36 +1219,25 @@ namespace INMOST
 				else //right is smaller
 				{
 					output.GetIndex(q) = right.GetIndex(j);
-					output.GetValue(q) = beta*right.GetValue(j);
+					output.GetValue(q) = beta * right.GetValue(j);
 					++q;
 					++j;
 				}
 			}
-			while( i < left.Size() )
+			while (i < left.Size())
 			{
-				if( q > 0 && (output.GetIndex(q-1) == left.GetIndex(i)) )
-					output.GetValue(q-1) += alpha*left.GetValue(i);
-				else
-				{
-					output.GetIndex(q) = left.GetIndex(i);
-					output.GetValue(q) = alpha*left.GetValue(i);
-					++q;
-				}
+				output.GetIndex(q) = left.GetIndex(i);
+				output.GetValue(q) = alpha * left.GetValue(i);
+				++q;
 				++i;
 			}
-			while( j < right.Size() )
+			while (j < right.Size())
 			{
-				if( q > 0 && (output.GetIndex(q-1) == right.GetIndex(j)) )
-					output.GetValue(q-1) += beta*right.GetValue(j);
-				else
-				{
-					output.GetIndex(q) = right.GetIndex(j);
-					output.GetValue(q) = beta*right.GetValue(j);
-					++q;
-				}
+				output.GetIndex(q) = right.GetIndex(j);
+				output.GetValue(q) = beta * right.GetValue(j);
+				++q;
 				++j;
 			}
-			output.Resize(q);
 		}
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
 

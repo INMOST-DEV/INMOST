@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <queue>
 #include "robin_hood.h"
-//#include "../Misc/utils.h"
+#include "../Misc/utils.h"
 
 #define ASSUME_SORTED
 //#define TEST_HASHTABLE
@@ -356,7 +356,8 @@ namespace INMOST
 			/// @param beta Coefficient to multiply the right row.
 			/// @param right The right row.
 			/// @param output Record result in this vector.
-			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row & left, INMOST_DATA_REAL_TYPE beta, const Row & right, Row & output);
+			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_REAL_TYPE beta, const Row& right, Row& output);
+			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE & ileft, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& iright, Row& output, INMOST_DATA_ENUM_TYPE & ind);
 		};
 		
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
@@ -694,23 +695,15 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
-			std::priority_queue< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > queue;
+			BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
+			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > queue;
 			Sparse::Row leafs, store;
 			std::vector<INMOST_DATA_ENUM_TYPE> pos;
 			std::vector<INMOST_DATA_REAL_TYPE> coefs;
 			std::vector<const Sparse::Row*> links;
-			//std::unordered_map< const Sparse::Row*, INMOST_DATA_REAL_TYPE> rows;
-			__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef) { if (!r->Empty() && 1.0 + coef != 1.0) { links.push_back(r); coefs.push_back(coef); } }
-			//__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef) { if (!r->Empty() && 1.0 + coef != 1.0) { rows[r] += coef; } }
-			__INLINE void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
-			{
-				struct CompareIndex	{ bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };
-				Sparse::Row::iterator it = std::lower_bound(leafs.Begin(), leafs.End(), ind, CompareIndex());
-				if (it == leafs.End() || it->first != ind)
-					leafs.Insert(it, ind, val);
-				else it->second += val;
-			}
+			void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef);
+			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
 			void clear();
 			void get_row(Sparse::Row& r);
 		};
