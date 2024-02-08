@@ -695,9 +695,10 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-			BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
 			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
 			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > queue;
+			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap;
 			Sparse::Row leafs, store;
 			std::vector<INMOST_DATA_ENUM_TYPE> pos;
 			std::vector<INMOST_DATA_REAL_TYPE> coefs;
