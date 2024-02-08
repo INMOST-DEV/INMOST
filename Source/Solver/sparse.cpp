@@ -365,7 +365,7 @@ namespace INMOST
 								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
 								//heap.PushHeap(k, links[k]->GetIndex(pos[k]));
 								heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								std::push_heap(heap.begin(), heap.end());
+								std::push_heap(heap.begin(), heap.end(), std::greater<>());
 							}
 							else nlists--;
 						}
@@ -398,7 +398,7 @@ namespace INMOST
 								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
 								//heap.PushHeap(k, links[k]->GetIndex(pos[k]));
 								heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								std::push_heap(heap.begin(), heap.end());
+								std::push_heap(heap.begin(), heap.end(), std::greater<>());
 							}
 							else nlists--;
 						}
