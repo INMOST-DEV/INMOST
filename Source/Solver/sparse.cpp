@@ -288,6 +288,7 @@ namespace INMOST
 
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
+			int alg = -1;
 			if (links.empty()) //only leafs are present
 			{
 				leafs.Sort();
@@ -299,6 +300,7 @@ namespace INMOST
 					r.GetIndex(q) = leafs.GetIndex(q);
 					r.GetValue(q) = leafs.GetValue(q);
 				}
+				alg = 1;
 				//r.Swap(leafs);
 			}
 			else
@@ -319,6 +321,7 @@ namespace INMOST
 						r.GetIndex(k) = links[0]->GetIndex(k);
 						r.GetValue(k) = links[0]->GetValue(k) * coefs[0];
 					}
+					alg = 2;
 				}
 				else if (links.size() == 2)
 				{
@@ -330,6 +333,7 @@ namespace INMOST
 						r.GetIndex(q) = store.GetIndex(q);
 						r.GetValue(q) = store.GetValue(q);
 					}
+					alg = 3;
 					//r.Swap(store);
 				}
 				else if (true)
@@ -375,6 +379,8 @@ namespace INMOST
 								beg_next = std::min(beg_next, links[k]->GetIndex(pos[k]));
 							else ndone++;
 						}
+						if (beg_next == ENUMUNDEF && nlists != ndone)
+							std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
 						//clear list
 						for (INMOST_DATA_ENUM_TYPE q = ind_last; q < ind; ++q)
 							list[store.GetIndex(q) - beg] = USHRT_MAX;
@@ -388,6 +394,7 @@ namespace INMOST
 						r.GetIndex(q) = store.GetIndex(q);
 						r.GetValue(q) = store.GetValue(q);
 					}
+					alg = 4;
 				}
 				else
 				{
@@ -431,6 +438,7 @@ namespace INMOST
 							r.GetValue(q) = store.GetValue(q);
 						}
 						r.Sort();
+						alg = 5;
 					}
 					else
 					{
@@ -537,9 +545,24 @@ namespace INMOST
 								r.GetValue(q) = store.GetValue(q);
 							}
 						}
+						alg = 6;
 					}
 				}
 			}
+			/*
+			if( !r.isSorted() )
+				std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
+			for (INMOST_DATA_ENUM_TYPE q = 0; q < r.Size(); ++q)
+			{
+				if (r.GetIndex(q) == ENUMUNDEF)
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " oops! at " << q << " alg " << alg << std::endl;
+					for (int k = 0; k < links.size(); ++k)
+						links[k]->Print();
+					
+				}
+			}
+			*/
 		}
 
 		////////class RowMerger
@@ -1129,7 +1152,7 @@ namespace INMOST
 					GetValue(q) = GetValue(k);
 				}
 			}
-			Resize(q + 1);
+			if (s) Resize(q + 1);
 		}
 		
 		void Row::GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
