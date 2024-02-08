@@ -1118,7 +1118,7 @@ namespace INMOST
 		void Row::Unique()
 		{
 			INMOST_DATA_ENUM_TYPE k = 0, s = Size(), q = 0;
-			while (++k != s)
+			while (++k < s)
 			{
 				if (GetIndex(q) == GetIndex(k))
 					GetValue(q) += GetValue(k);
