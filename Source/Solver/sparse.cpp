@@ -274,17 +274,24 @@ namespace INMOST
 
 		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
 		{
+			leafs.Push(ind, val);
+			/*
 			struct CompareIndex { bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };
 			Sparse::Row::iterator it = std::lower_bound(leafs.Begin(), leafs.End(), ind, CompareIndex());
 			if (it == leafs.End() || it->first != ind)
 				leafs.Insert(it, ind, val);
 			else it->second += val;
+			*/
 		}
+
+		RowMerger5::RowMerger5() : list(LIST_SIZE, USHRT_MAX) {}
 
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
 			if (links.empty()) //only leafs are present
 			{
+				leafs.Sort();
+				leafs.Unique();
 				INMOST_DATA_ENUM_TYPE s = leafs.Size();
 				r.Resize(s);
 				for (INMOST_DATA_ENUM_TYPE q = 0; q < s; ++q)
@@ -298,6 +305,8 @@ namespace INMOST
 			{
 				if (!leafs.Empty())
 				{
+					leafs.Sort();
+					leafs.Unique();
 					links.push_back(&leafs);
 					coefs.push_back(1.0);
 				}
@@ -323,139 +332,163 @@ namespace INMOST
 					}
 					//r.Swap(store);
 				}
+				/*
+				else if (true)
+				{
+					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, beg_next = ENUMUNDEF, size_max = 0, nlists = links.size();
+					pos.resize(links.size());
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
+					{
+					}
+				}
+				*/
 				else
 				{
-					pos.resize(links.size());
-					//heap.Resize(links.size());
-					heap.reserve(links.size());
-					std::fill(pos.begin(), pos.end(), 0);
+					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
 					INMOST_DATA_ENUM_TYPE size_max = 0, ind = 0, nlists = links.size();
 					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
 					{
-						//heap.PushHeap(k, links[k]->GetIndex(0));
-						//queue.push(std::make_pair(links[k]->GetIndex(0), k));
-						heap.push_back(std::make_pair(links[k]->GetIndex(0), k));
+						links[k]->GetInterval(beg, end);
 						size_max += links[k]->Size();
 					}
-					std::make_heap(heap.begin(), heap.end(), std::greater<>());
-					//
+					store.Resize(size_max);
+					if (end - beg < LIST_SIZE && size_max < USHRT_MAX)
+					//if( false )
 					{
-						store.Resize(size_max);
-						//make store array non-empty to avoid check
-						//INMOST_DATA_ENUM_TYPE k = heap.PopHeap();
-						INMOST_DATA_ENUM_TYPE k;
-						INMOST_DATA_REAL_TYPE v;
-						while (ind == 0 && nlists > 2) //insert first non-zero element
+						//merge using list
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
 						{
-							//k = queue.top().second;
-							//queue.pop();
-							std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-							k = heap.back().second;
-							heap.pop_back();
-							//k = heap.PopHeap();
-							v = links[k]->GetValue(pos[k]) * coefs[k];
-							if (1.0 + v != 1.0)
+							for (INMOST_DATA_ENUM_TYPE q = 0; q < links[k]->Size(); ++q)
 							{
-								store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
-								store.GetValue(ind) = v;
-								++ind;
-							}
-							if (++pos[k] < links[k]->Size())
-							{
-								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								//heap.PushHeap(k, links[k]->GetIndex(pos[k]));
-								heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								std::push_heap(heap.begin(), heap.end(), std::greater<>());
-							}
-							else nlists--;
-						}
-						//while (!heap.Empty() && nlists > 2) //start merging
-						//while (!queue.empty())
-						while( !heap.empty() && nlists > 2)
-						{
-							//k = heap.PopHeap();
-							//k = queue.top().second;
-							//queue.pop();
-							std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-							k = heap.back().second;
-							heap.pop_back();
-							v = links[k]->GetValue(pos[k]) * coefs[k];
-							if (1.0 + v != 1.0)
-							{
-								//if (store.Back().first == links[k]->GetIndex(pos[k]))
-									//store.Back().second += v;
-								if( store.GetIndex(ind - 1) == links[k]->GetIndex(pos[k]))
-									store.GetValue(ind - 1) += v;
-								else
+								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
+								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
+								if (list[i] == USHRT_MAX)
 								{
-									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
-									store.GetValue(ind) = v;
-									++ind;
+									if (1.0 + v != 1.0)
+									{
+										store.GetIndex(ind) = links[k]->GetIndex(q);
+										store.GetValue(ind) = v;
+										list[i] = ind++;
+									}
 								}
-							}
-							if (++pos[k] < links[k]->Size())
-							{
-								//queue.push(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								//heap.PushHeap(k, links[k]->GetIndex(pos[k]));
-								heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-								std::push_heap(heap.begin(), heap.end(), std::greater<>());
-							}
-							else nlists--;
-						}
-						if (nlists == 2) //finalize merge without heap
-						{
-							INMOST_DATA_ENUM_TYPE k1 = ENUMUNDEF, k2 = ENUMUNDEF;
-							for (INMOST_DATA_ENUM_TYPE i = 0; i < pos.size(); ++i)
-								if (pos[i] < links[i]->Size())
-								{
-									k1 = i;
-									break;
-								}
-							if (store.GetIndex(ind - 1) == links[k1]->GetIndex(pos[k1]))
-							{
-								store.GetValue(ind - 1) += links[k1]->GetValue(pos[k1]) * coefs[k1];
-								++pos[k1];
-							}
-							for (INMOST_DATA_ENUM_TYPE i = k1 + 1; i < pos.size(); ++i)
-								if (pos[i] < links[i]->Size())
-								{
-									k2 = i;
-									break;
-								}
-							if (store.GetIndex(ind - 1) == links[k2]->GetIndex(pos[k2]))
-							{
-								store.GetValue(ind - 1) += links[k2]->GetValue(pos[k2]) * coefs[k2];
-								++pos[k2];
-							}
-							Row::MergeSortedRows(coefs[k1], *links[k1], pos[k1], coefs[k2], *links[k2], pos[k2], store, ind);
-						}
-						else if (nlists) //insert single list
-						{
-							//k = heap.PopHeap(); //get list number
-							k = heap.back().second;
-							INMOST_DATA_ENUM_TYPE ipos = pos[k];
-							if (store.GetIndex(ind - 1) == links[k]->GetIndex(ipos))
-							{
-								store.GetValue(ind - 1) += links[k]->GetValue(ipos) * coefs[k];
-								++ipos;
-							}
-							while (ipos < links[k]->Size())
-							{
-								store.GetIndex(ind) = links[k]->GetIndex(ipos);
-								store.GetValue(ind) = links[k]->GetValue(ipos) * coefs[k];
-								++ind;
-								++ipos;
+								else store.GetValue(list[i]) += v;
 							}
 						}
-						//heap.Clear();
-						heap.clear();
-						//store.Resize(ind);
-						//r.Swap(store);
+						//clear list
+						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
+							list[store.GetIndex(q) - beg] = USHRT_MAX;
 						r.Resize(ind);
 						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
 						{
 							r.GetIndex(q) = store.GetIndex(q);
 							r.GetValue(q) = store.GetValue(q);
+						}
+						r.Sort();
+					}
+					else
+					{
+						pos.resize(links.size());
+						heap.reserve(links.size());
+						std::fill(pos.begin(), pos.end(), 0);
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
+							heap.push_back(std::make_pair(links[k]->GetIndex(0), k));
+						std::make_heap(heap.begin(), heap.end(), std::greater<>());
+						//
+						{
+							//make store array non-empty to avoid check
+							INMOST_DATA_ENUM_TYPE k;
+							INMOST_DATA_REAL_TYPE v;
+							while (ind == 0 && nlists > 2) //insert first non-zero element
+							{
+								std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+								k = heap.back().second;
+								heap.pop_back();
+								v = links[k]->GetValue(pos[k]) * coefs[k];
+								if (1.0 + v != 1.0)
+								{
+									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
+									store.GetValue(ind) = v;
+									++ind;
+								}
+								if (++pos[k] < links[k]->Size())
+								{
+									heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
+									std::push_heap(heap.begin(), heap.end(), std::greater<>());
+								}
+								else nlists--;
+							}
+							while (!heap.empty() && nlists > 2) //start merging
+							{
+								std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+								k = heap.back().second;
+								heap.pop_back();
+								v = links[k]->GetValue(pos[k]) * coefs[k];
+								if (store.GetIndex(ind - 1) == links[k]->GetIndex(pos[k]))
+									store.GetValue(ind - 1) += v;
+								else if(1.0 + v != 1.0)
+								{
+									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
+									store.GetValue(ind) = v;
+									++ind;
+								}
+								if (++pos[k] < links[k]->Size())
+								{
+									heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
+									std::push_heap(heap.begin(), heap.end(), std::greater<>());
+								}
+								else nlists--;
+							}
+							if (nlists == 2) //finalize merge without heap
+							{
+								INMOST_DATA_ENUM_TYPE k1 = ENUMUNDEF, k2 = ENUMUNDEF;
+								for (INMOST_DATA_ENUM_TYPE i = 0; i < pos.size(); ++i)
+									if (pos[i] < links[i]->Size())
+									{
+										k1 = i;
+										break;
+									}
+								if (store.GetIndex(ind - 1) == links[k1]->GetIndex(pos[k1]))
+								{
+									store.GetValue(ind - 1) += links[k1]->GetValue(pos[k1]) * coefs[k1];
+									++pos[k1];
+								}
+								for (INMOST_DATA_ENUM_TYPE i = k1 + 1; i < pos.size(); ++i)
+									if (pos[i] < links[i]->Size())
+									{
+										k2 = i;
+										break;
+									}
+								if (store.GetIndex(ind - 1) == links[k2]->GetIndex(pos[k2]))
+								{
+									store.GetValue(ind - 1) += links[k2]->GetValue(pos[k2]) * coefs[k2];
+									++pos[k2];
+								}
+								Row::MergeSortedRows(coefs[k1], *links[k1], pos[k1], coefs[k2], *links[k2], pos[k2], store, ind);
+							}
+							else if (nlists) //insert single list
+							{
+								k = heap.back().second; //get list number
+								INMOST_DATA_ENUM_TYPE ipos = pos[k];
+								if (store.GetIndex(ind - 1) == links[k]->GetIndex(ipos))
+								{
+									store.GetValue(ind - 1) += links[k]->GetValue(ipos) * coefs[k];
+									++ipos;
+								}
+								while (ipos < links[k]->Size())
+								{
+									store.GetIndex(ind) = links[k]->GetIndex(ipos);
+									store.GetValue(ind) = links[k]->GetValue(ipos) * coefs[k];
+									++ind;
+									++ipos;
+								}
+							}
+							heap.clear();
+							r.Resize(ind);
+							for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
+							{
+								r.GetIndex(q) = store.GetIndex(q);
+								r.GetValue(q) = store.GetValue(q);
+							}
 						}
 					}
 				}
@@ -1034,6 +1067,23 @@ namespace INMOST
 			return ret;
 		}
 #endif //USE_SOLVER
+
+		void Row::Unique()
+		{
+			INMOST_DATA_ENUM_TYPE k = 0, s = Size(), q = 0;
+			while (++k != s)
+			{
+				if (GetIndex(q) == GetIndex(k))
+					GetValue(q) += GetValue(k);
+				else
+				{
+					++q;
+					GetIndex(q) = GetIndex(k);
+					GetValue(q) = GetValue(k);
+				}
+			}
+			Resize(q + 1);
+		}
 		
 		void Row::GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
 		{

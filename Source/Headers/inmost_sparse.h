@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <queue>
 #include "robin_hood.h"
-#include "../Misc/utils.h"
 
 #define ASSUME_SORTED
 //#define TEST_HASHTABLE
@@ -348,6 +347,7 @@ namespace INMOST
 			}
 			/// Sort row
 			__INLINE void           Sort() { std::sort(data.begin(), data.end()); }
+			void                    Unique();
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
 			/// Add up two rows. Performs operation output=alpha*left+beta*right.
@@ -695,14 +695,17 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
+			const int LIST_SIZE = 1048576;
 			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
 			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
-			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > queue;
+			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > heap;
+			std::vector< unsigned short > list;
 			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap;
 			Sparse::Row leafs, store;
 			std::vector<INMOST_DATA_ENUM_TYPE> pos;
 			std::vector<INMOST_DATA_REAL_TYPE> coefs;
 			std::vector<const Sparse::Row*> links;
+			RowMerger5();
 			void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef);
 			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
 			void clear();
