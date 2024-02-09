@@ -336,11 +336,11 @@ namespace INMOST
 					alg = 3;
 					//r.Swap(store);
 				}
-				else if (true)
+				else if (true) //fixed SPA with moving window
 				{
 					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next; 
 					INMOST_DATA_ENUM_TYPE size_max = 0, nlists = links.size();
-					INMOST_DATA_ENUM_TYPE ind = 0, ind_last, ndone = 0;
+					INMOST_DATA_ENUM_TYPE ind = 0, ind_last;
 					pos.resize(links.size());
 					std::fill(pos.begin(), pos.end(), 0);
 					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
@@ -349,7 +349,7 @@ namespace INMOST
 						size_max += links[k]->Size();
 					}
 					store.Resize(size_max);
-					while (ndone != nlists)
+					while (nlists)
 					{
 						end = beg + LIST_SIZE;
 						beg_next = ENUMUNDEF;
@@ -377,9 +377,22 @@ namespace INMOST
 							pos[k] = q;
 							if (pos[k] < links[k]->Size())
 								beg_next = std::min(beg_next, links[k]->GetIndex(pos[k]));
-							else ndone++;
+							else
+							{
+								if (k != nlists - 1)
+								{
+									std::swap(pos[k], pos[nlists - 1]);
+									std::swap(links[k], links[nlists - 1]);
+									std::swap(coefs[k], coefs[nlists - 1]);
+								}
+								pos.pop_back();
+								links.pop_back();
+								coefs.pop_back();
+								--nlists;
+								--k;
+							}
 						}
-						if (beg_next == ENUMUNDEF && nlists != ndone)
+						if (beg_next == ENUMUNDEF && nlists)
 							std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
 						//clear list
 						for (INMOST_DATA_ENUM_TYPE q = ind_last; q < ind; ++q)

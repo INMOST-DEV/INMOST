@@ -306,6 +306,12 @@ namespace INMOST
 			entries.Clear();
 			return *this;
 		}
+		__INLINE multivar_expression& operator = (multivar_expression && other)
+		{
+			value = other.value;
+			entries = std::move(other.entries);
+			return *this;
+		}
 		__INLINE multivar_expression & operator = (multivar_expression const & other)
 		{
 			value = other.value;

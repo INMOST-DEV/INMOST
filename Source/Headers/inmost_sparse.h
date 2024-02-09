@@ -222,6 +222,7 @@ namespace INMOST
 			/// Copy all data from another row.
 			/// @param other Another row.
 			Row & operator = (Row const & other) { data = other.data; return *this; }
+			Row& operator = (Row && other) { data = std::move(other.data); return *this; }
 			/// Finds and returns value with specified index. Adds a new entry if index was not found.
 			/// \warning
 			/// The operator [] should be used to fill the sparse matrix row, but not to routinely access individual elements of the row.
