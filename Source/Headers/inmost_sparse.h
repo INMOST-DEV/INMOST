@@ -700,6 +700,7 @@ namespace INMOST
 			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
 			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > heap;
 			std::vector< unsigned short > list;
+			std::vector<Sparse::Row> merge;
 			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap;
 			Sparse::Row leafs, store;
 			std::vector<INMOST_DATA_ENUM_TYPE> pos;

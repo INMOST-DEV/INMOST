@@ -336,6 +336,39 @@ namespace INMOST
 					alg = 3;
 					//r.Swap(store);
 				}
+				else if (true) //merge pairs
+				{
+					INMOST_DATA_ENUM_TYPE k1, k2, nmerge = 0;
+					if (merge.size() < links.size() - 1)
+						merge.resize(links.size() - 1);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
+						heap.push_back(std::make_pair(links[k]->Size(), k));
+					std::make_heap(heap.begin(), heap.end(), std::greater<>());
+					while (heap.size() > 1)
+					{
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						k1 = heap.back().second;
+						heap.pop_back();
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						k2 = heap.back().second;
+						heap.pop_back();
+						Row::MergeSortedRows(coefs[k1], *links[k1], coefs[k2], *links[k2], merge[nmerge]);
+						heap.push_back(std::make_pair(merge[nmerge].Size(), links.size()));
+						std::push_heap(heap.begin(), heap.end(), std::greater<>());
+						links.push_back(&merge[nmerge]);
+						coefs.push_back(1.0);
+						nmerge++;
+					}
+					INMOST_DATA_ENUM_TYPE i = heap.back().second;
+					INMOST_DATA_ENUM_TYPE s = links[i]->Size();
+					r.Resize(s);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+					{
+						r.GetIndex(k) = links[i]->GetIndex(k);
+						r.GetValue(k) = links[i]->GetValue(k);
+					}
+					heap.clear();
+				}
 				else if (true) //fixed SPA with moving window
 				{
 					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next; 
@@ -1370,28 +1403,41 @@ namespace INMOST
 
 		void Row::MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE &i, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& j, Row& output, INMOST_DATA_ENUM_TYPE & q)
 		{
+			INMOST_DATA_REAL_TYPE v;
 			while (i < left.Size() && j < right.Size())
 			{
 				if (left.GetIndex(i) < right.GetIndex(j))
 				{
-					output.GetIndex(q) = left.GetIndex(i);
-					output.GetValue(q) = alpha * left.GetValue(i);
-					++q;
+					v = alpha * left.GetValue(i);
+					if (1.0 + v != 1.0)
+					{
+						output.GetIndex(q) = left.GetIndex(i);
+						output.GetValue(q) = v;
+						++q;
+					}
 					++i;
 				}
 				else if (left.GetIndex(i) == right.GetIndex(j))
 				{
-					output.GetIndex(q) = left.GetIndex(i);
-					output.GetValue(q) = alpha * left.GetValue(i) + beta * right.GetValue(j);
-					++q;
+					v = alpha * left.GetValue(i) + beta * right.GetValue(j);
+					if (1.0 + v != 1.0)
+					{
+						output.GetIndex(q) = left.GetIndex(i);
+						output.GetValue(q) = v;
+						++q;
+					}
 					++i;
 					++j;
 				}
 				else //right is smaller
 				{
-					output.GetIndex(q) = right.GetIndex(j);
-					output.GetValue(q) = beta * right.GetValue(j);
-					++q;
+					v = beta * right.GetValue(j);
+					if (1.0 + v != 1.0)
+					{
+						output.GetIndex(q) = right.GetIndex(j);
+						output.GetValue(q) = v;
+						++q;
+					}
 					++j;
 				}
 			}
