@@ -1195,7 +1195,15 @@ namespace INMOST
 			}
 			return *this;
 		}
-		
+		SymmetricMatrix& operator =(SymmetricMatrix&& other)
+		{
+			if (this != &other)
+			{
+				space = std::move(other.space);
+				n = other.n;
+			}
+			return *this;
+		}
 		/// Assign matrix of another type.
 		/// Function assumes that the other matrix is square and symmetric.
 		/// Copies only top-right triangular part.
@@ -1582,6 +1590,9 @@ namespace INMOST
 		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
 		{
 		}
+		Matrix(Matrix && other) : space(std::move(other.space)), n(other.n), m(other.m)
+		{
+		}
 		/// Construct matrix from matrix of different type.
 		/// Uses assign function declared in inmost_expression.h.
 		/// Copies derivative information if possible.
@@ -1616,6 +1627,16 @@ namespace INMOST
 					space.resize(other.n * other.m);
 				for (enumerator i = 0; i < other.n * other.m; ++i)
 					space[i] = other.space[i];
+				n = other.n;
+				m = other.m;
+			}
+			return *this;
+		}
+		Matrix& operator =(Matrix && other)
+		{
+			if (this != &other)
+			{
+				space = std::move(other.space);
 				n = other.n;
 				m = other.m;
 			}
