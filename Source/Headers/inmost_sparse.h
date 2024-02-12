@@ -741,7 +741,6 @@ namespace INMOST
 				it_type it;
 				RowMerger * merger; ///< Link to associated storage for linked list.
 				iterator(RowMerger* pmerger) : it(pmerger->pos.begin()), merger(pmerger) {}
-				iterator(INMOST_DATA_ENUM_TYPE pos, RowMerger* pmerger) : it(pmerger->pos.find(pos)), merger(pmerger) {}
 				iterator(it_type pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
 			public:
 				iterator(const iterator & other) : it(other.it), merger(other.merger) {}
