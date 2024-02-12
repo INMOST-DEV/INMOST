@@ -2502,7 +2502,7 @@ namespace INMOST
 					const inner_variable_array * arr = static_cast<const inner_variable_array *>(adata);
 					for(inner_variable_array::size_type k = 0; k < arr->size(); ++k)
 						ret += (*arr)[k].RecordSize();//(*arr)[k].GetRow().Size();
-					return ret*sizeof(Sparse::Row::entry_s);
+					return ret*sizeof(Sparse::Row::entry);
 				}
 #endif
 			}
@@ -2514,7 +2514,7 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE ret = 0;
 			const var * v = static_cast<const var *>(MGetLink(h,tag));
 			for(INMOST_DATA_ENUM_TYPE r = 0; r < s; ++r)
-				ret += v[r].RecordSize()*sizeof(Sparse::Row::entry_s);
+				ret += v[r].RecordSize()*sizeof(Sparse::Row::entry);
 			return ret;
 		}
 #endif
@@ -2566,7 +2566,7 @@ namespace INMOST
 				case DATA_VARIABLE:
 				{
 					const inner_variable_array * arr = static_cast<const inner_variable_array      *>(adata);
-					Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
+					Sparse::Row::entry * data = static_cast<Sparse::Row::entry *>(data_out);
 					integer k = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
 						k += (*arr)[r+shift].Record(data+k);
@@ -2578,7 +2578,7 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 		else if( tag.GetDataType() == DATA_VARIABLE )
 		{
-			Sparse::Row::entry_s * data = static_cast<Sparse::Row::entry_s *>(data_out);
+			Sparse::Row::entry * data = static_cast<Sparse::Row::entry *>(data_out);
 			const var * v = static_cast<const var *>(MGetLink(h,tag));
 			integer k = 0;
 			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
@@ -2609,7 +2609,7 @@ namespace INMOST
 				case DATA_VARIABLE:
 				{
 					inner_variable_array * arr = static_cast<inner_variable_array*>(adata);
-					const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
+					const Sparse::Row::entry * data = static_cast<const Sparse::Row::entry *>(data_in);
 					int k = 0;
 					for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
 						k += (*arr)[r+shift].Retrieve(data+k);
@@ -2621,7 +2621,7 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 		else if( tag.GetDataType() == DATA_VARIABLE )
 		{
-			const Sparse::Row::entry_s * data = static_cast<const Sparse::Row::entry_s *>(data_in);
+			const Sparse::Row::entry * data = static_cast<const Sparse::Row::entry *>(data_in);
 			var * v = static_cast<var *>(MGetLink(h,tag));
 			int k = 0;
 			for(INMOST_DATA_ENUM_TYPE r = 0; r < size; ++r)
