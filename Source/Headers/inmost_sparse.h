@@ -4,6 +4,7 @@
 
 #include "inmost_common.h"
 #include <unordered_map>
+#include <queue>
 #include "robin_hood.h"
 
 #define ASSUME_SORTED
@@ -21,7 +22,7 @@ namespace INMOST
 {
 	namespace Sparse
 	{
-		typedef char bit_type; //for RowMerger2
+		typedef bool bit_type; //for RowMerger2
 
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// Retrieve MPI type for row entry type.
@@ -221,6 +222,7 @@ namespace INMOST
 			/// Copy all data from another row.
 			/// @param other Another row.
 			Row & operator = (Row const & other) { data = other.data; return *this; }
+			Row& operator = (Row && other) { data = std::move(other.data); return *this; }
 			/// Finds and returns value with specified index. Adds a new entry if index was not found.
 			/// \warning
 			/// The operator [] should be used to fill the sparse matrix row, but not to routinely access individual elements of the row.
@@ -286,7 +288,7 @@ namespace INMOST
 			/// Retrive interval of nonzeroes
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
 			/// Retrive indices
-			void                    GetIndices(INMOST_DATA_ENUM_TYPE beg, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
+			void                    GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
 			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
 			/// Merge row indices and values with indices and values in array.
 			void                    GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const;
@@ -313,6 +315,10 @@ namespace INMOST
 			const_reverse_iterator  rBegin() const { return data.rbegin(); }
 			/// An iterator pointing before the first position in the array of constant pairs of index and value.
 			const_reverse_iterator  rEnd() const { return data.rend(); }
+			/// Last element
+			entry&                  Back() {return data.back(); }
+			/// Last element
+			const entry&            Back() const { return data.back(); }
 #if defined(USE_SOLVER)
 			/// Return the scalar product of the current sparse row by a dense Vector.
 			INMOST_DATA_REAL_TYPE   RowVec(Vector & x) const; // returns A(row) * x
@@ -322,17 +328,17 @@ namespace INMOST
 			void                    MoveRow(Row & source) {data = source.data;} //here move constructor and std::move may be used in future
 			/// Set the vector entries by zeroes.
 			void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
-			void                    Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
+			__INLINE void           Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row.
-			void                    Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			__INLINE void           Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
 			/// Remove last element.
-			void                    Pop() { data.pop_back(); }
+			__INLINE void           Pop() { data.pop_back(); }
 			/// Resize row to specified size.
 			/// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
 			/// that allow for the modification of individual entries.
 			/// @param size New size of the row.
-			void                    Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
+			__INLINE void           Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
 			/// Output all entries of the row.
 			void                    Print(double eps = -1, std::ostream & sout = std::cout) const
 			{
@@ -341,7 +347,8 @@ namespace INMOST
 				if( k ) sout << std::endl;
 			}
 			/// Sort row
-			void                    Sort() { std::sort(data.begin(), data.end()); }
+			__INLINE void           Sort() { std::sort(data.begin(), data.end()); }
+			void                    Unique();
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
 			/// Add up two rows. Performs operation output=alpha*left+beta*right.
@@ -350,7 +357,8 @@ namespace INMOST
 			/// @param beta Coefficient to multiply the right row.
 			/// @param right The right row.
 			/// @param output Record result in this vector.
-			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row & left, INMOST_DATA_REAL_TYPE beta, const Row & right, Row & output);
+			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_REAL_TYPE beta, const Row& right, Row& output);
+			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE & ileft, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& iright, Row& output, INMOST_DATA_ENUM_TYPE & ind);
 		};
 		
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
@@ -662,7 +670,7 @@ namespace INMOST
 			std::vector<Sparse::bit_type> bitset;
 			std::vector<INMOST_DATA_REAL_TYPE> vals;
 			std::vector<INMOST_DATA_ENUM_TYPE> inds, temp;
-			RowMerger2() { bitset.resize(1048576); }
+			RowMerger2() { bitset.resize(1048576, 0); }
 			inline void radix_sort();
 			inline void naive_sort();
 			void clear();
@@ -688,16 +696,18 @@ namespace INMOST
 		};
 		struct RowMerger5
 		{
-#if defined(TEST_HASHTABLE)
-			HashTable table;
-#elif defined(TEST_JUDY1)
-			judyLArray<uint64_t, uint64_t> table;
-#else
-			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
-			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> table_t;
-			table_t table;
-#endif
-			std::vector<INMOST_DATA_REAL_TYPE> vals;
+			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
+			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
+			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > heap;
+			std::vector< unsigned short > list;
+			std::vector<Sparse::Row> merge;
+			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap;
+			Sparse::Row leafs, store;
+			std::vector<INMOST_DATA_ENUM_TYPE> pos;
+			std::vector<INMOST_DATA_REAL_TYPE> coefs;
+			std::vector<const Sparse::Row*> links;
+			RowMerger5();
+			void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef);
 			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
 			void clear();
 			void get_row(Sparse::Row& r);

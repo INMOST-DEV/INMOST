@@ -1195,7 +1195,15 @@ namespace INMOST
 			}
 			return *this;
 		}
-		
+		SymmetricMatrix& operator =(SymmetricMatrix&& other)
+		{
+			if (this != &other)
+			{
+				space = std::move(other.space);
+				n = other.n;
+			}
+			return *this;
+		}
 		/// Assign matrix of another type.
 		/// Function assumes that the other matrix is square and symmetric.
 		/// Copies only top-right triangular part.
@@ -1582,6 +1590,9 @@ namespace INMOST
 		Matrix(const Matrix & other) : space(other.space), n(other.n), m(other.m)
 		{
 		}
+		Matrix(Matrix && other) : space(std::move(other.space)), n(other.n), m(other.m)
+		{
+		}
 		/// Construct matrix from matrix of different type.
 		/// Uses assign function declared in inmost_expression.h.
 		/// Copies derivative information if possible.
@@ -1616,6 +1627,16 @@ namespace INMOST
 					space.resize(other.n * other.m);
 				for (enumerator i = 0; i < other.n * other.m; ++i)
 					space[i] = other.space[i];
+				n = other.n;
+				m = other.m;
+			}
+			return *this;
+		}
+		Matrix& operator =(Matrix && other)
+		{
+			if (this != &other)
+			{
+				space = std::move(other.space);
 				n = other.n;
 				m = other.m;
 			}
@@ -2928,32 +2949,38 @@ namespace INMOST
 		*L = A;
 		
 		//SAXPY
-		/*
+#if 1
 		for(enumerator i = 0; i < n; ++i)
 		{
-			for(enumerator k = 0; k < i; ++k)
-				for(enumerator j = i; j < n; ++j)
-					L(i,j) -= L(i,k)*L(j,k);
-			if( L(i,i) < 0.0 )
+			for (enumerator j = i; j < n; ++j)
+				(*L)(i, j) -= (*L)(i, i + 1, 0, i).DotProduct((*L)(j, j + 1, 0, i));
+				//for (enumerator k = 0; k < i; ++k)
+				//	(*L)(i, j) -= (*L)(i, k) * (*L)(j, k);
+			if (real_part((*L)(i, i)) < 0.0)
 			{
-				ret.second = false;
-				if( print_fail ) std::cout << "Negative diagonal pivot " << get_value(L(i,i)) << std::endl;
+				if (ierr)
+				{
+					if (*ierr == -1) std::cout << "Negative diagonal pivot " << get_value((*L)(i, i)) << " row " << i << std::endl;
+					*ierr = i + 1;
+				}
+				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
-			L(i,i) = sqrt(L(i,i));
-			
-			if( fabs(L(i,i)) < 1.0e-24 )
+			(*L)(i, i) = sqrt((*L)(i, i));
+			if (fabs((*L)(i, i)) < 1.0e-24)
 			{
-				ret.second = false;
-				if( print_fail ) std::cout << "Diagonal pivot is too small " << get_value(L(i,i)) << std::endl;
+				if (ierr)
+				{
+					if (*ierr == -1) std::cout << "Diagonal pivot is too small " << get_value((*L)(i, i)) << " row " << i << std::endl;
+					*ierr = i + 1;
+				}
+				else throw MatrixCholeskySolveFail;
 				return ret;
 			}
-			
-			for(enumerator j = i+1; j < n; ++j)
-				L(i,j) = L(i,j)/L(i,i);
+			for (enumerator j = i + 1; j < n; ++j)
+				(*L)(i, j) = (*L)(i, j) / (*L)(i, i);
 		}
-		*/
+#else
 		//Outer product
 		for(enumerator k = 0; k < n; ++k)
 		{
@@ -2990,6 +3017,7 @@ namespace INMOST
 					(*L)(i,j) -= (*L)(i,k)*(*L)(j,k);
 			}
 		}
+#endif
 		// LY=B
 		Matrix<typename Promote<Var,typeB>::type> & Y = ret;
 		for(enumerator i = 0; i < n; ++i)
@@ -4318,7 +4346,7 @@ namespace INMOST
 			m.set_bitset(beg, end);
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					B.compute(i, j).GetIndices(m.bitset, m.inds);
 			m.set_vals();
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
@@ -4431,8 +4459,8 @@ namespace INMOST
 			for (unsigned i = 0; i < A.Rows(); ++i)
 				for (unsigned j = 0; j < A.Cols(); ++j)
 				{
-					A.compute(i, j).GetIndices(beg, m.bitset, m.inds);
-					B.compute(i, j).GetIndices(beg, m.bitset, m.inds);
+					A.compute(i, j).GetIndices(m.bitset, m.inds);
+					B.compute(i, j).GetIndices(m.bitset, m.inds);
 				}
 			m.set_vals();
 			for (unsigned i = 0; i < A.Rows(); ++i)

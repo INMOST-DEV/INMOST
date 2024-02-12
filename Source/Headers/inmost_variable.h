@@ -348,10 +348,10 @@ namespace INMOST
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetInterval(beg, end);
 		}
-		__INLINE void GetIndices(INMOST_DATA_ENUM_TYPE shift, std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
+		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
 		{ 
 			for (typename container::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetIndices(shift, bitset, inds); 
+				it->GetIndices(bitset, inds); 
 		}
 		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
 		{

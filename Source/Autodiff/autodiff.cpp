@@ -101,20 +101,27 @@ namespace INMOST
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger5& merger)
 	{
 		merger.clear();
-		for (Sparse::Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-			merger.add_value(it->first, it->second * coefa);
-		for (Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
-			merger.add_value(it->first, it->second * coefb);
-		merger.get_row(entries);
+		{
+			merger.add_row(&r, coefa);
+			//for (Sparse::Row::const_iterator it = r.Begin(); it != r.End(); ++it)
+			//	merger.add_value(it->first, it->second * coefa);
+			merger.add_row(&entries, coefb);
+			//for (Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+			//	merger.add_value(it->first, it->second * coefb);
+			merger.get_row(entries);
+		}
 	}
 
 	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger5& merger)
 	{
 		merger.clear();
-		expr.GetJacobian(coefa, merger);
-		for (Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
-			merger.add_value(it->first, it->second * coefb);
-		merger.get_row(entries);
+		{
+			expr.GetJacobian(coefa, merger);
+			merger.add_row(&entries, coefb);
+			//for (Sparse::Row::iterator it = entries.Begin(); it != entries.End(); ++it)
+			//	merger.add_value(it->first, it->second * coefb);
+			merger.get_row(entries);
+		}
 	}
 
 #if 1
@@ -128,8 +135,8 @@ namespace INMOST
 		{
 			//merger.bitset.resize(end - beg, false);
 			merger.set_bitset(beg, end);
-			r.GetIndices(beg, merger.bitset, merger.inds);
-			entries.GetIndices(beg, merger.bitset, merger.inds);
+			r.GetIndices(merger.bitset, merger.inds);
+			entries.GetIndices(merger.bitset, merger.inds);
 			merger.set_vals();
 			r.GetValues(coefa, merger.inds, merger.vals);
 			entries.GetValues(coefb, merger.inds, merger.vals);
@@ -148,8 +155,8 @@ namespace INMOST
 		{
 			//merger.bitset.resize(end - beg, false);
 			merger.set_bitset(beg, end);
-			expr.GetIndices(beg, merger.bitset, merger.inds);
-			entries.GetIndices(beg, merger.bitset, merger.inds);
+			expr.GetIndices(merger.bitset, merger.inds);
+			entries.GetIndices(merger.bitset, merger.inds);
 			merger.set_vals();
 			expr.GetValues(coefa, merger.inds, merger.vals);
 			entries.GetValues(coefb, merger.inds, merger.vals);
