@@ -233,6 +233,7 @@ namespace INMOST
 		multivar_expression() :value(0) {}
 		multivar_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
 		multivar_expression(const multivar_expression & other) : value(other.value), entries(other.entries) {}
+		multivar_expression(multivar_expression&& other) : value(other.value), entries(std::move(other.entries)) {}
 		multivar_expression(INMOST_DATA_REAL_TYPE pvalue, Sparse::Row & pentries)
 		: value(pvalue), entries(pentries) {}
 		multivar_expression(INMOST_DATA_REAL_TYPE pvalue, INMOST_DATA_ENUM_TYPE pindex, INMOST_DATA_REAL_TYPE pdmult = 1.0)
