@@ -258,7 +258,6 @@ namespace INMOST
 			//rows[&leafs] = 1.0;
 		}
 
-#if 0
 		void RowMerger5::add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef)
 		{
 			if (!r->Empty() && 1.0 + coef != 1.0)
@@ -272,6 +271,7 @@ namespace INMOST
 				else coefs[it - links.begin()] += coef;
 			}
 		}
+#if 0
 
 		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
 		{
@@ -308,13 +308,19 @@ namespace INMOST
 			}
 			else
 			{
+#if 0
 				{
 					size_t k = 0, s = links.size(), q = 0;
+					for(size_t i = 0; i < links.size(); ++i)
+						for(size_t j = i + 1; j < links.size(); ++j)
+							if (links[j] == links[i])
+							{
+								coefs[i] += coefs[j];
+								coefs[j] = 0.0;
+							}
 					while (++k < s)
 					{
-						if (links[q] == links[k])
-							coefs[q] += coefs[k];
-						else
+						if(1.0 + coefs[k] != 1.0)
 						{
 							++q;
 							links[q] = links[k];
@@ -324,6 +330,7 @@ namespace INMOST
 					links.resize(q + 1);
 					coefs.resize(q + 1);
 				}
+#endif
 				if (!leafs.Empty())
 				{
 					leafs.Sort();
