@@ -707,8 +707,18 @@ namespace INMOST
 			std::vector<INMOST_DATA_REAL_TYPE> coefs;
 			std::vector<const Sparse::Row*> links;
 			RowMerger5();
-			void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef);
-			void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val);
+			__INLINE void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef)
+			{
+				if (!r->Empty() && 1.0 + coef != 1.0)
+				{
+					links.push_back(r);
+					coefs.push_back(coef);
+				}
+			}
+			__INLINE void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+			{
+				leafs.Push(ind, val);
+			}
 			void clear();
 			void get_row(Sparse::Row& r);
 		};
