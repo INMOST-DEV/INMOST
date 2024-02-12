@@ -216,6 +216,7 @@ namespace INMOST
 			/// Copy all data from another row.
 			/// @param other Another row.
 			Row(const Row & other) : data(other.data) {}
+			Row(Row&& other) : data(std::move(other.data)) {}
 			/// Construct a row from array of pairs of indices and values.
 			/// @param pbegin Pointer to the first position in array.
 			/// @param pend Pointer behind the last position of array.
