@@ -3150,6 +3150,8 @@ namespace INMOST
 		/// Current available file options:
 		/// - "VERBOSITY"        - Set "2" for progress messages, "1" for reports, "0" for silence
 		///
+		/// - "PMF_DUP_GID"      - Set "1" to duplicate "GLOBAL_ID" tag into "OLD_GLOBAL_ID" tag when loading pmf file.
+		///                        Default "0".
 		/// - "VTK_GRID_DIMS"    - Set "2" for two-dimensional vtk grids, "3" for three-dimensional vtk grids
 		///                        or "AUTO" for automatic detection.
 		/// - "VTK_OUTPUT_FACES" - Set "1" for vtk output of values on faces
@@ -3576,6 +3578,89 @@ namespace INMOST
 		void SetMeshName(std::string new_name);
 		/// Find mesh by name.
 		static Mesh * GetMesh(std::string name);
+
+		/// Duplicate all data in tag into new tag with given name.
+		void DuplicateTagData(Tag tag, std::string name);
+		/// Copy all data of input tag into output tag.
+		/// Type of output tag should match input tag.
+		void CopyTagData(Tag input, Tag output);
+		/// Copy integer data from vector into tag using DataLocalID indexing
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<INMOST_DATA_INTEGER_TYPE>& input, TagInteger output, ElementType etype);
+		/// Copy integer data from vector into tag using indexing provided in inds tag for given type of element.
+		void CopyVector2Tag(const std::vector<INMOST_DATA_INTEGER_TYPE>& input, TagInteger output, TagInteger inds, ElementType etype);
+		/// Copy integer data from tag into vector using DataLocalID indexing for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagInteger input, std::vector<INMOST_DATA_INTEGER_TYPE>& output, ElementType etype);
+		/// Copy integer data from tag into vector using indexing in inds for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagInteger input, std::vector<INMOST_DATA_INTEGER_TYPE>& output, TagInteger inds, ElementType etype);
+		/// Copy real data from vector into tag using DataLocalID indexing
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<INMOST_DATA_REAL_TYPE>& input, TagReal output, ElementType etype);
+		/// Copy real data from vector into tag using indexing in tag inds
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<INMOST_DATA_REAL_TYPE>& input, TagReal output, TagInteger inds, ElementType etype);
+		/// Copy real data from tag into vector using DataLocalID indexing for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagReal input, std::vector<INMOST_DATA_REAL_TYPE>& output, ElementType etype);
+		/// Copy real data from tag into vector using indexing in inds tag for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagReal input, std::vector<INMOST_DATA_REAL_TYPE>& output, TagInteger inds, ElementType etype);
+		/// Copy bulk data from vector into tag using DataLocalID indexing
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<INMOST_DATA_BULK_TYPE>& input, TagBulk output, ElementType etype);
+		/// Copy bulk data from vector into tag using indexing in tag inds
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<INMOST_DATA_BULK_TYPE>& input, TagBulk output, TagInteger inds, ElementType etype);
+		/// Copy bulk data from tag into vector using DataLocalID indexing for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagBulk input, std::vector<INMOST_DATA_BULK_TYPE>& output, ElementType etype);
+		/// Copy bulk data from tag into vector using indexing in tag inds for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagBulk input, std::vector<INMOST_DATA_BULK_TYPE>& output, TagInteger inds, ElementType etype);
+#if defined(USE_AUTODIFF)
+		/// Copy variable data from vector into tag using DataLocalID indexing
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<variable>& input, TagVariable output, ElementType etype);
+		/// Copy variable data from vector into tag using indexing in tag inds
+		/// for given type of element.
+		/// \warning Note, DataLocalID indexing may change in case of mesh changes,
+		/// such as mesh elements migration in ExchangeGhost or ExchangeMarked,
+		/// or after mesh modification.
+		/// @see Mesh::DataLocalID
+		void CopyVector2Tag(const std::vector<variable>& input, TagVariable output, TagInteger inds, ElementType etype);
+		/// Copy variable data from tag into vector using DataLocalID indexing for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagVariable input, std::vector<variable>& output, ElementType etype);
+		/// Copy variable data from tag into vector using indexing in tag inds for given type of element. 
+		/// \warning May resize vector to fit the data.
+		void CopyTag2Vector(TagVariable input, std::vector<variable>& output, TagInteger inds, ElementType etype);
+#endif //USE_AUTODIFF
 	};
 	
 	

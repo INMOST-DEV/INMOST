@@ -601,6 +601,7 @@ namespace INMOST
 	void Mesh::LoadPMF(std::string File)
 	{
 		int verbosity = 0;
+		bool dup_gid = false;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
 		{
 			if( file_options[k].first == "VERBOSITY" )
@@ -612,6 +613,8 @@ namespace INMOST
 					verbosity = 1;
 				}
 			}
+			if (file_options[k].first == "PMF_DUP_GID")
+				dup_gid = (file_options[k].second == "1") || (file_options[k].second == "TRUE");
 		}
 		io_converter<INMOST_DATA_INTEGER_TYPE ,INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE    ,INMOST_DATA_REAL_TYPE> uconv;
@@ -1770,8 +1773,12 @@ namespace INMOST
 		//~ PrepareGeometricData(table);
 		RestoreGeometricTags();
 		
-		if( HaveTag("GLOBAL_ID") )
+		if (HaveTag("GLOBAL_ID"))
+		{
 			tag_global_id = GetTag("GLOBAL_ID");
+			if (dup_gid)
+				DuplicateTagData(tag_global_id, "DUP_GLOBAL_ID");
+		}
 		if( HaveTag("TOPOLOGY_ERROR_TAG") )
 			tag_topologyerror = GetTag("TOPOLOGY_ERROR_TAG");
 #if defined(USE_MPI)

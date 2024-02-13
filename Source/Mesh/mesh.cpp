@@ -2665,6 +2665,191 @@ namespace INMOST
 		return ret;
 	}
 
+	void Mesh::DuplicateTagData(Tag data, std::string name)
+	{
+		ElementType define = NONE, sparse = NONE;
+		for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype))
+		{
+			if (data.isDefined(etype)) define |= etype;
+			if (data.isSparse(etype)) sparse |= etype;
+		}
+		Tag output = CreateTag(name, data.GetDataType(), define, sparse, data.GetSize());
+		CopyTagData(data, output);
+	}
+
+	void Mesh::CopyTagData(Tag input, Tag output)
+	{
+		assert(input.GetDataType() == output.GetDataType());
+		assert(input.GetSize() == output.GetSize());
+		for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype))
+		{
+			if (input.isDefined(etype) && output.isDefined(etype))
+			{
+				if (input.isSparse(etype))
+				{
+					for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+						if (it->HaveData(input))
+							TagManager::CopyData(output, MGetLink(it->GetHandle(), output), MGetLink(it->GetHandle(), input));
+						else if (it->HaveData(output)) it->DelData(output);
+				}
+				else
+				{
+					for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+						TagManager::CopyData(output, MGetLink(it->GetHandle(), output), MGetLink(it->GetHandle(), input));
+				}
+			}
+		}
+		if(input.isDefined(MESH) && output.isDefined(MESH))
+			TagManager::CopyData(output, MGetLink(GetHandle(), output), MGetLink(GetHandle(), input));
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_INTEGER_TYPE>& input, TagInteger output, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[it->DataLocalID()];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_INTEGER_TYPE>& input, TagInteger output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[inds[*it]];
+	}
+
+	void Mesh::CopyTag2Vector(TagInteger input, std::vector<INMOST_DATA_INTEGER_TYPE>& output, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, it->DataLocalID());
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[it->DataLocalID()] = input[*it];
+	}
+
+	void Mesh::CopyTag2Vector(TagInteger input, std::vector<INMOST_DATA_INTEGER_TYPE>& output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, inds[*it]);
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[inds[*it]] = input[*it];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_REAL_TYPE>& input, TagReal output, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[it->DataLocalID()];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_REAL_TYPE>& input, TagReal output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[inds[*it]];
+	}
+
+	void Mesh::CopyTag2Vector(TagReal input, std::vector<INMOST_DATA_REAL_TYPE>& output, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, it->DataLocalID());
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[it->DataLocalID()] = input[*it];
+	}
+
+	void Mesh::CopyTag2Vector(TagReal input, std::vector<INMOST_DATA_REAL_TYPE>& output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, inds[*it]);
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[inds[*it]] = input[*it];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_BULK_TYPE>& input, TagBulk output, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[it->DataLocalID()];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<INMOST_DATA_BULK_TYPE>& input, TagBulk output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[inds[*it]];
+	}
+
+	void Mesh::CopyTag2Vector(TagBulk input, std::vector<INMOST_DATA_BULK_TYPE>& output, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, it->DataLocalID());
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[it->DataLocalID()] = input[*it];
+	}
+
+	void Mesh::CopyTag2Vector(TagBulk input, std::vector<INMOST_DATA_BULK_TYPE>& output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, inds[*it]);
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[inds[*it]] = input[*it];
+	}
+
+
+#if defined(USE_AUTODIFF)
+	void Mesh::CopyVector2Tag(const std::vector<variable>& input, TagVariable output, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[it->DataLocalID()];
+	}
+
+	void Mesh::CopyVector2Tag(const std::vector<variable>& input, TagVariable output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[*it] = input[inds[*it]];
+	}
+
+	void Mesh::CopyTag2Vector(TagVariable input, std::vector<variable>& output, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, it->DataLocalID());
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[it->DataLocalID()] = input[*it];
+	}
+
+	void Mesh::CopyTag2Vector(TagVariable input, std::vector<variable>& output, TagInteger inds, ElementType etype)
+	{
+		assert(OneType(etype));
+		INMOST_DATA_INTEGER_TYPE size = 0;
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			size = std::max(size, inds[*it]);
+		output.resize(size);
+		for (Mesh::iteratorElement it = BeginElement(etype); it != EndElement(); ++it)
+			output[inds[*it]] = input[*it];
+	}
+#endif //USE_AUTODIFF
+
 	void Mesh::SetTopologyCheck   (TopologyCheck mask) 
 	{
 		checkset = checkset | mask;
