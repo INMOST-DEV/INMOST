@@ -2182,8 +2182,8 @@ namespace INMOST
 		{
 			
 			ElementArray<Element> rfaces = getAdjElements(FACE);
-			array<int> n(static_cast<array<int>::size_type>(rfaces.size()));
-			array<real> v;
+			std::vector<int> n(rfaces.size());
+			std::vector<real> v;
 			int k = 0;
 			for(ElementArray<Element>::iterator itf = rfaces.begin(); itf != rfaces.end(); itf++)
 			{
@@ -2198,10 +2198,10 @@ namespace INMOST
 			}
 			int j = 0;
 			real x[3] = {0,0,0}, y[3], d, vol = 0, c;
-			for(array<int>::size_type i = 0; i < n.size(); i++)
+			for(size_t i = 0; i < n.size(); i++)
 			{
 				y[0] = y[1] = y[2] = d = 0;
-				for(array<int>::size_type k = 1; k < static_cast<array<int>::size_type>(n[i] - 1); k++)
+				for(int k = 1; k < n[i] - 1; k++)
 				{
 					d += c = det3v(&v[j*3],&v[(j+k)*3],&v[(j+k+1)*3]);
 					y[0] += c * (v[j*3+0] + v[(j+k)*3+0] + v[(j+k+1)*3+0]);
@@ -2215,17 +2215,20 @@ namespace INMOST
 				vol += orient*d;
 				j += n[i];
 			}
-			x[0] /= 4.0 * vol;
-			x[1] /= 4.0 * vol;
-			x[2] /= 4.0 * vol;
+			if (vol)
+			{
+				x[0] /= 4.0 * vol;
+				x[1] /= 4.0 * vol;
+				x[2] /= 4.0 * vol;
+			}
 			vol /= 6;
 			j = 0;
 			vol = 0;
 			real tvol, tval, val = 0;
 			real vv0[3], vv1[3], vv2[3], prod[3];
-			for(array<int>::size_type i = 0; i < n.size(); i++)
+			for(size_t i = 0; i < n.size(); i++)
 			{
-				for(array<int>::size_type k = 1; k < static_cast<array<int>::size_type>(n[i] - 1); k++)
+				for(int k = 1; k < n[i] - 1; k++)
 				{
 					vec_diff(&v[j*3],x,vv0,3);
 					vec_diff(&v[(j+k)*3],x,vv1,3);
