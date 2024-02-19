@@ -2592,7 +2592,7 @@ namespace INMOST
 		/// @return Reference to element.
 		__INLINE Var& get(enumerator i, enumerator j) 
 		{
-			return j < A->Cols() ? (*A)(i, j) : (*B)(i, j - A->Cols());
+			return j < A->Cols() ? A->get(i, j) : B->get(i, j - A->Cols());
 		}
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
@@ -2672,7 +2672,7 @@ namespace INMOST
 		__INLINE Var & get(enumerator i, enumerator j) 
 		{ 
 			enumerator p = i * m + j;
-			return get(p / A->Cols(), p % A->Cols());
+			return A->get(p / A->Cols(), p % A->Cols());
 			//return A->data()[i * m + j]; 
 		}
 		/// Access element of the matrix by row and column indices
