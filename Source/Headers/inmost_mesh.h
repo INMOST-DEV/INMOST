@@ -1374,7 +1374,7 @@ namespace INMOST
 		Tag                                 tag_sendto;
 		Tag                                 tag_processors;
 		/// Add a data tag that follows normal orientation.
-		void                                AddOrientedTag(Tag t) { assert(t.isValid() && t.isDefined(FACE)); orient_tags.push_back(t); }
+		void                                AddOrientedTag(Tag t);
 		/// Remove a data tag that follows normal orientation.
 		void                                RemOrientedTag(Tag t);
 		/// Swap sign for oriented data
@@ -3422,6 +3422,12 @@ namespace INMOST
 		void                              CheckProcessors    ();
 		/// Checks that there are no invalid links in sets
 		void                              CheckSetLinks      (std::string file, int line);
+		/// Prepare data to check for face data orientaiton error
+		void                              PrepareCheckOreintData();
+		/// Remove data for checking for face data orientaiton error
+		void                              ReleaseCheckOreintData();
+		/// Perform data orientation check
+		void                              CheckOrientData(std::string file, int line);
 		/// Copy all the data from b to a (a = b).
 		/// Except for protected data.
 		/// Non-private markers are copied.

@@ -812,14 +812,7 @@ namespace INMOST
 			}
 		}
 		if ((FACE & type_mask) && tag.isDefined(FACE))
-		{
-			for(std::vector<Tag>::iterator it = orient_tags.begin(); it != orient_tags.end(); ++it)
-				if (*it == tag)
-				{
-					orient_tags.erase(it);
-					break;
-				}
-		}
+			RemOrientedTag(tag);
 #if defined(USE_OMP)
 #pragma omp critical (change_tags)
 #endif
@@ -882,6 +875,14 @@ namespace INMOST
 			for (var_array::size_type j = 0; j < v.size(); ++j) v[j] *= -1.0;
 		}
 #endif
+	}
+
+	void Mesh::AddOrientedTag(Tag t)
+	{ 
+		assert(t.isValid() && t.isDefined(FACE)); 
+		for (tag_set::iterator it = orient_tags.begin(); it != orient_tags.end(); ++it)
+			if (t == *it) return;
+		orient_tags.push_back(t); 
 	}
 
 	void Mesh::RemOrientedTag(Tag t)
