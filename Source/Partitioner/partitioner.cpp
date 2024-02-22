@@ -1623,7 +1623,7 @@ namespace INMOST
 								break;
 							}
 						}
-						std::cout << m->GetProcessorRank() << " cluster " << i << " npoints " << cluster_npoints[i]
+						if(verbose) std::cout << m->GetProcessorRank() << " cluster " << i << " npoints " << cluster_npoints[i]
 							<< " center " << cluster_center[i * 3 + 0] << "," << cluster_center[i * 3 + 1] << "," << cluster_center[i * 3 + 2] << " random point " << std::endl;
 					}
 					else
@@ -1632,7 +1632,7 @@ namespace INMOST
 						cluster_center[i * 3 + 1] = (pmax[1] - pmin[1]) * rand() / RAND_MAX + pmin[1];
 						cluster_center[i * 3 + 2] = (pmax[2] - pmin[2]) * rand() / RAND_MAX + pmin[2];
 						cluster_npoints[i] = 1;
-						std::cout << m->GetProcessorRank() << " cluster " << i << " npoints " << cluster_npoints[i]
+						if (verbose) std::cout << m->GetProcessorRank() << " cluster " << i << " npoints " << cluster_npoints[i]
 							<< " center " << cluster_center[i * 3 + 0] << "," << cluster_center[i * 3 + 1] << "," << cluster_center[i * 3 + 2] << " random center " << std::endl;
 					}
 				}

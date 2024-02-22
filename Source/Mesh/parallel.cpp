@@ -5326,6 +5326,7 @@ namespace INMOST
 		MarkerType orient = 0;
 		integer remote_dim;
 		char orient_flag = false;
+		tag_recv.clear();
 		unpack_data(buffer, buffer_position, remote_dim, GetCommunicator());
 		unpack_data(buffer,buffer_position,orient_flag, GetCommunicator());
 		if (remote_dim != dim) //change number of dimensions
@@ -5671,11 +5672,11 @@ namespace INMOST
 		
 		ENTER_BLOCK();
 		time = Timer();
+		std::vector<Storage::real> normals; //this will be needed after unpacking cells
 		//unpack faces
 		{
 			ElementArray<Edge> f_edges(this);
 			//~ shift = 0;
-			std::vector<Storage::real> normals;
 			std::vector<INMOST_DATA_ENUM_TYPE> low_conn_size;
 			std::vector<Storage::integer> low_conn_nums;
 			std::vector<char> flags;
@@ -5777,6 +5778,8 @@ namespace INMOST
 				//and there are orientable tags,
 				//then compare local and remote normals and
 				//later change the sign accordingly
+				// (this was moved after unpacking cells)
+				/*
 				if (orient && GetMarker(new_face,unpack_tags_mrk))
 				{
 					Storage::real lnrm[3], * rnrm = &normals[ncnt * 3];
@@ -5785,6 +5788,7 @@ namespace INMOST
 						SetMarker(new_face, orient);
 					ncnt++;
 				}
+				*/
 
 				// if( !Face(this,new_face).CheckNormalOrientation() )
 				// {
@@ -5936,6 +5940,28 @@ namespace INMOST
 		REPORT_STR("unpack cells");
 		REPORT_VAL("time", time);
 		EXIT_BLOCK();
+		/////////////////////////////////////////////////////////////
+		//Orientation data for faces:
+		//if we unpack data for this face,
+		//and there are orientable tags,
+		//then compare local and remote normals and
+		//later change the data sign accordingly
+		if (orient)
+		{
+			size_t ncnt = 0;
+			for (enumerator q = 0; q < selems[2].size(); ++q) 
+				if (GetMarker(selems[2][q], unpack_tags_mrk))
+				{
+					Storage::real lnrm[3], * rnrm = &normals[ncnt * 3];
+					GetGeometricData(selems[2][q], NORMAL, lnrm);
+					if (lnrm[0] * rnrm[0] + lnrm[1] * rnrm[1] + lnrm[2] * rnrm[2] < 0.0)
+						SetMarker(selems[2][q], orient);
+					ncnt++;
+				}
+			//clear memory
+			normals.clear();
+			normals.swap(std::vector<Storage::real>());
+		}
         /////////////////////////////////////////////////////////////
         //unpack esets
 		MarkerType mrk_chld = CreateMarker();
@@ -6215,7 +6241,7 @@ namespace INMOST
 				//UnpackTagData(tag,selems,NODE | EDGE | FACE | CELL | ESET,0, buffer,position,DefaultUnpack);
 				REPORT_VAL("buffer position",buffer_position);
 			}
-			
+
 		}
 		if (orient)
 		{
@@ -6226,9 +6252,10 @@ namespace INMOST
 						for (enumerator q = 0; q < selems[2].size(); ++q)
 							if (GetMarker(selems[2][q], orient))
 							{
-								assert(GetMarker(selems[2][q],unpack_tags_mrk));//it should also have data marker
+								assert(GetMarker(selems[2][q], unpack_tags_mrk));//it should also have data marker	
 								OrientTag(Face(this, selems[2][q]), *it);
 							}
+						break;
 					}
 			RemMarkerArray(&selems[2][0], static_cast<enumerator>(selems[2].size()), orient);
 			ReleaseMarker(orient);
@@ -6599,8 +6626,11 @@ namespace INMOST
 		proc_elements_by_type send_elements;
 		std::vector<int> done;
 
-		if( action == AGhost ) REPORT_STR("Ghosting algorithm")
-		else if( action == AMigrate ) REPORT_STR("Migration algorithm")
+		if (action == AGhost) REPORT_STR("Ghosting algorithm")
+		else if (action == AMigrate) REPORT_STR("Migration algorithm")
+
+		PrepareCheckOreintData();
+		CheckOrientData(__FILE__, __LINE__);
 		
 		ListTags(tag_list);
 		{
@@ -6639,6 +6669,8 @@ namespace INMOST
         //std::cout << mpirank << ": Send size: " << send_elements.size() << std::endl;
 		ENTER_BLOCK();
 		REPORT_STR("Packing elements to send");
+
+		CheckOrientData(__FILE__, __LINE__);
 		
 		ENTER_BLOCK();
 		REPORT_STR("pack elements");
@@ -6670,6 +6702,9 @@ namespace INMOST
 			DeleteTag(pack_position);
 		}
 		EXIT_BLOCK();
+
+		CheckOrientData(__FILE__, __LINE__);
+
 		ENTER_BLOCK();
 		{
 			exch_buffer_type::iterator it = storage.send_buffers.begin();
@@ -6681,6 +6716,8 @@ namespace INMOST
 			}
 		}
 		EXIT_BLOCK();
+
+		CheckOrientData(__FILE__, __LINE__);
 		EXIT_BLOCK();
 
 		int num_wait = (int)storage.send_buffers.size();
@@ -6754,6 +6791,7 @@ namespace INMOST
 				}
 			}
 			*/
+			CheckOrientData(__FILE__, __LINE__);
 			REPORT_STR("Deleting not owned elements");
 			//now delete elements that we have not yet deleted
 			MarkerType del = CreateMarker();
@@ -6798,10 +6836,13 @@ namespace INMOST
 			REPORT_VAL("number of some other",count);
 			REPORT_STR("Done deleting");
 			EXIT_BLOCK();
+
+			CheckOrientData(__FILE__, __LINE__);
 		}
 		send_elements.clear();
 		
 		ENTER_BLOCK();
+		CheckOrientData(__FILE__, __LINE__);
 		REPORT_STR("Unpacking received data");
 		while( !(done = FinishRequests(storage.recv_reqs)).empty() )
 		{
@@ -6830,11 +6871,13 @@ namespace INMOST
 			}
 		}
 		REPORT_STR("Ended recv");
+		CheckOrientData(__FILE__, __LINE__);
 		EXIT_BLOCK();
 				
 		if( action == AGhost ) //second round to inform owner about ghost elements
 		{
 			ENTER_BLOCK();
+			CheckOrientData(__FILE__, __LINE__);
 			REPORT_STR("Second round for ghost exchange");
 			if( !storage.send_reqs.empty() )
 			{
@@ -6842,6 +6885,7 @@ namespace INMOST
 			}
 			//Inform owners about the fact that we have received their elements
 			InformElementsOwners(send_elements,storage);
+			CheckOrientData(__FILE__, __LINE__);
 			EXIT_BLOCK();
 		}
 		
@@ -6881,6 +6925,7 @@ namespace INMOST
 			 */
 			
 			CheckSetLinks(__FILE__,__LINE__);
+			CheckOrientData(__FILE__, __LINE__);
 
 			ENTER_BLOCK();
 			REPORT_STR("Second round for elements migration");
@@ -6951,6 +6996,7 @@ namespace INMOST
 			ReleaseMarker(del);
 			EXIT_BLOCK();
 			CheckSetLinks(__FILE__,__LINE__);
+			CheckOrientData(__FILE__, __LINE__);
 		}
 		
 		CheckProcsSorted(__FILE__,__LINE__);
@@ -6961,6 +7007,7 @@ namespace INMOST
 		CheckOwners(__FILE__, __LINE__);
 		CheckGIDs(__FILE__, __LINE__);
 		CheckCentroids(__FILE__,__LINE__);
+		CheckOrientData(__FILE__, __LINE__);
 
 		if (action == AGhost)
 		{
@@ -6971,6 +7018,7 @@ namespace INMOST
 		CheckOwners(__FILE__, __LINE__);
 		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
+		CheckOrientData(__FILE__, __LINE__);
 		
 		//ComputeSharedProcs();
 		
@@ -6981,7 +7029,7 @@ namespace INMOST
 				REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(storage.send_reqs.size()),&storage.send_reqs[0],MPI_STATUSES_IGNORE));
 			}
 		}
-		
+		ReleaseCheckOreintData();
 #else
 		(void) action;
 #endif
@@ -7129,6 +7177,84 @@ namespace INMOST
 		}
 		EXIT_FUNC();
 #endif //NDEBUG
+	}
+
+	void Mesh::PrepareCheckOreintData()
+	{
+#if !defined(NDEBUG)
+		integer& cnt = TagInteger(CreateTag("CHECK_ORIENT_TAG_NORMAL_CNT", DATA_INTEGER, MESH, MESH, 1))[self()];
+		if (!HaveTag("CHECK_ORIENT_TAG_NORMAL"))
+		{
+			TagRealArray normal = CreateTag("CHECK_ORIENT_TAG_NORMAL", DATA_REAL, FACE, NONE, 4);
+			AddOrientedTag(normal);
+			MarkerType orient = CreateMarker();
+			MarkNormalOrientation(orient);
+			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it)
+			{
+				GetGeometricData(*it, NORMAL, normal[*it].data());
+				normal[*it][3] = it->GetMarker(orient) ? 1.0 : 0.0;
+			}
+			ExchangeOrientedData(normal, FACE);
+			ReleaseMarker(orient, FACE);
+			cnt = 1;
+		}
+		else cnt++;
+#endif //NDEBUG
+	}
+
+	void Mesh::ReleaseCheckOreintData()
+	{
+#if !defined(NDEBUG)
+		if (HaveTag("CHECK_ORIENT_TAG_NORMAL"))
+		{
+			integer & cnt = TagInteger(CreateTag("CHECK_ORIENT_TAG_NORMAL_CNT", DATA_INTEGER, MESH, MESH, 1))[self()];
+			cnt--;
+			if (cnt == 0)
+			{
+				DeleteTag(GetTag("CHECK_ORIENT_TAG_NORMAL"));
+				DeleteTag(GetTag("CHECK_ORIENT_TAG_NORMAL_CNT"));
+			}
+		}
+#endif //NDEBUG
+	}
+
+	void Mesh::CheckOrientData(std::string file, int line)
+	{
+#if !defined(NDEBUG)
+		if (HaveTag("CHECK_ORIENT_TAG_NORMAL"))
+		{
+			TagRealArray normal = GetTag("CHECK_ORIENT_TAG_NORMAL");
+			bool fail = false;
+			for (Mesh::iteratorFace it = BeginFace(); it != EndFace(); ++it)
+			{
+				real nrm[3], * nrm0 = normal[*it].data();
+				GetGeometricData(*it, NORMAL, nrm);
+				if (nrm[0] * nrm0[0] + nrm[1] * nrm0[1] + nrm[2] * nrm0[2] < 0.0)
+				{
+					/*
+					std::cout << file << ":" << line
+						<< " calc " << nrm[0] << " " << nrm[1] << " " << nrm[2] 
+						<< " data " << nrm0[0] << " " << nrm0[1] << " " << nrm0[2] << " mrk " << nrm0[3] << std::endl;
+					REPORT_STR(file << ":" << line 
+						<< " calc " << nrm[0] << " " << nrm[1] << " " << nrm[2]
+						<< " data " << nrm0[0] << " " << nrm0[1] << " " << nrm0[2] << " mrk " << nrm0[3]);
+					*/
+					fail = true;
+				}
+			}
+			if (fail)
+			{
+				std::cout << file << ":" << line << " orientation error!" << std::endl;
+				REPORT_STR(file << ":" << line << " oreintation error!");
+			}
+		}
+		else
+		{
+			std::cout << file << ":" << line << " no data to check orientation" << std::endl;
+			REPORT_STR(file << ":" << line << " no data to check orientation");
+
+		}
+#endif // NDEBUG
 	}
 	
 	void Mesh::CheckSetLinks(std::string file, int line)
@@ -7961,6 +8087,9 @@ namespace INMOST
 		Tag tag_new_processors = CreateTag("TEMPORARY_NEW_PROCESSORS",DATA_INTEGER,ESET | CELL | FACE | EDGE | NODE, NONE);
 		ElementType bridge = Integer(GetHandle(),tag_bridge);
 		Storage::integer layers = Integer(GetHandle(),tag_layers);
+
+		PrepareCheckOreintData();
+		CheckOrientData(__FILE__, __LINE__);
 		
 		ExchangeData(tag_new_owner,CELL,0);
 		
@@ -8312,7 +8441,7 @@ namespace INMOST
 		EXIT_BLOCK();
 
 		
-		
+		CheckOrientData(__FILE__, __LINE__);
 		
 		ENTER_BLOCK();
 		REPORT_STR("Determine local entities to send");
@@ -8355,12 +8484,15 @@ namespace INMOST
 			}
 		}*/
 
+		CheckOrientData(__FILE__, __LINE__);
 		
 		ENTER_BLOCK();
 		REPORT_STR("Migrate elements");
 		ExchangeMarked(AMigrate);
 		EXIT_BLOCK();
 		
+		CheckOrientData(__FILE__, __LINE__);
+
 		ENTER_BLOCK();
 		REPORT_STR("Delete auxilarry tags");
 		DeleteTag(tag_new_owner);
@@ -8373,7 +8505,9 @@ namespace INMOST
 		CheckGIDs(__FILE__, __LINE__);
 		CheckProcessors();
 		CheckCentroids(__FILE__, __LINE__);
+		CheckOrientData(__FILE__, __LINE__);
 
+		ReleaseCheckOreintData();
 		
 		//throw NotImplemented;
 #endif
