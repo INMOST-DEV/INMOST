@@ -57,6 +57,14 @@ namespace INMOST
 	
 	void Mesh::SavePVTU(std::string file)
 	{
+		bool keep_ghost = false;
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); ++k)
+		{
+			if (file_options[k].first == "KEEP_GHOST")
+			{
+				keep_ghost = true;
+			}
+		}
 		int fail = 0;
 		std::string name=file;
 		std::string::size_type pos=name.rfind(".pvtu");
@@ -67,7 +75,7 @@ namespace INMOST
 		
 		std::vector<INMOST_DATA_INTEGER_TYPE> need_faces_all(GetProcessorsNumber(), 0);
 		bool need_faces = false;
-		for (Mesh::iteratorCell jt = BeginCell(); jt != EndCell() && !need_faces; ++jt)
+		for (Mesh::iteratorCell jt = BeginCell(); jt != EndCell() && !need_faces; ++jt) if (keep_ghost || jt->GetStatus() != Element::Ghost)
 			need_faces |= VtkElementType(jt->GetGeometricType()) == 42;
 		if (need_faces) need_faces_all[GetProcessorRank()] = 1;
 		Integrate(&need_faces_all[0], GetProcessorsNumber());
