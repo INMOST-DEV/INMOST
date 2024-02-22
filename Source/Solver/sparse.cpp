@@ -287,7 +287,9 @@ namespace INMOST
 #endif
 
 #define LIST_SIZE 65536
-		RowMerger5::RowMerger5() : list(LIST_SIZE, USHRT_MAX) {}
+#define LIST_UNDEF USHRT_MAX
+//#define LIST_SIZE 32
+		RowMerger5::RowMerger5() : list(LIST_SIZE, LIST_UNDEF) {}
 
 		void RowMerger5::get_row(Sparse::Row& r)
 		{
@@ -348,6 +350,83 @@ namespace INMOST
 						r.GetValue(k) = links[0]->GetValue(k) * coefs[0];
 					}
 					alg = 2;
+				}
+				else if (false) //fixed SPA with fixed window position
+				{
+					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next;
+					INMOST_DATA_ENUM_TYPE size_max = 0, nlists = links.size();
+					INMOST_DATA_ENUM_TYPE ind = 0, ind_last;
+					std::vector< INMOST_DATA_ENUM_TYPE> beg_list, end_list;
+					pos.resize(links.size());
+					std::fill(pos.begin(), pos.end(), 0);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
+					{
+						beg = std::min(links[k]->GetIndex(0), beg);
+						size_max += links[k]->Size();
+					}
+					store.Resize(size_max);
+					while (nlists)
+					{
+						beg = beg - (beg % LIST_SIZE); //shift to fixed position
+						end = beg + LIST_SIZE;
+						beg_list.push_back(beg);
+						end_list.push_back(end);
+						beg_next = ENUMUNDEF;
+						ind_last = ind;
+						//merge within list range
+						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k) if (pos[k] < links[k]->Size())
+						{
+							INMOST_DATA_ENUM_TYPE q = pos[k];
+							while (q < links[k]->Size() && links[k]->GetIndex(q) < end)
+							{
+								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
+								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
+								if (list[i] == LIST_UNDEF)
+								{
+									if (1.0 + v != 1.0)
+									{
+										store.GetIndex(ind) = links[k]->GetIndex(q);
+										store.GetValue(ind) = v;
+										list[i] = ind++;
+									}
+								}
+								else store.GetValue(list[i]) += v;
+								++q;
+							}
+							pos[k] = q;
+							if (pos[k] < links[k]->Size())
+								beg_next = std::min(beg_next, links[k]->GetIndex(pos[k]));
+							else
+							{
+								if (k != nlists - 1)
+								{
+									std::swap(pos[k], pos[nlists - 1]);
+									std::swap(links[k], links[nlists - 1]);
+									std::swap(coefs[k], coefs[nlists - 1]);
+								}
+								pos.pop_back();
+								links.pop_back();
+								coefs.pop_back();
+								--nlists;
+								--k;
+							}
+						}
+						if (beg_next == ENUMUNDEF && nlists)
+							std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
+						//clear list
+						for (INMOST_DATA_ENUM_TYPE q = ind_last; q < ind; ++q)
+							list[store.GetIndex(q) - beg] = LIST_UNDEF;
+						//sort values within range
+						//std::sort(store.Begin() + ind_last, store.Begin() + ind);
+						beg = beg_next;
+					}
+					r.Resize(ind);
+					for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
+					{
+						r.GetIndex(q) = store.GetIndex(q);
+						r.GetValue(q) = store.GetValue(q);
+					}
+					alg = 4;
 				}
 				else if (links.size() == 2)
 				{
@@ -421,7 +500,7 @@ namespace INMOST
 							{
 								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
 								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
-								if (list[i] == USHRT_MAX)
+								if (list[i] == LIST_UNDEF)
 								{
 									if (1.0 + v != 1.0)
 									{
@@ -455,7 +534,7 @@ namespace INMOST
 							std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
 						//clear list
 						for (INMOST_DATA_ENUM_TYPE q = ind_last; q < ind; ++q)
-							list[store.GetIndex(q) - beg] = USHRT_MAX;
+							list[store.GetIndex(q) - beg] = LIST_UNDEF;
 						//sort values within range
 						std::sort(store.Begin() + ind_last, store.Begin() + ind);
 						beg = beg_next;
@@ -466,7 +545,7 @@ namespace INMOST
 						r.GetIndex(q) = store.GetIndex(q);
 						r.GetValue(q) = store.GetValue(q);
 					}
-					alg = 4;
+					alg = 5;
 				}
 				else
 				{
@@ -488,7 +567,7 @@ namespace INMOST
 							{
 								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
 								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
-								if (list[i] == USHRT_MAX)
+								if (list[i] == LIST_UNDEF)
 								{
 									if (1.0 + v != 1.0)
 									{
@@ -502,7 +581,7 @@ namespace INMOST
 						}
 						//clear list
 						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
-							list[store.GetIndex(q) - beg] = USHRT_MAX;
+							list[store.GetIndex(q) - beg] = LIST_UNDEF;
 						r.Resize(ind);
 						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
 						{
@@ -510,7 +589,7 @@ namespace INMOST
 							r.GetValue(q) = store.GetValue(q);
 						}
 						r.Sort();
-						alg = 5;
+						alg = 6;
 					}
 					else
 					{
@@ -617,7 +696,7 @@ namespace INMOST
 								r.GetValue(q) = store.GetValue(q);
 							}
 						}
-						alg = 6;
+						alg = 7;
 					}
 				}
 			}
@@ -1209,6 +1288,19 @@ namespace INMOST
 			return ret;
 		}
 #endif //USE_SOLVER
+
+		bool Row::CheckUnique()
+		{
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size() - 1; ++k)
+				for (INMOST_DATA_ENUM_TYPE l = k + 1; l < Size(); ++l)
+					if (GetIndex(k) == GetIndex(l))
+						return false;
+			//has to be sorted
+			//for (INMOST_DATA_ENUM_TYPE k = 0; k < Size() - 1; ++k)
+			//	if (GetIndex(k) >= GetIndex(k + 1))
+			//		return false;
+			return true;
+		}
 
 		void Row::Unique()
 		{

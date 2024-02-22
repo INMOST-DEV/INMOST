@@ -353,6 +353,7 @@ namespace INMOST
 			/// Sort row
 			__INLINE void           Sort() { std::sort(data.begin(), data.end()); }
 			void                    Unique();
+			bool                    CheckUnique();
 			/// Check whether the row is sorted.
 			bool                    isSorted() const;
 			/// Add up two rows. Performs operation output=alpha*left+beta*right.
