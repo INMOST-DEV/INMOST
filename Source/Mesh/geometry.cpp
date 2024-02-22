@@ -7,7 +7,7 @@ const std::string normal_name = "PROTECTED_GEOM_UTIL_NORMAL";
 const std::string measure_name = "PROTECTED_GEOM_UTIL_MEASURE";
 const std::string centroid_name = "PROTECTED_GEOM_UTIL_CENTROID";
 const std::string barycenter_name = "PROTECTED_GEOM_UTIL_BARYCENTER";
-const bool ornt_inside = false;
+const bool ornt_inside = true;
 
 #if defined(USE_PARALLEL_WRITE_TIME)
 __INLINE std::string NameSlash(std::string input)
@@ -225,7 +225,7 @@ namespace INMOST
 		coef[2] = ((T[5] * T[6] - T[3] * T[8]) * b[0] + (T[0] * T[8] - T[2] * T[6]) * b[1] + (T[2] * T[3] - T[0] * T[5]) * b[2]) / det;
 		coef[3] = ((T[3] * T[7] - T[4] * T[6]) * b[0] + (T[1] * T[6] - T[0] * T[7]) * b[1] + (T[0] * T[4] - T[1] * T[3]) * b[2]) / det;
 		coef[0] = 1.0 - coef[1] - coef[2] - coef[3];
-		sout << coef[0] << " " << coef[1] << " " << coef[2] << " " << coef[3];
+		sout << coef[0] << " " << coef[1] << " " << coef[2] << " " << coef[3] << " det " << det;
 		bool test = coef[0] >= -eps && coef[1] >= -eps && coef[2] >= -eps && coef[3] >= -eps;
 		if (test)
 			sout << " hit!";
@@ -486,18 +486,18 @@ namespace INMOST
 			else return true;
 #else
 			Element::adj_type const& data = mesh->LowConn(GetHandle());
-			Storage::real p1[3], eps = mesh->GetEpsilon();
+			Storage::real p1[3], p2[3], eps = mesh->GetEpsilon();
 			Centroid(p1);
 			for (unsigned k = 0; k < data.size(); k++)
 			{
 				Face f(mesh, data[k]);
+				f.Centroid(p2);
 				ElementArray<Node> nodes = f.getNodes();
-				Storage::real_array p2 = nodes[0].Coords();
-				Storage::real_array p3 = nodes[1].Coords();
-				for (ElementArray<Node>::size_type i = 1; i < nodes.size() - 1; i++)
+				Storage::real_array p3 = nodes.back().Coords();
+				for (ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 				{
-					Storage::real_array p4 = nodes[i + 1].Coords();
-					if (inside_tet(p1, p2.data(), p3.data(), p4.data(), point, eps))
+					Storage::real_array p4 = nodes[i].Coords();
+					if (inside_tet(p1, p2, p3.data(), p4.data(), point, eps))
 						return true;
 					p3.swap(p4);
 				}
@@ -584,7 +584,7 @@ namespace INMOST
 				{
 					v2 = nodes[i].Coords();
 					d += c = det4v(point, v0, v1.data(), v2.data());
-					sout << "tet " << i;
+					sout << "tet " << i << " ";
 					inside_tet_print(x0, v0, v1.data(), v2.data(), point, eps, sout);
 					sout << std::endl;
 					v1.swap(v2);
@@ -618,19 +618,25 @@ namespace INMOST
 			else return true; //hit inside cell
 #else
 			Element::adj_type const& data = mesh->LowConn(GetHandle());
-			Storage::real p1[3], eps = mesh->GetEpsilon();
+			Storage::real p1[3], p2[3], eps = mesh->GetEpsilon();
 			Centroid(p1);
 			for (unsigned k = 0; k < data.size(); k++)
 			{
 				Face f(mesh, data[k]);
+				f.Centroid(p2);
 				ElementArray<Node> nodes = f.getNodes();
-				Storage::real_array p2 = nodes[0].Coords();
-				Storage::real_array p3 = nodes[1].Coords();
-				for (ElementArray<Node>::size_type i = 1; i < nodes.size() - 1; i++)
+				Storage::real_array p3 = nodes.back().Coords();
+				sout << "face " << k << std::endl;
+				for (ElementArray<Node>::size_type i = 0; i < nodes.size(); i++)
 				{
-					Storage::real_array p4 = nodes[i + 1].Coords();
-					if (inside_tet(p1, p2.data(), p3.data(), p4.data(), point, eps))
+					Storage::real_array p4 = nodes[i].Coords();
+					sout << "tet " << i << " ";
+					if (inside_tet_print(p1, p2, p3.data(), p4.data(), point, eps, sout))
+					{
+						sout << " hit! " << std::endl;
 						return true;
+					}
+					else sout << std::endl;
 					p3.swap(p4);
 				}
 			}

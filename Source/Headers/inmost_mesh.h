@@ -3786,7 +3786,7 @@ namespace INMOST
 		Cell SubSearchCell(const Storage::real p[3]) const;
 		Cell SubSearchCellPrint(const Storage::real p[3], std::ostream & sout) const;
 		void clear_children();
-
+	public:
 		inline int ray_bbox(double pos[3], double ray[3], double closest) const;
 		inline int  sphere_bbox(const Storage::real p[3], Storage::real r) const;
 		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;

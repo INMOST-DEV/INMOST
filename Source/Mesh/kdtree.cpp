@@ -568,7 +568,7 @@ namespace INMOST
 		if( fabs(m) < 1.0e-25 )
 			return 0;
 		k = -(d + dotproduct(n,p1))/m;
-		if (k < -1.0e-10 || k > 1.0 + 1.0e-10)
+		if (k < -eps || k > 1.0 + eps)
 			return 0;
 		c[0] = p1[0] + k*ray[0] - tri[2][0];
 		c[1] = p1[1] + k*ray[1] - tri[2][1];
@@ -607,6 +607,7 @@ namespace INMOST
 			ray[2] /= l;
 		}
 		*/
+		sout << "r " << ray[0] << " " << ray[1] << " " << ray[2];
 		a[0] = tri[0][0] - tri[2][0];
 		a[1] = tri[0][1] - tri[2][1];
 		a[2] = tri[0][2] - tri[2][2];
@@ -632,7 +633,7 @@ namespace INMOST
 		}
 		k = -(d + dotproduct(n, p1)) / m;
 		sout << " k " << k;
-		if (k < -1.0e-10 || k > 1.0 + 1.0e-10)
+		if (k < -eps || k > 1.0 + eps)
 		{
 			sout << std::endl;
 			return 0;
@@ -993,7 +994,7 @@ namespace INMOST
 			if (!m->GetPrivateMarker(set[0].e, mrk))
 			{
 				Storage::integer edim = Element::GetGeometricDimension(m->GetGeometricType(set[0].e));
-				PrintElement(Cell(m, set[0].e), sout);
+				PrintElement(Element(m, set[0].e), sout);
 				if (edim == 2)
 				{
 					if (segment_face_print(Element(m, set[0].e), p1, p2, sout))
