@@ -115,7 +115,7 @@ namespace INMOST
 		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return var->Value(e);}
 		multivar_expression Variable(const Storage & e) const {return var->Variable(e);}
 		multivar_expression operator [](const Storage & e) const {return var->Variable(e);}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		
 		template<typename T>
@@ -152,7 +152,7 @@ namespace INMOST
 				return entry->Value(e,comp);
 		}
 		var_expression operator [](const Storage & e) const {return var_expression(entry->Value(e,comp),entry->isValid(e)?entry->Index(e,comp):ENUMUNDEF);}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		bool isUnknown(const Storage & e) const {return entry->isValid(e)?true:false;}
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new dynamic_variable(*this));}
@@ -177,7 +177,7 @@ namespace INMOST
             return multivar_expression(value);
 		}
         const_expression operator [](const Storage & e) const {(void)e; return const_expression(value);}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_variable(*this));}
 	};
@@ -201,7 +201,7 @@ namespace INMOST
             return multivar_expression(*value);
 		}
         const_expression operator [](const Storage & e) const {(void)e; return const_expression(*value);}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new const_link_variable(*this));}
 	};
@@ -227,7 +227,7 @@ namespace INMOST
 		}
 		const_expression operator [](const Storage & e) const {return const_expression(e->RealArray(value_tag)[comp]);}
 		Tag ValueTag() {return value_tag;}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		bool isUnknown(const Storage & e) const {(void)e; return false;}
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new static_variable(*this));}
@@ -276,7 +276,7 @@ namespace INMOST
 			else throw NotImplemented;
 		}
 		Tag VariableTag() {return variable_tag;}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage& e, Sparse::Row& r) const { (*this)[e].GetDerivatives(1.0, r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		bool isUnknown(const Storage & e) const {(void)e; return false;}
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stored_variable(*this));}
@@ -302,11 +302,6 @@ namespace INMOST
 		stencil_expression(const stencil_expression & other) : arg(other.arg), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
-				it->GetJacobian(mult,r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			for(typename container::iterator it = arg.begin(); it != arg.end(); ++it)
 				it->GetJacobian(mult,r);
@@ -365,7 +360,7 @@ namespace INMOST
 			}
 			return stencil_expression<typename A::Var>(tmp);
 		}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new stencil_variable(*this));}
 	};
@@ -394,7 +389,7 @@ namespace INMOST
 			pool.get_op().SetFunctionDerivative(both.second);
 			return unary_pool_expression< function_expression<typename A::Var>, typename A::Var >(pool);
 		}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new table_variable(*this));}
 	};
@@ -434,7 +429,7 @@ namespace INMOST
 			else return ArgB[e];
 		}
 		/// Retrieve first derivatives of variable expression on provided element e, default approach.
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		/// Retrieve first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
@@ -477,7 +472,7 @@ namespace INMOST
 			else return ArgB[e];
 		}
 		/// Retrieve first derivatives of variable expression on provided element e, default approach.
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		/// Retrieve first derivatives of variable expression on provided element e, with supplimentary structure Sparse::RowMerger.
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		/// Make a copy of this class, used to reproduce and store a tree of variable expressions.
@@ -506,7 +501,7 @@ namespace INMOST
 			unary_pool<Expr,typename A::Var> pool(Arg[e]);
 			return unary_pool_expression<Expr, typename A::Var >(pool);
 		}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatves(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_custom_variable(*this));}
 	};
@@ -533,7 +528,7 @@ namespace INMOST
  			unary_pool<Expr,typename A::Var> pool(Left[e],Right);		
  			return unary_pool_expression<Expr, typename A::Var >(pool);		
  		}		
- 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }		
+ 		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }		
  		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }		
  		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new unary_const_custom_variable(*this));}		
  	};
@@ -560,7 +555,7 @@ namespace INMOST
 			binary_pool<Expr,typename A::Var,typename B::Var> pool(Left[e],Right[e]);
 			return binary_pool_expression<Expr, typename A::Var, typename B::Var >(pool);
 		}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new binary_custom_variable(*this));}
 	};
@@ -588,7 +583,7 @@ namespace INMOST
 			ternary_pool<Expr,typename A::Var,typename B::Var, typename C::Var> pool(Cond[e],Left[e],Right[e]);
 			return ternary_pool_expression<Expr, typename A::Var, typename B::Var, typename C::Var>(pool);
 		}
-		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetJacobian(1.0,r); }
+		void GetVariation(const Storage & e, Sparse::Row & r) const { (*this)[e].GetDerivatives(1.0,r); }
 		void GetVariation(const Storage & e, Sparse::RowMerger & r) const { (*this)[e].GetJacobian(1.0,r); }
 		abstract_dynamic_variable * Copy() const {return static_cast<abstract_dynamic_variable *>(new ternary_custom_variable(*this));}
 	};

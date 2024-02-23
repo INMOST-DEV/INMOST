@@ -484,7 +484,7 @@ int main(int argc,char ** argv)
 		};
 		vaMatrix mA = vaMatrixMake(A,2,2);
 		Sparse::Row r;
-		(mA.Det() - sin(x+y)).GetJacobian(1.0, r);
+		(mA.Det() - sin(x+y)).GetDerivatives(1.0, r);
 		err = 0.0;
 		for(int k = 0; k < r.Size(); ++k)
 			err += fabs(r[k]*r[k]);
@@ -499,7 +499,7 @@ int main(int argc,char ** argv)
 		};
 		vaMatrix mA = vaMatrixMake(A,2,2);
 		Sparse::Row r;
-		(  mA.Det() - ( -2*sin(0.5*(x+y))*sin(0.5*(x-y)) )   ).GetJacobian(1.0, r);
+		(  mA.Det() - ( -2*sin(0.5*(x+y))*sin(0.5*(x-y)) )   ).GetDerivatives(1.0, r);
 		err = 0.0;
 		for(int k = 0; k < r.Size(); ++k)
 			err += fabs(r[k]*r[k]);

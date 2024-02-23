@@ -188,6 +188,8 @@ namespace INMOST
 			/// Copy all data from another row.
 			/// @param other Another row.
 			Row(const Row & other) : data(other.data) {}
+			/// Move all data from another row.
+			/// @param other Another row.
 			Row(Row&& other) : data(std::move(other.data)) {}
 			/// Construct a row from array of pairs of indices and values.
 			/// @param pbegin Pointer to the first position in array.
@@ -198,6 +200,8 @@ namespace INMOST
 			/// Copy all data from another row.
 			/// @param other Another row.
 			Row & operator = (Row const & other) { data = other.data; return *this; }
+			/// Move row.
+			/// @param other Another row.
 			Row& operator = (Row && other) { data = std::move(other.data); return *this; }
 			/// Finds and returns value with specified index. Adds a new entry if index was not found.
 			/// \warning
@@ -628,19 +632,15 @@ namespace INMOST
 #endif //defined(USE_SOLVER)
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// This class may be used to sum multiple sparse rows.
-		/// \warning
-		/// In parallel column indices of the matrix may span wider then
-		/// local row indices, to prevent any problem you can safely
-		/// set total size of the matrix as interval of the RowMerger.
 		class RowMerger
 		{
 		private:
 			Sparse::Row leafs; ///< Accumulate results at expression leafs.
 			Sparse::Row store; ///< Storage for intermediate results to avoid overwriting input data.
-			std::vector<INMOST_DATA_ENUM_TYPE> pos; ///< Internal array to track position in each row.
-			std::vector<INMOST_DATA_REAL_TYPE> coefs; ///< Multiplier coefficient for each row
-			std::vector<const Sparse::Row*>    links; ///< Links to merged rows
+			std::vector< std::pair<const Sparse::Row*, INMOST_DATA_REAL_TYPE> >  rows; ///< Links to merged rows
+			// helper structures
 			std::vector< unsigned short > list; ///< Storage for SPA (used only if USE_ORDERED_SPA or USE_UNORDERED_SPA is defined in sparse.cpp)
+			std::vector<INMOST_DATA_ENUM_TYPE> pos; ///< Internal array to track position in each row.
 			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap; ///< Internal array to manage heap of merged rows
 			std::vector<Sparse::Row> merge; ///< Temporary storage for merged rows
 		public:
@@ -669,7 +669,7 @@ namespace INMOST
 			/// @param r A row to be filled.
 			void RetrieveRow(Row & r);
 			/// Check if linked list is empty.
-			__INLINE bool Empty() const { return leafs.Empty() && links.empty(); }
+			__INLINE bool Empty() const { return leafs.Empty() && rows.empty(); }
 			/// Operation of the form c = alpha a + beta b
 			/// \warning
 			/// Linked list must be clear before operation.
