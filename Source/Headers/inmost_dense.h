@@ -1652,8 +1652,8 @@ namespace INMOST
 				space.resize(other.Cols() * other.Rows());
 			n = other.Rows();
 			m = other.Cols();
-			for (enumerator i = 0; i < other.Rows(); ++i)
-				for (enumerator j = 0; j < other.Cols(); ++j)
+			for (enumerator i = 0; i < n; ++i)
+				for (enumerator j = 0; j < m; ++j)
 					assign(get(i, j), other.get(i, j));
 			return *this;
 		}
@@ -1667,8 +1667,8 @@ namespace INMOST
 				space.resize(other.Cols() * other.Rows());
 			n = other.Rows();
 			m = other.Cols();
-			for (enumerator i = 0; i < other.Rows(); ++i)
-				for (enumerator j = 0; j < other.Cols(); ++j)
+			for (enumerator i = 0; i < n; ++i)
+				for (enumerator j = 0; j < m; ++j)
 					assign(get(i, j), other.compute(i, j));
 			return *this;
 		}
@@ -2740,9 +2740,10 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows(), rB.Cols());
-			for (enumerator i = 0; i < pA->Rows(); ++i)
-				for (enumerator j = 0; j < pB->Cols(); ++j)
-					M(i, j) = (*pA)(i, i + 1, 0, pA->Cols()).DotProduct((*pB)(0, pB->Rows(), j, j + 1).Transpose());
+			enumerator Arows = pA->Rows(), Acols = pA->Cols(), Bcols = pB->Cols(), Brows = pB->Rows();
+			for (enumerator i = 0; i < Arows; ++i)
+				for (enumerator j = 0; j < Bcols; ++j)
+					M(i, j) = (*pA)(i, i + 1, 0, Acols).DotProduct((*pB)(0, Brows, j, j + 1).Transpose());
 		}
 		MatrixMul(const MatrixMul& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices.
@@ -2852,9 +2853,11 @@ namespace INMOST
 				pB = &(*tmpB);
 			}
 			M.Resize(rA.Rows() * rB.Rows(), rA.Cols() * rB.Cols());
-			for (enumerator i = 0; i < M.Rows(); ++i)
-				for (enumerator j = 0; j < M.Cols(); ++j)
-					M(i, j) = pA->get(i / pB->Rows(), j / pB->Cols()) * pB->get(i % pB->Rows(), j % pB->Cols());
+			enumerator Mrows = M.Rows(), Mcols = M.Cols();
+			enumerator Brows = pB->Rows(), Bcols = pB->Cols();
+			for (enumerator i = 0; i < Mrows; ++i)
+				for (enumerator j = 0; j < Mcols; ++j)
+					M(i, j) = pA->get(i / Brows, j / Bcols) * pB->get(i % Brows, j % Bcols);
 		}
 		KroneckerProduct(const KroneckerProduct& b) : M(b.M) {}
 		/// Access element of the matrix by row and column indices.
@@ -4282,8 +4285,9 @@ namespace INMOST
 	{
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
 		typename Promote<VarA, VarB>::type ret = 0.0;
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
+		unsigned Arows = A.Rows(), Acols = A.Cols();
+		for (unsigned i = 0; i < Arows; ++i)
+			for (unsigned j = 0; j < Acols; ++j)
 				ret += A.compute(i, j) * B.compute(i, j);
 		return ret;
 	}
@@ -4296,9 +4300,10 @@ namespace INMOST
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
 		variable ret = 0.0;
 		INMOST_DATA_REAL_TYPE value = 0.0;
+		unsigned Arows = A.Rows(), Acols = A.Cols();
 		m.Clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
+		for (unsigned i = 0; i < Arows; ++i)
+			for (unsigned j = 0; j < Acols; ++j)
 			{
 				value += A.compute(i, j) * B.compute(i, j).GetValue();
 				B.compute(i, j).GetJacobian(A.compute(i, j), m);
@@ -4307,96 +4312,6 @@ namespace INMOST
 		m.RetrieveRow(ret.GetRow());
 		return ret;
 	}
-
-	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger5& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetJacobian(A.compute(i, j), m);
-			}
-		ret.SetValue(value);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
-	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetInterval(beg, end);
-			}
-		ret.SetValue(value);
-		if (end > beg)
-		{
-			m.set_bitset(beg, end);
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetIndices(m.bitset, m.inds);
-			m.set_vals();
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-					B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
-			m.get_row(ret.GetRow());
-		}
-		return ret;
-	}
-
-	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetIndices(m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.set_vals();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-				B.compute(i, j).GetValues(A.compute(i, j), m.inds, m.vals);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
-	template<typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger4& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j) * B.compute(i, j).GetValue();
-				B.compute(i, j).GetPairs(A.compute(i, j), m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
 
 	template<typename RetA, typename RetB>
 	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger & m)
@@ -4404,9 +4319,10 @@ namespace INMOST
 		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
 		variable ret = 0.0;
 		INMOST_DATA_REAL_TYPE value = 0.0;
+		unsigned Arows = A.Rows(), Acols = A.Cols();
 		m.Clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
+		for (unsigned i = 0; i < Arows; ++i)
+			for (unsigned j = 0; j < Acols; ++j)
 			{
 				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
 				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
@@ -4416,107 +4332,7 @@ namespace INMOST
 		m.RetrieveRow(ret.GetRow());
 		return ret;
 	}
-
-	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger5& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetJacobian(B.compute(i, j).GetValue(), m);
-				B.compute(i, j).GetJacobian(A.compute(i, j).GetValue(), m);
-			}
-		ret.SetValue(value);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
 	
-	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger2 & m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-		m.clear();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetInterval(beg, end);
-				B.compute(i, j).GetInterval(beg, end);
-			}
-		ret.SetValue(value);
-		if (end > beg)
-		{
-			m.set_bitset(beg, end);
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-				{
-					A.compute(i, j).GetIndices(m.bitset, m.inds);
-					B.compute(i, j).GetIndices(m.bitset, m.inds);
-				}
-			m.set_vals();
-			for (unsigned i = 0; i < A.Rows(); ++i)
-				for (unsigned j = 0; j < A.Cols(); ++j)
-				{
-					A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
-					B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
-				}
-			m.get_row(ret.GetRow());
-		}
-		return ret;
-	}
-
-	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger3& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetIndices(m.inds, m.temp);
-				B.compute(i, j).GetIndices(m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.set_vals();
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				A.compute(i, j).GetValues(B.compute(i, j).GetValue(), m.inds, m.vals);
-				B.compute(i, j).GetValues(A.compute(i, j).GetValue(), m.inds, m.vals);
-			}
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
-	template<typename RetA, typename RetB>
-	__INLINE variable DotProduct(const AbstractMatrixReadOnly<variable, RetA>& A, const AbstractMatrixReadOnly<variable, RetB>& B, Sparse::RowMerger4& m)
-	{
-		assert(A.Cols() == B.Cols() && A.Rows() == B.Rows());
-		variable ret = 0.0;
-		INMOST_DATA_REAL_TYPE value = 0.0;
-		for (unsigned i = 0; i < A.Rows(); ++i)
-			for (unsigned j = 0; j < A.Cols(); ++j)
-			{
-				value += A.compute(i, j).GetValue() * B.compute(i, j).GetValue();
-				A.compute(i, j).GetPairs(B.compute(i, j).GetValue(), m.inds, m.temp);
-				B.compute(i, j).GetPairs(A.compute(i, j).GetValue(), m.inds, m.temp);
-			}
-		ret.SetValue(value);
-		m.get_row(ret.GetRow());
-		return ret;
-	}
-
 
 	template<typename RetB>
 	__INLINE variable DotProduct(const AbstractMatrixReadOnly<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE>& A, const AbstractMatrixReadOnly<variable, RetB>& B)
@@ -4535,8 +4351,6 @@ namespace INMOST
 	{
 		return DotProduct(A, B, AbstractMatrixBase::GetMerger());
 	}
-
-
 
 
 	/// shortcut for matrix of variables with single unit entry of first order derivative.

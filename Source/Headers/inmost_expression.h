@@ -7,18 +7,9 @@
 
 //TODO:
 // 1. Incorporate tables
-// 2. (ok, test) implement condition
-// 3. (ok, test) implement stencil
-// 4. (???) copying of basic_dynamic_variable
-// 5. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
-// 6. floor, ceil, atan, acos, asin, max, min functions
-// 7. choice of directional derivatives at discontinuities for abs, pow, max, min (see ADOL-C)
-// 8. replace stencil with foreach for provided iterators
-// 9. enclose in namespace
-//10. CheckCurrentAutomatizator -> CheckCurrentRowMerger
-//10.0 structure/service to handle multiple RowMerger objects in openmp environment
-//10.1 user should be able to provide RowMerger when Automatizator is not compiled
-//10.2 Automatizator may provide internal structure for RowMerger
+// 2. Consider optimization by checking zero variation multipliers, check that assembly do not degrade.
+// 3. floor, ceil, atan, acos, asin, max, min functions
+// 4. choice of directional derivatives at discontinuities for abs, pow, max, min (see ADOL-C)
 
 
 #ifdef _MSC_VER
@@ -34,7 +25,7 @@ namespace INMOST
 	class basic_expression
 	{
 	public:
-		typedef Sparse::RowMerger5 merger_type;
+		typedef Sparse::RowMerger merger_type;
 		static merger_type& GetMerger() { return *merger; }
 	protected:
 		static thread_private<merger_type> merger;
@@ -42,33 +33,29 @@ namespace INMOST
 		basic_expression() {}
 		virtual INMOST_DATA_REAL_TYPE GetValue() const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const = 0;
-		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const = 0;
 		virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const = 0;
 		virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const = 0;
-		virtual INMOST_DATA_ENUM_TYPE GetCount() const = 0;
-		virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const = 0;
-		virtual void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const = 0;
-		virtual void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const = 0;
-		virtual void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const = 0;
-		virtual void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const = 0;
-		virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const = 0;
-		virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const = 0;
 		virtual ~basic_expression() {}
 	};
 
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger2& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger3& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger3& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger4& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger4& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger5& merger);
-	void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger5& merger);
+	__INLINE static void UseMerger(INMOST_DATA_REAL_TYPE coefa, const Sparse::Row& r, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger& merger)
+	{
+		merger.Clear();
+		merger.AddRow(coefb, entries);
+		merger.AddRow(coefa, r);
+		merger.RetrieveRow(entries);
+	}
 
-	
+	__INLINE static void UseMerger(INMOST_DATA_REAL_TYPE coefa, const basic_expression& expr, INMOST_DATA_REAL_TYPE coefb, Sparse::Row& entries, Sparse::RowMerger& merger)
+	{
+		merger.Clear();
+		merger.AddRow(coefb, entries);
+		expr.GetJacobian(coefa, merger);
+		merger.RetrieveRow(entries);
+	}
+
+
 	template<class Derived>
 	class shell_expression : virtual public basic_expression
 	{
@@ -76,18 +63,9 @@ namespace INMOST
 		shell_expression() {}
 		__INLINE virtual INMOST_DATA_REAL_TYPE GetValue() const {return static_cast<const Derived *>(this)->GetValue(); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
-		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { if (mult) return static_cast<const Derived*>(this)->GetJacobian(mult, r); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const { if( mult ) return static_cast<const Derived *>(this)->GetJacobian(mult,r); }
 		__INLINE virtual void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { if (mult) return static_cast<const Derived*>(this)->GetJacobian(mult, r); }
 		__INLINE virtual void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {return static_cast<const Derived *>(this)->GetHessian(multJ,J,multH,H); }
-		__INLINE virtual INMOST_DATA_ENUM_TYPE GetCount() const { return static_cast<const Derived*>(this)->GetCount(); }
-		__INLINE virtual void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { return static_cast<const Derived*>(this)->GetInterval(beg, end); }
-		__INLINE virtual void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { static_cast<const Derived*>(this)->GetIndices(bitset, inds); }
-		__INLINE virtual void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { static_cast<const Derived*>(this)->GetIndices(indset); }
-		__INLINE virtual void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { static_cast<const Derived*>(this)->GetIndices(inds, temp); }
-		__INLINE virtual void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { static_cast<const Derived*>(this)->GetPairs(coef, inds, temp); }
-		__INLINE virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { static_cast<const Derived*>(this)->GetValues(coef, inds, vals); }
-		__INLINE virtual void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { static_cast<const Derived*>(this)->GetValues(coef, inds, vals); }
 		operator Derived & () {return *static_cast<Derived *>(this);}
 		operator const Derived & () const {return *static_cast<const Derived *>(this);}
 		~shell_expression() {}
@@ -102,18 +80,9 @@ namespace INMOST
 		const_expression(INMOST_DATA_REAL_TYPE pvalue) : value(pvalue) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {(void)mult; (void)r;}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { (void)mult; (void)r; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {(void)mult; (void)r;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { (void)mult; (void)r; }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {(void)multJ; (void)J; (void)multH; (void)H;}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { return; }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { return; }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { return; }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { return; }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { return; }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { return;  }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { return; }
 		__INLINE const_expression & operator =(const_expression const & other)
 		{
 			value = other.value;
@@ -134,68 +103,10 @@ namespace INMOST
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE INMOST_DATA_ENUM_TYPE GetIndex() const { return index; }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { if (mult && index != ENUMUNDEF) r.add_value(index, mult); }
+		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const {if( mult && index != ENUMUNDEF ) r.AddValue(mult,index);}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const {if( mult && index != ENUMUNDEF ) r[index] += mult;}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { if (mult && index != ENUMUNDEF) r[index] += mult; }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const {if( index != ENUMUNDEF ) J.Push(index,multJ);  (void)multH; (void)H;}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return index == ENUMUNDEF ? 0 : 1; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (index != ENUMUNDEF)
-			{
-				beg = std::min(beg, index);
-				end = std::max(end, index + 1);
-			}
-		}
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (index != ENUMUNDEF)
-			{
-				INMOST_DATA_ENUM_TYPE sind = index - inds[0];
-				if (!bitset[sind])
-				{
-					bitset[sind] = true;
-					inds.push_back(index);
-				}
-			}
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (index != ENUMUNDEF)
-				indset.insert(index);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (index != ENUMUNDEF)
-			{
-				std::vector<INMOST_DATA_ENUM_TYPE>::iterator it = std::lower_bound(inds.begin(), inds.end(), index);
-				if (it == inds.end() || *it != index) 
-					inds.insert(it, index);
-			}
-		}
-		struct CompareIndex
-		{
-			bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) {	return left.first < right; }
-		};
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if (index != ENUMUNDEF)
-			{
-				Sparse::Row::iterator it = std::lower_bound(inds.Begin(), inds.End(), index, CompareIndex());
-				if (it == inds.End() || it->first != index)
-					inds.Insert(it, index, coef);
-				else it->second += coef;
-			}
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (index != ENUMUNDEF) vals[std::lower_bound(inds.begin(), inds.end(), index) - inds.begin()] += coef;
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (index != ENUMUNDEF) vals[std::distance(inds.find(index),inds.begin())] += coef;
-		}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE i) const {return index == i? 1.0 : 0.0;}
 		__INLINE var_expression & operator =(var_expression const & other)
 		{
@@ -252,12 +163,6 @@ namespace INMOST
 		{
 			r.AddRow(mult, entries);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			r.add_row(&entries, mult);
-			//for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-			//	r.add_value(it->first, mult * it->second);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			UseMerger(mult, entries, 1.0, r, *merger);
@@ -274,32 +179,6 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H.Clear();
             (void)multH;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries.Size(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { entries.GetInterval(beg, end); }
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			entries.GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			entries.GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			entries.GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			entries.GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			entries.GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			entries.GetValues(coef, inds, vals);
 		}
 		__INLINE multivar_expression & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
@@ -319,21 +198,6 @@ namespace INMOST
 			entries = other.entries;
 			return *this;
 		}
-		/*
-		__INLINE multivar_expression & operator = (basic_expression const & expr)
-		{
-			value = expr.GetValue();
-			if( CheckCurrentAutomatizator() )
-				FromBasicExpression(entries,expr);
-			else
-			{
-				Sparse::Row tmp;
-				expr.GetJacobian(1.0,tmp);
-				entries.Swap(tmp);
-			}
-			return *this;
-		}
-		*/
 		__INLINE Sparse::Row & GetRow() {return entries;}
 		__INLINE const Sparse::Row & GetRow() const {return entries;}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const {return GetRow().get_safe(index);}
@@ -495,12 +359,7 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const
 		{
 			for (INMOST_DATA_ENUM_TYPE k = 0; k < nentries; ++k)
-				r[k] += entries[k] * mult;
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < nentries; ++k)
-				r.add_value(k, entries[k] * mult);
+				r.AddValue(entries[k] * mult, k);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const
 		{
@@ -516,7 +375,6 @@ namespace INMOST
 		{
 			throw NotImplemented;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return nentries; }
 		__INLINE multivar_dense_expression& operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
 			value = pvalue;
@@ -680,13 +538,7 @@ namespace INMOST
 		__INLINE void SetValue(INMOST_DATA_REAL_TYPE val) { value = val; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
-			r.AddRow(mult,entries);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			r.add_row(&entries, mult);
-			//for (Sparse::Row::const_iterator it = entries.Begin(); it != entries.End(); ++it)
-			//	r.add_value(it->first, it->second * mult);
+			r.AddRow(mult, entries);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -704,32 +556,6 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second *= multJ;
 			H = hessian_entries;
 			for(Sparse::HessianRow::iterator it = H.Begin(); it != H.End(); ++it) it->second *= multH;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries.Size(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { entries.GetInterval(beg, end); }
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			entries.GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			entries.GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			entries.GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			entries.GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			entries.GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			entries.GetValues(coef, inds, vals);
 		}
 		__INLINE multivar_expression GetVariable(INMOST_DATA_ENUM_TYPE index)
 		{
@@ -923,15 +749,6 @@ namespace INMOST
 			if( entries )
 				r.AddRow(mult,*entries);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			if (entries)
-			{
-				r.add_row(entries, mult);
-				//for (Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
-				//	r.add_value(it->first, it->second * mult);
-			}
-		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -956,70 +773,24 @@ namespace INMOST
 			}
 			(void)multH;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries ? entries->Size() : 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (entries) 
-				entries->GetInterval(beg, end);
-		}
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (entries)
-				entries->GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (entries)
-				entries->GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (entries)
-				entries->GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if(entries)
-				entries->GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (entries)
-				entries->GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (entries)
-				entries->GetValues(coef, inds, vals);
-		}
 		multivar_expression_reference & operator = (INMOST_DATA_REAL_TYPE pvalue)
 		{
 			value = pvalue;
 			entries->Clear();
 			return *this;
 		}
-	
 		__INLINE multivar_expression_reference & operator = (basic_expression const & expr)
 		{
 			value = expr.GetValue();
 			if (entries) UseMerger(1.0, expr, 0.0, *entries, *merger);
 			return *this;
 		}
-		
 		__INLINE multivar_expression_reference & operator = (multivar_expression_reference const & other)
 		{
 			value = other.GetValue();
 			*entries = other.GetRow();
 			return *this;
 		}
-		/*
-		__INLINE multivar_expression_reference & operator = (multivar_expression const & other)
-		{
-			value = other.GetValue();
-			*entries = other.GetRow();
-			return *this;
-		}
-		*/
 		__INLINE Sparse::Row & GetRow() {return *entries;}
 		__INLINE const Sparse::Row & GetRow() const {return *entries;}
 		__INLINE INMOST_DATA_REAL_TYPE GetDerivative(INMOST_DATA_ENUM_TYPE index) const {return GetRow().get_safe(index);}
@@ -1110,33 +881,6 @@ namespace INMOST
 			value = other.value;
 			return *this;
 		}
-		/*
-		__INLINE value_reference& operator = (basic_expression const& expr)
-		{
-			value = expr.GetValue();
-			return *this;
-		}
-		__INLINE value_reference& operator +=(basic_expression const& expr)
-		{
-			value += expr.GetValue();
-			return *this;
-		}
-		__INLINE value_reference& operator -=(basic_expression const& expr)
-		{
-			value -= expr.GetValue();
-			return *this;
-		}
-		__INLINE value_reference& operator *=(basic_expression const& expr)
-		{
-			value *= expr.GetValue();
-			return *this;
-		}
-		__INLINE value_reference& operator /=(basic_expression const& expr)
-		{
-			value /= expr.GetValue();
-			return *this;
-		}
-		*/
 		__INLINE value_reference& operator +=(INMOST_DATA_REAL_TYPE right)
 		{
 			value += right;
@@ -1196,12 +940,6 @@ namespace INMOST
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
 		{
 			r.AddRow(mult,*entries);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			r.add_row(entries, mult);
-			//for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
-			//	r.add_value(it->first, it->second * mult);
 		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
@@ -1389,42 +1127,6 @@ namespace INMOST
 				if( __isinf__(it->second) ) return true;
 			return false;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return entries ? entries->Size() : 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (entries)
-				entries->GetInterval(beg, end);
-		}
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (entries)
-				entries->GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (entries)
-				entries->GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (entries)
-				entries->GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if (entries)
-				entries->GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (entries)
-				entries->GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (entries)
-				entries->GetValues(coef, inds, vals);
-		}
 	};
 	
 
@@ -1445,10 +1147,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult, r);
-		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const
 		{
@@ -1461,35 +1159,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
 		{
 			arg.GetHessian(multJ, J, multH, H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			arg.GetInterval(beg, end);
-		}
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			arg.GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			arg.GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			arg.GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			arg.GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef, inds, vals);
 		}
 	};
 
@@ -1510,10 +1179,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult, r);
-		}
 		/// Retrieve derivatives with multiplier into Sparse::Row structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const
 		{
@@ -1526,35 +1191,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
 		{
 			arg.GetHessian(multJ, J, multH, H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			arg.GetInterval(beg, end);
-		}
-		void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			arg.GetIndices(bitset, inds);
-		}
-		void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			arg.GetIndices(indset);
-		}
-		void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			arg.GetIndices(inds, temp);
-		}
-		void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			arg.GetPairs(coef, inds, temp);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef, inds, vals);
-		}
-		void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef, inds, vals);
 		}
 	};
 	
@@ -1575,10 +1211,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -1591,14 +1223,6 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ*dmult,J,multH*dmult,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp);}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A>
@@ -1618,10 +1242,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -1634,14 +1254,6 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ * dmult, J, multH * dmult, H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	
@@ -1663,10 +1275,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -1679,14 +1287,6 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ*dmult,J,multH*dmult,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A>
@@ -1706,10 +1306,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult, r);
@@ -1722,14 +1318,6 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ,J,multH,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
 	};
 	
 	template<class A>
@@ -1749,10 +1337,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(-mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(-mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(-mult, r);
@@ -1765,14 +1349,6 @@ namespace INMOST
 		{
 			arg.GetHessian(-multJ,J,-multH,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(-coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
 	};
 	
 	/// (c/x)' = -c dx / (x*x)
@@ -1797,10 +1373,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(-mult * value * reciprocial_val, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(-mult * value * reciprocial_val, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(-mult * value * reciprocial_val, r);
@@ -1818,14 +1390,6 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(2*value*reciprocial_val*reciprocial_val*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(inds); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(-coef * value * reciprocial_val, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef * value * reciprocial_val, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef * value * reciprocial_val, inds, vals); }
 	};
 	
 	template<class A>
@@ -1842,10 +1406,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(-mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(-mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(-mult, r);
@@ -1858,14 +1418,6 @@ namespace INMOST
 		{
 			arg.GetHessian(-multJ,J,-multH,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(-coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(-coef, inds, vals); }
 	};
 	
 	template<class A>
@@ -1882,10 +1434,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult, r);
@@ -1898,14 +1446,6 @@ namespace INMOST
 		{
 			arg.GetHessian(multJ,J,multH,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef, inds, vals); }
 	};
 	
 	template<class A>
@@ -1927,10 +1467,6 @@ namespace INMOST
 		{
 			arg.GetJacobian( (value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian((value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian( (value == 0 ? (mult < 0.0 ? -1 : 1) : 1) * mult * dmult, r);
@@ -1945,14 +1481,6 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE b = (value == 0 ? (multH < 0.0 ? -1 : 1) : 1);
 			arg.GetHessian( a * multJ * dmult,J, b*multH * dmult,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs((value == 0 ? (coef < 0.0 ? -1 : 1) : 1) * coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues((value == 0 ? (coef < 0.0 ? -1 : 1) : 1) * coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues((value == 0 ? (coef < 0.0 ? -1 : 1) : 1) * coef * dmult, inds, vals); }
 	};
 	
 	// ex
@@ -1974,10 +1502,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * value, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * value, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * value, r);
@@ -1995,14 +1519,6 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(coefJ*signJ,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * value, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * value, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * value, inds, vals); }
 	};
 	
 	template<class A>
@@ -2024,10 +1540,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -2045,14 +1557,6 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(-coefJ*signJ*dmult,J,J,1.0,ArgH,H);
 			for(INMOST_DATA_ENUM_TYPE k = 0; k < J.Size(); ++k) J.GetValue(k) *= coefJ*signJ;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	
@@ -2075,10 +1579,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -2097,14 +1597,6 @@ namespace INMOST
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
 			assert(H.isSorted());
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A>
@@ -2126,10 +1618,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -2146,14 +1634,6 @@ namespace INMOST
 			Sparse::HessianRow::MergeJacobianHessian(-value*multH,J,J,dmult*multH,htmp,H);
 			for(Sparse::Row::iterator it = J.Begin(); it != J.End(); ++it) it->second*=dmult*multJ;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A>
@@ -2170,10 +1650,6 @@ namespace INMOST
         sqrt_expression(const sqrt_expression & b, const A & parg) : arg(parg), value(b.value) {}
         __INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; };
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			if (value) arg.GetJacobian(0.5 * mult / value, r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
 		{
 			if (value) arg.GetJacobian(0.5 * mult / value, r);
 		}
@@ -2198,14 +1674,6 @@ namespace INMOST
 			}
 			//arg.GetHessian(0.5*multJ/value,J,-0.25*multH/::pow(value,3),H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return value ? arg.GetCount() : 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { if(value) arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { if(value) arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { if (value) arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { if(value) arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(0.5 * coef / value, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { if (value) arg.GetValues(0.5 * coef / value, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { if (value) arg.GetValues(0.5 * coef / value, inds, vals); }
 	};
 	
 	
@@ -2228,10 +1696,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -2245,14 +1709,6 @@ namespace INMOST
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A>
@@ -2276,10 +1732,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -2293,14 +1745,6 @@ namespace INMOST
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { arg.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& indset) const { arg.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { arg.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { arg.GetPairs(coef * dmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { arg.GetValues(coef * dmult, inds, vals); }
 	};
 	
 	template<class A, class B>
@@ -2333,11 +1777,6 @@ namespace INMOST
 			left.GetJacobian(mult*ldmult,r);
 			right.GetJacobian(mult*rdmult,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * ldmult, r);
-			right.GetJacobian(mult * rdmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult*ldmult,r);
@@ -2352,42 +1791,6 @@ namespace INMOST
 		{
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{ 
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const 
-		{ 
-			left.GetPairs(coef * ldmult, inds, temp);
-			right.GetPairs(coef * rdmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{ 
-			left.GetValues(coef * ldmult, inds, vals); 
-			right.GetValues(coef * rdmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 
@@ -2411,7 +1814,6 @@ namespace INMOST
 			: left(pleft), right(pright), value(other.value), ldmult(other.ldmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {left.GetJacobian(mult * ldmult, r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { left.GetJacobian(mult * ldmult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const {left.GetJacobian(mult * ldmult, r);}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { left.GetJacobian(mult * ldmult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
@@ -2419,14 +1821,6 @@ namespace INMOST
 			(void)multJ, (void)J, (void)multH, (void)H;
 			throw NotImplemented;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { left.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { left.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { left.GetPairs(coef * ldmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
 	};
 	
 	template<class A, class B>
@@ -2458,11 +1852,6 @@ namespace INMOST
 			left.GetJacobian(mult*ldmult,r);
 			right.GetJacobian(mult*rdmult,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * ldmult, r);
-			right.GetJacobian(mult * rdmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult*ldmult,r);
@@ -2477,42 +1866,6 @@ namespace INMOST
 		{
 			(void)multJ,(void)J,(void)multH,(void)H;
 			throw NotImplemented;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const 
-		{ 
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end); 
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * ldmult, inds, temp);
-			right.GetPairs(coef * rdmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 	
@@ -2537,7 +1890,6 @@ namespace INMOST
 			: left(pleft), right(pright), value(other.value), ldmult(other.ldmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {left.GetJacobian(mult * ldmult, r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { left.GetJacobian(mult * ldmult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { left.GetJacobian(mult * ldmult, r);	}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const { left.GetJacobian(mult * ldmult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
@@ -2545,14 +1897,6 @@ namespace INMOST
 			(void)multJ, (void)J, (void)multH, (void)H;
 			throw NotImplemented;
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { left.GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { left.GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { left.GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { left.GetPairs(coef * ldmult, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { left.GetValues(coef * ldmult, inds, vals); }
 	};
 	
 	template<class A, class B>
@@ -2575,11 +1919,6 @@ namespace INMOST
 		{
 			left.GetJacobian(mult*right.GetValue(),r);
 			right.GetJacobian(mult*left.GetValue(),r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * right.GetValue(), r);
-			right.GetJacobian(mult * left.GetValue(), r);
 		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
@@ -2612,42 +1951,6 @@ namespace INMOST
 			//merge sorted
 			Sparse::HessianRow::MergeJacobianHessian(2.0*multH,JL,JR,right.GetValue()*multH,HL,left.GetValue()*multH,HR,H);
 			assert(H.isSorted());
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * right.GetValue(), inds, temp);
-			right.GetPairs(coef * left.GetValue(), inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * right.GetValue(), inds, vals);
-			right.GetValues(coef * left.GetValue(), inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * right.GetValue(), inds, vals);
-			right.GetValues(coef * left.GetValue(), inds, vals);
 		}
 	};
 	
@@ -2683,11 +1986,6 @@ namespace INMOST
 			left.GetJacobian(mult * reciprocal_rval,r);
 			right.GetJacobian(- mult * value * reciprocal_rval,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * reciprocal_rval, r);
-			right.GetJacobian(-mult * value * reciprocal_rval, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult * reciprocal_rval,r);
@@ -2714,60 +2012,6 @@ namespace INMOST
 			//merge sorted
 			Sparse::HessianRow::MergeJacobianHessian(2.0,JL,JR,reciprocal_rval,HL,2*left.GetValue()*multH,HR,H);
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return reciprocal_rval ? left.GetCount() + right.GetCount() : 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetInterval(beg, end);
-				right.GetInterval(beg, end);
-			}
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetIndices(bitset, inds);
-				right.GetIndices(bitset, inds);
-			}
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetIndices(indset);
-				right.GetIndices(indset);
-			}
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetIndices(inds, temp);
-				right.GetIndices(inds, temp);
-			}
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * reciprocal_rval, inds, temp);
-			right.GetPairs(-coef * value * reciprocal_rval, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetValues(coef * reciprocal_rval, inds, vals);
-				right.GetValues(-coef * value * reciprocal_rval, inds, vals);
-			}
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (reciprocal_rval)
-			{
-				left.GetValues(coef * reciprocal_rval, inds, vals);
-				right.GetValues(-coef * value * reciprocal_rval, inds, vals);
-			}
-		}
 	};
 	
 	template<class A, class B>
@@ -2787,11 +2031,6 @@ namespace INMOST
                 : left(pleft), right(pright), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger & r) const
-		{
-			left.GetJacobian(mult, r);
-			right.GetJacobian(mult, r);
-		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
 		{
 			left.GetJacobian(mult, r);
 			right.GetJacobian(mult, r);
@@ -2821,42 +2060,6 @@ namespace INMOST
 			Sparse::HessianRow::MergeSortedRows(multH,HL,multH,HR,H);
 			assert(H.isSorted());
 		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef, inds, temp);
-			right.GetPairs(coef, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef, inds, vals);
-			right.GetValues(coef, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef, inds, vals);
-			right.GetValues(coef, inds, vals);
-		}
 	};
 	
 	template<class A, class B>
@@ -2880,11 +2083,6 @@ namespace INMOST
 			left.GetJacobian(mult,r);
 			right.GetJacobian(-mult,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult, r);
-			right.GetJacobian(-mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult,r);
@@ -2904,42 +2102,6 @@ namespace INMOST
 			right.GetHessian(1,JR,1,HR); //retrieve jacobian row and hessian matrix of the right expression
 			Sparse::Row::MergeSortedRows(multJ,JL,-multJ,JR,J);
 			Sparse::HessianRow::MergeSortedRows(multH,HL,-multH,HR,H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef, inds, temp);
-			right.GetPairs(-coef, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef, inds, vals);
-			right.GetValues(-coef, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef, inds, vals);
-			right.GetValues(-coef, inds, vals);
 		}
 	};
 	
@@ -2978,11 +2140,6 @@ namespace INMOST
 			left.GetJacobian(mult*ldmult,r);
 			right.GetJacobian(mult*rdmult,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * ldmult, r);
-			right.GetJacobian(mult * rdmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult*ldmult,r);
@@ -2996,42 +2153,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			throw NotImplemented;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * ldmult, inds, temp);
-			right.GetPairs(coef * rdmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 	
@@ -3053,38 +2174,11 @@ namespace INMOST
 			:arg(parg), value(other.value), dmult(other.dmult) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {	arg.GetJacobian(mult * dmult, r); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { arg.GetJacobian(mult * dmult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { arg.GetJacobian(mult * dmult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { arg.GetJacobian(mult * dmult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const	
 		{ 
 			throw NotImplemented; 
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const 
-		{ 
-			arg.GetIndices(bitset, inds); 
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const 
-		{ 
-			arg.GetIndices(indset);	
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			arg.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			arg.GetPairs(coef * dmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef * dmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef * dmult, inds, vals);
 		}
 	};
 	
@@ -3115,11 +2209,6 @@ namespace INMOST
 			left.GetJacobian(mult * ldmult, r);
 			right.GetJacobian(mult * rdmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * ldmult, r);
-			right.GetJacobian(mult * rdmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult * ldmult, r);
@@ -3133,42 +2222,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			throw NotImplemented;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount() + right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			left.GetInterval(beg, end);
-			right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * ldmult, inds, temp);
-			right.GetPairs(coef * rdmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 	
@@ -3199,10 +2252,6 @@ namespace INMOST
 		{
 			left.GetJacobian(mult * ldmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			left.GetJacobian(mult * ldmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			left.GetJacobian(mult * ldmult, r);
@@ -3222,32 +2271,6 @@ namespace INMOST
 			//for(Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) it->second *= ldmult*multJ;
 			for (Sparse::Row::iterator it = JL.Begin(); it != JL.End(); ++it) J[it->first] += it->second * ldmult * multJ;
             (void)J;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return left.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { left.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			left.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			left.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			left.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			left.GetPairs(coef * ldmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			left.GetValues(coef * ldmult, inds, vals);
 		}
 	};
 	
@@ -3275,10 +2298,6 @@ namespace INMOST
 		{
 			right.GetJacobian(mult * rdmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			right.GetJacobian(mult * rdmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			right.GetJacobian(mult * rdmult, r);
@@ -3290,32 +2309,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			throw NotImplemented;
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { right.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			right.GetPairs(coef * rdmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			right.GetValues(coef * rdmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			right.GetValues(coef * rdmult, inds, vals);
 		}
 	};
 	
@@ -3346,13 +2339,6 @@ namespace INMOST
 			else
 				right.GetJacobian(mult,r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			if (cond_value >= 0.0)
-				left.GetJacobian(mult, r);
-			else
-				right.GetJacobian(mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			if( cond_value >= 0.0 )
@@ -3373,42 +2359,6 @@ namespace INMOST
 				left.GetHessian(multJ,J,multH,H);
 			else
 				right.GetHessian(multJ,J,multH,H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return cond_value >= 0.0 ? left.GetCount() : right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (cond_value >= 0.0) left.GetInterval(beg, end);
-			else right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (cond_value >= 0.0) left.GetIndices(bitset, inds);
-			else right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (cond_value >= 0.0) left.GetIndices(indset);
-			else right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (cond_value >= 0.0) left.GetIndices(inds, temp);
-			else right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if(cond_value >= 0.0) left.GetPairs(coef, inds, temp);
-			else right.GetPairs(coef, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond_value >= 0.0) left.GetValues(coef, inds, vals);
-			else right.GetValues(coef, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond_value >= 0.0) left.GetValues(coef, inds, vals);
-			else right.GetValues(coef, inds, vals);
 		}
 	};
 	
@@ -3442,13 +2392,6 @@ namespace INMOST
 			else
 				right.GetJacobian(mult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			if (cond)
-				left.GetJacobian(mult, r);
-			else
-				right.GetJacobian(mult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			if (cond)
@@ -3469,47 +2412,6 @@ namespace INMOST
 				left.GetHessian(multJ,J,multH,H);
 			else
 				right.GetHessian(multJ,J,multH,H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return cond ? left.GetCount() : right.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (cond) left.GetInterval(beg, end);
-			else right.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (cond) left.GetIndices(bitset, inds);
-			else right.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (cond) left.GetIndices(indset);
-			else right.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (cond) left.GetIndices(inds, temp);
-			else right.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if (cond) left.GetPairs(coef, inds, temp);
-			else right.GetPairs(coef, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond) left.GetValues(coef, inds, vals);
-			else right.GetValues(coef, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond) left.GetValues(coef, inds, vals);
-			else right.GetValues(coef, inds, vals);
-		}
-		void SetCondition(bool _cond)
-		{
-			cond = _cond;
-			value = cond ? left.GetValue() : right.GetValue();
 		}
 	};
 
@@ -3532,41 +2434,11 @@ namespace INMOST
 			:cond(other.cond), left(pleft), right(other.right), value(other.value) {}
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return value; }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { if (cond) left.GetJacobian(mult, r);}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { if (cond) left.GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { if (cond) left.GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { if (cond) left.GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
 		{
 			if (cond) left.GetHessian(multJ, J, multH, H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return cond ? left.GetCount() : 0; }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const
-		{
-			if (cond) left.GetInterval(beg, end);
-		}
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			if (cond) left.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			if (cond) left.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			if (cond) left.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			if (cond) left.GetPairs(coef, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond) left.GetValues(coef, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			if (cond) left.GetValues(coef, inds, vals);
 		}
 		void SetCondition(bool _cond)
 		{
@@ -3607,10 +2479,6 @@ namespace INMOST
 		{
 			arg.GetJacobian(mult * dmult, r);
 		}
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const
-		{
-			arg.GetJacobian(mult * dmult, r);
-		}
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row & r) const
 		{
 			arg.GetJacobian(mult * dmult, r);
@@ -3622,32 +2490,6 @@ namespace INMOST
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const
 		{
 			arg.GetHessian(multJ * dmult, J, multH * ddmult, H);
-		}
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return arg.GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { arg.GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			arg.GetIndices(bitset, inds);
-		}
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			arg.GetIndices(indset);
-		}
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			arg.GetIndices(inds, temp);
-		}
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			arg.GetPairs(coef * dmult, inds, temp);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef * dmult, inds, vals);
-		}
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			arg.GetValues(coef * dmult, inds, vals);
 		}
 		void SetFunctionValue(INMOST_DATA_REAL_TYPE val) {value = val;}
 		void SetFunctionDerivative(INMOST_DATA_REAL_TYPE val) {dmult = val;}
@@ -3824,18 +2666,9 @@ namespace INMOST
 		unary_pool_expression& operator = (unary_pool_expression const& other) { pool = other.pool; return *this; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { pool.get_op().GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { pool.get_op().GetPairs(coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 
 	template<class A, class ArgA, class ArgB>
@@ -3848,18 +2681,9 @@ namespace INMOST
 		binary_pool_expression& operator = (binary_pool_expression const& other) { pool = other.pool; return *this; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { pool.get_op().GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { pool.get_op().GetPairs(coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 
 	template<class A, class ArgA, class ArgB, class ArgC>
@@ -3872,18 +2696,9 @@ namespace INMOST
 		ternary_pool_expression& operator = (ternary_pool_expression const& other) { pool = other.pool; return *this; }
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return pool.get_op().GetValue(); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const { pool.get_op().GetJacobian(mult, r); }
-		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger5& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::Row& r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE* r) const { pool.get_op().GetJacobian(mult, r); }
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const { pool.get_op().GetHessian(multJ, J, multH, H); }
-		__INLINE INMOST_DATA_ENUM_TYPE GetCount() const { return pool.get_op().GetCount(); }
-		__INLINE void GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const { pool.get_op().GetInterval(beg, end); }
-		__INLINE void GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const { pool.get_op().GetIndices(bitset, inds); }
-		__INLINE void GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const { pool.get_op().GetIndices(indset); }
-		__INLINE void GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const { pool.get_op().GetIndices(inds, temp); }
-		__INLINE void GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const { pool.get_op().GetPairs(coef, inds, temp); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
-		__INLINE void GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const { pool.get_op().GetValues(coef, inds, vals); }
 	};
 
 	
@@ -3906,9 +2721,6 @@ __INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val)
 __INLINE bool check_nans_infs(INMOST::var_expression const & e) {return e.check_nans() || e.check_infs();}
 __INLINE bool check_nans_infs(INMOST::multivar_expression const & e) {return e.check_nans() || e.check_infs();}
 __INLINE bool check_nans_infs(INMOST::multivar_expression_reference const & e) {return e.check_nans() || e.check_infs();}
-__INLINE INMOST_DATA_ENUM_TYPE GetCount(INMOST_DATA_REAL_TYPE val) { (void)val; return 0; }
-__INLINE INMOST_DATA_ENUM_TYPE GetCount(INMOST_DATA_CPLX_TYPE val) { (void)val; return 0; }
-__INLINE INMOST_DATA_ENUM_TYPE GetCount(const INMOST::basic_expression& expr) { return expr.GetCount(); }
 
 
 template<class A, class B, class C> __INLINE   INMOST::condition_expression<A,B,C> condition(INMOST::shell_expression<A> const & control, INMOST::shell_expression<B> const & if_ge_zero, INMOST::shell_expression<C> const & if_lt_zero) { return INMOST::condition_expression<A,B,C>(control,if_ge_zero,if_lt_zero); }
@@ -4081,8 +2893,6 @@ template<class A>          __INLINE                 INMOST::function_expression<
 }
 __INLINE                          INMOST_DATA_REAL_TYPE get_table(INMOST_DATA_REAL_TYPE Arg, const INMOST::keyval_table & Table) {return Table.GetValue(Arg);}
 #else //USE_AUTODIFF
-__INLINE INMOST_DATA_ENUM_TYPE GetCount(INMOST_DATA_REAL_TYPE val) { (void)val; return 0; }
-__INLINE INMOST_DATA_ENUM_TYPE GetCount(INMOST_DATA_CPLX_TYPE val) { (void)val; return 0; }
 __INLINE bool check_nans(INMOST_DATA_REAL_TYPE val) {return val != val;}
 __INLINE bool check_infs(INMOST_DATA_REAL_TYPE val) {return __isinf__(val);}
 __INLINE bool check_nans_infs(INMOST_DATA_REAL_TYPE val) {return check_nans(val) || check_infs(val);}

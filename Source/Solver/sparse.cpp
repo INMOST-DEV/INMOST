@@ -3,8 +3,21 @@
 #include "inmost_dense.h"
 #include <fstream>
 #include <sstream>
-#include "radixsort.h"
 #include <queue>
+
+
+//if both are commented then sparse row sum is computed with merge
+//#define USE_UNORDERED_SPA // use sparse accumulator with unordered result
+//#define USE_ORDERED_SPA //use sparse accumulator with ordered result
+
+#ifndef USE_UNORDERED_SPA
+#define ASSUME_SORTED
+#endif //USE_UNRORDERED_SPA
+
+#define LIST_SIZE 65536 //array size for SPA
+//#define LIST_SIZE 32 //for testing
+#define LIST_UNDEF USHRT_MAX //undefined entry in SPA
+
 
 namespace INMOST
 {
@@ -68,230 +81,30 @@ namespace INMOST
 			unsigned int mask = -((int)(fp >> 31)) | 0x80000000;
 			return fp ^ mask;
 		}
-
-		inline void RowMerger2::radix_sort()
+		
+		
+		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
 		{
-			temp.resize(inds.size());
-			unsigned int i, size = static_cast<unsigned int>(inds.size());
-			const unsigned int kHist = 2048;
-			unsigned int  b0[kHist * 3];
-			unsigned int* b1 = b0 + kHist;
-			unsigned int* b2 = b1 + kHist;
-			memset(b0, 0, sizeof(unsigned int) * kHist * 3);
-			for (i = 0; i < size; i++)
+			if (!r.Empty() && 1.0 + coef != 1.0)
 			{
-				unsigned int fi = flip(inds[i]);
-				++b0[_m0(fi)]; ++b1[_m1(fi)]; ++b2[_m2(fi)];
-			}
-			{
-				unsigned int sum0 = 0, sum1 = 0, sum2 = 0;
-				for (i = 0; i < kHist; i++)
-				{
-					b0[kHist - 1] = b0[i] + sum0; b0[i] = sum0 - 1; sum0 = b0[kHist - 1];
-					b1[kHist - 1] = b1[i] + sum1; b1[i] = sum1 - 1; sum1 = b1[kHist - 1];
-					b2[kHist - 1] = b2[i] + sum2; b2[i] = sum2 - 1; sum2 = b2[kHist - 1];
-				}
-			}
-			for (i = 0; i < size; i++) temp[++b0[_m0(flip(inds[i]))]] = inds[i];
-			for (i = 0; i < size; i++) inds[++b1[_m1(flip(temp[i]))]] = temp[i];
-			for (i = 0; i < size; i++) temp[++b2[_m2(flip(inds[i]))]] = inds[i];
-			for (i = 0; i < size; i++) inds[i] = temp[i];
-		}
-
-		inline void RowMerger2::naive_sort() 
-		{
-			size_t i, j;
-			for (i = 1; i < inds.size(); i++) 
-			{
-				INMOST_DATA_ENUM_TYPE tmp = inds[i];
-				for (j = i; j >= 1 && tmp < inds[j - 1]; j--)
-					inds[j] = inds[j - 1];
-				inds[j] = tmp;
+				for(size_t k = 0; k < links.size(); ++k)
+					if (links[k] == &r)
+					{
+						coefs[k] += coef;
+						return;
+					}
+				links.push_back(&r);
+				coefs.push_back(coef);
 			}
 		}
 
-		void RowMerger2::clear()
-		{
-			//indset.clear();
-			//bitset.clear();
-			bitset[0] = 0;
-			for(size_t k = 1; k < inds.size(); ++k)
-				bitset[inds[k] - inds[0]] = 0;
-			vals.clear();
-			inds.clear();
-		}
-		void RowMerger2::set_vals()
-		{
-			//radix_sort();
-			std::sort(inds.begin(), inds.end());
-			//if (!inds.empty())
-			//	hybrid_inplace_msd_radix_sort(&inds[0], inds.size());
-			//naive_sort();
-			//inds.resize(indset.size());
-			//std::copy(indset.begin(), indset.end(), inds.begin());
-			//if(vals.size() < inds.size())
-			//	vals.resize(inds.size());
-			vals.resize(inds.size(), 0.0);
-			//std::fill(vals.begin(),vals.begin()+inds.size(),0.0);
-		}
-		void RowMerger2::set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
-		{
-			if (end - beg > bitset.size()) 
-				bitset.resize(end - beg, 0);
-			inds.push_back(beg);
-			bitset[0] = 1;
-			//std::fill(bitset.begin(), bitset.begin() + (end - beg), 0);
-		}
-		void RowMerger2::get_row(Sparse::Row& r)
-		{
-			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
-			r.Resize(s);
-			for (INMOST_DATA_ENUM_TYPE i = 0; i < s; ++i)
-			{
-				if (1.0 + vals[i] != 1.0)
-				{
-					r.GetIndex(k) = inds[i];
-					r.GetValue(k) = vals[i];
-					k++;
-				}
-			}
-			r.Resize(k);
-		}
-
-		void RowMerger3::clear()
-		{
-			inds.clear();
-			vals.clear();
-		}
-
-		void RowMerger3::set_vals()
-		{
-			vals.resize(inds.size());
-			std::fill(vals.begin(), vals.end(), 0);
-		}
-
-		/*
-		inline void RowMerger3::merge_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r, std::vector<INMOST_DATA_ENUM_TYPE>& temp)
-		{
-			std::vector<INMOST_DATA_ENUM_TYPE>::iterator first1 = inds.begin(), last1 = inds.begin();
-			Sparse:Row::const_iterator first2 = r.Begin(), last2 = r.End();
-			temp.clear();
-			while(first1 != last1)
-			{
-				if (first2 == last2)
-				{
-					temp.insert(temp.end(), first1, last1);
-					break;
-				}
-					
-				if (first2->first < *first1)
-				{
-					temp.push_back(first2->first);
-					first2++;
-				}
-				else
-				{
-					temp.push_back(*first1);
-					if (!(*first1 < first2->first))
-						++first2;
-					++first1;
-				}
-			}
-			temp.insert(temp.end(), first2, last2);
-			inds.swap(temp);
-		}
-
-		inline void RowMerger3::insert_index(std::vector<INMOST_DATA_ENUM_TYPE>& inds, INMOST_DATA_ENUM_TYPE ind)
-		{
-			std::vector<INMOST_DATA_ENUM_TYPE>::iterator it = std::lower_bound(inds.begin(), inds.end(), ind);
-			if (*it != ind) inds.insert(it, ind);
-		}
-
-		inline void RowMerger3::set_indices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, const Sparse::Row& r)
-		{
-			inds.resize(r.Size());
-			for (unsigned k = 0; k < r.Size(); ++k)
-				inds[k] = r.GetIndex(k);
-		}
-		*/
-
-
-		void RowMerger3::get_row(Sparse::Row& r)
-		{
-			INMOST_DATA_ENUM_TYPE k = 0, s = static_cast<INMOST_DATA_ENUM_TYPE>(inds.size());
-			r.Resize(s);
-			for (INMOST_DATA_ENUM_TYPE i = 0; i < r.Size(); ++i)
-			{
-				if (1.0 + vals[i] != 1.0)
-				{
-					r.GetIndex(k) = inds[i];
-					r.GetValue(k) = vals[i];
-					k++;
-				}
-			}
-			r.Resize(k);
-		}
-
-		void RowMerger4::clear()
-		{
-			inds.Clear();
-		}
-
-		void RowMerger4::get_row(Sparse::Row& r)
-		{
-			r.Swap(inds);
-		}
-		/*
-		void RowMerger5::set_interval(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end)
-		{
-			ind0 = beg;
-			if (pos.size() < end - beg)
-				pos.resize(end - beg, PUNDEF);
-		}
-		*/
-		void RowMerger5::clear()
-		{
-			leafs.Clear();
-			coefs.clear();
-			links.clear();
-			//rows.clear();
-			//rows[&leafs] = 1.0;
-		}
-
-		void RowMerger5::add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef)
-		{
-			if (!r->Empty() && 1.0 + coef != 1.0)
-			{
-				std::vector<const Sparse::Row*>::iterator it = std::find(links.begin(), links.end(), r);
-				if (it == links.end())
-				{
-					links.push_back(r);
-					coefs.push_back(coef);
-				}
-				else coefs[it - links.begin()] += coef;
-			}
-		}
-#if 0
-
-		void RowMerger5::add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
-		{
-			leafs.Push(ind, val);
-			/*
-			struct CompareIndex { bool operator() (const Sparse::Row::entry& left, INMOST_DATA_ENUM_TYPE right) { return left.first < right; } };
-			Sparse::Row::iterator it = std::lower_bound(leafs.Begin(), leafs.End(), ind, CompareIndex());
-			if (it == leafs.End() || it->first != ind)
-				leafs.Insert(it, ind, val);
-			else it->second += val;
-			*/
-		}
+		RowMerger::RowMerger() 
+#if defined(USE_UNORDERED_SPA) || defined(USE_ORDERED_SPA)
+			: list(LIST_SIZE, LIST_UNDEF) 
 #endif
+		{}
 
-#define LIST_SIZE 65536
-#define LIST_UNDEF USHRT_MAX
-//#define LIST_SIZE 32
-		RowMerger5::RowMerger5() : list(LIST_SIZE, LIST_UNDEF) {}
-
-		void RowMerger5::get_row(Sparse::Row& r)
+		void RowMerger::RetrieveRow(Sparse::Row& r)
 		{
 			int alg = -1;
 			if (links.empty()) //only leafs are present
@@ -305,34 +118,9 @@ namespace INMOST
 					r.GetIndex(q) = leafs.GetIndex(q);
 					r.GetValue(q) = leafs.GetValue(q);
 				}
-				alg = 1;
-				//r.Swap(leafs);
 			}
 			else
 			{
-#if 0
-				{
-					size_t k = 0, s = links.size(), q = 0;
-					for(size_t i = 0; i < links.size(); ++i)
-						for(size_t j = i + 1; j < links.size(); ++j)
-							if (links[j] == links[i])
-							{
-								coefs[i] += coefs[j];
-								coefs[j] = 0.0;
-							}
-					while (++k < s)
-					{
-						if(1.0 + coefs[k] != 1.0)
-						{
-							++q;
-							links[q] = links[k];
-							coefs[q] = coefs[k];
-						}
-					}
-					links.resize(q + 1);
-					coefs.resize(q + 1);
-				}
-#endif
 				if (!leafs.Empty())
 				{
 					leafs.Sort();
@@ -340,7 +128,7 @@ namespace INMOST
 					links.push_back(&leafs);
 					coefs.push_back(1.0);
 				}
-				if (links.size() == 1)
+				if (links.size() == 1) //should work even if links[0] points to r
 				{
 					INMOST_DATA_ENUM_TYPE s = links[0]->Size();
 					r.Resize(s);
@@ -349,9 +137,9 @@ namespace INMOST
 						r.GetIndex(k) = links[0]->GetIndex(k);
 						r.GetValue(k) = links[0]->GetValue(k) * coefs[0];
 					}
-					alg = 2;
 				}
-				else if (false) //fixed SPA with fixed window position
+#if defined(USE_UNORDERED_SPA)
+				else if (true) //fixed SPA with fixed window position
 				{
 					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next;
 					INMOST_DATA_ENUM_TYPE size_max = 0, nlists = links.size();
@@ -426,8 +214,8 @@ namespace INMOST
 						r.GetIndex(q) = store.GetIndex(q);
 						r.GetValue(q) = store.GetValue(q);
 					}
-					alg = 4;
 				}
+#endif
 				else if (links.size() == 2)
 				{
 					Row::MergeSortedRows(coefs[0], *links[0], coefs[1], *links[1], store);
@@ -441,42 +229,10 @@ namespace INMOST
 					alg = 3;
 					//r.Swap(store);
 				}
-				else if (true) //merge pairs
-				{
-					INMOST_DATA_ENUM_TYPE k1, k2, nmerge = 0;
-					if (merge.size() < links.size() - 1)
-						merge.resize(links.size() - 1);
-					for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
-						heap.push_back(std::make_pair(links[k]->Size(), k));
-					std::make_heap(heap.begin(), heap.end(), std::greater<>());
-					while (heap.size() > 1)
-					{
-						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-						k1 = heap.back().second;
-						heap.pop_back();
-						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-						k2 = heap.back().second;
-						heap.pop_back();
-						Row::MergeSortedRows(coefs[k1], *links[k1], coefs[k2], *links[k2], merge[nmerge]);
-						heap.push_back(std::make_pair(merge[nmerge].Size(), links.size()));
-						std::push_heap(heap.begin(), heap.end(), std::greater<>());
-						links.push_back(&merge[nmerge]);
-						coefs.push_back(1.0);
-						nmerge++;
-					}
-					INMOST_DATA_ENUM_TYPE i = heap.back().second;
-					INMOST_DATA_ENUM_TYPE s = links[i]->Size();
-					r.Resize(s);
-					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
-					{
-						r.GetIndex(k) = links[i]->GetIndex(k);
-						r.GetValue(k) = links[i]->GetValue(k);
-					}
-					heap.clear();
-				}
+#if defined(USE_ORDERED_SPA)
 				else if (true) //fixed SPA with moving window
 				{
-					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next; 
+					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end, beg_next;
 					INMOST_DATA_ENUM_TYPE size_max = 0, nlists = links.size();
 					INMOST_DATA_ENUM_TYPE ind = 0, ind_last;
 					pos.resize(links.size());
@@ -547,478 +303,62 @@ namespace INMOST
 					}
 					alg = 5;
 				}
-				else
+#endif
+				else //merge pairs
 				{
-					INMOST_DATA_ENUM_TYPE beg = ENUMUNDEF, end = 0;
-					INMOST_DATA_ENUM_TYPE size_max = 0, ind = 0, nlists = links.size();
-					for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
+					INMOST_DATA_ENUM_TYPE k1, k2, nmerge = 0;
+					if (merge.size() < links.size() - 1)
+						merge.resize(links.size() - 1);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < links.size(); ++k)
+						heap.push_back(std::make_pair(links[k]->Size(), k));
+					std::make_heap(heap.begin(), heap.end(), std::greater<>());
+					while (heap.size() > 1)
 					{
-						links[k]->GetInterval(beg, end);
-						size_max += links[k]->Size();
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						k1 = heap.back().second;
+						heap.pop_back();
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						k2 = heap.back().second;
+						heap.pop_back();
+						Row::MergeSortedRows(coefs[k1], *links[k1], coefs[k2], *links[k2], merge[nmerge]);
+						heap.push_back(std::make_pair(merge[nmerge].Size(), static_cast<INMOST_DATA_ENUM_TYPE>(links.size())));
+						std::push_heap(heap.begin(), heap.end(), std::greater<>());
+						links.push_back(&merge[nmerge]);
+						coefs.push_back(1.0);
+						nmerge++;
 					}
-					store.Resize(size_max);
-					if (end - beg < LIST_SIZE && size_max < USHRT_MAX)
-					//if( false )
+					INMOST_DATA_ENUM_TYPE i = heap.back().second;
+					INMOST_DATA_ENUM_TYPE s = links[i]->Size();
+					r.Resize(s);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
 					{
-						//merge using list
-						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
-						{
-							for (INMOST_DATA_ENUM_TYPE q = 0; q < links[k]->Size(); ++q)
-							{
-								INMOST_DATA_ENUM_TYPE i = links[k]->GetIndex(q) - beg;
-								INMOST_DATA_REAL_TYPE v = links[k]->GetValue(q) * coefs[k];
-								if (list[i] == LIST_UNDEF)
-								{
-									if (1.0 + v != 1.0)
-									{
-										store.GetIndex(ind) = links[k]->GetIndex(q);
-										store.GetValue(ind) = v;
-										list[i] = ind++;
-									}
-								}
-								else store.GetValue(list[i]) += v;
-							}
-						}
-						//clear list
-						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
-							list[store.GetIndex(q) - beg] = LIST_UNDEF;
-						r.Resize(ind);
-						for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
-						{
-							r.GetIndex(q) = store.GetIndex(q);
-							r.GetValue(q) = store.GetValue(q);
-						}
-						r.Sort();
-						alg = 6;
+						r.GetIndex(k) = links[i]->GetIndex(k);
+						r.GetValue(k) = links[i]->GetValue(k);
 					}
-					else
-					{
-						pos.resize(links.size());
-						heap.reserve(links.size());
-						std::fill(pos.begin(), pos.end(), 0);
-						for (INMOST_DATA_ENUM_TYPE k = 0; k < nlists; ++k)
-							heap.push_back(std::make_pair(links[k]->GetIndex(0), k));
-						std::make_heap(heap.begin(), heap.end(), std::greater<>());
-						//
-						{
-							//make store array non-empty to avoid check
-							INMOST_DATA_ENUM_TYPE k;
-							INMOST_DATA_REAL_TYPE v;
-							while (ind == 0 && nlists > 2) //insert first non-zero element
-							{
-								std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-								k = heap.back().second;
-								heap.pop_back();
-								v = links[k]->GetValue(pos[k]) * coefs[k];
-								if (1.0 + v != 1.0)
-								{
-									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
-									store.GetValue(ind) = v;
-									++ind;
-								}
-								if (++pos[k] < links[k]->Size())
-								{
-									heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-									std::push_heap(heap.begin(), heap.end(), std::greater<>());
-								}
-								else nlists--;
-							}
-							while (!heap.empty() && nlists > 2) //start merging
-							{
-								std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-								k = heap.back().second;
-								heap.pop_back();
-								v = links[k]->GetValue(pos[k]) * coefs[k];
-								if (store.GetIndex(ind - 1) == links[k]->GetIndex(pos[k]))
-									store.GetValue(ind - 1) += v;
-								else if(1.0 + v != 1.0)
-								{
-									store.GetIndex(ind) = links[k]->GetIndex(pos[k]);
-									store.GetValue(ind) = v;
-									++ind;
-								}
-								if (++pos[k] < links[k]->Size())
-								{
-									heap.push_back(std::make_pair(links[k]->GetIndex(pos[k]), k));
-									std::push_heap(heap.begin(), heap.end(), std::greater<>());
-								}
-								else nlists--;
-							}
-							if (nlists == 2) //finalize merge without heap
-							{
-								INMOST_DATA_ENUM_TYPE k1 = ENUMUNDEF, k2 = ENUMUNDEF;
-								for (INMOST_DATA_ENUM_TYPE i = 0; i < pos.size(); ++i)
-									if (pos[i] < links[i]->Size())
-									{
-										k1 = i;
-										break;
-									}
-								if (store.GetIndex(ind - 1) == links[k1]->GetIndex(pos[k1]))
-								{
-									store.GetValue(ind - 1) += links[k1]->GetValue(pos[k1]) * coefs[k1];
-									++pos[k1];
-								}
-								for (INMOST_DATA_ENUM_TYPE i = k1 + 1; i < pos.size(); ++i)
-									if (pos[i] < links[i]->Size())
-									{
-										k2 = i;
-										break;
-									}
-								if (store.GetIndex(ind - 1) == links[k2]->GetIndex(pos[k2]))
-								{
-									store.GetValue(ind - 1) += links[k2]->GetValue(pos[k2]) * coefs[k2];
-									++pos[k2];
-								}
-								Row::MergeSortedRows(coefs[k1], *links[k1], pos[k1], coefs[k2], *links[k2], pos[k2], store, ind);
-							}
-							else if (nlists) //insert single list
-							{
-								k = heap.back().second; //get list number
-								INMOST_DATA_ENUM_TYPE ipos = pos[k];
-								if (store.GetIndex(ind - 1) == links[k]->GetIndex(ipos))
-								{
-									store.GetValue(ind - 1) += links[k]->GetValue(ipos) * coefs[k];
-									++ipos;
-								}
-								while (ipos < links[k]->Size())
-								{
-									store.GetIndex(ind) = links[k]->GetIndex(ipos);
-									store.GetValue(ind) = links[k]->GetValue(ipos) * coefs[k];
-									++ind;
-									++ipos;
-								}
-							}
-							heap.clear();
-							r.Resize(ind);
-							for (INMOST_DATA_ENUM_TYPE q = 0; q < ind; ++q)
-							{
-								r.GetIndex(q) = store.GetIndex(q);
-								r.GetValue(q) = store.GetValue(q);
-							}
-						}
-						alg = 7;
-					}
+					heap.clear();
 				}
 			}
-			/*
-			if( !r.isSorted() )
-				std::cout << __FILE__ << ":" << __LINE__ << " oops!" << std::endl;
-			for (INMOST_DATA_ENUM_TYPE q = 0; q < r.Size(); ++q)
-			{
-				if (r.GetIndex(q) == ENUMUNDEF)
-				{
-					std::cout << __FILE__ << ":" << __LINE__ << " oops! at " << q << " alg " << alg << std::endl;
-					for (int k = 0; k < links.size(); ++k)
-						links[k]->Print();
-					
-				}
-			}
-			*/
 		}
 
-		////////class RowMerger
-				/*
 
-				RowMerger::RowMerger() {}
-				INMOST_DATA_REAL_TYPE RowMerger::operator[] (INMOST_DATA_ENUM_TYPE ind) const
-				{
-					container::const_iterator f = data.find(ind);
-					if (f != data.end())
-						return f->second;
-					throw - 1;
-				}
-
-
-				//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
-				void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
-				{
-					assert(data.empty());
-					data.reserve(size);
-				}
-
-				void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
-				{
-					for (container::iterator it = data.begin(); it != data.end(); ++it)
-						it->second *= coef;
-				}
-
-				void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-				{
-					assert(data.empty()); //Linked list should be empty
-					if (coef)
-					{
-						for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-							data[it->first] = it->second * coef;
-					}
-				}
-
-				void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-				{
-					if (coef)
-					{
-						for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-							data[it->first] += coef * it->second;
-					}
-				}
-
-				void RowMerger::RetriveRow(Row& r)
-				{
-					r.Resize(Size());
-					INMOST_DATA_ENUM_TYPE k = 0;
-					for (container::iterator it = data.begin(); it != data.end(); ++it)
-					{
-						if (it->second)
-						{
-							r.GetIndex(k) = it->first;
-							r.GetValue(k) = it->second;
-							k++;
-						}
-					}
-					r.Resize(k);
-				}
-				*/
-
-#if 0
-		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
-		{
-			judyvalue key = ind;
-			JudySlot* slot = (JudySlot*)judy_slot((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
-			if (slot != NULL)
-			{
-				assert((*slot) - 1 < vals.size());
-				return (*slot) - 1;
-			}
-			else throw Impossible;
-		}
-		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
-		{
-			judyvalue key = ind;
-			JudySlot* slot = (JudySlot*)judy_slot((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
-			if (slot != NULL)
-			{
-				assert((*slot) - 1 < vals.size());
-				return (*slot) - 1;
-			}
-			else
-			{
-				ins_pos(ind, Nonzeros);
-				next.push_back(First);
-				vals.push_back(0.0);
-				First = ind;
-				return Nonzeros++;
-			}
-		}
-		void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE k)
-		{
-			judyvalue key = ind;
-			JudySlot* slot = (JudySlot*)judy_cell((Judy*)judy_array, (const unsigned char*)&key, JUDY_key_size);
-			assert(slot != NULL);
-			*slot = static_cast<judyvalue>(k)+1;
-		}
-		RowMerger::RowMerger() : First(EOL), Nonzeros(0) 
-		{
-			judy_array = judy_open(JUDY_key_size, 1);
-		}
 		void RowMerger::Clear()
 		{
-			First = EOL;
-			judyvalue key = 0;
-			JudySlot* slot = NULL;
-			while( NULL != (slot = judy_strt((Judy*)judy_array, (const unsigned char*)&key, 0)))
-				judy_del((Judy*)judy_array);
-			vals.clear();
-			next.clear();
-			Nonzeros = 0;
+			leafs.Clear();
+			links.clear();
+			coefs.clear();
 		}
-
-#elif 0
-		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
-		{
-			map_container::const_iterator f = pos.find(ind);
-			if (f != pos.end())
-				return f->second;
-			else throw Impossible;
-		}
-		INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
-		{
-			map_container::iterator f = pos.find(ind);
-			if (f != pos.end())
-				return f->second;
-			else
-			{
-				ins_pos(ind, Nonzeros);
-				next.push_back(First);
-				vals.push_back(0.0);
-				First = ind;
-				return Nonzeros++;
-			}
-		}
-		void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE k)
-		{
-			pos[ind] = k;
-		}
-		RowMerger::RowMerger() : First(EOL), Nonzeros(0) {}
-		void RowMerger::Clear()
-		{
-			First = EOL;
-			pos.clear();
-			vals.clear();
-			next.clear();
-			Nonzeros = 0;
-		}
-#elif defined(TEST_HASHTABLE)
-	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
-	{
-		const map_container::Cell * f = pos.Lookup(ind);
-		if (f != NULL)
-			return f->second;
-		else throw Impossible;
-	}
-	void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE val)
-	{
-		pos.Insert(ind)->second = val;
-	}
-	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
-	{
-		map_container::Cell* f = pos.Lookup(ind);
-		if (f != NULL)
-			return f->second;
-		else
-		{
-			ins_pos(ind, Nonzeros);
-			vals.push_back(0.0);
-			return Nonzeros++;
-		}
-	}
-	RowMerger::RowMerger() : Nonzeros(0)
-	{
-		vals.reserve(1024);
-		//pos.reserve(2048);
-		//pos.max_load_factor(0.25);
-	}
-	void RowMerger::Clear()
-	{
-		pos.Clear();
-		vals.clear();
-		Nonzeros = 0;
-	}
-#else
-	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind) const
-	{
-		map_container::const_iterator f = pos.find(ind);
-		if (f != pos.end())
-			return f->second;
-		else throw Impossible;
-	}
-	INMOST_DATA_ENUM_TYPE RowMerger::get_pos(INMOST_DATA_ENUM_TYPE ind)
-	{
-		map_container::iterator f = pos.find(ind);
-		if (f != pos.end())
-			return f->second;
-		else
-		{
-			ins_pos(ind, Nonzeros);
-			vals.push_back(0.0);
-			return Nonzeros++;
-		}
-	}
-	void RowMerger::ins_pos(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_ENUM_TYPE val)
-	{
-		pos[ind] = val;
-	}
-	RowMerger::RowMerger() : Nonzeros(0) 
-	{
-		vals.reserve(1024);
-		pos.reserve(2048);
-		//pos.max_load_factor(0.25);
-	}
-	void RowMerger::Clear()
-	{
-		pos.clear();
-		vals.clear();
-		Nonzeros = 0;
-	}
-#endif
-
-		void RowMerger::AddRow(INMOST_DATA_REAL_TYPE coef, const Row& r)
-		{
-			if (coef)
-			{
-				for (Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-					vals[get_pos(it->first)] += coef * it->second;
-			}
-		}
-		//void RowMerger::Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end)
-		void RowMerger::Resize(INMOST_DATA_ENUM_TYPE size)
-		{
-			assert(Nonzeros == 0);
-			Nonzeros = 0;
-			vals.clear();
-		}
-
-#if defined(USE_SOLVER)
-		void RowMerger::Resize(const Matrix & A)
-		{
-			//INMOST_DATA_ENUM_TYPE mbeg, mend;
-			//A.GetInterval(mbeg,mend);
-			//Resize(mbeg,mend);
-			Resize(A.Size());
-		}
-
-		RowMerger::RowMerger(const Matrix & A) : Nonzeros(0)
-		{
-			Resize(A);
-		}
-#endif
-
-		RowMerger::~RowMerger() {}
-
-	
 
 		
+		RowMerger::~RowMerger() {}		
 
 		void RowMerger::Multiply(INMOST_DATA_REAL_TYPE coef)
 		{
-			for (size_t k = 0; k < vals.size(); ++k)
-				vals[k] *= coef;
+			for (size_t k = 0; k < coefs.size(); ++k)
+				coefs[k] *= coef;
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < leafs.Size(); ++k)
+				leafs.GetValue(k) *= coef;
 		}
 
-		void RowMerger::PushRow(INMOST_DATA_REAL_TYPE coef, const Row & r)
-		{
-			assert(Nonzeros == 0); //Linked list should be empty
-			if( coef )
-			{
-				vals.resize(r.Size());
-				Nonzeros = r.Size();
-				INMOST_DATA_ENUM_TYPE k = 0;
-				for(Row::const_iterator it = r.Begin(); it != r.End(); ++it)
-				{
-					ins_pos(it->first, k);
-					vals[k] = it->second * coef;
-					++k;
-				}
-			}
-		}
-
-		
-		
-
-
-		void RowMerger::RetrieveRow(Row & r) const
-		{
-			INMOST_DATA_ENUM_TYPE k = 0;
-            r.Resize(static_cast<INMOST_DATA_ENUM_TYPE>(Nonzeros));
-			for (map_container::const_iterator it = pos.begin(); it != pos.end(); ++it)
-			{
-				if (1.0 + vals[it->second] != 1.0)
-				{
-					r.GetIndex(k) = it->first;
-					r.GetValue(k) = vals[it->second];
-					++k;
-				}
-			}
-			r.Resize(k);
-		}
 		
 ////////class HessianRow
 
@@ -1336,173 +676,6 @@ namespace INMOST
 #endif
 		}
 
-		void Row::GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			INMOST_DATA_ENUM_TYPE ind, sind;
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k) 
-			{
-				ind = GetIndex(k);
-				sind = ind - inds[0];
-				if (!bitset[sind])
-				{
-					bitset[sind] = true;
-					inds.push_back(ind);
-				}
-			}
-		}
-
-		void Row::GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const
-		{
-			std::set<INMOST_DATA_ENUM_TYPE>::const_iterator hint = indset.cend();
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
-				hint = indset.insert(hint, GetIndex(k));
-		}
-
-		void Row::GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const
-		{
-			INMOST_DATA_REAL_TYPE val;
-			const_iterator first1 = inds.Begin(), last1 = inds.End();
-			const_iterator first2 = Begin(), last2 = End();
-			temp.Clear();
-			temp.Reserve(inds.Size() + Size());
-			while (first1 != last1 && first2 != last2)
-			{
-				if (first2->first < first1->first)
-				{
-					val = first2->second * coef;
-					if(1. + val != 1.) temp.Push(first2->first, val);
-					first2++;
-				}
-				else
-				{
-					if (!(first1->first < first2->first))
-					{
-						val = first2->second * coef + first1->second;
-						if(1. + val != 1.)
-							temp.Push(first1->first, val);
-						++first2;
-					}
-					else if( 1. + first1->second != 1.)
-						temp.Push(first1->first, first1->second);
-					++first1;
-				}
-			}
-			for (const_iterator it = first1; it < last1; ++it)
-				temp.Push(it->first, it->second);
-			for (const_iterator it = first2; it < last2; ++it)
-				temp.Push(it->first, it->second * coef);
-			inds.Swap(temp);
-		}
-
-		void Row::GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const
-		{
-			std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator first1 = inds.begin(), last1 = inds.end();
-			const_iterator first2 = Begin(), last2 = End();
-			temp.clear();
-			temp.reserve(inds.size() + Size());
-			while (first1 != last1 && first2 != last2)
-			{
-				if (first2->first < *first1)
-				{
-					temp.push_back(first2->first);
-					first2++;
-				}
-				else
-				{
-					temp.push_back(*first1);
-					if (!(*first1 < first2->first))
-						++first2;
-					++first1;
-				}
-			}
-			if (first1 != last1)
-				temp.insert(temp.end(), first1, last1);
-			for (const_iterator it = first2; it < last2; ++it)
-				temp.push_back(it->first);
-			//temp.insert(temp.end(), first2, last2);
-			inds.swap(temp);
-		}
-
-		void Row::GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds) const
-		{
-			assert(inds.empty());
-			inds.resize(Size());
-			for (unsigned k = 0; k < Size(); ++k)
-				inds[k] = GetIndex(k);
-		}
-		//https://mhdm.dev/posts/sb_lower_bound/
-		template <class ForwardIt, class T>
-		constexpr ForwardIt sb_lower_bound(ForwardIt first, ForwardIt last, const T& value) 
-		{
-			auto length = last - first;
-			while (length > 0) 
-			{
-				auto rem = length % 2;
-				length /= 2;
-	     			if (first[length] < value)
-					first += length + rem;
-			}
-			return first;
-		}
-		template <class ForwardIt, class T>
-		constexpr ForwardIt sbm_lower_bound(ForwardIt first, ForwardIt last, const T& value)
-                {
-			auto length = last - first;
-			while (length & (length + 1)) 
-			{
-				auto step = length / 8 * 6 + 1; // MAGIC
-				if (first[step] < value) 
-				{
-					first += step + 1;
-					length -= step + 1;
-				} 
-				else 
-				{
-					length = step;
-					break;
-				}
-			}
-			while (length != 0) 
-			{
-				length /= 2;
-				if (first[length] < value) 
-      					first += length + 1;
-			}
-                        return first;
-		}		
-		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-#if defined(ASSUME_SORTED)
-			INMOST_DATA_ENUM_TYPE pos, ind;
-			//const INMOST_DATA_ENUM_TYPE *beg = &inds[0], *beg0 = beg;
-			std::vector<INMOST_DATA_ENUM_TYPE>::const_iterator beg = inds.begin();
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
-			{
-				ind = GetIndex(k);
-				//beg = std::lower_bound(beg, inds.end(), ind);
-				//beg = sbm_lower_bound(beg,inds.end(),ind);
-				while (*beg != ind) beg++;
-				pos = static_cast<INMOST_DATA_ENUM_TYPE>(beg - inds.cbegin());
-				vals[pos] += GetValue(k) * coef;
-				beg++;
-			}
-#else
-			for (Sparse::Row::const_iterator it = Begin(); it != End(); ++it)
-				vals[std::lower_bound(inds.begin(), inds.end(), it->first) - inds.begin()] += it->second * coef;
-#endif
-		}
-
-		void Row::GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& indset, std::vector<INMOST_DATA_REAL_TYPE>& vals) const
-		{
-			std::set< INMOST_DATA_ENUM_TYPE>::const_iterator find;
-			for (INMOST_DATA_ENUM_TYPE k = 0; k < Size(); ++k)
-			{
-				find = indset.find(GetIndex(k));
-				assert(find != indset.end());
-				vals[std::distance(indset.begin(), find)] += GetValue(k) * coef;
-			}
-		}
-		
 		bool Row::isSorted() const
 		{
 			for(INMOST_DATA_ENUM_TYPE k = 1; k < Size(); ++k)
@@ -2536,7 +1709,7 @@ namespace INMOST
 				for (INMOST_DATA_INTEGER_TYPE it = Z.GetFirstIndex(); it < static_cast<INMOST_DATA_INTEGER_TYPE>(Z.GetLastIndex()); ++it)
 				{
 					Z[it].Clear();
-					merger.PushRow(alpha, X[it]);
+					merger.AddRow(alpha, X[it]);
 					merger.AddRow(beta, Y[it]);
 					merger.RetrieveRow(Z[it]);
 					merger.Clear();

@@ -5,25 +5,12 @@
 #include "inmost_common.h"
 #include <unordered_map>
 #include <queue>
-#include "robin_hood.h"
 
-#define ASSUME_SORTED
-//#define TEST_HASHTABLE
-//#define TEST_JUDY1
-
-#if defined(TEST_JUDY1)
-#include "judyLArray.h"
-#endif
-#if defined(TEST_HASHTABLE)
-#include "hashtable.h"
-#endif
 
 namespace INMOST
 {
 	namespace Sparse
 	{
-		typedef bool bit_type; //for RowMerger2
-
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
 		/// Retrieve MPI type for row entry type.
 		INMOST_MPI_Type GetRowEntryType();
@@ -175,21 +162,6 @@ namespace INMOST
 		class Row
 		{
 		public:
-			/*
-//#pragma pack(push,r1,4)
-			/// Entry of the sparse matrix row.
-			typedef struct entry_s
-			{
-				INMOST_DATA_ENUM_TYPE first;  ///< the column number of the row element.
-				INMOST_DATA_REAL_TYPE second; ///< the real value of the row element.
-				/// Comparison operator that helps sorting entries.
-				bool operator < (const entry_s & other) const { return first < other.first || (first == other.first && second < other.second); }
-				//entry_s& operator =(entry_s const& b) { first = b.first; second = b.second; return *this; }
-				//entry_s(const entry_s& b) : first(b.first), second(b.second) {}
-				entry_s() : first(ENUMUNDEF), second(0.0) {}
-			} entry;
-//#pragma pack(pop,r1)
-			*/
 			typedef std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> entry;
 			/// Assemble an entry of entry_s type.
 			/// @param ind Index.
@@ -291,18 +263,6 @@ namespace INMOST
 			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
 			/// Retrive interval of nonzeroes
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
-			/// Retrive indices
-			void                    GetIndices(std::vector<Sparse::bit_type>& bitset, std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
-			void                    GetIndices(std::set<INMOST_DATA_ENUM_TYPE>& indset) const;
-			/// Merge row indices and values with indices and values in array.
-			void                    GetPairs(INMOST_DATA_REAL_TYPE coef, Sparse::Row& inds, Sparse::Row& temp) const;
-			/// Merge row indices with indices in array.
-			void                    GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_ENUM_TYPE>& temp) const;
-			/// Replace indices in array.
-			void                    GetIndices(std::vector<INMOST_DATA_ENUM_TYPE>& inds) const;
-			/// Retrive values
-			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::vector<INMOST_DATA_ENUM_TYPE>& inds, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
-			void                    GetValues(INMOST_DATA_REAL_TYPE coef, const std::set<INMOST_DATA_ENUM_TYPE>& indset, std::vector<INMOST_DATA_REAL_TYPE>& vals) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
 			iterator                Begin() {return data.begin();}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
@@ -665,61 +625,8 @@ namespace INMOST
 			/// Get the matrix name specified in the main constructor.
 			std::string          GetName() const {return name;}
 		};
-		
 #endif //defined(USE_SOLVER)
-		
 #if defined(USE_SOLVER) || defined(USE_AUTODIFF)
-		struct RowMerger2
-		{
-			//std::set<INMOST_DATA_ENUM_TYPE> indset;
-			std::vector<Sparse::bit_type> bitset;
-			std::vector<INMOST_DATA_REAL_TYPE> vals;
-			std::vector<INMOST_DATA_ENUM_TYPE> inds, temp;
-			RowMerger2() { bitset.resize(1048576, 0); }
-			inline void radix_sort();
-			inline void naive_sort();
-			void clear();
-			void set_bitset(INMOST_DATA_ENUM_TYPE beg, INMOST_DATA_ENUM_TYPE end);
-			void set_vals();
-			void get_row(Sparse::Row& r);
-		};
-		struct RowMerger3
-		{
-			std::vector<INMOST_DATA_REAL_TYPE> vals;
-			std::vector<INMOST_DATA_ENUM_TYPE> inds;
-			std::vector<INMOST_DATA_ENUM_TYPE> temp;
-			void set_vals();
-			void clear();
-			void get_row(Sparse::Row& r);
-		};
-		struct RowMerger4
-		{
-			Sparse::Row inds;
-			Sparse::Row temp;
-			void clear();
-			void get_row(Sparse::Row& r);
-		};
-		struct RowMerger5
-		{
-			//BinaryHeapCustom<INMOST_DATA_ENUM_TYPE, std::less<INMOST_DATA_ENUM_TYPE> > heap;
-			//typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> queue_t;
-			//std::priority_queue< queue_t, std::vector<queue_t>, std::greater<queue_t> > heap;
-			std::vector< unsigned short > list;
-			std::vector<Sparse::Row> merge;
-			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap;
-			Sparse::Row leafs, store;
-			std::vector<INMOST_DATA_ENUM_TYPE> pos;
-			std::vector<INMOST_DATA_REAL_TYPE> coefs;
-			std::vector<const Sparse::Row*> links;
-			RowMerger5();
-			void add_row(const Sparse::Row* r, INMOST_DATA_REAL_TYPE coef);
-			__INLINE void add_value(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
-			{
-				leafs.Push(ind, val);
-			}
-			void clear();
-			void get_row(Sparse::Row& r);
-		};
 		/// This class may be used to sum multiple sparse rows.
 		/// \warning
 		/// In parallel column indices of the matrix may span wider then
@@ -727,97 +634,27 @@ namespace INMOST
 		/// set total size of the matrix as interval of the RowMerger.
 		class RowMerger
 		{
-#if defined(TEST_HASHTABLE)
-			typedef HashTable map_container;
-#else
-			//typedef std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			typedef robin_hood::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef judyLArray<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef tsl::hopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-			//typedef tsl::bhopscotch_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> map_container;
-#endif
-		public:
-			static const INMOST_DATA_ENUM_TYPE EOL = ENUMUNDEF-1; ///< End of linked list.
-			//const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF; ///< Value not defined in linked list.
-			class iterator
-			{
-			private:
-				typedef typename RowMerger::map_container::iterator it_type;
-				it_type it;
-				RowMerger * merger; ///< Link to associated storage for linked list.
-				iterator(RowMerger* pmerger) : it(pmerger->pos.begin()), merger(pmerger) {}
-				iterator(it_type pit, RowMerger* pmerger) : it(pit), merger(pmerger) {}
-			public:
-				iterator(const iterator & other) : it(other.it), merger(other.merger) {}
-				~iterator() {}
-				INMOST_DATA_REAL_TYPE& operator *() { return merger->vals[it->second]; }
-				INMOST_DATA_REAL_TYPE operator *() const { return merger->vals[it->second]; }
-				INMOST_DATA_REAL_TYPE* operator ->() { return &merger->vals[it->second]; }
-				const INMOST_DATA_REAL_TYPE* operator ->() const { return &merger->vals[it->second]; }
-				iterator & operator ++(){ it++; return *this;}
-				iterator operator ++(int) { return iterator(it++, merger); }
-				iterator & operator = (const iterator & other) {merger = other.merger; it = other.it; return *this;}
-				bool operator ==(const iterator & other) const {return merger == other.merger && it == other.it;}
-				bool operator !=(const iterator & other) const {return merger != other.merger || it != other.it;}
-				friend class RowMerger;
-			};
-			//typedef container::iterator iterator;
 		private:
-			INMOST_DATA_ENUM_TYPE Nonzeros; ///< Number of nonzero in linked list.
-			//INMOST_DATA_ENUM_TYPE First; ///< First position.
-			//std::unordered_map<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> pos; //Position in vals and next array (huge array)
-			map_container pos;  //Position in vals and next array (huge array)
-			//mutable void* judy_array;
-			std::vector<INMOST_DATA_REAL_TYPE> vals; //Values at the position (small array)
-#if 0
-			std::vector<INMOST_DATA_ENUM_TYPE> next; //Next nonzero position (small array)
-			//interval< INMOST_DATA_ENUM_TYPE, Row::entry > LinkedList; ///< Storage for linked list.
-#endif
-			//container data;
-			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos) const;
-			INMOST_DATA_ENUM_TYPE get_pos(INMOST_DATA_ENUM_TYPE pos);
-			void ins_pos(INMOST_DATA_ENUM_TYPE pos, INMOST_DATA_ENUM_TYPE val);
+			Sparse::Row leafs; ///< Accumulate results at expression leafs.
+			Sparse::Row store; ///< Storage for intermediate results to avoid overwriting input data.
+			std::vector<INMOST_DATA_ENUM_TYPE> pos; ///< Internal array to track position in each row.
+			std::vector<INMOST_DATA_REAL_TYPE> coefs; ///< Multiplier coefficient for each row
+			std::vector<const Sparse::Row*>    links; ///< Links to merged rows
+			std::vector< unsigned short > list; ///< Storage for SPA (used only if USE_ORDERED_SPA or USE_UNORDERED_SPA is defined in sparse.cpp)
+			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap; ///< Internal array to manage heap of merged rows
+			std::vector<Sparse::Row> merge; ///< Temporary storage for merged rows
 		public:
 			/// Default constructor without size specified.
 			RowMerger();
-			/// Constructor with size specified.
-			/// @param interval_begin First index in linked list.
-			/// @param interval_end Last index in linked list.
-			/// @param Sorted Result should be sorted or not.
-			//RowMerger(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
 			/// Destructor.
 			~RowMerger();
-			/// Resize linked list for new interval.
-			/// \warning
-			/// All contents of linked list will be lost after resize.
-			/// @param interval_begin First index in linked list.
-			/// @param interval_end Last index in linked list.
-			/// @param Sorted Result should be sorted or not.
-			//void Resize(INMOST_DATA_ENUM_TYPE interval_begin, INMOST_DATA_ENUM_TYPE interval_end);
-			void Resize(INMOST_DATA_ENUM_TYPE size);
-#if defined(USE_SOLVER)
-			/// Constructor that gets sizes from the matrix, including non-local mapping.
-			/// @param A Matrix to get sizes from.
-			/// @param Sorted Result should be sorted.
-			RowMerger(const Matrix & A);
-			/// Resize linked list for new matrix, including non-local mapping.
-			/// \warning
-			/// All contents of linked list will be lost after resize.
-			/// @param A Matrix to get sizes from.
-			/// @param Sorted Result should be sorted or not.
-			void Resize(const Matrix & A);
-#endif //USE_SOLVER
-			/// Clear linked list.
-			void Clear();// { data.clear(); }
-			/// Add a row with a coefficient into empty linked list.
-			/// This routine should be a bit faster then RowMerger::AddRow
-			/// for empty linked list. It may result in an unexpected behavior
-			/// for non-empty linked list, asserts will fire in debug mode.
+			/// Clear all data.
+			void Clear();
+			/// Add a value with a coefficient.
 			/// @param coef Coefficient to multiply row values.
-			/// @param r A row to be added.
-			void PushRow(INMOST_DATA_REAL_TYPE coef, const Row & r);
-			/// Add a row with a coefficient into non-empty linked list.
-			/// Use RowMerger::PushRow for empty linked list.
+			/// @param index An index of the unknown.
+			__INLINE void AddValue(INMOST_DATA_REAL_TYPE coef, INMOST_DATA_ENUM_TYPE index) { leafs.Push(index, coef); }
+			/// Add a row with a coefficient.
 			/// @param coef Coefficient to multiply row values.
 			/// @param r A row to be added.
 			void AddRow(INMOST_DATA_REAL_TYPE coef, const Row & r);
@@ -830,21 +667,9 @@ namespace INMOST
 			/// If you want contents of the row to be added
 			/// use AddRow with this row in advance.
 			/// @param r A row to be filled.
-			void RetrieveRow(Row & r) const;
-			//INMOST_DATA_REAL_TYPE ScalarProd(RowMerger & other);
-			/// Get current number of nonzeros from linked list.
-			INMOST_DATA_ENUM_TYPE Size() const {return Nonzeros;}// { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+			void RetrieveRow(Row & r);
 			/// Check if linked list is empty.
-			bool Empty() const { return Nonzeros == 0; }
-			//bool Empty() const { return data.empty(); }
-			/// Retrive/add an entry from/to linked list.
-			/// @param pos Position in the list.
-			INMOST_DATA_REAL_TYPE& operator [] (INMOST_DATA_ENUM_TYPE ipos) { return vals[get_pos(ipos)]; } 
-			/// Retrive an entry from linked list.
-			/// \warning
-			/// Will fire an exception if there is no entry.
-			/// @param pos Position in the list.
-			INMOST_DATA_REAL_TYPE operator [] (INMOST_DATA_ENUM_TYPE ipos) const { return vals[get_pos(ipos)]; }
+			__INLINE bool Empty() const { return leafs.Empty() && links.empty(); }
 			/// Operation of the form c = alpha a + beta b
 			/// \warning
 			/// Linked list must be clear before operation.
@@ -855,17 +680,11 @@ namespace INMOST
 			/// @param b Row b.
 			void Merge(Row & c, INMOST_DATA_REAL_TYPE alpha, const Row & a, INMOST_DATA_REAL_TYPE beta, const Row & b)
 			{
-				PushRow(alpha,a);
+				AddRow(alpha,a);
 				AddRow(beta,b);
 				RetrieveRow(c);
 				Clear();
 			}
-			///Retrive iterator for the first element.
-			iterator Begin() {return iterator(this);}
-			//iterator Begin() { return data.begin(); }
-			///Retrive iterator for the position beyond the last element.
-			iterator End() {return iterator(pos.end(), this);}
-			//iterator End() { return data.end(); }
 		};
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
 	} //namespace Sparse
