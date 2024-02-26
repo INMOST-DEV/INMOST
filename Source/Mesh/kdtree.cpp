@@ -527,12 +527,12 @@ namespace INMOST
 		else set = NULL;
 	}
 
-	inline int SearchKDTree::sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const
+	int SearchKDTree::sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const
 	{
 		return triangle_distance(tri[0], tri[1], tri[2], p) <= r ? 1 : 0;
 	}
 	
-	inline int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const
+	int SearchKDTree::segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		const Storage::real eps = 1.0e-7;
 		Storage::real a[3],b[3],c[3],n[3], ray[3], d, k, m, l;
@@ -590,7 +590,7 @@ namespace INMOST
 		return 0;
 	}
 
-	inline int SearchKDTree::segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const
+	int SearchKDTree::segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const
 	{
 		const Storage::real eps = 1.0e-7;
 		Storage::real a[3], b[3], c[3], n[3], ray[3], d, k, m, l;
@@ -668,7 +668,7 @@ namespace INMOST
 		return 0;
 	}
 	
-	inline int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const
+	int SearchKDTree::segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		Storage::real tnear = -1.0e20, tfar = 1.0e20;
 		Storage::real t1,t2,c;
@@ -699,12 +699,12 @@ namespace INMOST
 		return 1;
 	}
 
-	inline int SearchKDTree::sphere_bbox(const Storage::real p[3], Storage::real r) const
+	int SearchKDTree::sphere_bbox(const Storage::real p[3], Storage::real r) const
 	{
 		return bbox_sphere(p, r, bbox);
 	}
 
-	inline int SearchKDTree::ray_bbox(double pos[3], double ray[3], double closest) const
+	int SearchKDTree::ray_bbox(double pos[3], double ray[3], double closest) const
 	{
 		double tnear = -1.0e20, tfar = 1.0e20, t1, t2, c;
 		for (int i = 0; i < 3; i++)
@@ -729,7 +729,7 @@ namespace INMOST
 		return 1;
 	}
 	
-	inline bool SearchKDTree::segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const
+	bool SearchKDTree::segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		Mesh * m = f->GetMeshLink();
 		Storage::real tri[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
@@ -746,7 +746,7 @@ namespace INMOST
 		return false;
 	}
 
-	inline bool SearchKDTree::segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const
+	bool SearchKDTree::segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const
 	{
 		Mesh* m = f->GetMeshLink();
 		Storage::real tri[3][3] = { {0,0,0},{0,0,0},{0,0,0} }, nrm[3];
@@ -771,7 +771,7 @@ namespace INMOST
 		return false;
 	}
 
-	inline bool SearchKDTree::sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const
+	bool SearchKDTree::sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const
 	{
 		Mesh* m = f->GetMeshLink();
 		Storage::real tri[3][3] = { {0,0,0},{0,0,0},{0,0,0} };
@@ -788,7 +788,7 @@ namespace INMOST
 		return false;
 	}
 
-	inline bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const
+	bool SearchKDTree::segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const
 	{
 		ElementArray<Face> faces = c->getFaces();
 		for(ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)
@@ -796,7 +796,7 @@ namespace INMOST
 		return false;
 	}
 
-	inline bool SearchKDTree::sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const
+	bool SearchKDTree::sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const
 	{
 		ElementArray<Face> faces = c->getFaces();
 		for (ElementArray<Face>::iterator it = faces.begin(); it != faces.end(); ++it)

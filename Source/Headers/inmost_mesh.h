@@ -3787,17 +3787,17 @@ namespace INMOST
 		Cell SubSearchCellPrint(const Storage::real p[3], std::ostream & sout) const;
 		void clear_children();
 	public:
-		inline int ray_bbox(double pos[3], double ray[3], double closest) const;
-		inline int  sphere_bbox(const Storage::real p[3], Storage::real r) const;
-		inline int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;
-		inline int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const;
-		inline int  segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const;
-		inline bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const;
-		inline bool segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const;
-		inline bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const;
-		inline int  sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const;
-		inline bool sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const;
-		inline bool sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const;
+		int ray_bbox(double pos[3], double ray[3], double closest) const;
+		int  sphere_bbox(const Storage::real p[3], Storage::real r) const;
+		int  segment_bbox(const Storage::real p1[3], const Storage::real p2[3]) const;
+		int  segment_tri(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3]) const;
+		int  segment_tri_print(const Storage::real tri[3][3], const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const;
+		bool segment_face(const Element & f, const Storage::real p1[3], const Storage::real p2[3]) const;
+		bool segment_face_print(const Element& f, const Storage::real p1[3], const Storage::real p2[3], std::ostream& sout) const;
+		bool segment_cell(const Element & c, const Storage::real p1[3], const Storage::real p2[3]) const;
+		int  sphere_tri(const Storage::real tri[3][3], const Storage::real p[3], Storage::real r) const;
+		bool sphere_face(const Element& f, const Storage::real p[3], Storage::real r) const;
+		bool sphere_cell(const Element& c, const Storage::real p[3], Storage::real r) const;
 		void sub_intersect_segment(ElementArray<Element> & hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3]) const;
 		void sub_intersect_segment_print(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p1[3], const Storage::real p2[3], std::ostream & sout) const;
 		void sub_intersect_sphere(ElementArray<Element>& hits, MarkerType mrk, const Storage::real p[3], Storage::real r) const;
