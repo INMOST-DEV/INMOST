@@ -89,6 +89,16 @@ namespace INMOST
 //		void SetModel(Model * mm) {model = mm;}
 //#endif
 		void AddCallback(AdaptiveMeshCallback* callback) { callbacks.push_back(callback); }
+		void RemoveCallback(AdaptiveMeshCallback* callback) 
+		{ 
+			std::vector<AdaptiveMeshCallback*>::iterator it = callbacks.begin();
+			while (it != callbacks.end())
+			{
+				if (*it == callback)
+					it = callbacks.erase(it);
+				else ++it;
+			}
+		}
 		//the work on each cell is supposed to be proportional to the number of cells refined
 		//this number is equal to number of original nodes
 		void ComputeWeightRefine(TagInteger indicator, TagReal weight);
