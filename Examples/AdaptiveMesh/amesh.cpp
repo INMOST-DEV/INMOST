@@ -3174,6 +3174,19 @@ namespace INMOST
 		for(Storage::integer it = 0; it < m->CellLastLocalID(); ++it) if( m->isValidCell(it) )
 		{
 			Cell c = m->CellByLocalID(it);
+			if( !c.Hidden() && !c.Closure() )
+			{
+				std::cout << "no closure cell " << it << " at " << file << ":" << line << std::endl;
+				ElementArray<Face> faces = c.getFaces();
+				std::cout << "faces: " << faces.size() << " lc: " <<  m->LowConn(c.GetHandle()).size() << std::endl;
+				for(ElementArray<Face>::iterator mt = faces.begin(); mt != faces.end(); ++mt)
+				{
+					ElementArray<Node> nodes = mt->getNodes();
+					std::cout << "face " << mt->LocalID() << " nodes: " << nodes.size() << " low conn: " << m->LowConn(mt->GetHandle()).size() << " ids: ";
+					for(ElementArray<Node>::iterator kt = nodes.begin(); kt != nodes.end(); ++kt) std::cout << kt->LocalID() << " ";
+					std::cout << std::endl;
+				}
+			}
 			assert(c.Hidden() || c.Closure());
 		}
 		for(Storage::integer it = 0; it < m->FaceLastLocalID(); ++it) if( m->isValidFace(it) )
