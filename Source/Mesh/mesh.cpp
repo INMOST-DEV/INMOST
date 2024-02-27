@@ -3029,7 +3029,20 @@ namespace INMOST
 			tag_topologyerror = DeleteTag(tag_topologyerror);
 	}
 
-  Mesh::Random::Random(unsigned int seed)
+	bool Mesh::CheckCleanMarker(MarkerType mrk, ElementType etypes) const
+	{
+		for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+		{
+			for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+			{
+				if (GetMarker(ComposeHandle(etype, it), mrk))
+					return false;
+			}
+		}
+		return true;
+	}
+
+	Mesh::Random::Random(unsigned int seed)
 	{
 		n = seed;
 		a = 1103515245;
