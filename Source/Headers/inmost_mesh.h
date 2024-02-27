@@ -3732,6 +3732,8 @@ namespace INMOST
 		/// \warning May resize vector to fit the data.
 		void CopyTag2Vector(TagVariable input, std::vector<variable>& output, TagInteger inds, ElementType etype);
 #endif //USE_AUTODIFF
+		/// Checks if some element has got a marker
+		bool CheckCleanMarker(MarkerType mrk, ElementType etype = ESET | CELL | FACE | EDGE | NODE) const;
 	};
 	
 	
