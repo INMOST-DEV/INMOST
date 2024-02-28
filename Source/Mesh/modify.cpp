@@ -1393,7 +1393,7 @@ namespace INMOST
 			for (size_t it = 0; it < faces.size(); ++it) if (m->GetPrivateMarker(faces[it], upd))
 			{
 				Element::adj_type const& hc = m->HighConn(faces[it]);
-				for (Element::adj_type::size_type jt = 0; jt < hc.size(); ++jt)
+				for (Element::adj_type::size_type jt = 0; jt < hc.size(); ++jt) if (!m->GetMarker(hc[jt], hm))
 					m->SetPrivateMarker(hc[jt], upd);
 			}
 		}
