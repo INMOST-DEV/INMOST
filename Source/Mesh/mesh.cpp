@@ -3052,6 +3052,36 @@ namespace INMOST
 		return true;
 	}
 
+	bool Mesh::CheckBoundaryMarker(MarkerType boundary)
+	{
+		MarkerType bnd = CreateMarker();
+		MarkBoundaryFaces(bnd);
+		for (integer it = 0; it < FaceLastLocalID(); ++it) if (isValidFace(it))
+		{
+			HandleType h = ComposeHandle(FACE, it);
+			if (GetMarker(h, bnd) != GetMarker(h, boundary))
+				return false;
+		}
+		ReleaseMarker(bnd, FACE);
+		return true;
+	}
+
+	void Mesh::ClearMarker(MarkerType mrk, ElementType etypes)
+	{
+		if (isPrivate(mrk))
+		{
+			for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+				for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+					RemPrivateMarker(ComposeHandle(etype, it), mrk);
+		}
+		else
+		{
+			for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+				for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+					RemMarker(ComposeHandle(etype, it), mrk);
+		}
+	}
+
 	Mesh::Random::Random(unsigned int seed)
 	{
 		n = seed;

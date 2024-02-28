@@ -3734,6 +3734,12 @@ namespace INMOST
 #endif //USE_AUTODIFF
 		/// Checks if some element has got a marker
 		bool CheckCleanMarker(MarkerType mrk, ElementType etype = ESET | CELL | FACE | EDGE | NODE) const;
+		/// Check that current boundary marker is valid.
+		/// Internally it recalculates boundary marker and checks that provided marker is the same at faces.
+		/// Returns true if marker is good, otherwise returns false.
+		bool CheckBoundaryMarker(MarkerType boundary);
+		/// Remove marker from elements of given type
+		void ClearMarker(MarkerType mrk, ElementType etypes);
 	};
 	
 	
