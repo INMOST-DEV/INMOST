@@ -1632,6 +1632,7 @@ namespace INMOST
 			}
 			return *this;
 		}
+		/*
 		Matrix& operator =(Matrix && other)
 		{
 			if (this != &other)
@@ -1642,6 +1643,7 @@ namespace INMOST
 			}
 			return *this;
 		}
+		*/
 		/// Assign matrix of another type.
 		/// @param other Another matrix of different type.
 		/// @return Reference to matrix.
