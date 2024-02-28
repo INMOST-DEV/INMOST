@@ -2565,7 +2565,7 @@ namespace INMOST
 		assert(m->CheckCleanMarker(m->HideMarker()));
 		while(schedule_counter)
 		{
-			std::cout << "schedule_counter " << schedule_counter << std::endl;
+			//std::cout << "schedule_counter " << schedule_counter << std::endl;
 			assert(Element::CheckConnectivity(m));
 			CheckClosure(__FILE__,__LINE__);
 			//CheckParentSet(__FILE__,__LINE__);//,indicator);
