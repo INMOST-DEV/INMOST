@@ -3031,13 +3031,23 @@ namespace INMOST
 
 	bool Mesh::CheckCleanMarker(MarkerType mrk, ElementType etypes) const
 	{
-		for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+		if (isPrivate(mrk))
 		{
-			for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
-			{
-				if (GetMarker(ComposeHandle(etype, it), mrk))
-					return false;
-			}
+			for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+				for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+				{
+					if (GetPrivateMarker(ComposeHandle(etype, it), mrk))
+						return false;
+				}
+		}
+		else
+		{
+			for (ElementType etype = NODE; etype <= ESET; etype = NextElementType(etype)) if (etype & etypes)
+				for (integer it = 0; it < LastLocalID(etype); ++it) if (isValidElement(etype, it))
+				{
+					if (GetMarker(ComposeHandle(etype, it), mrk))
+						return false;
+				}
 		}
 		return true;
 	}
