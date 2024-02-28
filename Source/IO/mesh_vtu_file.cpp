@@ -307,6 +307,7 @@ namespace INMOST
 		if (!keep_ghost)
 		{
 			MarkerType used = CreateMarker();
+			assert(CheckCleanMarker(used));
 			num_cells = 0;
 			for(iteratorCell it = BeginCell(); it != EndCell(); ++it)
 				if (it->GetStatus() != Element::Ghost)
