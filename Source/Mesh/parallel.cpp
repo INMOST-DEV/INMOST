@@ -5960,7 +5960,8 @@ namespace INMOST
 				}
 			//clear memory
 			normals.clear();
-			normals.swap(std::vector<Storage::real>());
+			std::vector<Storage::real> empty_vec;
+			normals.swap(empty_vec);
 		}
         /////////////////////////////////////////////////////////////
         //unpack esets
