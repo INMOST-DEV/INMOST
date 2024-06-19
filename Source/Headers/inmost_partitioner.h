@@ -34,7 +34,8 @@ namespace INMOST
 			MetisKway,       ///< Metis partitioner using METIS_PartGraphKway.
 			MetisKwayContig, ///< Metis partitioner using METIS_PartGraphKway with contiguous option.
 			INNER_RCM,       ///< Internal serial only partitioner based on the Reverse Cuthill–McKee algorithm ordering.
-			INNER_KMEANS     ///< Internal parallel paritioner based on K-means clustering.
+			INNER_KMEANS,    ///< Internal parallel paritioner based on K-means clustering.
+			INNER_KWAY       ///< Internal parallel paritioner based on K-way partitioning, used only for repartition.
 		};
 		enum Action
 		{
