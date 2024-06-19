@@ -31,6 +31,10 @@ int AdaptiveRepartitioner(int *vtxdist, int *xadj,  int *adjncy,
                           int wgtflag, int ncon, int nparts,
                           double itr_ratio, int *options,
                           int *part, MPI_Comm *comm);
+# if !defined(USE_PARTITIONER_PARMETIS)
+// If METIS is defined without ParMETIS then we need to define IDX_T type
+#  define IDX_T  MPI_INT
+# endif
 #endif
 
 #if defined(USE_PARALLEL_WRITE_TIME)
