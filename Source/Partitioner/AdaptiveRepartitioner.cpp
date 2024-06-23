@@ -1508,6 +1508,7 @@ void refine_adaptive_kw(Control *ctrl, Graph *graph, int npasses)
     ndirty = dptr;
     int nclean = nvtxs - dptr;
     random_permute_fast(ndirty, &perm[0], 0);
+    if( nclean > 0 )
     random_permute_fast(nclean, &perm[ndirty], 0);
 
     // Compute unbalance of the current partition
@@ -5258,7 +5259,8 @@ void balance_partition(Control *ctrl, Graph *graph)
     get_balance_local(ctrl, &cgraph, part, lbvec.data());
 
     double lbsum = rsum(ncon, lbvec.data(), 1);
-    int max_cut, min_lbsum;
+    int max_cut;
+    double min_lbsum;
     MPI_Allreduce(&edgecut, &max_cut, 1, MPI_INT, MPI_MAX, ipcomm);
     MPI_Allreduce(&lbsum, &min_lbsum, 1, MPI_DOUBLE, MPI_MIN, ipcomm);
     lpecost.rank = ctrl->myrank;
