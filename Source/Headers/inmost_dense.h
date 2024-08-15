@@ -4062,7 +4062,7 @@ namespace INMOST
 		{
 			if (i < (n - 1))
 			{
-				if (fabs(get_value(g)))
+				if (fabs(get_value(g)) && fabs(get_value(U(i, l))) && !check_nans_infs(1.0 / g))
 				{
 					for (j = l; j < n; j++) V(j, i) = ((U(i, j) / U(i, l)) / g);
 					// double division to avoid underflow
@@ -4193,27 +4193,31 @@ namespace INMOST
 					g = c * g;
 					z = pythag(f, h);
 					rv1[j] = z;
-					c = f / z;
-					s = h / z;
-					f = x * c + g * s;
-					g = g * c - x * s;
-					h = y * s;
-					y = y * c;
-					for (jj = 0; jj < n; jj++)
+					if (fabs(get_value(z)))
 					{
-						x = V(jj, j);
-						z = V(jj, i);
-						V(jj, j) = (x * c + z * s);
-						V(jj, i) = (z * c - x * s);
+						c = f / z;
+						s = h / z;
+						f = x * c + g * s;
+						g = g * c - x * s;
+						h = y * s;
+						y = y * c;
+						for (jj = 0; jj < n; jj++)
+						{
+							x = V(jj, j);
+							z = V(jj, i);
+							V(jj, j) = (x * c + z * s);
+							V(jj, i) = (z * c - x * s);
+						}
 					}
 					z = pythag(f, h);
 					Sigma(j, j) = z;
-					if (fabs(get_value(z)))
+					if (fabs(get_value(z)) && !check_nans_infs(1.0 / z))
 					{
 						z = 1.0 / z;
 						c = f * z;
 						s = h * z;
 					}
+					else c = s = 0.0;
 					f = (c * g) + (s * y);
 					x = (c * y) - (s * g);
 					for (jj = 0; jj < m; jj++)
