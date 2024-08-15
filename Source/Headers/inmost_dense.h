@@ -3286,9 +3286,10 @@ namespace INMOST
 			}
 			else throw MatrixPseudoSolveFail;
 		}
-        for(INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k) 
-			if( get_value(S(k,k)) ) S(k,k) = pow(S(k,k),n);
-        if( n >= 0 )
+		for (INMOST_DATA_ENUM_TYPE k = 0; k < S.Cols(); ++k)
+			if (get_value(S(k, k)))
+				S(k, k) = pow(fabs(S(k, k)), n);
+		if( n >= 0 )
 			ret = U*S*V.Transpose();
 		else
 			ret = V*S*U.Transpose();
@@ -4009,10 +4010,12 @@ namespace INMOST
 							//for (s = 0.0, k = i; k < m; k++) s += U(k, i) * U(k, j);
 							for (s = 0.0, k = i; k < m; k++) s += conj(U(k, i)) * U(k, j);
 							f = s / h;
-							for (k = i; k < m; k++) U(k, j) += f * U(k, i);
+							for (k = i; k < m; k++)
+								U(k, j) += f * U(k, i);
 						}
 					}
-					for (k = i; k < m; k++) U(k, i) *= scale;
+					for (k = i; k < m; k++)
+						U(k, i) *= scale;
 				}
 			}
 			Sigma(i, i) = scale * g;
@@ -4033,16 +4036,22 @@ namespace INMOST
 					g = -sign_func(sqrt(s), f);
 					h = f * g - s;
 					U(i, l) = f - g;
-					for (k = l; k < n; k++) rv1[k] = U(i, k) / h;
-					if (i != m - 1)
+					if (fabs(get_value(h)))
 					{
-						for (j = l; j < m; j++)
+						for (k = l; k < n; k++) rv1[k] = U(i, k) / h;
+						if (i != m - 1)
 						{
-							for (s = 0.0, k = l; k < n; k++) s += conj(U(i, k)) * U(j, k);
-							for (k = l; k < n; k++) U(j, k) += s * rv1[k];
+							for (j = l; j < m; j++)
+							{
+								for (s = 0.0, k = l; k < n; k++) 
+									s += conj(U(i, k)) * U(j, k);
+								for (k = l; k < n; k++)
+									U(j, k) += s * rv1[k];
+							}
 						}
 					}
-					for (k = l; k < n; k++) U(i, k) *= scale;
+					for (k = l; k < n; k++)
+						U(i, k) *= scale;
 				}
 			}
 			anorm = max_func(anorm, fabs(get_value(Sigma(i, i))) + fabs(get_value(rv1[i])));
@@ -4078,19 +4087,25 @@ namespace INMOST
 			if (i < (n - 1))
 				for (j = l; j < n; j++)
 					U(i, j) = 0.0;
-			if (fabs(get_value(g)))
+			if (fabs(get_value(g)) && !check_nans_infs(1.0 / g))
 			{
 				g = 1.0 / g;
 				if (i != n - 1)
 				{
 					for (j = l; j < n; j++)
 					{
-						for (s = 0.0, k = l; k < m; k++) s += conj(U(k, i)) * U(k, j);
-						f = (s / U(i, i)) * g;
-						for (k = i; k < m; k++) U(k, j) += f * U(k, i);
+						for (s = 0.0, k = l; k < m; k++) 
+							s += conj(U(k, i)) * U(k, j);
+						if (fabs(get_value(U(i, i))))
+						{
+							f = (s / U(i, i)) * g;
+							for (k = i; k < m; k++)
+								U(k, j) += f * U(k, i);
+						}
 					}
 				}
-				for (j = i; j < m; j++) U(j, i) *= g;
+				for (j = i; j < m; j++)
+					U(j, i) *= g;
 			}
 			else for (j = i; j < m; j++) U(j, i) = 0.0;
 			U(i, i) += 1;
@@ -4126,15 +4141,18 @@ namespace INMOST
 							g = Sigma(i, i);
 							h = pythag(f, g);
 							Sigma(i, i) = h;
-							h = 1.0 / h;
-							c = g * h;
-							s = (-f * h);
-							for (j = 0; j < m; j++)
+							if (fabs(get_value(h)))
 							{
-								y = U(j, nm);
-								z = U(j, i);
-								U(j, nm) = (y * c + z * s);
-								U(j, i) = (z * c - y * s);
+								h = 1.0 / h;
+								c = g * h;
+								s = (-f * h);
+								for (j = 0; j < m; j++)
+								{
+									y = U(j, nm);
+									z = U(j, i);
+									U(j, nm) = (y * c + z * s);
+									U(j, i) = (z * c - y * s);
+								}
 							}
 						}
 					}
