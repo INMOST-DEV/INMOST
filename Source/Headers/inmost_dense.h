@@ -3653,10 +3653,11 @@ namespace INMOST
 				return true;
 			else return false;
 		}
-		Var cs, eta, f, g, h, q, r, sn, w, x, y, z;
+		Var cs, f, g, h, q, r, sn, w, x, y, z;
 		int i, j, k, l, p = 0;
 		std::vector<Var> t, b, c, s;
 		Matrix<Var> A = *this;
+		INMOST_DATA_REAL_TYPE eta = 1.0e-13, tol = 1.0e-54, eps;
 		//  Householder reduction.
 		c.resize(n);
 		t.resize(n);
@@ -3673,7 +3674,7 @@ namespace INMOST
 				z += A(i, k) * conj(A(i, k));
 			b[k] = 0.0;
 
-			if (fabs(get_value(z)))
+			if (fabs(get_value(z)) > tol)
 			{
 				z = sqrt(z);
 				b[k] = z;
@@ -3706,7 +3707,7 @@ namespace INMOST
 				z += conj(A(k, j)) * A(k, j);
 			c[k + 1] = 0.0;
 
-			if (fabs(get_value(z)))
+			if (fabs(get_value(z)) > tol)
 			{
 				z = sqrt(z);
 				c[k + 1] = z;
@@ -3720,7 +3721,6 @@ namespace INMOST
 					for (j = k + 1; j < n; ++j)
 						q += conj(A(k, j)) * A(i, j);
 					q = q / (z * (z + w));
-
 					for (j = k + 1; j < n; ++j)
 						A(i, j) -= q * A(k, j);
 				}
@@ -3731,11 +3731,15 @@ namespace INMOST
 			}
 			k++;
 		}
+		eps = 0.0;
 		for (k = 0; k < n; k++)
 		{
 			s[k] = b[k];
 			t[k] = c[k];
+			if (get_value(s[k]) + get_value(t[k]) > eps)
+				eps = get_value(s[k]) + get_value(t[k]);
 		}
+		eps *= eta;
 		//  Initialization of U and V.
 		U.Resize(m,m);
 		U.Zero();
@@ -3752,15 +3756,16 @@ namespace INMOST
 				bool skip = false;
 				for (l = k; l >= 0; l--)
 				{
-					if (!fabs(get_value(t[l])))
+					if (fabs(get_value(t[l])) <= eps)
 					{
 						skip = true;
 						break;
 					}
-					if (!fabs(get_value(s[l - 1]))) break;
+					if (l == 0) break;
+					if (fabs(get_value(s[l - 1])) <= eps) break;
 				}
 				//  Cancellation of E(L).
-				if (!skip)
+				if (!skip && l != 0)
 				{
 					cs = 0.0;
 					sn = 1.0;
@@ -3768,20 +3773,23 @@ namespace INMOST
 					{
 						f = sn * t[i];
 						t[i] = cs * t[i];
-						if (!fabs(get_value(f))) break;
+						if (fabs(get_value(f)) <= eps) 
+							break;
 						h = s[i];
 						w = sqrt(f * f + h * h);
 						s[i] = w;
-						cs = h / w;
-						sn = -f / w;
-						for (j = 0; j < n; ++j)
+						if (fabs(get_value(w)))
 						{
-							x = real_part(U(j, l - 1));
-							y = real_part(U(j, i));
-							U(j, l - 1) = x * cs + y * sn;
-							U(j, i) = y * cs - x * sn;
+							cs = h / w;
+							sn = -f / w;
+							for (j = 0; j < n; ++j)
+							{
+								x = real_part(U(j, l - 1));
+								y = real_part(U(j, i));
+								U(j, l - 1) = x * cs + y * sn;
+								U(j, i) = y * cs - x * sn;
+							}
 						}
-
 						if (p == 0) continue;
 
 						for (j = n; j < n + p; ++j)
@@ -3874,7 +3882,6 @@ namespace INMOST
 				}
 			}
 			if (j == k) continue;
-
 			s[j] = s[k];
 			s[k] = g;
 			//  Interchange V(1:N, J) and V(1:N, K).
@@ -3921,7 +3928,7 @@ namespace INMOST
 		{
 			for (k = n - 2; k >= 0; k--)
 			{
-				if (c[k+1] == 0.0) continue;
+				if (!fabs(get_value(c[k + 1]))) continue;
 				q = -conj(A(k, k+1)) / fabs(A(k, k+1));
 				for (j = 0; j < n; ++j)
 					V(k+1, j) *= q;
@@ -3931,7 +3938,7 @@ namespace INMOST
 					q = 0.0;
 					for (i = k+1; i < n; ++i)
 						q += A(k, i) * V(i, j);
-					q = q / (fabs(A(k, k+1)) * c[k+1]);
+					q = q / (fabs(A(k, k + 1)) * c[k + 1]);
 					for (i = k+1; i < n; ++i)
 						V(i, j) -= q * conj(A(k, i));
 				}
@@ -4062,7 +4069,7 @@ namespace INMOST
 		{
 			if (i < (n - 1))
 			{
-				if (fabs(get_value(g)) && fabs(get_value(U(i, l))) && !check_nans_infs(1.0 / g))
+				if (fabs(get_value(g)) + anorm != anorm && fabs(get_value(U(i, l))))
 				{
 					for (j = l; j < n; j++) V(j, i) = ((U(i, j) / U(i, l)) / g);
 					// double division to avoid underflow
@@ -4087,7 +4094,7 @@ namespace INMOST
 			if (i < (n - 1))
 				for (j = l; j < n; j++)
 					U(i, j) = 0.0;
-			if (fabs(get_value(g)) && !check_nans_infs(1.0 / g))
+			if (fabs(get_value(g)) + anorm != anorm)
 			{
 				g = 1.0 / g;
 				if (i != n - 1)
@@ -4136,23 +4143,23 @@ namespace INMOST
 					for (i = l; i <= k; i++)
 					{
 						f = s * rv1[i];
-						if (fabs(get_value(f)) + anorm != anorm)
+						rv1[i] = c * rv1[i]; //??
+						if (fabs(get_value(f)) + anorm == anorm)
+							break;
+						g = Sigma(i, i);
+						h = pythag(f, g);
+						Sigma(i, i) = h;
+						if (fabs(get_value(h)) + anorm != anorm)
 						{
-							g = Sigma(i, i);
-							h = pythag(f, g);
-							Sigma(i, i) = h;
-							if (fabs(get_value(h)))
+							h = 1.0 / h;
+							c = g * h;
+							s = (-f * h);
+							for (j = 0; j < m; j++)
 							{
-								h = 1.0 / h;
-								c = g * h;
-								s = (-f * h);
-								for (j = 0; j < m; j++)
-								{
-									y = U(j, nm);
-									z = U(j, i);
-									U(j, nm) = (y * c + z * s);
-									U(j, i) = (z * c - y * s);
-								}
+								y = U(j, nm);
+								z = U(j, i);
+								U(j, nm) = (y * c + z * s);
+								U(j, i) = (z * c - y * s);
 							}
 						}
 					}
@@ -4193,7 +4200,7 @@ namespace INMOST
 					g = c * g;
 					z = pythag(f, h);
 					rv1[j] = z;
-					if (fabs(get_value(z)))
+					if (fabs(get_value(z)) + anorm != anorm)
 					{
 						c = f / z;
 						s = h / z;
@@ -4211,7 +4218,7 @@ namespace INMOST
 					}
 					z = pythag(f, h);
 					Sigma(j, j) = z;
-					if (fabs(get_value(z)) && !check_nans_infs(1.0 / z))
+					if (fabs(get_value(z)) + anorm != anorm)
 					{
 						z = 1.0 / z;
 						c = f * z;

@@ -2577,6 +2577,7 @@ template<class A>          __INLINE                          INMOST_DATA_REAL_TY
 						   __INLINE             const INMOST::multivar_expression& conj(const INMOST::multivar_expression& Arg) { return Arg; }
 						   __INLINE   const INMOST::multivar_expression_reference& conj(const INMOST::multivar_expression_reference& Arg) { return Arg; }
 						   __INLINE     const INMOST::hessian_multivar_expression& conj(const INMOST::hessian_multivar_expression& Arg) { return Arg; }
+						   __INLINE     const INMOST::const_multivar_expression_reference& conj(const INMOST::const_multivar_expression_reference& Arg) { return Arg; }
 						   __INLINE     const INMOST::hessian_multivar_expression_reference& conj(const INMOST::hessian_multivar_expression_reference& Arg) { return Arg; }
 						   __INLINE                                           void set_value(INMOST::var_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
                            __INLINE                                           void set_value(INMOST::multivar_expression & Arg, INMOST_DATA_REAL_TYPE Val) {Arg.SetValue(Val); }
