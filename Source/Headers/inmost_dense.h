@@ -5165,6 +5165,7 @@ namespace INMOST
 					for (i = l; i <= k; i++)
 					{
 						f = s * rv1[i];
+						rv1[i] = c * rv1[i];
 						if (fabs(get_value(f)) + anorm != anorm)
 						{
 							g = Sigma(i, i);
