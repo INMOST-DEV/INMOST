@@ -4069,7 +4069,8 @@ namespace INMOST
 		{
 			if (i < (n - 1))
 			{
-				if (fabs(get_value(g)) + anorm != anorm && fabs(get_value(U(i, l))))
+				//if (fabs(get_value(g)) + anorm != anorm && fabs(get_value(U(i, l))))
+				if (fabs(get_value(g)) && fabs(get_value(U(i, l))) && !check_nans_infs(1.0 / g))
 				{
 					for (j = l; j < n; j++) V(j, i) = ((U(i, j) / U(i, l)) / g);
 					// double division to avoid underflow
@@ -4094,7 +4095,8 @@ namespace INMOST
 			if (i < (n - 1))
 				for (j = l; j < n; j++)
 					U(i, j) = 0.0;
-			if (fabs(get_value(g)) + anorm != anorm)
+			//if (fabs(get_value(g)) + anorm != anorm)
+			if (fabs(get_value(g)) && !check_nans_infs(1.0 / g))
 			{
 				g = 1.0 / g;
 				if (i != n - 1)
@@ -4144,12 +4146,12 @@ namespace INMOST
 					{
 						f = s * rv1[i];
 						rv1[i] = c * rv1[i]; //??
-						if (fabs(get_value(f)) + anorm == anorm)
+						if (!fabs(get_value(f)))
 							break;
 						g = Sigma(i, i);
 						h = pythag(f, g);
 						Sigma(i, i) = h;
-						if (fabs(get_value(h)) + anorm != anorm)
+						if (fabs(get_value(h)))
 						{
 							h = 1.0 / h;
 							c = g * h;
@@ -4200,7 +4202,7 @@ namespace INMOST
 					g = c * g;
 					z = pythag(f, h);
 					rv1[j] = z;
-					if (fabs(get_value(z)) + anorm != anorm)
+					if (fabs(get_value(z)))
 					{
 						c = f / z;
 						s = h / z;
@@ -4218,7 +4220,7 @@ namespace INMOST
 					}
 					z = pythag(f, h);
 					Sigma(j, j) = z;
-					if (fabs(get_value(z)) + anorm != anorm)
+					if (fabs(get_value(z)))
 					{
 						z = 1.0 / z;
 						c = f * z;
