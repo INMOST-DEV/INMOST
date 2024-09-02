@@ -514,7 +514,7 @@ namespace INMOST
 	class table_variable : public shell_dynamic_variable< unary_pool_expression< function_expression<typename A::Var>,typename A::Var > , table_variable<A> >
 	{
 		A Arg;
-		const keyval_table & Table;
+		keyval_table Table;
 	public:
 		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg,  const keyval_table  & ptable) : Arg(parg), Table(ptable) {}
 		table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
