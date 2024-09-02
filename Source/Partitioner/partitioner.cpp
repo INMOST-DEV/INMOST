@@ -24,6 +24,18 @@ __declspec( dllexport ) void partitioner_stub(){} //to avoid LNK4221 warning
 #include <deque>
 #define ZOLTAN_CHKERR(x) if( x != ZOLTAN_OK )  {throw ErrorInPartitioner;}
 
+#if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
+int AdaptiveRepartitioner(int *vtxdist, int *xadj,  int *adjncy,
+                          int *vwgt,    int *vsize, int *adjwgt,
+                          double *part_weights, double *disbalance,
+                          int wgtflag, int ncon, int nparts,
+                          double itr_ratio, int *options,
+                          int *part, MPI_Comm *comm);
+# if !defined(USE_PARTITIONER_PARMETIS)
+// If METIS is defined without ParMETIS then we need to define IDX_T type
+#  define IDX_T  MPI_INT
+# endif
+#endif
 
 #if defined(USE_PARALLEL_WRITE_TIME)
 #define REPORT_MPI(x) {m->WriteTab(m->GetStream()) << "<MPI><![CDATA[" << #x << "]]></MPI>" << std::endl; x;}
@@ -308,6 +320,9 @@ namespace INMOST
 			case MetisKwayContig:
 				package = 7;
 				break;
+			case INNER_KWAY:
+				package = 8;
+				break;
 		}
 		if( package == 0 )
 		{
@@ -468,7 +483,7 @@ namespace INMOST
 								&exportProcs, &exportToPart);
 #endif
 		}
-		if( package == 2 || package == 4 || package == 5 || package == 6 || package == 7)
+		if( package == 2 || package == 4 || package == 5 || package == 6 || package == 7 || package == 8 )
 		{
 #if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
 			INMOST_DATA_ENUM_TYPE dim = m->GetDimensions();
@@ -1203,8 +1218,13 @@ namespace INMOST
 				REPORT_STR("time to redistribute graph");
 				REPORT_VAL("time",time);
 			}
-			
-			REPORT_STR("BEGIN PARMETIS");
+
+			if( package == 8 )
+			{
+				REPORT_STR("BEGIN KWAY");
+			} else {
+				REPORT_STR("BEGIN PARMETIS");
+			}
 			ENTER_BLOCK();
 			if( time_output ) time = Timer();
 			
@@ -1275,9 +1295,9 @@ namespace INMOST
 					//if(!srank) std::cout << NameSlash(__FILE__) << ":" << __LINE__ << std::endl;
 					REPORT_STR("run repartition");
 					result = ParMETIS_V3_AdaptiveRepart(link_vtxdist,link_xadj,link_adjncy,link_vwgt,link_vsize,
-														link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
-														link_ubvec,&itr,link_options,&edgecut,link_part,&split);
-					break;
+													link_adjwgt,&wgtflag,&numflag,&ncon,&nparts,link_tpwgts,
+													link_ubvec,&itr,link_options,&edgecut,link_part,&split);
+ 					break;
 				}
 			}
 #endif //USE_PARTITIONER_PARMETIS
@@ -1307,9 +1327,29 @@ namespace INMOST
 				}
 			}
 #endif //USE_PARTITIONER_METIS
-#if defined(USE_MPI)
-				MPI_Comm_free(&split);
+			if( package == 8 )
+			{
+#if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
+				if( pa == Repartition )
+				{
+					REPORT_STR("run repartition");
+					result = AdaptiveRepartitioner(link_vtxdist, link_xadj, link_adjncy,
+                                                                       link_vwgt, link_vsize, link_adjwgt,
+                                                                       link_tpwgts, link_ubvec,
+                                                                       wgtflag, ncon, nparts, itr, link_options,
+                                                                       link_part, &split);
+				} else {
+					if(m->GetProcessorRank() == 0 )
+						std::cout << "Internal kway algorithm implemented only for repartitioning" << std::endl;
+					throw NotImplemented;
+				}
+#else
+				if(m->GetProcessorRank() == 0 )
+					std::cout << "Internal kway repartitioning requires metis library (use METIS or PARMETIS)" << std::endl;
+				throw NotImplemented;
 #endif
+			}
+			MPI_Comm_free(&split);
 			}
 
 			EXIT_BLOCK();
@@ -1902,6 +1942,9 @@ namespace INMOST
 			case INNER_KMEANS:
 				package = 3;
 				break;
+			case INNER_KWAY:
+				package = 4;
+				break;
 		}
 		if( package == 1 )
 		{
@@ -1988,6 +2031,21 @@ namespace INMOST
 #if defined(USE_PARTITIONER_PARMETIS)
 #endif
 		}
+		if( package == 4 )
+		{
+#if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
+			if( pa != Repartition )
+			{
+				if(m->GetProcessorRank() == 0 )
+					std::cout << "Internal kway algorithm implemented only for repartitioning" << std::endl;
+				throw NotImplemented;
+			}
+#else
+			if(m->GetProcessorRank() == 0 )
+				std::cout << "Internal kway repartitioning requires metis library (use METIS or PARMETIS)" << std::endl;
+			throw NotImplemented;
+#endif
+		}
 	}
 	
 	void Partitioner::SetWeight(Tag weight)
@@ -2016,6 +2074,9 @@ namespace INMOST
 				break;
 			case INNER_KMEANS:
 				package = 3;
+				break;
+			case INNER_KWAY:
+				package = 4;
 				break;
 		}
 		if( package == 1 )
@@ -2053,6 +2114,15 @@ namespace INMOST
 			weight_tag = weight;
 #endif
 		}
+		if( package == 4 )
+		{
+#if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
+			weight_tag = weight;
+#else
+                        throw NotImplemented;
+
+#endif
+		}
 	}
 	void Partitioner::ResetWeight()
 	{
@@ -2078,6 +2148,7 @@ namespace INMOST
 				package = 2;
 				break;
 			case INNER_KMEANS:
+			case INNER_KWAY:
 				package = 3;
 				break;
 		}
