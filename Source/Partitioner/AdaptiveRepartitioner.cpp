@@ -20,6 +20,7 @@
 
 #include <mpi.h> 
 #define _GKLIB_H_
+#define METIS_EXPORT
 #include <metis.h>
 
 // Data structures for adaptive partitioning

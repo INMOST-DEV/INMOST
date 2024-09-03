@@ -26,6 +26,7 @@ option(USE_SOLVER "Compile solver capabilities" ON)
 option(USE_PARTITIONER "Compile partitioner capabilities" ON)
 option(USE_AUTODIFF "Compile automatic differentiation capabilities" ON)
 option(USE_NONLINEAR "Compile nonlinear solver capabilities" ON)
+option(USE_REPARTITIONER "Compile repartitioner" ON)
 option(COMPILE_EXAMPLES "Compile examples" OFF)
 option(COMPILE_TESTS "Compile some tests" OFF)
 
@@ -133,6 +134,7 @@ if(USE_PARTITIONER_PARMETIS)
 								LIST_SEPARATOR | # Use the alternate list separator
 								#for the one from ibaned
 								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
+								INSTALL_COMMAND true
 								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
 											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
 											"-DCMAKE_BUILD_TYPE=Release "

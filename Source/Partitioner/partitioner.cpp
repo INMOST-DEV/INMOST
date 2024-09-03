@@ -1329,6 +1329,7 @@ namespace INMOST
 #endif //USE_PARTITIONER_METIS
 			if( package == 8 )
 			{
+#if defined(USE_REPARTITIONER)
 #if defined(USE_PARTITIONER_PARMETIS) || defined(USE_PARTITIONER_METIS)
 				if( pa == Repartition )
 				{
@@ -1336,6 +1337,7 @@ namespace INMOST
 					result = AdaptiveRepartitioner(link_vtxdist, link_xadj, link_adjncy,
                                                                        link_vwgt, link_vsize, link_adjwgt,
                                                                        link_tpwgts, link_ubvec,
+                                                                       //NULL, NULL,
                                                                        wgtflag, ncon, nparts, itr, link_options,
                                                                        link_part, &split);
 				} else {
@@ -1346,6 +1348,9 @@ namespace INMOST
 #else
 				if(m->GetProcessorRank() == 0 )
 					std::cout << "Internal kway repartitioning requires metis library (use METIS or PARMETIS)" << std::endl;
+				throw NotImplemented;
+#endif
+#else
 				throw NotImplemented;
 #endif
 			}
