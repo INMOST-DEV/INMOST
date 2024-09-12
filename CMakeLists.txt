@@ -44,6 +44,7 @@ option(USE_SOLVER_K3BIILU2 "Activate K3BIILU2 solver (requires USE_MPI and USE_S
 option(USE_SOLVER_FCBIILU2 "Activate FCBIILU2 solver (requires fcbiilu2.cpp)")
 option(USE_OPTIMIZER "Use Optimization toolkit" OFF)
 option(USE_OPTIMIZER_BAYESIAN "Compile Optimization module against Limbo library to provide Bayesian optimization algorithm" OFF)
+option(USE_ZLIB "Compress data using ZLIB" OFF)
 #option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
 #option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
@@ -137,6 +138,8 @@ if(USE_PARTITIONER_PARMETIS)
 								INSTALL_COMMAND true
 								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
 											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
+											"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/ "
+											"-DCMAKE_INSTALL_LIBDIR=${LIB_DOWNLOAD_PATH}/lib/ "
 											"-DCMAKE_BUILD_TYPE=Release "
 											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
 											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
@@ -144,15 +147,16 @@ if(USE_PARTITIONER_PARMETIS)
 											"-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} "
 											"-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
 								)
+			ExternalProject_Get_Property(ParMETIS install_dir)
 			add_dependencies(inmost ParMETIS)
-			set(PARMETIS_INCLUDE_DIR "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "PARMETIS_INCLUDE_DIR is set" FORCE)
-			set(METIS_INCLUDE_DIR    "${LIB_DOWNLOAD_PATH}/include" CACHE PATH "METIS_INCLUDE_DIR is set" FORCE)
+			set(PARMETIS_INCLUDE_DIR "${install_dir}/include" CACHE PATH "PARMETIS_INCLUDE_DIR is set" FORCE)
+			set(METIS_INCLUDE_DIR    "${install_dir}/include" CACHE PATH "METIS_INCLUDE_DIR is set" FORCE)
 			if( WIN32 )
-				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/parmetis.lib;${LIB_DOWNLOAD_PATH}/lib/metis.lib")
-				set(METIS_LIBRARIES    "${LIB_DOWNLOAD_PATH}/lib/metis.lib")
+				set(PARMETIS_LIBRARIES "${install_dir}/lib/parmetis.lib;${install_dir}/lib/metis.lib")
+				set(METIS_LIBRARIES    "${install_dir}/lib/metis.lib")
 			else( WIN32 )
-				set(PARMETIS_LIBRARIES "${LIB_DOWNLOAD_PATH}/lib/libparmetis.a;${LIB_DOWNLOAD_PATH}/lib/libmetis.a" CACHE PATH "PARMETIS_LIBRARIES is set" FORCE)
-				set(METIS_LIBRARIES    "${LIB_DOWNLOAD_PATH}/lib/libmetis.a" CACHE PATH "METIS_LIBRARIES is set" FORCE)
+				set(PARMETIS_LIBRARIES "${install_dir}/lib/libparmetis.a;${install_dir}/lib/libmetis.a" CACHE PATH "PARMETIS_LIBRARIES is set" FORCE)
+				set(METIS_LIBRARIES    "${install_dir}/lib/libmetis.a" CACHE PATH "METIS_LIBRARIES is set" FORCE)
 			endif( WIN32 )
 			message("-- PARMETIS_INCLUDE_DIR: ${PARMETIS_INCLUDE_DIR}")
 			message("-- PARMETIS_LIBRARIES:   ${PARMETIS_LIBRARIES}")
@@ -448,6 +452,49 @@ if(USE_OPENCL)
 		message("OpenCL not found")
 	endif()
 endif()
+
+if(USE_ZLIB)
+  if(MSVC)
+    set(ZLIB_STATIC_NAME "static")
+  else(MSVC)
+    set(ZLIB_STATIC_NAME "")
+  endif(MSVC)
+  set(LIB_DOWNLOAD_PATH "${CMAKE_BINARY_DIR}/Libraries/download")
+  include(ExternalProject)
+  ExternalProject_Add(ZLIB
+                      GIT_REPOSITORY "https://github.com/madler/zlib.git"
+                      GIT_TAG "master"
+                      UPDATE_DISCONNECTED 1
+                      PREFIX "${LIB_DOWNLOAD_PATH}"
+                      #INSTALL_COMMAND true
+                      CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} " #no install script!
+                                 "-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/ "
+                                 "-DCMAKE_INSTALL_LIBDIR=${LIB_DOWNLOAD_PATH}/lib/ "
+                                 "-DMPI_C_COMPILER=${CMAKE_C_COMPILER} "
+                                 "-DMPI_CXX_COMPILER=${CMAKE_CXX_COMPILER} "
+                                 "-DCMAKE_BUILD_TYPE=Release ")
+  ExternalProject_Get_Property(ZLIB install_dir)
+  add_library(zlib STATIC IMPORTED)
+  if(UNIX)
+    set(ZLIB_LIBNAME z)
+  else()
+    set(ZLIB_LIBNAME zlib)
+  endif()
+  message("location: ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set_target_properties(zlib PROPERTIES IMPORTED_LOCATION
+    ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  set_target_properties(zlib PROPERTIES IMPORTED_LOCATION_DEBUG
+    ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}d${CMAKE_STATIC_LIBRARY_SUFFIX}
+  )
+  add_dependencies(zlib ZLIB)
+  set(ZLIB_LIBRARIES zlib) 
+  set(ZLIB_DIR ${install_dir})
+  set(ZLIB_INCLUDE_DIRS ${install_dir}/include)
+  find_package_handle_standard_args(ZLIB DEFAULT_MSG ZLIB_LIBRARIES ZLIB_INCLUDE_DIRS)
+  include_directories(${ZLIB_INCLUDE_DIRS})
+  add_definitions(-DUSE_ZLIB)
+endif(USE_ZLIB)
 
 if(USE_AUTODIFF_ASMJIT)
 	set(ASMJIT_STATIC TRUE)
