@@ -12,7 +12,10 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
-
+if(USE_ZLIB)
+  message("linking autodiff_test000 with ZLIB")
+  target_link_libraries(autodiff_test000 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
 
 add_test(NAME autodiff_test000_hessian_sin                 COMMAND $<TARGET_FILE:autodiff_test000> 0)
 add_test(NAME autodiff_test000_hessian_sin_of_poly           COMMAND $<TARGET_FILE:autodiff_test000> 1)

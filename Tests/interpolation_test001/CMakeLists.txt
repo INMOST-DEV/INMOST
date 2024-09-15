@@ -12,5 +12,9 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking interpolation_test001 with ZLIB")
+  target_link_libraries(interpolation_test001 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
 
 add_test(NAME interpolation_test001_cell         COMMAND $<TARGET_FILE:interpolation_test001> 0)

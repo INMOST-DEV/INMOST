@@ -12,5 +12,10 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking interpolation_test000 with ZLIB")
+  target_link_libraries(interpolation_test000 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 
 add_test(NAME interpolation_test000_face         COMMAND $<TARGET_FILE:interpolation_test000> 0)

@@ -60,4 +60,9 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking ADFVDiscr with MPI")
+  target_link_libraries(ADFVDiscr ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 install(TARGETS ADFVDiscr EXPORT inmost-targets RUNTIME DESTINATION bin)

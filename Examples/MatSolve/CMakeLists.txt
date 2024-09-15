@@ -55,5 +55,10 @@ if(USE_PARTITIONER)
   endif()
 endif()
 
+if(USE_ZLIB)
+ message("linking MatSolve with ZLIB")
+ target_link_libraries(MatSolve ${ZLIB_LIBRARIES})
+endif(USE_ZLIB)
+
 
 install(TARGETS MatSolve EXPORT inmost-targets RUNTIME DESTINATION bin)

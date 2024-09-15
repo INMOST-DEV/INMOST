@@ -4,7 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <queue>
-
+#if defined(USE_ZLIB)
+#include "zlib.h"
+#endif
 
 //if both are commented then sparse row sum is computed with merge
 //#define USE_UNORDERED_SPA // use sparse accumulator with unordered result
@@ -844,6 +846,89 @@ namespace INMOST
 			if (file_ord != "") free(ord);
 		}
 
+		static bool compress(const void* buffer, size_t dsize, void*& buffer_out, size_t& dsize_out)
+		{
+#if defined(USE_ZLIB)
+			uLongf bufsize = compressBound((uLongf)dsize);
+			void* zbuffer = malloc(bufsize);
+			if (zbuffer)
+			{
+				int res = compress2(static_cast<Bytef*>(zbuffer), &bufsize, static_cast<const Bytef*>(buffer), (uLongf)dsize, 9);
+				if (res != Z_OK)
+					std::cout << __FILE__ << ":" << __LINE__ << " fail " << res << std::endl;
+				else
+				{
+					buffer_out = zbuffer;
+					dsize_out = bufsize;
+					return true;
+				}
+			}
+			else std::cout << __FILE__ << ":" << __LINE__ << " allocation of " << bufsize << " failed" << std::endl;
+			return false;
+#else
+			return false;
+#endif
+		}
+
+
+		void     Vector::SaveBinary(std::string file)
+		{
+			int rank = 0, size = 1, compr = 0;
+			int vecsize = Size(), totsize = 0;
+			std::vector<int> vecsizes(size, vecsize);
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+			if (rank == 0)
+				vecsizes.resize(size);
+			MPI_Gather(&vecsize, 1, MPI_INT, &vecsizes[0], 1, MPI_INT, 0, GetCommunicator());
+#endif
+			size_t dsize = vecsize * sizeof(INMOST_DATA_REAL_TYPE), zdsize;
+			void* buffer = static_cast<void*>(&data[0]), * zbuffer;
+			if (compress(buffer, dsize, zbuffer, zdsize))
+			{
+				std::swap(buffer, zbuffer);
+				std::swap(dsize, zdsize);
+				compr = 1;
+			}
+			if (dsize > INT_MAX)
+			{
+				std::cout << __FILE__ << ":" << __LINE__;
+				std::cout << " Current implementation cannot fit necessery size ";
+				std::cout << dsize << ">" << INT_MAX << " on rank " << rank << std::endl;
+				MPI_Abort(GetCommunicator(), __LINE__);
+			}
+			std::vector<int> dsizes(size, dsize), displ(size, 0);
+#if defined(USE_MPI)
+			MPI_Gather(&dsize, 1, MPI_INT, &dsizes[0], 1, MPI_INT, 0, GetCommunicator());
+#endif
+			size_t totbufsize = 1;
+			if (rank == 0)
+			{
+				totbufsize = 0;
+				for (int k = 0; k < size; ++k)
+				{
+					displ[k] = totbufsize;
+					totbufsize += dsizes[k];
+				}
+			}
+			std::vector<char> totbuffer(totbufsize);
+#if defined(USE_MPI)
+			MPI_Gatherv(buffer, dsize, MPI_CHAR, &totbuffer[0], &dsizes[0], &displ[0], MPI_INT, 0, GetCommunicator());
+#else
+			std::copy(buffer, buffer + dsize, &totbuffer[0]);
+#endif
+			if (compr) free(buffer); //temporary buffer
+			if (rank == 0)
+			{
+				std::ofstream fout(file.c_str(), std::ios::binary);
+				fout.write(reinterpret_cast<const char*>(&compr), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&size), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&vecsizes[0]), sizeof(int) * size);
+				fout.write(reinterpret_cast<const char*>(&dsizes[0]), sizeof(int) * size);
+				fout.write(reinterpret_cast<const char*>(&totbuffer[0]), sizeof(char) * totbufsize);
+			}
+		}
 
 		void     Vector::Save(std::string file)
 		{
@@ -1191,6 +1276,122 @@ namespace INMOST
 			//~ std::cout << rank << " total nonzero " << max_lines << " my nonzero " << nonzero << std::endl;
 			input.close();
 			if (file_ord != "") free(ord);
+		}
+
+		
+		void Matrix::SaveBinary(std::string file)
+		{
+			int rank = 0, size = 1, compr[3] = { 0,0,0 };
+			int matsize = GetLastIndex() - GetFirstIndex(), totsize = 0, nnzsize = Nonzeros();
+			std::vector<int> matsizes(size, matsize), nnzsizes(size, nnzsize);
+			std::vector<INMOST_DATA_ENUM_TYPE> ia;
+			std::vector<INMOST_DATA_ENUM_TYPE> ja;
+			std::vector<INMOST_DATA_ENUM_TYPE> va;
+			ia.reserve(matsize);
+			ja.reserve(nnzsize);
+			va.reserve(nnzsize);
+			ia.push_back(0);
+			for (INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
+			{
+				for (Row::iterator jt = (*this)[k].Begin(); jt != (*this)[k].End(); ++jt)
+				{
+					ja.push_back(jt->first);
+					va.push_back(jt->second);
+				}
+				ia.push_back(ja.size());
+			}
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+			if (rank == 0)
+				matsizes.resize(size);
+			MPI_Gather(&matsize, 1, MPI_INT, &matsizes[0], 1, MPI_INT, 0, GetCommunicator());
+			MPI_Gather(&nnzsize, 1, MPI_INT, &nnzsizes[0], 1, MPI_INT, 0, GetCommunicator());
+#endif
+			size_t dsize[3] =
+			{
+				matsize * sizeof(INMOST_DATA_ENUM_TYPE),
+				nnzsize * sizeof(INMOST_DATA_ENUM_TYPE),
+				nnzsize * sizeof(INMOST_DATA_REAL_TYPE)
+			}, zdsize;
+			void* buffer[3] =
+			{
+				static_cast<void*>(&ia[0]),
+				static_cast<void*>(&ja[0]),
+				static_cast<void*>(&va[0])
+			}, * zbuffer;
+			for (int k = 0; k < 3; ++k)
+			{
+				if (compress(buffer[k], dsize[k], zbuffer, zdsize))
+				{
+					std::swap(buffer[k], zbuffer);
+					std::swap(dsize[k], zdsize);
+					compr[0] = 1;
+				}
+				if (dsize[k] > INT_MAX)
+				{
+					std::cout << __FILE__ << ":" << __LINE__;
+					std::cout << " Current implementation cannot fit necessery size ";
+					std::cout << dsize[k] << ">" << INT_MAX << " k " << k << " on rank " << rank << std::endl;
+					MPI_Abort(GetCommunicator(), __LINE__);
+				}
+			}
+			if (compr[0])
+			{
+				ia.clear();
+				ia.shrink_to_fit();
+			}
+			if (compr[1])
+			{
+				ja.clear();
+				ja.shrink_to_fit();
+			}
+			if (compr[2])
+			{
+				va.clear();
+				va.shrink_to_fit();
+			}
+			std::vector<int> dsizes[3], displ(size, 0);
+			std::vector<char> totbuffer[3];
+			for (int k = 0; k < 3; ++k)
+			{
+				dsizes[k].resize(size);
+				dsizes[k][0] = dsize[k];
+#if defined(USE_MPI)
+				MPI_Gather(&dsize[k], 1, MPI_INT, &dsizes[k][0], 1, MPI_INT, 0, GetCommunicator());
+#endif
+				size_t totbufsize = 1;
+				if (rank == 0)
+				{
+					totbufsize = 0;
+					for (int q = 0; q < size; ++q)
+					{
+						displ[q] = totbufsize;
+						totbufsize += dsizes[k][q];
+					}
+				}
+				if (rank == 0)
+					totbuffer[k].resize(totbufsize);
+				else totbuffer[k].resize(1);
+#if defined(USE_MPI)
+				MPI_Gatherv(buffer[k], dsize[k], MPI_CHAR, &totbuffer[k][0], &dsizes[k][0], &displ[0], MPI_INT, 0, GetCommunicator());
+#else
+				std::copy(buffer[k], buffer[k] + dsize[k], &totbuffer[k][0]);
+#endif
+				if (compr[k]) free(buffer[k]); //temporary buffer
+			}
+			if (rank == 0)
+			{
+				std::ofstream fout(file.c_str(), std::ios::binary);
+				fout.write(reinterpret_cast<const char*>(&compr), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&size), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&matsizes[0]), sizeof(int) * size);
+				fout.write(reinterpret_cast<const char*>(&nnzsizes[0]), sizeof(int) * size);
+				for (int k = 0; k < 3; ++k)
+					fout.write(reinterpret_cast<const char*>(&dsizes[k][0]), sizeof(int) * size);
+				for (int k = 0; k < 3; ++k)
+					fout.write(reinterpret_cast<const char*>(&totbuffer[k][0]), sizeof(char) * totbuffer[k].size());
+			}
 		}
 
 		void     Matrix::Save(std::string file, const AnnotationService * text)

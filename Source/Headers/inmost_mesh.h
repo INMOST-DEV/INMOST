@@ -3190,6 +3190,8 @@ namespace INMOST
 		};
 	private:
 		std::vector< std::pair<std::string, std::string> > file_options;
+		void WritePMFStream(std::stringstream& sout);
+		void ReadPMFStream(std::stringstream& sin);
 	public:
 		/// Set file option.
 		/// Current available file options:

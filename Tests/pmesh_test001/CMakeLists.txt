@@ -12,6 +12,11 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking pmesh_test001 with ZLIB")
+  target_link_libraries(pmesh_test001 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 if(USE_PARTITIONER_ZOLTAN)
   message("linking pmesh_test001 with Zoltan")
   target_link_libraries(pmesh_test001 ${ZOLTAN_LIBRARIES})

@@ -13,5 +13,9 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking GridGen with MPI")
+  target_link_libraries(GridGen ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
 
 install(TARGETS GridGen EXPORT inmost-targets RUNTIME DESTINATION bin)
