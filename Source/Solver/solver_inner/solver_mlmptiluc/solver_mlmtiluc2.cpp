@@ -48,7 +48,7 @@ const INMOST_DATA_ENUM_TYPE UNDEF = ENUMUNDEF, EOL = ENUMUNDEF - 1;
 
 //#define PREMATURE_DROPPING
 //#define PIVOT_THRESHOLD
-//#define DIAGONAL_PERTURBATION
+#define DIAGONAL_PERTURBATION
 const double rpert = 1.0e-6;
 const double apert = 1.0e-8;
 #define ILUC2

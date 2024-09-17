@@ -135,7 +135,7 @@ if(USE_PARTITIONER_PARMETIS)
 								LIST_SEPARATOR | # Use the alternate list separator
 								#for the one from ibaned
 								#CMAKE_ARGS "-DMPI_INCLUDE_PATH:PATH='${PASS_MPI}'"
-								INSTALL_COMMAND true
+								#INSTALL_COMMAND true
 								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
 											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
 											"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/ "
