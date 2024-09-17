@@ -12,6 +12,12 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking pmesh_test000 with ZLIB")
+  target_link_libraries(pmesh_test000 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
+
 if( USE_MPI AND EXISTS ${MPIEXEC} )
   add_test(NAME pmesh_test000_parallel_np_2  COMMAND ${MPIEXEC} -np 2 $<TARGET_FILE:pmesh_test000> ${CMAKE_CURRENT_SOURCE_DIR}/3x3x3.vtk)
   add_test(NAME pmesh_test000_parallel_np_3  COMMAND ${MPIEXEC} -np 3 $<TARGET_FILE:pmesh_test000> ${CMAKE_CURRENT_SOURCE_DIR}/3x3x3.vtk)

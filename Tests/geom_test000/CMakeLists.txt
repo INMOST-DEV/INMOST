@@ -12,6 +12,11 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking geom_test000 with ZLIB")
+  target_link_libraries(geom_test000 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 add_test(NAME geom_test000_dual4  COMMAND $<TARGET_FILE:geom_test000> ${CMAKE_CURRENT_SOURCE_DIR}/d4.pmf)
 add_test(NAME geom_test000_cube4  COMMAND $<TARGET_FILE:geom_test000> ${CMAKE_CURRENT_SOURCE_DIR}/c4.pmf)
 add_test(NAME geom_test000_tetra4  COMMAND $<TARGET_FILE:geom_test000> ${CMAKE_CURRENT_SOURCE_DIR}/t4.pmf)

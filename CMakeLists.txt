@@ -45,8 +45,6 @@ option(USE_SOLVER_FCBIILU2 "Activate FCBIILU2 solver (requires fcbiilu2.cpp)")
 option(USE_OPTIMIZER "Use Optimization toolkit" OFF)
 option(USE_OPTIMIZER_BAYESIAN "Compile Optimization module against Limbo library to provide Bayesian optimization algorithm" OFF)
 option(USE_ZLIB "Compress data using ZLIB" OFF)
-#option(USE_AUTODIFF_ASMJIT "Use AsmJit for automatic differentiation" OFF)
-#option(USE_AUTODIFF_EXPRESSION_TEMPLATES "Use c++ expression templates for automatic differentiation" OFF)
 
 set(LIB_DOWNLOAD_PATH "${CMAKE_BINARY_DIR}/Libraries/download")
 
@@ -138,8 +136,6 @@ if(USE_PARTITIONER_PARMETIS)
 								#INSTALL_COMMAND true
 								CMAKE_ARGS  "-DDISABLE_PARMETIS_PROGRAMS:BOOL=TRUE "
 											"-DCMAKE_INSTALL_PREFIX=${LIB_DOWNLOAD_PATH} "
-											"-DCMAKE_INSTALL_INCLUDEDIR=${LIB_DOWNLOAD_PATH}/include/ "
-											"-DCMAKE_INSTALL_LIBDIR=${LIB_DOWNLOAD_PATH}/lib/ "
 											"-DCMAKE_BUILD_TYPE=Release "
 											"-DMPI_C_COMPILER=${MPI_C_COMPILER} "
 											"-DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} "
@@ -488,20 +484,15 @@ if(USE_ZLIB)
     ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}d${CMAKE_STATIC_LIBRARY_SUFFIX}
   )
   add_dependencies(zlib ZLIB)
-  set(ZLIB_LIBRARIES zlib) 
+  #set(ZLIB_LIBRARIES zlib) 
+  set(ZLIB_LIBRARIES ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
   set(ZLIB_DIR ${install_dir})
   set(ZLIB_INCLUDE_DIRS ${install_dir}/include)
   find_package_handle_standard_args(ZLIB DEFAULT_MSG ZLIB_LIBRARIES ZLIB_INCLUDE_DIRS)
   include_directories(${ZLIB_INCLUDE_DIRS})
+  link_directories(${ZLIB_DIR})
   add_definitions(-DUSE_ZLIB)
 endif(USE_ZLIB)
-
-if(USE_AUTODIFF_ASMJIT)
-	set(ASMJIT_STATIC TRUE)
-	include("AsmJit/CMakeLists.txt")	
-	include_directories("${ASMJIT_INC_DIR}/asmjit")
-	target_link_libraries(inmost asmjit)
-endif()
 
 if(USE_AUTODIFF_EXPRESSION_TEMPLATES)
 	if(MSVC)

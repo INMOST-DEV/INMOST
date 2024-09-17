@@ -13,6 +13,11 @@ if(USE_MPI)
     endif()
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking solver_test003 with ZLIB")
+  target_link_libraries(solver_test003 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 if(USE_SOLVER)
     if(USE_SOLVER_ANI)
         message("linking solver_test003 with ani3d and BLAS")

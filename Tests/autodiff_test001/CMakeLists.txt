@@ -12,6 +12,9 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
-
+if(USE_ZLIB)
+  message("linking autodiff_test001 with ZLIB")
+  target_link_libraries(autodiff_test001 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
 
 add_test(NAME autodiff_test001_hessian_0 COMMAND $<TARGET_FILE:autodiff_test001> 0)

@@ -12,6 +12,10 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking container_test000 with ZLIB")
+  target_link_libraries(container_test000 ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
 
 
 add_test(NAME container_test000_pool_array COMMAND $<TARGET_FILE:container_test000> 0)

@@ -59,4 +59,9 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking FVDiscr with ZLIB")
+  target_link_libraries(FVDiscr ${ZLIB_LIBRARIES}) 
+endif(USE_ZLIB)
+
 install(TARGETS FVDiscr EXPORT inmost-targets RUNTIME DESTINATION bin)

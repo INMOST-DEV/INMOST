@@ -26,6 +26,14 @@ if(USE_MPI)
   endif() 
 endif(USE_MPI)
 
+if(USE_ZLIB)
+  message("linking AdaptiveMesh with ZLIB")
+  target_link_libraries(AdaptiveMesh ${ZLIB_LIBRARIES}) 
+  target_link_libraries(AdaptiveMeshCube ${ZLIB_LIBRARIES}) 
+  target_link_libraries(AdaptiveMeshSphere ${ZLIB_LIBRARIES}) 
+  #target_link_libraries(AdaptiveMeshTestSet ${ZLIB_LIBRARIES}) 
+endif(UZE_ZLIB)
+
 
 if(USE_PARTITIONER)
   if(USE_PARTITIONER_ZOLTAN)

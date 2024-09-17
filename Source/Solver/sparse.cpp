@@ -4,7 +4,8 @@
 #include <fstream>
 #include <sstream>
 #include <queue>
-
+#include "../Misc/utils.h"
+#include "../IO/io.hpp"
 
 //if both are commented then sparse row sum is computed with merge
 //#define USE_UNORDERED_SPA // use sparse accumulator with unordered result
@@ -844,6 +845,236 @@ namespace INMOST
 			if (file_ord != "") free(ord);
 		}
 
+		
+
+		static void RecvBigBuffer(void* buffer, INMOST_DATA_BIG_ENUM_TYPE dsize, int orig, int tag, INMOST_MPI_Comm comm)
+		{
+#if defined(USE_MPI)
+			INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0, wdsize = sizeof(char) * dsize;
+			int t = 0;
+			while (shift != wdsize)
+			{
+				chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX), wdsize - shift);
+				MPI_Recv(static_cast<char*>(buffer) + shift, sizeof(char) * chunk, MPI_CHAR, orig, tag + t++, comm, MPI_STATUS_IGNORE);
+				shift += chunk;
+			}
+#endif
+		}
+
+		static void SendBigBuffer(void* buffer, INMOST_DATA_BIG_ENUM_TYPE dsize, int dest, int tag, INMOST_MPI_Comm comm)
+		{
+#if defined(USE_MPI)
+			INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0, wdsize = sizeof(char) * dsize;
+			int t = 0;
+			while (shift != wdsize)
+			{
+				chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX), wdsize - shift);
+				MPI_Send(static_cast<char*>(buffer) + shift, sizeof(char) * chunk, MPI_CHAR, dest, tag + t++, comm);
+				shift += chunk;
+			}
+#endif
+		}
+
+
+		void     Vector::SaveBinary(std::string file)
+		{
+			//std::cout << __FUNCTION__ << std::endl;
+			int rank = 0, size = 1, compr = 0;
+			INMOST_DATA_BIG_ENUM_TYPE vecsize = Size();
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> vecsizes(size, vecsize);
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+			if (rank == 0) vecsizes.resize(size);
+			MPI_Gather(&vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsizes[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+#endif
+			size_t dsize = vecsize * sizeof(INMOST_DATA_REAL_TYPE), zdsize;
+			void* buffer = static_cast<void*>(data.begin()), * zbuffer;
+			if (zcompress(buffer, dsize, zbuffer, zdsize))
+			{
+				std::swap(buffer, zbuffer);
+				std::swap(dsize, zdsize);
+				compr = 1;
+			}
+			INMOST_DATA_BIG_ENUM_TYPE wdsize = dsize;
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> dsizes(size, wdsize);
+#if defined(USE_MPI)
+			MPI_Gather(&wdsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &dsizes[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+#endif
+			if (rank == 0)
+			{
+				//io_converter<INMOST_DATA_BIG_ENUM_TYPE, INMOST_DATA_REAL_TYPE> buconv;
+				std::ofstream fout(file.c_str(), std::ios::binary);
+				/*
+				buconv.write_iByteOrder(fout);
+				buconv.write_iByteSize(fout);
+				//todo: use for data unpack
+				buconv.write_fByteOrder(fout);
+				buconv.write_fByteSize(fout);
+				buconv.write_iValue(fout, compr);
+				buconv.write_iValue(fout, size);
+				for (int k = 0; k < size; ++k)
+				{
+					buconv.write_iValue(fout, vecsizes[k]);
+					buconv.write_iValue(fout, dsizes[k]);
+				}
+				*/
+				fout.write(reinterpret_cast<const char*>(&size), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&vecsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * size);
+				fout.write(reinterpret_cast<const char*>(&dsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * size);
+				//Write my data
+				fout.write(reinterpret_cast<const char*>(&compr), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(buffer), sizeof(char) * dsize);
+				if (compr) free(buffer);
+				//Get and write remote data
+#if defined(USE_MPI)
+				for (int it = 1; it < size; ++it)
+				{
+					buffer = malloc(sizeof(char) * dsizes[it]);
+					MPI_Recv(&compr, 1, MPI_INT, it, it, GetCommunicator(),MPI_STATUS_IGNORE);
+					RecvBigBuffer(buffer, dsizes[it], it, it, GetCommunicator());
+					fout.write(reinterpret_cast<const char*>(&compr), sizeof(int));
+					fout.write(reinterpret_cast<const char*>(buffer), sizeof(char) * dsizes[it]);
+					free(buffer);
+				}
+#endif
+
+			}
+			else
+			{
+#if defined(USE_MPI)
+				MPI_Send(&compr, 1, MPI_INT, 0, rank, GetCommunicator());
+				SendBigBuffer(buffer, wdsize, 0, rank, GetCommunicator());
+				if (compr) free(buffer);
+#endif
+			}
+		}
+
+		template<typename Type>
+		static bool LoadBinaryPiece(void * buffer, size_t dsize, Type * data, INMOST_DATA_BIG_ENUM_TYPE shift, INMOST_DATA_BIG_ENUM_TYPE size, int compr)
+		{
+			if (compr)
+			{
+				size_t udsize = sizeof(Type) * size;
+				if (!zuncompress(buffer, dsize, &data[shift], udsize))
+				{
+					std::cout << __FILE__ << ":" << __LINE__ << " cannot unpack" << std::endl;
+					return false;
+				}
+			}
+			else std::memcpy(&data[shift], buffer, dsize);
+			return true;
+		}
+
+		void     Vector::LoadBinary(std::string file)
+		{
+			int rank = 0, size = 1, compr = 0, npart;
+			INMOST_DATA_BIG_ENUM_TYPE vecsize, vecshift = 0;
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+#endif
+			if (rank == 0)
+			{
+				int rsize;
+				//INMOST_DATA_BIG_ENUM_TYPE wrcompr, wrsize;
+				//io_converter<INMOST_DATA_BIG_ENUM_TYPE, INMOST_DATA_REAL_TYPE> buconv;
+				std::vector< INMOST_DATA_BIG_ENUM_TYPE> vecsizep, vecsizes, dsizes;
+				std::vector<int> nparts(size, 0);
+				std::ifstream fin(file.c_str(), std::ios::binary);
+				/*
+				buconv.read_iByteOrder(fin);
+				buconv.read_iByteSize(fin);
+				buconv.read_fByteOrder(fin);
+				buconv.read_fByteSize(fin);
+				buconv.read_iValue(fin, wrcompr);
+				buconv.read_iValue(fin, wrsize);
+				compr = wrcompr;
+				rsize = wrsize;
+				*/
+				fin.read(reinterpret_cast<char*>(rsize), sizeof(int));
+				//Read information on data pieces
+				vecsizes.resize(rsize);
+				dsizes.resize(rsize);
+				fin.read(reinterpret_cast<char*>(&vecsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * rsize);
+				fin.read(reinterpret_cast<char*>(&dsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * rsize);
+				/*
+				for (int k = 0; k < rsize; ++k)
+				{
+					buconv.read_iValue(fin, vecsizes[k]);
+					buconv.read_iValue(fin, dsizes[k]);
+				}
+				*/
+				//Distribute data pieces among processes
+				int cnt = static_cast<int>(ceil(rsize / static_cast<double>(size))), tot = 0, part = 0;
+				vecsizep.resize(size, 0);
+				for (int k = 0; k < size; ++k)
+				{
+					npart = std::min(cnt, rsize - tot);
+					for (int q = 0; q < npart; ++q)
+						vecsizep[k] += vecsizes[part++];
+					nparts[k] = npart;
+					tot += npart;
+				}
+#if defined(USE_MPI)
+				MPI_Scatter(&nparts[0], 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
+				MPI_Scatter(&vecsizep[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Exscan(&vecsize, &vecshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
+#endif
+				SetInterval(vecshift, vecshift + vecsize);
+				//read my own part
+				part = 0; //current part number
+				for (int k = 0; k < npart; ++k)
+				{
+					void * buffer = malloc(sizeof(char) * dsizes[part]);
+					fin.read(reinterpret_cast<char*>(&compr), sizeof(int));
+					fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[part]);
+					LoadBinaryPiece(buffer, dsizes[part], &data[0], vecshift, vecsizes[part], compr);
+					vecshift += vecsizes[part];
+					free(buffer);
+					part++;
+				}
+				//read and send others parts
+#if defined(USE_MPI)
+				for (int k = 1; k < size; ++k)
+				{
+					for (int q = 0; q < nparts[k]; ++q)
+					{
+						MPI_Send(&dsizes[part], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, k, k, GetCommunicator());
+						MPI_Send(&vecsizes[part], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, k, k, GetCommunicator());
+						fin.read(reinterpret_cast<char*>(&compr), sizeof(int));
+						MPI_Send(&compr, 1, MPI_INT, k, k, GetCommunicator());
+						void* buffer = malloc(sizeof(char) * dsizes[part]);
+						fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[part]);
+						SendBigBuffer(buffer, sizeof(char) * dsizes[part], k, k, GetCommunicator());
+						free(buffer);
+						part++;
+					}
+				}
+#endif
+			}
+#if defined(USE_MPI)
+			else
+			{
+				MPI_Scatter(NULL, 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
+				MPI_Scatter(NULL, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Exscan(&vecsize, &vecshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
+				SetInterval(vecshift, vecshift + vecsize);
+				INMOST_DATA_BIG_ENUM_TYPE dsize, vecsizep;
+				for (int k = 0; k < npart; ++k)
+				{
+					MPI_Recv(&dsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, rank, GetCommunicator(), MPI_STATUS_IGNORE);
+					MPI_Recv(&vecsizep, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, rank, GetCommunicator(), MPI_STATUS_IGNORE);
+					MPI_Recv(&compr, 1, MPI_INT, 0, rank, GetCommunicator(), MPI_STATUS_IGNORE);
+					void* buffer = malloc(sizeof(char) * dsize);
+					RecvBigBuffer(buffer, sizeof(char) * dsize, 0, rank, GetCommunicator());
+					LoadBinaryPiece(buffer, dsize, &data[0], vecshift, vecsizep, compr);
+					vecshift += vecsizep;
+					free(buffer);
+				}
+			}
+#endif
+		}
 
 		void     Vector::Save(std::string file)
 		{
@@ -1191,6 +1422,287 @@ namespace INMOST
 			//~ std::cout << rank << " total nonzero " << max_lines << " my nonzero " << nonzero << std::endl;
 			input.close();
 			if (file_ord != "") free(ord);
+		}
+
+		
+		void Matrix::SaveBinary(std::string file)
+		{
+			//std::cout << __FUNCTION__ << std::endl;
+			int rank = 0, size = 1, compr[3] = { 0,0,0 }, rcompr[3] = { 0,0,0 };
+			INMOST_DATA_BIG_ENUM_TYPE matsize = GetLastIndex() - GetFirstIndex(), nnzsize = Nonzeros();
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> matsizes(size, matsize), nnzsizes(size, nnzsize);
+			//Gather data
+			std::vector<INMOST_DATA_ENUM_TYPE> ia;
+			std::vector<INMOST_DATA_ENUM_TYPE> ja;
+			std::vector<INMOST_DATA_REAL_TYPE> va;
+			ia.reserve(matsize + 1);
+			ja.reserve(nnzsize);
+			va.reserve(nnzsize);
+			ia.push_back(0);
+			nnzsize = 0;
+			for (INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
+			{
+				for (Row::iterator jt = (*this)[k].Begin(); jt != (*this)[k].End(); ++jt)
+				{
+					ja.push_back(jt->first);
+					va.push_back(jt->second);
+					nnzsize++;
+				}
+				ia.push_back(ja.size());
+			}
+			if (ia.size() != matsize + 1)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			if (ja.size() != nnzsize)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			if (va.size() != nnzsize)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			//Communicate sizes
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+			if (rank == 0)
+			{
+				matsizes.resize(size);
+				nnzsizes.resize(size);
+			}
+			MPI_Gather(&matsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &matsizes[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+			MPI_Gather(&nnzsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &nnzsizes[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+#endif
+			//Compress data
+			size_t dsize[3] =
+			{
+				ia.size() * sizeof(INMOST_DATA_ENUM_TYPE),
+				ja.size() * sizeof(INMOST_DATA_ENUM_TYPE),
+				va.size() * sizeof(INMOST_DATA_REAL_TYPE)
+			}, zdsize;
+			void* buffer[3] =
+			{
+				static_cast<void*>(&ia[0]),
+				static_cast<void*>(&ja[0]),
+				static_cast<void*>(&va[0])
+			}, * zbuffer;
+			for (int k = 0; k < 3; ++k)
+			{
+				if (zcompress(buffer[k], dsize[k], zbuffer, zdsize))
+				{
+					std::swap(buffer[k], zbuffer);
+					std::swap(dsize[k], zdsize);
+					compr[k] = 1;
+				}
+			}
+			//Clear compressed memory
+			if (compr[0]) { ia.clear();	std::vector<INMOST_DATA_ENUM_TYPE> empty; ia.swap(empty); }
+			if (compr[1]) {	ja.clear();	std::vector<INMOST_DATA_ENUM_TYPE> empty; ja.swap(empty); }
+			if (compr[2]) {	va.clear();	std::vector<INMOST_DATA_REAL_TYPE> empty; va.swap(empty); }
+			//Exchange buffer sizes
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> dsizes[3];
+			INMOST_DATA_BIG_ENUM_TYPE wdsize[3] = { dsize[0],dsize[1],dsize[2] };
+			for (int k = 0; k < 3; ++k)
+			{
+				dsizes[k].resize(size, wdsize[k]);
+#if defined(USE_MPI)
+				MPI_Gather(&wdsize[k], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &dsizes[k][0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+#endif
+			}
+			if (rank == 0)
+			{
+				std::ofstream fout(file.c_str(), std::ios::binary);
+				fout.write(reinterpret_cast<const char*>(&size), sizeof(int));
+				fout.write(reinterpret_cast<const char*>(&matsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * size);
+				fout.write(reinterpret_cast<const char*>(&nnzsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * size);
+				for (int k = 0; k < 3; ++k)
+					fout.write(reinterpret_cast<const char*>(&dsizes[k][0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * size);
+				//Write my data
+				fout.write(reinterpret_cast<const char*>(compr), sizeof(int) * 3);
+				for (int k = 0; k < 3; ++k)
+				{
+					fout.write(reinterpret_cast<const char*>(buffer[k]), sizeof(char) * dsizes[k][0]);
+					if (compr[k]) free(buffer[k]);
+				}
+				//Get and write remote data
+#if defined(USE_MPI)
+				for (int it = 1; it < size; ++it)
+				{
+					//std::cout << rank << " recv from rank " << it << std::endl;
+					MPI_Recv(rcompr, 3, MPI_INT, it, it, GetCommunicator(), MPI_STATUS_IGNORE);
+					fout.write(reinterpret_cast<const char*>(rcompr), sizeof(int) * 3);
+					for (int k = 0; k < 3; ++k)
+					{
+						buffer[k] = malloc(sizeof(char) * dsizes[k][it]);
+						RecvBigBuffer(buffer[k], sizeof(char) * dsizes[k][it], it, it, GetCommunicator());
+						fout.write(reinterpret_cast<const char*>(buffer[k]), sizeof(char) * dsizes[k][it]);
+						free(buffer[k]);
+					}
+					//std::cout << rank << " end recv from rank " << it << std::endl;
+				}
+#endif
+			}
+#if defined(USE_MPI)
+			else
+			{
+				//std::cout << "send from rank " << rank << std::endl;
+				MPI_Send(compr, 3, MPI_INT, 0, rank, GetCommunicator());
+				for (int k = 0; k < 3; ++k)
+				{
+					SendBigBuffer(buffer[k], sizeof(char) * wdsize[k], 0, rank, GetCommunicator());
+					if (compr[k]) free(buffer[k]);
+				}
+				//std::cout << "end send from rank " << rank << std::endl;
+			}
+#endif
+			//std::cout << "End " << __FUNCTION__ << " rank " << rank << std::endl;
+		}
+
+
+		void     Matrix::LoadBinary(std::string file)
+		{
+			int rank = 0, size = 1, rsize = 1, compr[3] = { 0,0,0 }, npart = 1, spart = 0;
+			INMOST_DATA_BIG_ENUM_TYPE matsize = 0, matshift = 0, sdsize[3];
+			std::vector< INMOST_DATA_BIG_ENUM_TYPE> matsizes, nnzsizes;
+			std::vector<INMOST_DATA_ENUM_TYPE> ia;
+			std::vector<INMOST_DATA_ENUM_TYPE> ja;
+			std::vector<INMOST_DATA_REAL_TYPE> va;
+#if defined(USE_MPI)
+			MPI_Comm_rank(GetCommunicator(), &rank);
+			MPI_Comm_size(GetCommunicator(), &size);
+#endif
+			if (rank == 0)
+			{
+				std::vector< INMOST_DATA_BIG_ENUM_TYPE> dsizes[3];
+				std::vector<int> nparts(size, 0);
+				std::ifstream fin(file.c_str(), std::ios::binary);
+				if (fin.fail()) throw BadFile;
+				fin.read(reinterpret_cast<char*>(&rsize), sizeof(int));
+				//Read information on data pieces
+				matsizes.resize(rsize);
+				nnzsizes.resize(rsize);
+				fin.read(reinterpret_cast<char*>(&matsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * rsize);
+				fin.read(reinterpret_cast<char*>(&nnzsizes[0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * rsize);
+				for (int k = 0; k < 3; ++k)
+				{
+					dsizes[k].resize(rsize);
+					fin.read(reinterpret_cast<char*>(&dsizes[k][0]), sizeof(INMOST_DATA_BIG_ENUM_TYPE) * rsize);
+				}
+				//Distribute data pieces among processes
+				int cnt = static_cast<int>(ceil(rsize / static_cast<double>(size))), tot = 0, part = 0;
+				for (int k = 0; k < size; ++k)
+				{
+					npart = std::min(cnt, rsize - tot);
+					nparts[k] = npart;
+					tot += npart;
+				}
+#if defined(USE_MPI)
+				MPI_Scatter(&nparts[0], 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
+				MPI_Bcast(&rsize, 1, MPI_INT, 0, GetCommunicator());
+				MPI_Bcast(&matsizes[0], rsize, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Bcast(&nnzsizes[0], rsize, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Exscan(&npart, &spart, 1, MPI_INT, MPI_SUM, GetCommunicator());
+#endif
+				for (int p = spart; p < spart + npart; ++p)
+					matsize += matsizes[p];
+#if defined(USE_MPI)
+				MPI_Exscan(&matsize, &matshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
+#endif
+				SetInterval(matshift, matshift + matsize);
+				//read my own part
+				part = 0; //current part number
+				for (int p = 0; p < npart; ++p)
+				{
+					fin.read(reinterpret_cast<char*>(compr), sizeof(int) * 3);
+					ia.resize(matsizes[part] + 1);
+					ja.resize(nnzsizes[part]);
+					va.resize(nnzsizes[part]);
+					size_t dsize_max = std::max(dsizes[0][part], std::max(dsizes[1][part], dsizes[2][part]));
+					void* buffer = malloc(sizeof(char) * dsize_max);
+					fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[0][part]);
+					LoadBinaryPiece(buffer, dsizes[0][part], &ia[0], 0, ia.size(), compr[0]);
+					fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[1][part]);
+					LoadBinaryPiece(buffer, dsizes[1][part], &ja[0], 0, ja.size(), compr[1]);
+					fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[2][part]);
+					LoadBinaryPiece(buffer, dsizes[2][part], &va[0], 0, va.size(), compr[2]);
+					for (INMOST_DATA_BIG_ENUM_TYPE k = 0; k < matsizes[part]; ++k)
+					{
+						data[matshift + k].Clear();
+						for (INMOST_DATA_BIG_ENUM_TYPE q = ia[k]; q < ia[k + 1]; ++q)
+							data[matshift + k].Push(ja[q], va[q]);
+					}
+					matshift += matsizes[part];
+					free(buffer);
+					part++;
+				}
+				{ ia.clear(); std::vector<INMOST_DATA_ENUM_TYPE> empty; ia.swap(empty); }
+				{ ja.clear(); std::vector<INMOST_DATA_ENUM_TYPE> empty; ja.swap(empty); }
+				{ va.clear(); std::vector<INMOST_DATA_REAL_TYPE> empty; va.swap(empty); }
+				//read and send others parts
+#if defined(USE_MPI)
+				for (int it = 1; it < size; ++it)
+				{
+					for (int q = 0; q < nparts[it]; ++q)
+					{
+						fin.read(reinterpret_cast<char*>(compr), sizeof(int) * 3);
+						MPI_Send(compr, 3, MPI_INT, it, it, GetCommunicator());
+						sdsize[0] = dsizes[0][part];
+						sdsize[1] = dsizes[1][part];
+						sdsize[2] = dsizes[2][part];
+						MPI_Send(sdsize, 3, INMOST_MPI_DATA_BIG_ENUM_TYPE, it, it, GetCommunicator());
+						INMOST_DATA_BIG_ENUM_TYPE dsize_max = std::max(sdsize[0], std::max(sdsize[1], sdsize[2]));
+						void* buffer = malloc(sizeof(char) * dsize_max);
+						for (int k = 0; k < 3; ++k)
+						{
+							fin.read(reinterpret_cast<char*>(buffer), sizeof(char) * dsizes[k][part]);
+							SendBigBuffer(buffer, dsizes[k][part], it, it, GetCommunicator());
+						}
+						free(buffer);
+						part++;
+					}
+				}
+#endif
+			}
+#if defined(USE_MPI)
+			else
+			{
+				MPI_Scatter(NULL, 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
+				MPI_Bcast(&rsize, 1, MPI_INT, 0, GetCommunicator());
+				matsizes.resize(rsize);
+				nnzsizes.resize(rsize);
+				MPI_Bcast(&matsizes[0], rsize, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Bcast(&nnzsizes[0], rsize, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
+				MPI_Exscan(&npart, &spart, 1, MPI_INT, MPI_SUM, GetCommunicator());
+				for (int p = spart; p < spart + npart; ++p)
+					matsize += matsizes[p];
+#if defined(USE_MPI)
+				MPI_Exscan(&matsize, &matshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
+#endif
+				SetInterval(matshift, matshift + matsize);
+				for (int part = spart; part < spart + npart; ++part)
+				{
+					ia.resize(matsizes[part] + 1);
+					ja.resize(nnzsizes[part]);
+					va.resize(nnzsizes[part]);
+					MPI_Recv(compr, 3, MPI_INT, 0, rank, GetCommunicator(), MPI_STATUS_IGNORE);
+					MPI_Recv(sdsize, 3, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, rank, GetCommunicator(), MPI_STATUS_IGNORE);
+					INMOST_DATA_BIG_ENUM_TYPE dsize_max = std::max(sdsize[0], std::max(sdsize[1], sdsize[2]));
+					void* buffer = malloc(sizeof(char) * dsize_max);
+					RecvBigBuffer(buffer, sdsize[0], 0, rank, GetCommunicator());
+					LoadBinaryPiece(buffer, sdsize[0], &ia[0], 0, ia.size(), compr[0]);
+					RecvBigBuffer(buffer, sdsize[1], 0, rank, GetCommunicator());
+					LoadBinaryPiece(buffer, sdsize[1], &ja[0], 0, ja.size(), compr[1]);
+					RecvBigBuffer(buffer, sdsize[2], 0, rank, GetCommunicator());
+					LoadBinaryPiece(buffer, sdsize[2], &va[0], 0, va.size(), compr[2]);
+					for (INMOST_DATA_BIG_ENUM_TYPE k = 0; k < matsizes[part]; ++k)
+					{
+						data[matshift + k].Clear();
+						for (INMOST_DATA_BIG_ENUM_TYPE q = ia[k]; q < ia[k + 1]; ++q)
+							data[matshift + k].Push(ja[q], va[q]);
+					}
+					matshift += matsizes[part];
+					free(buffer);
+				}
+				{ ia.clear(); std::vector<INMOST_DATA_ENUM_TYPE> empty; ia.swap(empty); }
+				{ ja.clear(); std::vector<INMOST_DATA_ENUM_TYPE> empty; ja.swap(empty); }
+				{ va.clear(); std::vector<INMOST_DATA_REAL_TYPE> empty; va.swap(empty); }
+			}
+#endif
 		}
 
 		void     Matrix::Save(std::string file, const AnnotationService * text)

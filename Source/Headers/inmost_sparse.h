@@ -142,6 +142,10 @@ namespace INMOST
 			void Swap(Vector & other) {data.swap(other.data); name.swap(other.name); std::swap(is_parallel,other.is_parallel); std::swap(comm,other.comm);}
 			/// Save the distributed vector to a single data file using parallel MPI I/O.
 			void                 Save(std::string file);
+			/// Save the distributed vector to a single binary data file.
+			void                 SaveBinary(std::string file);
+			/// Load the distributed vector from a single binary data file.
+			void                 LoadBinary(std::string file);
 			/// Load the vector from a single data file using the specified interval.
 			/// If interval is not specified, then it will be automatically constructed,
 			/// with the about equal block size (the last block may has larger dimension).
@@ -537,6 +541,10 @@ namespace INMOST
 			/// Save the distributed matrix to a single data file in MTX format using parallel MPI I/O.
 			/// @see http://math.nist.gov/MatrixMarket/formats.html
 			void                 Save(std::string file, const AnnotationService * annotation = NULL);
+			/// Save the distributed matrix to a single binary data file.
+			void                 SaveBinary(std::string file);
+			/// Load the distributed matrix from a single binary data file.
+			void                 LoadBinary(std::string file);
 			/// Check that matrix is in parallel state.
 			bool &               isParallel() { return is_parallel; }
 			const bool &         isParallel() const { return is_parallel; }
