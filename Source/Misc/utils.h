@@ -56,6 +56,8 @@ namespace INMOST
 	void AggregateMin(INMOST_DATA_REAL_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm = INMOST_MPI_COMM_WORLD);
 	void AggregateMin(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm = INMOST_MPI_COMM_WORLD);
 	void AggregateMin(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm = INMOST_MPI_COMM_WORLD);
+	bool zcompress(const void* buffer, size_t dsize, void*& buffer_out, size_t& dsize_out);
+	bool zuncompress(const void* zbuffer, size_t zdsize, void* buffer_out, size_t& dsize_out);
 	
 	class BinaryHeap
 	{

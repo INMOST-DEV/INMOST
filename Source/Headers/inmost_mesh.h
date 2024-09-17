@@ -3228,6 +3228,7 @@ namespace INMOST
 		///                        Example: mesh->SetFileOption("Tag:PressureGradient","noload,noderivatives");
 		///                        the tag with the name PressureGradient will not be loaded from files and 
 		///                        when recording the derivaives data will be not saved.
+		///    "compress"        - Uses ZLIB to compress and decompress data in ".pmf" files. Requires USE_ZLIB option in cmake.
 		void         SetFileOption(std::string,std::string);
 		/// Get current option corresponding to key.
 		/// @param key options for which options should be retrieven

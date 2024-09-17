@@ -1,7 +1,7 @@
 
 #include "inmost.h"
 #include "io.hpp"
-
+#include "../Misc/utils.h"
 #if defined(USE_MESH)
 
 #if defined(USE_PARALLEL_WRITE_TIME)
@@ -33,6 +33,7 @@ namespace INMOST
 	const HeaderType EoMHeader  = 0x09;
 	const HeaderType INMOSTFile   = 0x10;
 	const HeaderType MeshDataHeader = 0x11;
+	const HeaderType ZLIBHeader = 0x12;
 	
 	
 	std::ostream & operator <<(std::ostream & out, HeaderType H)
@@ -427,7 +428,7 @@ namespace INMOST
 		out << INMOST::EoMHeader;
 	}
 
-	void Mesh::ReadPMFStream(std::stringstream& in)
+	void Mesh::ReadPMFStream(std::stringstream& sin)
 	{
 		io_converter<INMOST_DATA_INTEGER_TYPE, INMOST_DATA_REAL_TYPE> iconv;
 		io_converter<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> uconv;
@@ -435,6 +436,7 @@ namespace INMOST
 		bool dup_gid = false;
 		HeaderType token;
 		std::vector<INMOST_DATA_ENUM_TYPE> myprocs;
+		std::vector<std::stringstream*> streams(1, &sin);
 		std::set< std::string > noload, loadonly, noderivs;
 
 		noload = TagOptions("noload");
@@ -480,663 +482,716 @@ namespace INMOST
 
 		BeginModification();
 
-		while (in >> token)
+		while (!streams.empty())
 		{
-			REPORT_VAL("output position, loop", in.tellg());
-			if (!start)
+			std::stringstream& in = *streams.back();
+			while (in >> token)
 			{
-				if (token != INMOST::INMOSTFile) throw BadFile; //check that this is valid file
-				else
+				REPORT_VAL("output position, loop", in.tellg());
+				if (!start)
 				{
-					REPORT_STR("File chunk start read");
-					//~ std::cout << "start read" << std::endl;
-					tags.clear();
-					tags_skip.clear();
-					tags_dtype.clear();
-					tags_name.clear();
-					tags_defined.clear();
-					tags_sparse.clear();
-					tags_sizes.clear();
-					old_nodes.clear();
-					old_nodes.resize(NumberOfNodes());
+					if (token == INMOST::ZLIBHeader) //have to unpack data
 					{
-						unsigned qq = 0;
-						for (Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
-							old_nodes[qq++] = *it;
+						io_converter<INMOST_DATA_BIG_ENUM_TYPE, INMOST_DATA_REAL_TYPE> buconv;
+						INMOST_DATA_BIG_ENUM_TYPE dsize, zdsize;
+						buconv.read_iByteOrder(in);
+						buconv.read_iByteSize(in);
+						buconv.read_iValue(in, dsize);
+						buconv.read_iValue(in, zdsize);
+						void* zbuffer = malloc(sizeof(char) * zdsize);
+						if (zbuffer)
+						{
+							void* buffer_out = malloc(sizeof(char) * dsize);
+							if (buffer_out)
+							{
+								in.read(static_cast<char*>(zbuffer), sizeof(size_t) * dsize);
+								if (zuncompress(zbuffer, zdsize, buffer_out, dsize))
+								{
+									if (verbosity > 0) std::cout << "Uncompressed data " << zdsize << " -> " << dsize << std::endl;
+									std::stringstream* new_in = new std::stringstream(std::ios::in | std::ios::out | std::ios::binary);
+									new_in->write(static_cast<char*>(buffer_out), sizeof(char) * dsize);
+									streams.push_back(new_in);
+									free(zbuffer);
+									free(buffer_out);
+									break; //switch to a new stream
+								}
+								else
+								{
+									std::cout << __FILE__ << ":" << __LINE__ << " cannot unpack compressed file" << std::endl;
+									throw Impossible; //Cannot unpack file
+								}
+							}
+							else
+							{
+								std::cout << __FILE__ << ":" << __LINE__ << " cannot allocate mem " << dsize << std::endl;
+								throw Impossible; //Cannot unpack file
+							}
+						}
+						else
+						{
+							std::cout << __FILE__ << ":" << __LINE__ << " cannot allocate mem " << zdsize << std::endl;
+							throw Impossible; //Cannot unpack file
+						}
 					}
-					if (!old_nodes.empty())
-						std::sort(old_nodes.begin(), old_nodes.end(), CentroidComparator(this));
+					else if (token != INMOST::INMOSTFile) throw BadFile; //check that this is valid file
+					else
+					{
+						REPORT_STR("File chunk start read");
+						//~ std::cout << "start read" << std::endl;
+						tags.clear();
+						tags_skip.clear();
+						tags_dtype.clear();
+						tags_name.clear();
+						tags_defined.clear();
+						tags_sparse.clear();
+						tags_sizes.clear();
+						old_nodes.clear();
+						old_nodes.resize(NumberOfNodes());
+						{
+							unsigned qq = 0;
+							for (Mesh::iteratorNode it = BeginNode(); it != EndNode(); ++it)
+								old_nodes[qq++] = *it;
+						}
+						if (!old_nodes.empty())
+							std::sort(old_nodes.begin(), old_nodes.end(), CentroidComparator(this));
+						if (old_nodes.empty())
+						{
+							tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect not to have duplicates
+							RemTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE);
+						}
+						else
+						{
+							tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect to have duplicates
+							SetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE);
+						}
+
+						start = true;
+					}
+				}
+				else if (token == INMOST::EoMHeader)
+				{
+
+					if (!start) throw BadFile;
+					REPORT_STR("File chunk end read");
+					//~ std::cout << "end read" << std::endl;
 					if (old_nodes.empty())
 					{
-						tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect not to have duplicates
-						RemTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE);
+						SetTopologyCheck(tmp);
 					}
 					else
 					{
-						tmp = GetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE); //we expect to have duplicates
-						SetTopologyCheck(DUPLICATE_CELL | DUPLICATE_FACE | DUPLICATE_EDGE);
+						if (!(tmp & DUPLICATE_CELL)) RemTopologyCheck(DUPLICATE_CELL);
+						if (!(tmp & DUPLICATE_FACE)) RemTopologyCheck(DUPLICATE_FACE);
+						if (!(tmp & DUPLICATE_EDGE)) RemTopologyCheck(DUPLICATE_EDGE);
 					}
-
-					start = true;
+					REPORT_VAL("NODE", new_nodes.size());
+					REPORT_VAL("EDGE", new_edges.size());
+					REPORT_VAL("FACE", new_faces.size());
+					REPORT_VAL("CELL", new_cells.size());
+					REPORT_VAL("ESET", new_sets.size());
+					REPORT_VAL("TAG", tags.size());
+					start = false; //probably the next file is in the input
+					chunks++;
 				}
-			}
-			else if (token == INMOST::EoMHeader)
-			{
-
-				if (!start) throw BadFile;
-				REPORT_STR("File chunk end read");
-				//~ std::cout << "end read" << std::endl;
-				if (old_nodes.empty())
+				else if (token == INMOST::MeshHeader)
 				{
-					SetTopologyCheck(tmp);
-				}
-				else
-				{
-					if (!(tmp & DUPLICATE_CELL)) RemTopologyCheck(DUPLICATE_CELL);
-					if (!(tmp & DUPLICATE_FACE)) RemTopologyCheck(DUPLICATE_FACE);
-					if (!(tmp & DUPLICATE_EDGE)) RemTopologyCheck(DUPLICATE_EDGE);
-				}
-				REPORT_VAL("NODE", new_nodes.size());
-				REPORT_VAL("EDGE", new_edges.size());
-				REPORT_VAL("FACE", new_faces.size());
-				REPORT_VAL("CELL", new_cells.size());
-				REPORT_VAL("ESET", new_sets.size());
-				REPORT_VAL("TAG", tags.size());
-				start = false; //probably the next file is in the input
-				chunks++;
-			}
-			else if (token == INMOST::MeshHeader)
-			{
-				REPORT_STR("MeshHeader");
-				uconv.read_iByteOrder(in);
-				uconv.read_iByteSize(in);
-				iconv.read_iByteOrder(in);
-				iconv.read_iByteSize(in);
-				iconv.read_fByteOrder(in);
-				iconv.read_fByteSize(in);
+					REPORT_STR("MeshHeader");
+					uconv.read_iByteOrder(in);
+					uconv.read_iByteSize(in);
+					iconv.read_iByteOrder(in);
+					iconv.read_iByteSize(in);
+					iconv.read_fByteOrder(in);
+					iconv.read_fByteSize(in);
 
-				INMOST_DATA_ENUM_TYPE header[9], k;
-				for (k = 0; k < 9; k++)
-					uconv.read_iValue(in, header[k]);
-
-				{
-
-					char rtemp[5][3];
-					in.read(reinterpret_cast<char*>(rtemp), sizeof(rtemp));
-					for (GeometricData d = CENTROID; d <= BARYCENTER; d++)
-						for (ElementType et = EDGE; et <= CELL; et = et << 1)
-							if (rtemp[d][ElementNum(et) - 1]) table[d] |= et;
-
-				}
-
-
-				current_dim = header[0];
-				SetDimensions(header[0]);
-				new_nodes.clear();
-				new_nodes.resize(header[1]);
-				new_edges.clear();
-				new_edges.resize(header[2]);
-				new_faces.clear();
-				new_faces.resize(header[3]);
-				new_cells.clear();
-				new_cells.resize(header[4]);
-				new_sets.clear();
-				new_sets.resize(header[5]);
-				tags.resize(header[6]);
-
-				tags_skip.resize(header[6], false);
-				tags_dtype.resize(header[6]);
-				tags_name.resize(header[6]);
-				tags_defined.resize(header[6]);
-				tags_sparse.resize(header[6]);
-				tags_sizes.resize(header[6]);
-				//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
-				//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
-				myprocs.push_back(header[8]);
-			}
-			else if (token == INMOST::TagsHeader)
-			{
-				uconv.read_iValue(in, size);
-				REPORT_STR("TagsHeader");
-				REPORT_VAL("tag_size", size);
-				for (i = 0; i < size; i++)
-				{
-					INMOST_DATA_ENUM_TYPE namesize;
-					char name[4096];
-					char datatype;
-					char sparsemask, definedmask;
-					uint64_t datalength;
-					uconv.read_iValue(in, namesize);
-					in.read(name, namesize);
-					assert(namesize < 4096);
-					name[namesize] = '\0';
-					REPORT_VAL("tag name", name);
-					in.get(datatype);
-					REPORT_VAL("tag data type", DataTypeName(static_cast<DataType>(datatype)));
-					in.get(sparsemask);
-					in.get(definedmask);
-					//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
-					//{
-					//  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
-					//  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
-					//}
-					uconv.read_iValue_uint64_t(in, datalength);
-					REPORT_VAL("length", datalength);
-
+					INMOST_DATA_ENUM_TYPE header[9], k;
+					for (k = 0; k < 9; k++)
+						uconv.read_iValue(in, header[k]);
 
 					{
-						uint64_t undef;
-						if (sizeof(uint8_t) == uconv.get_source_iByteSize())
-							undef = uint8_t(~uint8_t(0));
-						else if (sizeof(uint16_t) == uconv.get_source_iByteSize())
-							undef = uint16_t(~uint16_t(0));
-						else if (sizeof(uint32_t) == uconv.get_source_iByteSize())
-							undef = uint32_t(~uint32_t(0));
-						else if (sizeof(uint64_t) == uconv.get_source_iByteSize())
-							undef = uint64_t(~uint64_t(0));
-						else
+
+						char rtemp[5][3];
+						in.read(reinterpret_cast<char*>(rtemp), sizeof(rtemp));
+						for (GeometricData d = CENTROID; d <= BARYCENTER; d++)
+							for (ElementType et = EDGE; et <= CELL; et = et << 1)
+								if (rtemp[d][ElementNum(et) - 1]) table[d] |= et;
+
+					}
+
+
+					current_dim = header[0];
+					SetDimensions(header[0]);
+					new_nodes.clear();
+					new_nodes.resize(header[1]);
+					new_edges.clear();
+					new_edges.resize(header[2]);
+					new_faces.clear();
+					new_faces.resize(header[3]);
+					new_cells.clear();
+					new_cells.resize(header[4]);
+					new_sets.clear();
+					new_sets.resize(header[5]);
+					tags.resize(header[6]);
+
+					tags_skip.resize(header[6], false);
+					tags_dtype.resize(header[6]);
+					tags_name.resize(header[6]);
+					tags_defined.resize(header[6]);
+					tags_sparse.resize(header[6]);
+					tags_sizes.resize(header[6]);
+					//~ if( static_cast<Mesh::MeshState>(header[7]) == Mesh::Parallel && m_state != Mesh::Parallel)
+					//~ SetCommunicator(INMOST_MPI_COMM_WORLD);
+					myprocs.push_back(header[8]);
+				}
+				else if (token == INMOST::TagsHeader)
+				{
+					uconv.read_iValue(in, size);
+					REPORT_STR("TagsHeader");
+					REPORT_VAL("tag_size", size);
+					for (i = 0; i < size; i++)
+					{
+						INMOST_DATA_ENUM_TYPE namesize;
+						char name[4096];
+						char datatype;
+						char sparsemask, definedmask;
+						uint64_t datalength;
+						uconv.read_iValue(in, namesize);
+						in.read(name, namesize);
+						assert(namesize < 4096);
+						name[namesize] = '\0';
+						REPORT_VAL("tag name", name);
+						in.get(datatype);
+						REPORT_VAL("tag data type", DataTypeName(static_cast<DataType>(datatype)));
+						in.get(sparsemask);
+						in.get(definedmask);
+						//for(ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype) )
+						//{
+						//  if( etype & definedmask ) REPORT_VAL("defined on",ElementTypeName(etype));
+						//  if( etype & sparsemask ) REPORT_VAL("sparse on",ElementTypeName(etype));
+						//}
+						uconv.read_iValue_uint64_t(in, datalength);
+						REPORT_VAL("length", datalength);
+
+
 						{
-							std::cout << __FILE__ << ":" << __LINE__ << " Unknown size for enumerator in source file " << (int)uconv.get_source_iByteSize() << std::endl;
-							std::cout << "unit8_t " << sizeof(uint8_t) << " uint16_t " << sizeof(uint16_t) << " uint32_t " << sizeof(uint32_t) << " uint64_t " << sizeof(uint64_t) << std::endl;
-							undef = (INMOST_DATA_ENUM_TYPE)(~(INMOST_DATA_ENUM_TYPE)(0));
-						}
-						if (datalength == undef)
-							datalength = ENUMUNDEF;
-					}
-
-					tags_skip[i] = false;
-					tags_dtype[i] = static_cast<DataType>(datatype);
-					tags_defined[i] = static_cast<ElementType>(definedmask);
-					tags_sparse[i] = static_cast<ElementType>(sparsemask);
-					tags_name[i] = std::string(name);
-					tags_sizes[i] = (INMOST_DATA_ENUM_TYPE)datalength;
-
-					tags_skip[i] = CheckLoadSkip(tags_name[i], noload, loadonly);
-
-					if (!tags_skip[i])
-						tags[i] = CreateTag(std::string(name), static_cast<DataType>(datatype),
-							static_cast<ElementType>(definedmask),
-							static_cast<ElementType>(sparsemask), static_cast<INMOST_DATA_ENUM_TYPE>(datalength));
-
-					REPORT_VAL("output position, tag " << i, in.tellg());
-				}
-			}
-			else if (token == INMOST::NodeHeader)
-			{
-				uconv.read_iValue(in, size);
-				assert(size == new_nodes.size());
-				REPORT_STR("NodeHeader");
-				REPORT_VAL("node_size", size);
-				Storage::real coords[3] = { 0,0,0 };
-				for (i = 0; i < size; i++)
-				{
-					for (unsigned int k = 0; k < current_dim; k++) iconv.read_fValue(in, coords[k]);
-					int find = -1;
-					if (!old_nodes.empty())
-					{
-						std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(), old_nodes.end(), coords, CentroidComparator(this));
-						if (it != old_nodes.end())
-						{
-							Storage::real_array c = RealArrayDF(*it, CoordsTag());
-							if (CentroidComparator(this).Compare(coords, c.data()) == 0)
-								find = static_cast<int>(it - old_nodes.begin());
-						}
-					}
-					if (find == -1) new_nodes[i] = CreateNode(coords)->GetHandle();
-					else  new_nodes[i] = old_nodes[find];
-				}
-
-				REPORT_VAL("output position, nodes", in.tellg());
-			}
-			else if (token == INMOST::EdgeHeader)
-			{
-				uconv.read_iValue(in, size);
-				assert(size == new_edges.size());
-				REPORT_STR("EdgeHeader");
-				REPORT_VAL("edge_size", size);
-				INMOST_DATA_ENUM_TYPE nlow, lid, i;
-				ElementArray<Node> sub_elements(this);
-				for (i = 0; i < size; i++)
-				{
-					uconv.read_iValue(in, nlow);
-					for (q = 0; q < nlow; q++)
-					{
-						uconv.read_iValue(in, lid);
-						sub_elements.push_back(new_nodes[lid]);
-					}
-					new_edges[i] = CreateEdge(sub_elements).first->GetHandle();
-					sub_elements.clear();
-				}
-
-				REPORT_VAL("output position, edges", in.tellg());
-			}
-			else if (token == INMOST::FaceHeader)
-			{
-				uconv.read_iValue(in, size);
-				assert(size == new_faces.size());
-				REPORT_STR("FaceHeader");
-				REPORT_VAL("face_size", size);
-				INMOST_DATA_ENUM_TYPE nlow, lid, i;
-				ElementArray<Edge> sub_elements(this);
-				for (i = 0; i < size; i++)
-				{
-					uconv.read_iValue(in, nlow);
-					for (q = 0; q < nlow; q++)
-					{
-						uconv.read_iValue(in, lid);
-						sub_elements.push_back(new_edges[lid]);
-					}
-					new_faces[i] = CreateFace(sub_elements).first->GetHandle();
-					sub_elements.clear();
-				}
-
-				REPORT_VAL("output position, faces", in.tellg());
-			}
-			else if (token == INMOST::CellHeader)
-			{
-				uconv.read_iValue(in, size);
-				assert(size == new_cells.size());
-				REPORT_STR("CellHeader");
-				REPORT_VAL("cell_size", size);
-				INMOST_DATA_ENUM_TYPE nlow, nhigh, lid;
-				ElementArray<Face> sub_elements(this);
-				ElementArray<Node> suggest_nodes(this);
-				for (unsigned i = 0; i < size; i++)
-				{
-					uconv.read_iValue(in, nlow);
-					for (q = 0; q < nlow; q++)
-					{
-						uconv.read_iValue(in, lid);
-						sub_elements.push_back(new_faces[lid]);
-					}
-					uconv.read_iValue(in, nhigh);
-					for (q = 0; q < nhigh; q++)
-					{
-						uconv.read_iValue(in, lid);
-						suggest_nodes.push_back(new_nodes[lid]);
-					}
-					new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
-					tag_chunk[new_cells[i]] = chunks;
-					//new_cells[i] = CreateCell(sub_elements).first->GetHandle();
-					sub_elements.clear();
-					suggest_nodes.clear();
-				}
-
-				REPORT_VAL("output position, cells", in.tellg());
-			}
-			else if (token == INMOST::ESetHeader)
-			{
-				uconv.read_iValue(in, size);
-				assert(size == new_sets.size());
-				REPORT_STR("EsetHeader");
-				REPORT_VAL("eset_size", size);
-				INMOST_DATA_ENUM_TYPE set_size, name_size, lid, val;
-				char set_name[4096];
-				HandleType* elem_links[4] =
-				{
-					new_nodes.empty() ? NULL : &new_nodes[0],
-					new_edges.empty() ? NULL : &new_edges[0],
-					new_faces.empty() ? NULL : &new_faces[0],
-					new_cells.empty() ? NULL : &new_cells[0]
-				};
-				bool low_conn_have_sets = false;
-				bool high_conn_have_sets = false;
-				for (unsigned i = 0; i < size; i++)
-				{
-					uconv.read_iValue(in, name_size);
-					in.read(set_name, name_size);
-					assert(name_size < 4096);
-					set_name[name_size] = '\0';
-					new_sets[i] = CreateSet(std::string(set_name)).first->GetHandle();
-					Element::adj_type& lc = LowConn(new_sets[i]);
-					uconv.read_iValue(in, set_size);
-					lc.resize(set_size);
-					for (q = 0; q < set_size; ++q)
-					{
-						char type;
-						in.get(type);
-						if (type != 0)
-						{
-							uconv.read_iValue(in, lid);
-							if (static_cast<ElementType>(type) != ESET)
-								lc[q] = elem_links[ElementNum(static_cast<ElementType>(type))][lid];
+							uint64_t undef;
+							if (sizeof(uint8_t) == uconv.get_source_iByteSize())
+								undef = uint8_t(~uint8_t(0));
+							else if (sizeof(uint16_t) == uconv.get_source_iByteSize())
+								undef = uint16_t(~uint16_t(0));
+							else if (sizeof(uint32_t) == uconv.get_source_iByteSize())
+								undef = uint32_t(~uint32_t(0));
+							else if (sizeof(uint64_t) == uconv.get_source_iByteSize())
+								undef = uint64_t(~uint64_t(0));
 							else
 							{
-								lc[q] = ComposeHandle(static_cast<ElementType>(type), lid);
-								low_conn_have_sets = true;
+								std::cout << __FILE__ << ":" << __LINE__ << " Unknown size for enumerator in source file " << (int)uconv.get_source_iByteSize() << std::endl;
+								std::cout << "unit8_t " << sizeof(uint8_t) << " uint16_t " << sizeof(uint16_t) << " uint32_t " << sizeof(uint32_t) << " uint64_t " << sizeof(uint64_t) << std::endl;
+								undef = (INMOST_DATA_ENUM_TYPE)(~(INMOST_DATA_ENUM_TYPE)(0));
+							}
+							if (datalength == undef)
+								datalength = ENUMUNDEF;
+						}
+
+						tags_skip[i] = false;
+						tags_dtype[i] = static_cast<DataType>(datatype);
+						tags_defined[i] = static_cast<ElementType>(definedmask);
+						tags_sparse[i] = static_cast<ElementType>(sparsemask);
+						tags_name[i] = std::string(name);
+						tags_sizes[i] = (INMOST_DATA_ENUM_TYPE)datalength;
+
+						tags_skip[i] = CheckLoadSkip(tags_name[i], noload, loadonly);
+
+						if (!tags_skip[i])
+							tags[i] = CreateTag(std::string(name), static_cast<DataType>(datatype),
+								static_cast<ElementType>(definedmask),
+								static_cast<ElementType>(sparsemask), static_cast<INMOST_DATA_ENUM_TYPE>(datalength));
+
+						REPORT_VAL("output position, tag " << i, in.tellg());
+					}
+				}
+				else if (token == INMOST::NodeHeader)
+				{
+					uconv.read_iValue(in, size);
+					assert(size == new_nodes.size());
+					REPORT_STR("NodeHeader");
+					REPORT_VAL("node_size", size);
+					Storage::real coords[3] = { 0,0,0 };
+					for (i = 0; i < size; i++)
+					{
+						for (unsigned int k = 0; k < current_dim; k++) iconv.read_fValue(in, coords[k]);
+						int find = -1;
+						if (!old_nodes.empty())
+						{
+							std::vector<HandleType>::iterator it = std::lower_bound(old_nodes.begin(), old_nodes.end(), coords, CentroidComparator(this));
+							if (it != old_nodes.end())
+							{
+								Storage::real_array c = RealArrayDF(*it, CoordsTag());
+								if (CentroidComparator(this).Compare(coords, c.data()) == 0)
+									find = static_cast<int>(it - old_nodes.begin());
 							}
 						}
-						else lc[q] = InvalidHandle();
+						if (find == -1) new_nodes[i] = CreateNode(coords)->GetHandle();
+						else  new_nodes[i] = old_nodes[find];
 					}
-					Element::adj_type& hc = HighConn(new_sets[i]);
-					//write tree information
-					uconv.read_iValue(in, set_size);
-					hc.resize(set_size);
-					for (q = 0; q < ElementSet::high_conn_reserved - 1; ++q)
+
+					REPORT_VAL("output position, nodes", in.tellg());
+				}
+				else if (token == INMOST::EdgeHeader)
+				{
+					uconv.read_iValue(in, size);
+					assert(size == new_edges.size());
+					REPORT_STR("EdgeHeader");
+					REPORT_VAL("edge_size", size);
+					INMOST_DATA_ENUM_TYPE nlow, lid, i;
+					ElementArray<Node> sub_elements(this);
+					for (i = 0; i < size; i++)
 					{
-						char type;
-						in.get(type);
-						if (type != 0)
+						uconv.read_iValue(in, nlow);
+						for (q = 0; q < nlow; q++)
 						{
 							uconv.read_iValue(in, lid);
-							hc[q] = ComposeHandle(static_cast<ElementType>(type), static_cast<integer>(lid));
-							high_conn_have_sets = true;
+							sub_elements.push_back(new_nodes[lid]);
 						}
-						else hc[q] = InvalidHandle();
+						new_edges[i] = CreateEdge(sub_elements).first->GetHandle();
+						sub_elements.clear();
 					}
-					for (q = ElementSet::high_conn_reserved - 1; q < set_size; ++q)
-					{
-						uconv.read_iValue(in, val);
-						hc[q] = val;
-					}
-				}
-				//convert handles to sets into links to new_sets
-				if (high_conn_have_sets)
-				{
-					for (unsigned i = 0; i < size; i++)
-					{
-						Element::adj_type& hc = HighConn(new_sets[i]);
-						for (enumerator j = 0; j < ElementSet::high_conn_reserved - 1; ++j)
-							if (hc[j] != InvalidHandle())
-								hc[j] = new_sets[GetHandleID(hc[j])];
-					}
-				}
-				if (low_conn_have_sets) //this may be expensive and redundant in some cases
-				{
-					for (unsigned i = 0; i < size; i++)
-					{
-						Element::adj_type& lc = LowConn(new_sets[i]);
-						for (Element::adj_type::size_type j = 0; j < lc.size(); ++j)
-							if (GetHandleElementType(lc[j]) == ESET)
-								lc[j] = new_sets[GetHandleID(lc[j])];
-					}
-				}
 
-				REPORT_VAL("output position, sets", in.tellg());
-			}
-			else if (token == INMOST::MeshDataHeader)
-			{
-				REPORT_STR("MeshDataHeader");
-				HandleType m_storage = GetHandle();
-				INMOST_DATA_ENUM_TYPE elem_sizes[6] =
+					REPORT_VAL("output position, edges", in.tellg());
+				}
+				else if (token == INMOST::FaceHeader)
 				{
-					static_cast<INMOST_DATA_ENUM_TYPE>(new_nodes.size()),
-					static_cast<INMOST_DATA_ENUM_TYPE>(new_edges.size()),
-					static_cast<INMOST_DATA_ENUM_TYPE>(new_faces.size()),
-					static_cast<INMOST_DATA_ENUM_TYPE>(new_cells.size()),
-					static_cast<INMOST_DATA_ENUM_TYPE>(new_sets.size()),
-					1
-				};
-				HandleType* elem_links[6] =
-				{
-					new_nodes.empty() ? NULL : &new_nodes[0],
-					new_edges.empty() ? NULL : &new_edges[0],
-					new_faces.empty() ? NULL : &new_faces[0],
-					new_cells.empty() ? NULL : &new_cells[0],
-					new_sets.empty() ? NULL : &new_sets[0],
-					&m_storage
-				};
-				for (INMOST_DATA_ENUM_TYPE j = 0; j < (INMOST_DATA_ENUM_TYPE)tags_skip.size(); j++)
-				{
-					REPORT_VAL("TagName", tags_name[j]);
-					if (verbosity > 0)
+					uconv.read_iValue(in, size);
+					assert(size == new_faces.size());
+					REPORT_STR("FaceHeader");
+					REPORT_VAL("face_size", size);
+					INMOST_DATA_ENUM_TYPE nlow, lid, i;
+					ElementArray<Edge> sub_elements(this);
+					for (i = 0; i < size; i++)
 					{
-						if (tags_skip[j])
-							std::cout << "Skipping " << tags_name[j] << std::endl;
-						else
-							std::cout << "Reading " << tags_name[j] << std::endl;
-					}
-					//Tag * jt = &tags[j];
-					for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
-					{
-						if (etype & tags_defined[j])
+						uconv.read_iValue(in, nlow);
+						for (q = 0; q < nlow; q++)
 						{
-							REPORT_VAL("defined on", ElementTypeName(etype));
-							INMOST_DATA_ENUM_TYPE q, cycle_end, etypenum = ElementNum(etype);
-							cycle_end = elem_sizes[etypenum];
-							REPORT_VAL("cycle end", cycle_end);
-							bool sparse = false;
-							if (etype & tags_sparse[j]) sparse = true;
-							INMOST_DATA_ENUM_TYPE tagsize = tags_sizes[j], recsize = tagsize, lid;
-							INMOST_DATA_ENUM_TYPE k;
-							DataType data_type = tags_dtype[j];
-							if (sparse)
-							{
-								REPORT_VAL("sparse on", ElementTypeName(etype));
-								uconv.read_iValue(in, q);
-								if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-							}
-							else q = 0;
+							uconv.read_iValue(in, lid);
+							sub_elements.push_back(new_edges[lid]);
+						}
+						new_faces[i] = CreateFace(sub_elements).first->GetHandle();
+						sub_elements.clear();
+					}
 
-							REPORT_VAL("data type", DataTypeName(data_type));
-							REPORT_VAL("tag size", tagsize);
+					REPORT_VAL("output position, faces", in.tellg());
+				}
+				else if (token == INMOST::CellHeader)
+				{
+					uconv.read_iValue(in, size);
+					assert(size == new_cells.size());
+					REPORT_STR("CellHeader");
+					REPORT_VAL("cell_size", size);
+					INMOST_DATA_ENUM_TYPE nlow, nhigh, lid;
+					ElementArray<Face> sub_elements(this);
+					ElementArray<Node> suggest_nodes(this);
+					for (unsigned i = 0; i < size; i++)
+					{
+						uconv.read_iValue(in, nlow);
+						for (q = 0; q < nlow; q++)
+						{
+							uconv.read_iValue(in, lid);
+							sub_elements.push_back(new_faces[lid]);
+						}
+						uconv.read_iValue(in, nhigh);
+						for (q = 0; q < nhigh; q++)
+						{
+							uconv.read_iValue(in, lid);
+							suggest_nodes.push_back(new_nodes[lid]);
+						}
+						new_cells[i] = CreateCell(sub_elements, suggest_nodes).first->GetHandle();
+						tag_chunk[new_cells[i]] = chunks;
+						//new_cells[i] = CreateCell(sub_elements).first->GetHandle();
+						sub_elements.clear();
+						suggest_nodes.clear();
+					}
 
-							while (q != cycle_end)
+					REPORT_VAL("output position, cells", in.tellg());
+				}
+				else if (token == INMOST::ESetHeader)
+				{
+					uconv.read_iValue(in, size);
+					assert(size == new_sets.size());
+					REPORT_STR("EsetHeader");
+					REPORT_VAL("eset_size", size);
+					INMOST_DATA_ENUM_TYPE set_size, name_size, lid, val;
+					char set_name[4096];
+					HandleType* elem_links[4] =
+					{
+						new_nodes.empty() ? NULL : &new_nodes[0],
+						new_edges.empty() ? NULL : &new_edges[0],
+						new_faces.empty() ? NULL : &new_faces[0],
+						new_cells.empty() ? NULL : &new_cells[0]
+					};
+					bool low_conn_have_sets = false;
+					bool high_conn_have_sets = false;
+					for (unsigned i = 0; i < size; i++)
+					{
+						uconv.read_iValue(in, name_size);
+						in.read(set_name, name_size);
+						assert(name_size < 4096);
+						set_name[name_size] = '\0';
+						new_sets[i] = CreateSet(std::string(set_name)).first->GetHandle();
+						Element::adj_type& lc = LowConn(new_sets[i]);
+						uconv.read_iValue(in, set_size);
+						lc.resize(set_size);
+						for (q = 0; q < set_size; ++q)
+						{
+							char type;
+							in.get(type);
+							if (type != 0)
 							{
-								HandleType he = elem_links[etypenum][q];
-								if (tagsize == ENUMUNDEF)
+								uconv.read_iValue(in, lid);
+								if (static_cast<ElementType>(type) != ESET)
+									lc[q] = elem_links[ElementNum(static_cast<ElementType>(type))][lid];
+								else
 								{
-									uconv.read_iValue(in, recsize);
-									if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-									if (!tags_skip[j]) SetDataSize(he, tags[j], recsize);
+									lc[q] = ComposeHandle(static_cast<ElementType>(type), lid);
+									low_conn_have_sets = true;
 								}
-								switch (data_type)
+							}
+							else lc[q] = InvalidHandle();
+						}
+						Element::adj_type& hc = HighConn(new_sets[i]);
+						//write tree information
+						uconv.read_iValue(in, set_size);
+						hc.resize(set_size);
+						for (q = 0; q < ElementSet::high_conn_reserved - 1; ++q)
+						{
+							char type;
+							in.get(type);
+							if (type != 0)
+							{
+								uconv.read_iValue(in, lid);
+								hc[q] = ComposeHandle(static_cast<ElementType>(type), static_cast<integer>(lid));
+								high_conn_have_sets = true;
+							}
+							else hc[q] = InvalidHandle();
+						}
+						for (q = ElementSet::high_conn_reserved - 1; q < set_size; ++q)
+						{
+							uconv.read_iValue(in, val);
+							hc[q] = val;
+						}
+					}
+					//convert handles to sets into links to new_sets
+					if (high_conn_have_sets)
+					{
+						for (unsigned i = 0; i < size; i++)
+						{
+							Element::adj_type& hc = HighConn(new_sets[i]);
+							for (enumerator j = 0; j < ElementSet::high_conn_reserved - 1; ++j)
+								if (hc[j] != InvalidHandle())
+									hc[j] = new_sets[GetHandleID(hc[j])];
+						}
+					}
+					if (low_conn_have_sets) //this may be expensive and redundant in some cases
+					{
+						for (unsigned i = 0; i < size; i++)
+						{
+							Element::adj_type& lc = LowConn(new_sets[i]);
+							for (Element::adj_type::size_type j = 0; j < lc.size(); ++j)
+								if (GetHandleElementType(lc[j]) == ESET)
+									lc[j] = new_sets[GetHandleID(lc[j])];
+						}
+					}
+
+					REPORT_VAL("output position, sets", in.tellg());
+				}
+				else if (token == INMOST::MeshDataHeader)
+				{
+					REPORT_STR("MeshDataHeader");
+					HandleType m_storage = GetHandle();
+					INMOST_DATA_ENUM_TYPE elem_sizes[6] =
+					{
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_nodes.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_edges.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_faces.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_cells.size()),
+						static_cast<INMOST_DATA_ENUM_TYPE>(new_sets.size()),
+						1
+					};
+					HandleType* elem_links[6] =
+					{
+						new_nodes.empty() ? NULL : &new_nodes[0],
+						new_edges.empty() ? NULL : &new_edges[0],
+						new_faces.empty() ? NULL : &new_faces[0],
+						new_cells.empty() ? NULL : &new_cells[0],
+						new_sets.empty() ? NULL : &new_sets[0],
+						&m_storage
+					};
+					for (INMOST_DATA_ENUM_TYPE j = 0; j < (INMOST_DATA_ENUM_TYPE)tags_skip.size(); j++)
+					{
+						REPORT_VAL("TagName", tags_name[j]);
+						if (verbosity > 0)
+						{
+							if (tags_skip[j])
+								std::cout << "Skipping " << tags_name[j] << std::endl;
+							else
+								std::cout << "Reading " << tags_name[j] << std::endl;
+						}
+						//Tag * jt = &tags[j];
+						for (ElementType etype = NODE; etype <= MESH; etype = etype << 1)
+						{
+							if (etype & tags_defined[j])
+							{
+								REPORT_VAL("defined on", ElementTypeName(etype));
+								INMOST_DATA_ENUM_TYPE q, cycle_end, etypenum = ElementNum(etype);
+								cycle_end = elem_sizes[etypenum];
+								REPORT_VAL("cycle end", cycle_end);
+								bool sparse = false;
+								if (etype & tags_sparse[j]) sparse = true;
+								INMOST_DATA_ENUM_TYPE tagsize = tags_sizes[j], recsize = tagsize, lid;
+								INMOST_DATA_ENUM_TYPE k;
+								DataType data_type = tags_dtype[j];
+								if (sparse)
 								{
-								case DATA_REAL:
+									REPORT_VAL("sparse on", ElementTypeName(etype));
+									uconv.read_iValue(in, q);
+									if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+								}
+								else q = 0;
+
+								REPORT_VAL("data type", DataTypeName(data_type));
+								REPORT_VAL("tag size", tagsize);
+
+								while (q != cycle_end)
 								{
-									if (tags_skip[j])
+									HandleType he = elem_links[etypenum][q];
+									if (tagsize == ENUMUNDEF)
 									{
-										Storage::real tmp;
-										for (k = 0; k < recsize; k++)
-										{
-											iconv.read_fValue(in, tmp);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-										}
-									}
-									else
-									{
-										Storage::real_array arr = RealArray(he, tags[j]);
-										for (k = 0; k < recsize; k++)
-										{
-											iconv.read_fValue(in, arr[k]);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-										}
-									}
-								} break;
-								case DATA_INTEGER:
-								{
-									if (tags_skip[j])
-									{
-										Storage::integer tmp;
-										for (k = 0; k < recsize; k++)
-										{
-											iconv.read_iValue(in, tmp);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-										}
-									}
-									else
-									{
-										Storage::integer_array arr = IntegerArray(he, tags[j]);
-										for (k = 0; k < recsize; k++)
-										{
-											iconv.read_iValue(in, arr[k]);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-										}
-									}
-								} break;
-								case DATA_BULK:
-								{
-									if (tags_skip[j])
-									{
-										std::vector<char> tmp(recsize);
-										in.read(reinterpret_cast<char*>(&tmp[0]), recsize);
+										uconv.read_iValue(in, recsize);
 										if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+										if (!tags_skip[j]) SetDataSize(he, tags[j], recsize);
 									}
-									else
+									switch (data_type)
 									{
-										in.read(reinterpret_cast<char*>(&Bulk(he, tags[j])), recsize);
-										if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-									}
-								} break;
-								case DATA_REFERENCE:
-								{
-									if (tags_skip[j])
-									{
-										for (k = 0; k < recsize; k++)
-										{
-											char type;
-											in.get(type);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-											if (type != NONE)
-											{
-												uconv.read_iValue(in, lid);
-												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-											}
-										}
-									}
-									else
-									{
-										Storage::reference_array arr = ReferenceArray(he, tags[j]);
-										for (k = 0; k < recsize; k++)
-										{
-											char type;
-											in.get(type);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-											if (type != NONE)
-											{
-												uconv.read_iValue(in, lid);
-												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-												arr.at(k) = elem_links[ElementNum(type)][lid];
-											}
-											else arr.at(k) = InvalidHandle();
-										}
-									}
-								} break;
-								case DATA_REMOTE_REFERENCE:
-								{
-									Storage::remote_reference_array arr = RemoteReferenceArray(he, tags[j]);
-									for (k = 0; k < recsize; k++)
+									case DATA_REAL:
 									{
 										if (tags_skip[j])
 										{
-											INMOST_DATA_ENUM_TYPE size;
-											std::vector<char> name;
-											uconv.read_iValue(in, size);
-											name.resize(size);
-											if (!name.empty()) in.read(&name[0], size);
-											else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
-											char type;
-											in.get(type);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-											if (type != NONE)
+											Storage::real tmp;
+											for (k = 0; k < recsize; k++)
 											{
-												uconv.read_iValue(in, lid);
+												iconv.read_fValue(in, tmp);
 												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
 											}
 										}
 										else
 										{
-											INMOST_DATA_ENUM_TYPE size;
-											std::vector<char> name;
-											uconv.read_iValue(in, size);
-											name.resize(size);
-											if (!name.empty()) in.read(&name[0], size);
-											else std::cout << __FILE__ << ":" << __LINE__ << " Name of the mesh was not specified" << std::endl;
-											arr.at(k).first = GetMesh(std::string(name.begin(), name.end()));
-											if (arr.at(k).first == NULL)
-												std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(), name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
-											char type;
-											in.get(type);
-											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-											if (type != NONE)
+											Storage::real_array arr = RealArray(he, tags[j]);
+											for (k = 0; k < recsize; k++)
 											{
-												uconv.read_iValue(in, lid);
+												iconv.read_fValue(in, arr[k]);
 												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-												arr.at(k).second = ComposeHandle(type, lid);
-											}
-											else arr.at(k).second = InvalidHandle();
-										}
-									}
-								} break;
-#if defined(USE_AUTODIFF)
-								case DATA_VARIABLE:
-								{
-									if (tags_skip[j])
-									{
-										Storage::real val;
-										Storage::integer ival;
-										for (k = 0; k < recsize; k++)
-										{
-											iconv.read_fValue(in, val);
-											iconv.read_iValue(in, ival);
-											int rend = ival;
-											for (int l = 0; l < rend; ++l)
-											{
-												iconv.read_fValue(in, val);
-												iconv.read_iValue(in, ival);
 											}
 										}
-									}
-									else
+									} break;
+									case DATA_INTEGER:
 									{
-										bool noder = false;
-										if (noderivs.find(tags_name[j]) != noderivs.end())
-											noder = true;
-										Storage::var_array arr = VariableArray(he, tags[j]);
-										Storage::real val = 0;
-										Storage::integer ival = 0;
-										for (k = 0; k < recsize; k++)
+										if (tags_skip[j])
 										{
-											Sparse::Row& r = arr[k].GetRow();
-											iconv.read_fValue(in, val);
-											arr[k].SetValue(val);
-											iconv.read_iValue(in, ival);
-											Storage::integer rend = ival;
-											if (noder)
+											Storage::integer tmp;
+											for (k = 0; k < recsize; k++)
 											{
-												for (int l = 0; l < rend; ++l)
+												iconv.read_iValue(in, tmp);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+											}
+										}
+										else
+										{
+											Storage::integer_array arr = IntegerArray(he, tags[j]);
+											for (k = 0; k < recsize; k++)
+											{
+												iconv.read_iValue(in, arr[k]);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+											}
+										}
+									} break;
+									case DATA_BULK:
+									{
+										if (tags_skip[j])
+										{
+											std::vector<char> tmp(recsize);
+											in.read(reinterpret_cast<char*>(&tmp[0]), recsize);
+											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+										}
+										else
+										{
+											in.read(reinterpret_cast<char*>(&Bulk(he, tags[j])), recsize);
+											if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+										}
+									} break;
+									case DATA_REFERENCE:
+									{
+										if (tags_skip[j])
+										{
+											for (k = 0; k < recsize; k++)
+											{
+												char type;
+												in.get(type);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+												if (type != NONE)
 												{
-													iconv.read_fValue(in, val);
-													iconv.read_iValue(in, ival);
+													uconv.read_iValue(in, lid);
+													if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+												}
+											}
+										}
+										else
+										{
+											Storage::reference_array arr = ReferenceArray(he, tags[j]);
+											for (k = 0; k < recsize; k++)
+											{
+												char type;
+												in.get(type);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+													arr.at(k) = elem_links[ElementNum(type)][lid];
+												}
+												else arr.at(k) = InvalidHandle();
+											}
+										}
+									} break;
+									case DATA_REMOTE_REFERENCE:
+									{
+										Storage::remote_reference_array arr = RemoteReferenceArray(he, tags[j]);
+										for (k = 0; k < recsize; k++)
+										{
+											if (tags_skip[j])
+											{
+												INMOST_DATA_ENUM_TYPE size;
+												std::vector<char> name;
+												uconv.read_iValue(in, size);
+												name.resize(size);
+												if (!name.empty()) in.read(&name[0], size);
+												else std::cout << __FILE__ << ":" << __LINE__ << " Mesh of the name was not specified" << std::endl;
+												char type;
+												in.get(type);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
 												}
 											}
 											else
 											{
-												r.Resize(ival);
+												INMOST_DATA_ENUM_TYPE size;
+												std::vector<char> name;
+												uconv.read_iValue(in, size);
+												name.resize(size);
+												if (!name.empty()) in.read(&name[0], size);
+												else std::cout << __FILE__ << ":" << __LINE__ << " Name of the mesh was not specified" << std::endl;
+												arr.at(k).first = GetMesh(std::string(name.begin(), name.end()));
+												if (arr.at(k).first == NULL)
+													std::cout << __FILE__ << ":" << __LINE__ << " Mesh with the name " << std::string(name.begin(), name.end()) << " do not exist, you should create the mesh with this name first" << std::endl;
+												char type;
+												in.get(type);
+												if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+												if (type != NONE)
+												{
+													uconv.read_iValue(in, lid);
+													if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+													arr.at(k).second = ComposeHandle(type, lid);
+												}
+												else arr.at(k).second = InvalidHandle();
+											}
+										}
+									} break;
+#if defined(USE_AUTODIFF)
+									case DATA_VARIABLE:
+									{
+										if (tags_skip[j])
+										{
+											Storage::real val;
+											Storage::integer ival;
+											for (k = 0; k < recsize; k++)
+											{
+												iconv.read_fValue(in, val);
+												iconv.read_iValue(in, ival);
+												int rend = ival;
 												for (int l = 0; l < rend; ++l)
 												{
 													iconv.read_fValue(in, val);
 													iconv.read_iValue(in, ival);
-													r.GetValue(l) = val;
-													r.GetIndex(l) = ival;
 												}
 											}
 										}
-									}
-								} break;
+										else
+										{
+											bool noder = false;
+											if (noderivs.find(tags_name[j]) != noderivs.end())
+												noder = true;
+											Storage::var_array arr = VariableArray(he, tags[j]);
+											Storage::real val = 0;
+											Storage::integer ival = 0;
+											for (k = 0; k < recsize; k++)
+											{
+												Sparse::Row& r = arr[k].GetRow();
+												iconv.read_fValue(in, val);
+												arr[k].SetValue(val);
+												iconv.read_iValue(in, ival);
+												Storage::integer rend = ival;
+												if (noder)
+												{
+													for (int l = 0; l < rend; ++l)
+													{
+														iconv.read_fValue(in, val);
+														iconv.read_iValue(in, ival);
+													}
+												}
+												else
+												{
+													r.Resize(ival);
+													for (int l = 0; l < rend; ++l)
+													{
+														iconv.read_fValue(in, val);
+														iconv.read_iValue(in, ival);
+														r.GetValue(l) = val;
+														r.GetIndex(l) = ival;
+													}
+												}
+											}
+										}
+									} break;
 #endif
+									}
+									if (sparse)
+									{
+										uconv.read_iValue(in, q);
+										if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
+									}
+									else q++;
 								}
-								if (sparse)
-								{
-									uconv.read_iValue(in, q);
-									if (in.eof()) std::cout << __FILE__ << ":" << __LINE__ << " Unexpected end of file! " << tags_name[j] << " " << ElementTypeName(etype) << " " << (sparse ? "sparse" : "dense") << std::endl;
-								}
-								else q++;
 							}
 						}
+
+						REPORT_VAL("output position, tag data " << j, in.tellg());
 					}
 
-					REPORT_VAL("output position, tag data " << j, in.tellg());
+					REPORT_VAL("output position, tag data", in.tellg());
+					if (verbosity > 0) std::cout << "Finished reading data" << std::endl;
+					REPORT_STR("EndOfData");
 				}
-
-				REPORT_VAL("output position, tag data", in.tellg());
-				if (verbosity > 0) std::cout << "Finished reading data" << std::endl;
-				REPORT_STR("EndOfData");
+				else
+				{
+					std::cout << "Unknown token on input" << std::endl;
+					throw BadFile;
+				}
 			}
-			else
+			if (streams.back()->eof())
 			{
-				std::cout << "Unknown token on input" << std::endl;
-				throw BadFile;
+				if (streams.size() > 1)
+					delete streams.back();
+				streams.pop_back();
 			}
 		}
 
@@ -1288,6 +1343,22 @@ namespace INMOST
 		std::stringstream out(std::ios::in | std::ios::out | std::ios::binary);
 		WritePMFStream(out);
 		
+		if (GetFileOption("compress") == "zlib")
+		{
+			void* zbuffer;
+			size_t dsize = out.str().size(), zdsize;
+			if (zcompress(out.str().c_str(), dsize, zbuffer, zdsize))
+			{
+				INMOST_DATA_BIG_ENUM_TYPE wdsize = dsize, wzdsize = zdsize;
+				out.clear();
+				out << INMOST::ZLIBHeader;
+				buconv.write_iByteOrder(out);
+				buconv.write_iByteSize(out);
+				buconv.write_iValue(out, wdsize);
+				buconv.write_iValue(out, wzdsize);
+				out.write(static_cast<char *>(zbuffer), sizeof(char) * zdsize);
+			}
+		}
 		
 #if defined(USE_MPI)
 		if( m_state == Mesh::Parallel )

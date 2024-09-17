@@ -1,6 +1,8 @@
 #include "utils.h"
 #include <cstdlib>
-
+#if defined(USE_ZLIB)
+#include "zlib.h"
+#endif
 // temporary fix for GeRa
 
 bool IsMaster() {
@@ -302,5 +304,45 @@ namespace INMOST {
 		(void)size;
 #endif//USE_MPI
 
+	}
+	bool zcompress(const void* buffer, size_t dsize, void*& buffer_out, size_t& dsize_out)
+	{
+#if defined(USE_ZLIB)
+		uLongf bufsize = compressBound((uLongf)dsize);
+		void* zbuffer = malloc(bufsize);
+		if (zbuffer)
+		{
+			int res = compress2(static_cast<Bytef*>(zbuffer), &bufsize, static_cast<const Bytef*>(buffer), (uLongf)dsize, 9);
+			if (res != Z_OK)
+				std::cout << __FILE__ << ":" << __LINE__ << " fail " << res << std::endl;
+			else
+			{
+				buffer_out = zbuffer;
+				dsize_out = bufsize;
+				return true;
+			}
+		}
+		else std::cout << __FILE__ << ":" << __LINE__ << " allocation of " << bufsize << " failed" << std::endl;
+		return false;
+#else
+		return false;
+#endif
+	}
+	bool zuncompress(const void* zbuffer, size_t zdsize, void* buffer_out, size_t& dsize_out)
+	{
+#if defined(USE_ZLIB)
+		uLongf outsize = (uLongf)dsize_out, insize = (uLongf)zdsize;
+		int res = uncompress(static_cast<Bytef*>(buffer_out), &outsize, static_cast<const Bytef*>(zbuffer), insize);
+		if (res != Z_OK)
+		{
+			std::cout << __FILE__ << ":" << __LINE__ << " uncompress fail " << res << std::endl;
+			return false;
+		}
+		if (dsize_out != outsize)
+			std::cout << "Unexpected uncompressed data size: " << outsize << " expected: " << dsize_out << std::endl;
+		return true;
+#else
+		return false;
+#endif
 	}
 }
