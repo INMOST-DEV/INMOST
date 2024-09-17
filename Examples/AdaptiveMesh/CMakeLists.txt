@@ -32,7 +32,7 @@ if(USE_ZLIB)
   target_link_libraries(AdaptiveMeshCube ${ZLIB_LIBRARIES}) 
   target_link_libraries(AdaptiveMeshSphere ${ZLIB_LIBRARIES}) 
   #target_link_libraries(AdaptiveMeshTestSet ${ZLIB_LIBRARIES}) 
-endif(UZE_ZLIB)
+endif(USE_ZLIB)
 
 
 if(USE_PARTITIONER)

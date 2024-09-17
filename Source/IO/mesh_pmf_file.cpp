@@ -504,12 +504,13 @@ namespace INMOST
 							void* buffer_out = malloc(sizeof(char) * dsize);
 							if (buffer_out)
 							{
-								in.read(static_cast<char*>(zbuffer), sizeof(size_t) * dsize);
-								if (zuncompress(zbuffer, zdsize, buffer_out, dsize))
+								in.read(static_cast<char*>(zbuffer), sizeof(char) * zdsize);
+								size_t indsize = dsize;
+								if (zuncompress(zbuffer, zdsize, buffer_out, indsize))
 								{
 									if (verbosity > 0) std::cout << "Uncompressed data " << zdsize << " -> " << dsize << std::endl;
 									std::stringstream* new_in = new std::stringstream(std::ios::in | std::ios::out | std::ios::binary);
-									new_in->write(static_cast<char*>(buffer_out), sizeof(char) * dsize);
+									new_in->write(static_cast<char*>(buffer_out), sizeof(char) * indsize);
 									streams.push_back(new_in);
 									free(zbuffer);
 									free(buffer_out);
