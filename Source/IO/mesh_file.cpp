@@ -72,27 +72,31 @@ namespace INMOST
 	std::set<std::string> Mesh::TagOptions(std::string name) const
 	{
 		std::set<std::string> ret;
-		std::vector<std::string> name_split;
 		std::vector<std::string> value_split;
 		for(INMOST_DATA_ENUM_TYPE k = 0; k < file_options.size(); k++)
 		{
-			split_string(file_options[k].first,name_split,":");
-			if(name_split[0] == "Tag")
+			const std::string& option = file_options[k].first;
+			std::string::size_type pos = option.find_first_of(":");
+			std::string prefix_name = "", self_name = option;
+			if (pos != std::string::npos){
+				prefix_name = option.substr(0, pos);
+				self_name = option.substr(pos+1);
+			}
+			if(prefix_name == "Tag")
 			{
-				//~ std::cout << "Tag option " << file_options[k].first << " value " << file_options[k].second << " tag " << name_split[1] << " searching " << name << std::endl;
+				//~ std::cout << "Tag option " << file_options[k].first << " value " << file_options[k].second << " tag " << self_name << " searching " << name << std::endl;
 				split_string(file_options[k].second,value_split,",");
 				for(size_t q = 0; q < value_split.size(); ++q)
 				{
 					if( value_split[q] == name )
 					{
 						//~ std::cout << "found!" << std::endl;
-						ret.insert(name_split[1]);
+						ret.insert(self_name);
 						break;
 					}
 				}
 				value_split.clear();
 			}
-			name_split.clear();
 		}
 		return ret;
 	}
