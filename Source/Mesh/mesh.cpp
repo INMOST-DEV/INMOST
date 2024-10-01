@@ -8,6 +8,7 @@
 #include <unistd.h>
 #define PROCESSID getpid()
 #elif defined(_WIN32)
+#define NOMINMAX
 #include <windows.h>
 #define PROCESSID GetCurrentProcessId()
 #else
