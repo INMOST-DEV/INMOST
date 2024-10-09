@@ -4502,9 +4502,9 @@ namespace INMOST
 	AbstractMatrixReadOnly<Var>::ExtractSubMatrix(enumerator ibeg, enumerator iend, enumerator jbeg, enumerator jend) const
 	{
 		assert(ibeg < Rows());
-		assert(iend < Rows());
+		assert(iend <= Rows());
 		assert(jbeg < Cols());
-		assert(jend < Cols());
+		assert(jend <= Cols());
 		Matrix<Var> ret(iend-ibeg,jend-jbeg);
 		for(enumerator i = ibeg; i < iend; ++i)
 		{
