@@ -1553,6 +1553,46 @@ namespace INMOST
 			//std::cout << "End " << __FUNCTION__ << " rank " << rank << std::endl;
 		}
 
+		void Matrix::SaveBinaryRaw(std::string file)
+		{
+			typedef unsigned idx_t;
+			int rank = 0, size = 1, compr[3] = { 0,0,0 }, rcompr[3] = { 0,0,0 };
+			INMOST_DATA_BIG_ENUM_TYPE matsize = GetLastIndex() - GetFirstIndex(), nnzsize = Nonzeros();
+			std::vector<INMOST_DATA_BIG_ENUM_TYPE> matsizes(size, matsize), nnzsizes(size, nnzsize);
+			//Gather data
+			std::vector<idx_t> ia;
+			std::vector<idx_t> ja;
+			std::vector<double> va;
+			ia.reserve(matsize + 1);
+			ja.reserve(nnzsize);
+			va.reserve(nnzsize);
+			ia.push_back(0);
+			nnzsize = 0;
+			for (INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
+			{
+				for (Row::iterator jt = (*this)[k].Begin(); jt != (*this)[k].End(); ++jt)
+				{
+					ja.push_back(jt->first);
+					va.push_back(jt->second);
+					nnzsize++;
+				}
+				ia.push_back(ja.size());
+			}
+			if (ia.size() != matsize + 1)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			if (ja.size() != nnzsize)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			if (va.size() != nnzsize)
+				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
+			std::ofstream output(file.c_str(), std::ios::binary);
+			size_t header[3] = { ia.size(),ja.size(),va.size() };
+			output.write(reinterpret_cast<const char*>(header), sizeof(size_t) * 3);
+			output.write(reinterpret_cast<const char*>(&ia[0]), sizeof(idx_t) * ia.size());
+			output.write(reinterpret_cast<const char*>(&ja[0]), sizeof(idx_t) * ja.size());
+			output.write(reinterpret_cast<const char*>(&va[0]), sizeof(double) * va.size());
+			output.close();
+		}
+
 
 		void     Matrix::LoadBinary(std::string file)
 		{
