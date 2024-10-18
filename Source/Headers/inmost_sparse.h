@@ -517,7 +517,7 @@ namespace INMOST
 			/// Clear all data of the matrix.
 			void Clear() {for(Matrix::iterator it = Begin(); it != End(); ++it) it->Clear(); data.clear();}
 			/// Count number of nonzeros in matrix.
-			INMOST_DATA_ENUM_TYPE Nonzeros() {INMOST_DATA_ENUM_TYPE nnz = 0; for(Matrix::iterator it = Begin(); it != End(); ++it) nnz += it->Size(); return nnz;}
+			INMOST_DATA_ENUM_TYPE Nonzeros() const {INMOST_DATA_ENUM_TYPE nnz = 0; for(Matrix::const_iterator it = Begin(); it != End(); ++it) nnz += it->Size(); return nnz;}
 			/// Load the matrix from a single data file in MTX format using the specified interval.
 			/// If interval is not specified, then it will be automatically constructed,
 			/// with the about equal block size (the last block may has larger dimension).
