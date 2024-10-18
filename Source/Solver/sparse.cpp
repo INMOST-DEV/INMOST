@@ -574,7 +574,7 @@ namespace INMOST
 
 ////////class Row
 #if defined(USE_SOLVER)
-		INMOST_DATA_REAL_TYPE   Row::RowVec(Vector & x) const
+		INMOST_DATA_REAL_TYPE   Row::RowVec(const Vector & x) const
 		{
 			INMOST_DATA_REAL_TYPE ret = 0;
 			INMOST_DATA_ENUM_TYPE end = Size();
@@ -977,7 +977,7 @@ namespace INMOST
 #endif //USE_AUTODIFF
 
 ////////class Matrix
-		void Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
+		void Matrix::MatVec(INMOST_DATA_REAL_TYPE alpha, const Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
 		{
 			INMOST_DATA_ENUM_TYPE mbeg, mend;
 			INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
@@ -1005,7 +1005,7 @@ namespace INMOST
 		
 
 
-		void Matrix::MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
+		void Matrix::MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, const Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & out) const //y = alpha*A*x + beta * y
 		{
 			INMOST_DATA_ENUM_TYPE mbeg, mend;
 			INMOST_DATA_INTEGER_TYPE ind, imbeg, imend;
