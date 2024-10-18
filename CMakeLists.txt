@@ -271,7 +271,8 @@ if(USE_SOLVER_SUPERLU)
 		message("-- Download LAPACK")
 		include(ExternalProject)
 		ExternalProject_Add(LAPACK
-							URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
+							#URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
+							URL "https://netlib.sandia.gov/clapack/clapack-3.2.1-CMAKE.tgz"
 							UPDATE_DISCONNECTED 1
 							PREFIX "${LIB_DOWNLOAD_PATH}"
 							INSTALL_COMMAND true
