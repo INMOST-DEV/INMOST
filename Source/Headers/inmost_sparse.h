@@ -543,6 +543,8 @@ namespace INMOST
 			void                 Save(std::string file, const AnnotationService * annotation = NULL);
 			/// Save the distributed matrix to a single binary data file.
 			void                 SaveBinary(std::string file);
+			/// Save non-distributed matrix to a binary data file for S3M.
+			void                 SaveBinaryRaw(std::string file);
 			/// Load the distributed matrix from a single binary data file.
 			void                 LoadBinary(std::string file);
 			/// Check that matrix is in parallel state.

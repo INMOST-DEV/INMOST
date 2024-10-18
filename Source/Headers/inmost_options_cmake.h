@@ -23,6 +23,7 @@
 #cmakedefine USE_SOLVER_TRILINOS
 #cmakedefine USE_SOLVER_ANI
 #cmakedefine USE_SOLVER_SUPERLU
+#cmakedefine USE_SOLVER_HYPRE
 
 #cmakedefine USE_OPTIMIZER
 #cmakedefine USE_OPTIMIZER_BAYESIAN

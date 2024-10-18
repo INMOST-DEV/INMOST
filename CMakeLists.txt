@@ -42,6 +42,7 @@ option(USE_SOLVER_SUPERLU "Use SuperLU solver" OFF)
 option(USE_SOLVER_SUPERLU_DOWNLOAD "Attempts to download SuperLU solver if library not found" OFF)
 option(USE_SOLVER_K3BIILU2 "Activate K3BIILU2 solver (requires USE_MPI and USE_SOLVER_METIS)")
 option(USE_SOLVER_FCBIILU2 "Activate FCBIILU2 solver (requires fcbiilu2.cpp)")
+option(USE_SOLVER_HYPRE "Activate HYPRE solver")
 option(USE_OPTIMIZER "Use Optimization toolkit" OFF)
 option(USE_OPTIMIZER_BAYESIAN "Compile Optimization module against Limbo library to provide Bayesian optimization algorithm" OFF)
 option(USE_ZLIB "Compress data using ZLIB" OFF)
@@ -438,6 +439,49 @@ if(USE_SOLVER_SUPERLU)
 		include_directories(${SUPERLU_INCLUDES})
 	endif()
 endif()
+
+
+if(USE_SOLVER_HYPRE)
+	include(ExternalProject)
+	if(USE_MPI AND MPI_FOUND)
+	#	set(HYPRE_MPI_FLAGS "-DMPI_C_COMPILER=${MPI_C_COMPILER} -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER} ")
+		set(HYPRE_MPI_FLAGS "-DMPI_C_COMPILER=${MPI_C_COMPILER} ")
+	else(USE_MPI AND MPI_FOUND)
+		set(HYPRE_MPI_FLAGS "-DHYPRE_WITH_MPI=OFF ")
+	endif(USE_MPI AND MPI_FOUND)
+	message("${HYPRE_MPI_FLAGS}")	
+	ExternalProject_Add(HYPRE
+			GIT_REPOSITORY "https://github.com/hypre-space/hypre.git"
+			#GIT_REPOSITORY "https://github.com/LLNL/hypre.git"
+			GIT_TAG "master"
+			PREFIX "${LIB_DOWNLOAD_PATH}"
+			CONFIGURE_COMMAND ${CMAKE_COMMAND} 
+					-DCMAKE_INSTALL_INCLUDEDIR:PATH=${LIB_DOWNLOAD_PATH}/include/
+					-DCMAKE_INSTALL_LIBDIR:PATH=${LIB_DOWNLOAD_PATH}/lib/
+					-DCMAKE_INSTALL_PREFIX:PATH=${LIB_DOWNLOAD_PATH}
+					${HYPRE_MPI_FLAGS}
+					<SOURCE_DIR>/src # Tell CMake to use subdirectory as source.
+			)
+	ExternalProject_Get_Property(HYPRE install_dir)
+	add_library(hypre STATIC IMPORTED)
+	add_dependencies(hypre HYPRE)
+	set(HYPRE_LIB ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}HYPRE${CMAKE_STATIC_LIBRARY_SUFFIX})
+
+	message("location: ${HYPRE_LIB}")
+	set_target_properties(hypre PROPERTIES IMPORTED_LOCATION ${HYPRE_LIB})
+
+	if(USE_MPI AND MPI_FOUND)
+		set(HYPRE_LIBRARIES ${HYPRE_LIB} ${MPI_LIBRARIES}) 
+	else(USE_MPI AND MPI_FOUND)
+		set(HYPRE_LIBRARIES ${HYPRE_LIB}) 
+	endif(USE_MPI AND MPI_FOUND)
+	set(HYPRE_DIR ${install_dir})
+	set(HYPRE_INCLUDE_DIRS ${install_dir}/include)
+
+	find_package_handle_standard_args(HYPRE DEFAULT_MSG HYPRE_LIBRARIES HYPRE_INCLUDE_DIRS)
+	
+	include_directories(${HYPRE_INCLUDE_DIRS})
+endif(USE_HYPRE)
 
 if(USE_OPENCL)
 	find_package(OpenCL)
