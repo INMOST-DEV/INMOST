@@ -285,7 +285,7 @@ namespace INMOST
 			const_reverse_iterator  rEnd() const { return data.rend(); }
 #if defined(USE_SOLVER)
 			/// Return the scalar product of the current sparse row by a dense Vector.
-			INMOST_DATA_REAL_TYPE   RowVec(Vector & x) const; // returns A(row) * x
+			INMOST_DATA_REAL_TYPE   RowVec(const Vector & x) const; // returns A(row) * x
 #endif
 			/// An optimized assignment of the row, when the content of the source row may not be preserved.
 			/// @param source Source raw where to get the contents.
@@ -510,10 +510,10 @@ namespace INMOST
 			void                   Swap(Matrix & other);
 			/// Matrix-vector product of the form: y = alpha*A*x + beta * y.
 			/// @param y Input/output vector.
-			void MatVec(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & y) const;
+			void MatVec(INMOST_DATA_REAL_TYPE alpha, const Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & y) const;
 			/// Matrix-vector product with transposed matrix of the form: y = alpha*A^T*x + beta * y.
 			/// @param y Input/output vector.
-			void MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & y) const;
+			void MatVecTranspose(INMOST_DATA_REAL_TYPE alpha, const Vector & x, INMOST_DATA_REAL_TYPE beta, Vector & y) const;
 			/// Clear all data of the matrix.
 			void Clear() {for(Matrix::iterator it = Begin(); it != End(); ++it) it->Clear(); data.clear();}
 			/// Count number of nonzeros in matrix.
