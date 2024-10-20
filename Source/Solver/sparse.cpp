@@ -444,10 +444,16 @@ namespace INMOST
 			assert(HR.isSorted());
 			output.Resize(HL.Size()+HR.Size()+JL.Size()*JR.Size());
 			INMOST_DATA_ENUM_TYPE i = 0, j = 0, k1 = 0, l1 = 0, k2 = 0, l2 = 0, q = 0, kk1 = 0, ll2 = 0, r;
-			while(kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1) ) kk1++;
-			k1 = kk1;
-			while(ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2) ) ll2++;
-			l2 = ll2;
+			if (!JR.Empty())
+			{
+				while (kk1 < JL.Size() && JL.GetIndex(kk1) < JR.GetIndex(l1)) kk1++;
+				k1 = kk1;
+			}
+			if (!JL.Empty())
+			{
+				while (ll2 < JR.Size() && JL.GetIndex(k2) > JR.GetIndex(ll2)) ll2++;
+				l2 = ll2;
+			}
 			entry candidate[4] = {stub_entry,stub_entry,stub_entry,stub_entry};
 			if( i < HL.Size() )
 				candidate[0] = make_entry(HL.GetIndex(i),b*HL.GetValue(i));

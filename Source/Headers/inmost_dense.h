@@ -184,6 +184,15 @@ namespace INMOST
 
 	// begin for matrices
 	// all these pool expressions are needed to avoid dangling
+	template<class A>          __INLINE        unary_pool_expression<unary_minus_expression<A>, A>     minus(shell_expression<A> const& Arg)
+	{
+		unary_pool<unary_minus_expression<A>, A> pool(Arg);
+		return unary_pool_expression<unary_minus_expression<A>, A>(pool);
+	}
+	__INLINE                                                                     INMOST_DATA_REAL_TYPE minus(INMOST_DATA_REAL_TYPE Arg)
+	{
+		return -Arg;
+	}
 	template<class A, class B> __INLINE         binary_pool_expression<branch_expression<A, B>, A, B> branch(bool cond, shell_expression<A> const& Left, shell_expression<B> const& Right) 
 	{ 
 		binary_pool<branch_expression<A, B>, A, B> pool(cond, Left, Right);
@@ -2413,7 +2422,8 @@ namespace INMOST
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename Op1<Ret, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
+		//__INLINE typename Op1<Ret, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return -A->compute(i, j); }
+		__INLINE typename Op1<Ret, unary_minus_expression>::type compute(enumerator i, enumerator j) const { return minus(A->compute(i, j)); }
 	};
 	
 	template<typename Var>
