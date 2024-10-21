@@ -1562,9 +1562,7 @@ namespace INMOST
 		void Matrix::SaveBinaryRaw(std::string file)
 		{
 			typedef unsigned idx_t;
-			int rank = 0, size = 1, compr[3] = { 0,0,0 }, rcompr[3] = { 0,0,0 };
 			INMOST_DATA_BIG_ENUM_TYPE matsize = GetLastIndex() - GetFirstIndex(), nnzsize = Nonzeros();
-			std::vector<INMOST_DATA_BIG_ENUM_TYPE> matsizes(size, matsize), nnzsizes(size, nnzsize);
 			//Gather data
 			std::vector<idx_t> ia;
 			std::vector<idx_t> ja;

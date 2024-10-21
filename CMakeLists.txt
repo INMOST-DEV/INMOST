@@ -273,7 +273,9 @@ if(USE_SOLVER_SUPERLU)
 		include(ExternalProject)
 		ExternalProject_Add(LAPACK
 							#URL "https://www.netlib.org/clapack/clapack-3.2.1-CMAKE.tgz"
-							URL "https://netlib.sandia.gov/clapack/clapack-3.2.1-CMAKE.tgz"
+							#URL "https://netlib.sandia.gov/clapack/clapack-3.2.1-CMAKE.tgz"
+							GIT_REPOSITORY "https://github.com/Tythos/clapack.git"
+							GIT_TAG "master"
 							UPDATE_DISCONNECTED 1
 							PREFIX "${LIB_DOWNLOAD_PATH}"
 							INSTALL_COMMAND true
@@ -481,7 +483,7 @@ if(USE_SOLVER_HYPRE)
 	find_package_handle_standard_args(HYPRE DEFAULT_MSG HYPRE_LIBRARIES HYPRE_INCLUDE_DIRS)
 	
 	include_directories(${HYPRE_INCLUDE_DIRS})
-endif(USE_HYPRE)
+endif(USE_SOLVER_HYPRE)
 
 if(USE_OPENCL)
 	find_package(OpenCL)
