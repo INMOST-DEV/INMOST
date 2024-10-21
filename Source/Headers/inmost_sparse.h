@@ -144,6 +144,8 @@ namespace INMOST
 			void                 Save(std::string file);
 			/// Save the distributed vector to a single binary data file.
 			void                 SaveBinary(std::string file);
+			/// Save the vector to a binary data file for S3M solver.
+			void                 SaveBinaryRaw(std::string file);
 			/// Load the distributed vector from a single binary data file.
 			void                 LoadBinary(std::string file);
 			/// Load the vector from a single data file using the specified interval.

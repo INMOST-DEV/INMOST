@@ -956,6 +956,19 @@ namespace INMOST
 			}
 		}
 
+		void     Vector::SaveBinaryRaw(std::string file)
+		{
+			std::vector<double> v;
+			v.reserve(Size());
+			for (INMOST_DATA_ENUM_TYPE k = GetFirstIndex(); k < GetLastIndex(); ++k)
+				v.push_back(data[k]);
+			std::ofstream output(file.c_str(), std::ios::binary);
+			const size_t header[1] = { v.size() };
+			output.write(reinterpret_cast<const char*>(header), sizeof(size_t));
+			output.write(reinterpret_cast<const char*>(&v[0]), sizeof(double) * v.size());
+			output.close();
+		}
+
 		template<typename Type>
 		static bool LoadBinaryPiece(void * buffer, size_t dsize, Type * data, INMOST_DATA_BIG_ENUM_TYPE shift, INMOST_DATA_BIG_ENUM_TYPE size, int compr)
 		{
@@ -998,7 +1011,7 @@ namespace INMOST
 				compr = wrcompr;
 				rsize = wrsize;
 				*/
-				fin.read(reinterpret_cast<char*>(rsize), sizeof(int));
+				fin.read(reinterpret_cast<char*>(&rsize), sizeof(int));
 				//Read information on data pieces
 				vecsizes.resize(rsize);
 				dsizes.resize(rsize);
