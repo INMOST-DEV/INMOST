@@ -1808,6 +1808,32 @@ namespace INMOST
 			//~ std::cout << std::endl;
 		}
 	}
+	void ElementSet::SynchronizeSharedSetElements()
+	{
+		Mesh* m = GetMeshLink();
+		if (m->GetMeshState() == Mesh::Serial) return;
+
+		{
+			Storage::integer_array set_procs = IntegerArray(m->ProcessorsTag());
+			//force send the set along with the elements
+			Storage::integer_array send_to = IntegerArray(m->SendtoTag());
+			std::set<Storage::integer> send_set(send_to.begin(), send_to.end()), send_elem;
+			for (iterator it = Begin(); it != End(); ++it) if(it->GetStatus() == Element::Shared)
+			{
+				Storage::integer_array elem_procs = it->IntegerArray(m->ProcessorsTag());
+				for(Storage::integer_array::iterator jt = elem_procs.begin(); jt != elem_procs.end(); ++jt)
+					if (*jt != m->GetProcessorRank())
+					{
+						send_elem.insert(*jt);
+						send_set.insert(*jt);
+					}
+				it->SendTo(send_elem);
+				send_elem.clear();
+			}
+			send_to.replace(send_to.begin(), send_to.end(), send_set.begin(), send_set.end());
+			//~ std::cout << std::endl;
+		}
+	}
 	void ElementSet::SynchronizeSetElementsWithOwner()
 	{
 		Mesh * m = GetMeshLink();

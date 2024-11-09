@@ -1282,6 +1282,12 @@ namespace INMOST
 		/// Call ExchangeMarked afterwards.
 		/// @see Mesh::ExchangeMarked
 		void SynchronizeSetElements();
+		/// Asks all the shared elements to be sent to other processors.
+		/// This function helps restoring part of the set in the ghost
+		/// after mesh distribution.
+		/// Call ExchangeMarked afterwards.
+		/// @see Mesh::ExchangeMarked
+		void SynchronizeSharedSetElements();
 		/// Asks all the elements of ghost sets to be sent to the owner processors.
 		/// Call ExchangeMarked afterwards.
 		/// @see Mesh::ExchangeMarked

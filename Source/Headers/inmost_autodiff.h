@@ -455,7 +455,9 @@ namespace INMOST
 		void EnumerateEntries(bool blocks = false);
 		/// Check whether the tag is still registered.
 		/// @param True if tag is still registered.
-		__INLINE bool isRegisteredEntry(INMOST_DATA_ENUM_TYPE ind) const {return reg_blocks[ind] != NULL;}
+		__INLINE bool isRegisteredEntry(INMOST_DATA_ENUM_TYPE ind) const { if (ind < reg_blocks.size()) return reg_blocks[ind] != NULL; return false; }
+		/// Check whether the entry is active.
+		__INLINE bool isActiveEntry(INMOST_DATA_ENUM_TYPE ind) const { if (ind < act_blocks.size()) return act_blocks[ind]; return false; }
 		/// Get index of the unknown associated with the entry on element.
 		INMOST_DATA_ENUM_TYPE GetIndex(const Storage & e, INMOST_DATA_ENUM_TYPE reg_index, INMOST_DATA_ENUM_TYPE pos = 0) const {return GetEntry(reg_index).Index(e,pos);}
 		/// Get value of the unknown associated with the entry on element.
