@@ -178,7 +178,7 @@ namespace INMOST
 					p += nchars;
 					while (isspace(*p) && p < pend) ++p;
 					state = GMSH_PHYSICAL_DIM;
-					if (verbosity > 0) printf("Reading %d set names.\n", nnodes);
+					if (verbosity > 0) printf("Reading %d set names.\n", nnames);
 				}
 				else
 				{
