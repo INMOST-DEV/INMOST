@@ -205,13 +205,13 @@ namespace INMOST
 		{
 			MarkerType hm = m->HideMarker();
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)
-				if( (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) ) //check for type filters invalid handles
+				if(*it != 0 && (GetHandleElementType(*it) & etype) && !m->GetMarker(*it,hm) ) //check for type filters invalid handles
 					m->SetMarker(*it,mrk);
 		}
 		else
 		{
 			for(Element::adj_type::iterator it = lc.begin(); it != lc.end(); ++it)//check for type filters invalid handles
-				if( GetHandleElementType(*it) & etype )
+				if(*it != 0 && GetHandleElementType(*it) & etype)
 					m->SetMarker(*it,mrk);
 		}
 	}
