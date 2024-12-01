@@ -1124,6 +1124,8 @@ namespace INMOST
 			: arg(other) {}
 		/// Retrieve value
 		__INLINE INMOST_DATA_REAL_TYPE GetValue() const { return arg.GetValue(); }
+		/// Retrive derivatives
+		__INLINE const Sparse::Row& GetRow() const { return arg.GetRow(); }
 		/// Retrieve derivatives with multiplier into Sparse::RowMerger structure.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, Sparse::RowMerger& r) const {	arg.GetJacobian(mult, r); }
 		/// Retrieve derivatives with multiplier into array.
