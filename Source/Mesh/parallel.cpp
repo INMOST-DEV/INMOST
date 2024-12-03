@@ -8578,6 +8578,8 @@ namespace INMOST
     {
 		ENTER_FUNC();
 #ifdef USE_MPI
+		if (m_state != Mesh::Parallel)
+			return;
 		if( tag_global_id.isValid() ) tag_global_id = DeleteTag(tag_global_id,ESET);
         int mpirank = GetProcessorRank();
         int mpisize = GetProcessorsNumber();
