@@ -2495,7 +2495,7 @@ namespace INMOST
 		/// @return Reference to constant element.
 		__INLINE typename OpCond<RetA, RetB>::type compute(enumerator i, enumerator j) const
 		{
-			return branch(i < A->Rows(), i < A->Rows() ? A->compute(i, j) : A->compute(0, 0), i >= A->Cols() ? B->compute(i - A->Rows(), j) : B->compute(0, 0));
+			return branch(i < A->Rows(), i < A->Rows() ? A->compute(i, j) : A->compute(0, 0), i >= A->Rows() ? B->compute(i - A->Rows(), j) : B->compute(0, 0));
 		}
 	};
 	
