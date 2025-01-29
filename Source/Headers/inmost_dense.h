@@ -2468,35 +2468,59 @@ namespace INMOST
 	};
 
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class AbstractMatrixConcatRows : public AbstractMatrixReadOnly<typename Promote<VarA,VarB>::type, typename OpCond<RetA, RetB>::type >
+	class AbstractMatrixConcatRows : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
 	public:
 		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
-		const AbstractMatrixReadOnly<VarA, RetA>* A;
-		const AbstractMatrixReadOnly<VarB, RetB>* B;
+		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
+		/// This is a stub function to fulfill abstract
+		/// inheritance. 
+		/// since it just points to a part of the larger empty matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+			(void)cols; (void)rows;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
+		}
 		/// Number of rows.
 		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows() + B->Rows(); }
+		__INLINE enumerator Rows() const { return M.Rows(); }
 		/// Number of columns.
 		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols(); }
-		AbstractMatrixConcatRows(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
-			: A(&rA), B(&rB) 
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		AbstractMatrixConcatRows(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B)
 		{
-			assert(A->Cols() == B->Cols());
+			M.Resize(A.Rows() + B.Rows(), std::max(A.Cols(), B.Cols()));
+			for (enumerator i = 0; i < A.Rows(); ++i)
+			{
+				for (enumerator j = 0; j < A.Cols(); ++j)
+					assign(M(i, j), A(i, j));
+				for (enumerator j = A.Cols(); j < M.Cols(); ++j)
+					assign(M(i, j), 0.0);
+			}
+			for (enumerator i = 0; i < B.Rows(); ++i)
+			{
+				for (enumerator j = 0; j < B.Cols(); ++j)
+					assign(M(i + A.Rows(), j), B(i, j));
+				for (enumerator j = B.Cols(); j < M.Cols(); ++j)
+					assign(M(i + A.Rows(), j), 0.0);
+			}
 		}
-		AbstractMatrixConcatRows(const AbstractMatrixConcatRows& b) : A(b.A), B(b.B) {}
+		AbstractMatrixConcatRows(const AbstractMatrixConcatRows& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to element.
+		__INLINE typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) { return M.get(i, j); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename OpCond<RetA, RetB>::type compute(enumerator i, enumerator j) const
-		{
-			return branch(i < A->Rows(), i < A->Rows() ? A->compute(i, j) : A->compute(0, 0), i >= A->Rows() ? B->compute(i - A->Rows(), j) : B->compute(0, 0));
-		}
+		__INLINE const typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) const { return M.get(i, j); }
 	};
 	
 	template<typename Var>
@@ -2549,34 +2573,63 @@ namespace INMOST
 
 	
 	template<typename VarA, typename VarB, typename RetA, typename RetB>
-	class AbstractMatrixConcatCols : public AbstractMatrixReadOnly<typename Promote<VarA, VarB>::type, typename OpCond<RetA, RetB>::type >
+	class AbstractMatrixConcatCols : public AbstractMatrix< typename Promote<VarA, VarB>::type >
 	{
 	public:
 		typedef typename AbstractMatrixBase::enumerator enumerator;
 	private:
-		const AbstractMatrixReadOnly<VarA, RetA>* A;
-		const AbstractMatrixReadOnly<VarB, RetB>* B;
+		Matrix<typename Promote<VarA, VarB>::type> M;
 	public:
+		/// This is a stub function to fulfill abstract
+		/// inheritance. 
+		/// since it just points to a part of the larger empty matrix.
+		void Resize(enumerator rows, enumerator cols)
+		{
+			assert(Cols() == cols);
+			assert(Rows() == rows);
+			(void)cols; (void)rows;
+			if (Cols() != cols || Rows() != rows) throw Impossible;
+		}
 		/// Number of rows.
 		/// @return Number of rows.
-		__INLINE enumerator Rows() const { return A->Rows(); }
+		__INLINE enumerator Rows() const { return M.Rows(); }
 		/// Number of columns.
 		/// @return Number of columns.
-		__INLINE enumerator Cols() const { return A->Cols() + B->Cols(); }
-		AbstractMatrixConcatCols(const AbstractMatrixReadOnly<VarA, RetA>& rA, const AbstractMatrixReadOnly<VarB, RetB>& rB)
-			: A(&rA), B(&rB) {
-			assert(A->Rows() == B->Rows());
+		__INLINE enumerator Cols() const { return M.Cols(); }
+		AbstractMatrixConcatCols(const AbstractMatrixReadOnly<VarA, RetA>& A, const AbstractMatrixReadOnly<VarB, RetB>& B)
+		{
+			M.Resize(std::max(A.Rows(), B.Rows()), A.Cols() + B.Cols());
+			for (enumerator i = 0; i < M.Rows(); ++i)
+			{
+				if (i < A.Rows())
+				{
+					for (enumerator j = 0; j < A.Cols(); ++j)
+						assign(M(i, j), A(i, j));
+				}
+				else for (enumerator j = 0; j < A.Cols(); ++j)
+					assign(M(i, j), 0.0);
+				if (i < B.Rows())
+				{
+					for (enumerator j = 0; j < B.Cols(); ++j)
+						M(i, j + A.Cols()) = B(i, j);
+				}
+				else for (enumerator j = 0; j < B.Cols(); ++j)
+					assign(M(i, j + A.Cols()), 0.0);
+
+			}
 		}
-		AbstractMatrixConcatCols(const AbstractMatrixConcatCols& b) : A(b.A), B(b.B) {}
+		AbstractMatrixConcatCols(const AbstractMatrixConcatCols& b) : M(b.M) {}
+		/// Access element of the matrix by row and column indices.
+		/// @param i Row index.
+		/// @param j Column index.
+		/// @return Reference to element.
+		__INLINE typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) { return M.get(i, j); }
 		/// Access element of the matrix by row and column indices
 		/// without right to change the element.
 		/// @param i Row index.
 		/// @param j Column index.
 		/// @return Reference to constant element.
-		__INLINE typename OpCond<RetA, RetB>::type compute(enumerator i, enumerator j) const
-		{
-			return branch(j < A->Cols(), j < A->Cols() ? A->compute(i, j) : A->compute(0, 0), j >= A->Cols() ? B->compute(i, j - A->Cols()) : B->compute(0, 0));
-		}
+		__INLINE const typename Promote<VarA, VarB>::type& get(enumerator i, enumerator j) const { return M.get(i, j); }
 	};
 	
 	template<typename Var>
