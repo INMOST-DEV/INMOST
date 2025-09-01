@@ -26,6 +26,10 @@ if (USE_SOLVER_TRILINOS AND USE_MPI)
     add_subdirectory(solver_trilinos)
 endif()
 
+if (USE_SOLVER_HYPRE)
+    add_subdirectory(solver_hypre)
+endif()
+
 if (USE_SOLVER_SUPERLU)
     add_subdirectory(solver_superlu)
 endif()

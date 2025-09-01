@@ -1135,6 +1135,22 @@ namespace INMOST
 					jt++;
 				}
 			}
+			{ //check duplicates
+				MarkerType dup = m.CreatePrivateMarker();
+				jt = face_edges.begin();
+				while (jt != face_edges.end())
+				{
+					if (jt->GetPrivateMarker(dup))
+						jt = face_edges.erase(jt);
+					else
+					{
+						jt->SetPrivateMarker(dup);
+						jt++;
+					}
+				}
+				face_edges.RemPrivateMarker(dup);
+				m.ReleasePrivateMarker(dup);
+			}
 			if( face_edges.size() >= 3 )
 			{
 				Face nf = m.CreateFace(face_edges).first;
@@ -1163,6 +1179,22 @@ namespace INMOST
 					if( index[*jt] > 0 ) *jt = new_faces[index[*jt]-1].GetHandle();
 					jt++;
 				}
+			}
+			{ //check duplicates
+				MarkerType dup = m.CreatePrivateMarker();
+				jt = cell_faces.begin();
+				while (jt != cell_faces.end())
+				{
+					if (jt->GetPrivateMarker(dup))
+						jt = cell_faces.erase(jt);
+					else
+					{
+						jt->SetPrivateMarker(dup);
+						jt++;
+					}
+				}
+				cell_faces.RemPrivateMarker(dup);
+				m.ReleasePrivateMarker(dup);
 			}
 			if( cell_faces.size() >= 4 )
 			{
@@ -1616,7 +1648,19 @@ namespace INMOST
 			else break;
 		} while(true);
 
-
+		if (!mat.all_visited())
+		{
+			std::cout << "FACE: " << face.LocalID() << std::endl;
+			mat.print_matrix();
+			incident_matrix<Edge> mat(m, temp.begin(), temp.end(), ninner, GridCoords(), true);
+			do
+			{
+				mat.find_shortest_loop(loop);
+				if (loop.empty()) break;
+			} while (true);
+			//did_restart = true;
+			//goto restart_algorithm;
+		}
 
 		for (size_t it = 0; it < cells.size(); ++it)
 		{

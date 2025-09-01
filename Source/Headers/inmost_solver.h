@@ -44,6 +44,11 @@ namespace INMOST {
         static const Type   FCBIILU2;       ///< external FCBIILU2 Solver (BIILU2 parallel F2C version).
         static const Type   K3BIILU2;       ///< inner    K3BIILU2 Solver (BIILU2 parallel version).
         static const Type   SUPERLU;        ///< external Solver SuperLU @see https://github.com/starseeker/SuperLU
+        static const Type   HYPRE_BOOMERAMG;///< external Solver HYPRE
+        static const Type   HYPRE_PARASAILS;///< external Solver HYPRE
+        static const Type   HYPRE_PILUT;    ///< external Solver HYPRE
+        static const Type   HYPRE_AMS;      ///< external Solver HYPRE
+        static const Type   HYPRE_EUCLID;   ///< external Solver HYPRE
         /// Backward-compatibility access to integer-typed parameters.
         /// Check Solver::SetParameter for available parameter names.
         /// @param name Name of the parameter.
