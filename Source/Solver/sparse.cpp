@@ -988,7 +988,7 @@ namespace INMOST
 		void     Vector::LoadBinary(std::string file)
 		{
 			int rank = 0, size = 1, compr = 0, npart;
-			INMOST_DATA_BIG_ENUM_TYPE vecsize, vecshift = 0;
+			INMOST_DATA_BIG_ENUM_TYPE vecsize = 0, vecshift = 0;
 #if defined(USE_MPI)
 			MPI_Comm_rank(GetCommunicator(), &rank);
 			MPI_Comm_size(GetCommunicator(), &size);
@@ -1035,6 +1035,7 @@ namespace INMOST
 					nparts[k] = npart;
 					tot += npart;
 				}
+				if(rsize) vecsize = vecsizep[0];
 #if defined(USE_MPI)
 				MPI_Scatter(&nparts[0], 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
 				MPI_Scatter(&vecsizep[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
