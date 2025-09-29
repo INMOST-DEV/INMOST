@@ -117,6 +117,7 @@ namespace INMOST {
 
     void Solver::Finalize() {
         Sparse::DestroyRowEntryType();
+        parameters = std::vector<SolverParameters>();
 #if defined(USE_MPI)
         {
             int flag = 0;
