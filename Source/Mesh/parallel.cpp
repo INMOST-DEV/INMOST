@@ -1438,23 +1438,24 @@ namespace INMOST
 
 #if defined(USE_MPI_P2P)
 		int err;
-		REPORT_MPI(err = MPI_Alloc_mem(GetProcessorsNumber()*sizeof(INMOST_DATA_BIG_ENUM_TYPE)*2,MPI_INFO_NULL,&shared_space));
-		if( err )
+		if(GetProcessorsNumber() > 1) //Are we alone?
 		{
-			int errclass;
-			MPI_Error_class(err,&errclass);
-			std::cout << "Cannot allocate shared space of size " << GetProcessorsNumber()*sizeof(INMOST_DATA_BIG_ENUM_TYPE)*2 << " reason is "; 
-			switch(err)
+			REPORT_MPI(err = MPI_Alloc_mem(GetProcessorsNumber()*sizeof(INMOST_DATA_BIG_ENUM_TYPE)*2,MPI_INFO_NULL,&shared_space));
+			if( err )
 			{
-				case MPI_SUCCESS: std::cout << "success"; break;
-				case MPI_ERR_INFO: std::cout << "bad info"; break;
-				case MPI_ERR_ARG: std::cout << "bad argument"; break;
-				case MPI_ERR_NO_MEM: std::cout << "no memory"; break;
+				int errclass;
+				MPI_Error_class(err,&errclass);
+				switch(err)
+				{
+					case MPI_SUCCESS: std::cout << "success"; break;
+					case MPI_ERR_INFO: std::cout << "bad info"; break;
+					case MPI_ERR_ARG: std::cout << "bad argument"; break;
+					case MPI_ERR_NO_MEM: std::cout << "no memory"; break;
+				}
+				MPI_Abort(comm,err);
 			}
-			std::cout << std::endl;
-			MPI_Abort(comm,err);
+			REPORT_MPI(MPI_Win_create(shared_space,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*GetProcessorsNumber()*2,sizeof(INMOST_DATA_BIG_ENUM_TYPE),MPI_INFO_NULL,comm,&window));
 		}
-		REPORT_MPI(MPI_Win_create(shared_space,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*GetProcessorsNumber()*2,sizeof(INMOST_DATA_BIG_ENUM_TYPE),MPI_INFO_NULL,comm,&window));
 #endif //USE_MPI_P2P
 #else //USE_MPI
 		(void) _comm;
@@ -6377,7 +6378,7 @@ namespace INMOST
         int mpirank = GetProcessorRank(), mpisize = GetProcessorsNumber();
 #if defined(USE_MPI_P2P) && defined(PREFFER_MPI_P2P)
 		INMOST_DATA_ENUM_TYPE i, end = send_bufs.size();
-        REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 		memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
 		REPORT_MPI(MPI_Win_fence(0,window)); //wait memset finish
 		for(i = 0; i < end; i++) shared_space[mpisize+i] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].second.size()+1); //put data to special part of the memory
@@ -6468,7 +6469,7 @@ namespace INMOST
 			REPORT_STR("Unknown source");
 #if defined(USE_MPI_P2P)
 			INMOST_DATA_ENUM_TYPE i, end = (INMOST_DATA_ENUM_TYPE)send_bufs.size();
-            REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
 			memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
 			REPORT_MPI(MPI_Win_fence( 0,window)); //wait memset finish
 			for(i = 0; i < end; i++) shared_space[mpisize+i] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].second.size()+1); //put data to special part of the memory
