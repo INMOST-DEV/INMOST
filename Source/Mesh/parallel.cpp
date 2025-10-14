@@ -1456,6 +1456,11 @@ namespace INMOST
 			}
 			REPORT_MPI(MPI_Win_create(shared_space,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*GetProcessorsNumber()*2,sizeof(INMOST_DATA_BIG_ENUM_TYPE),MPI_INFO_NULL,comm,&window));
 		}
+		else
+		{
+			window = MPI_WIN_NULL;
+			shared_space = (INMOST_DATA_BIG_ENUM_TYPE *)malloc(sizeof(INMOST_DATA_BIG_ENUM_TYPE));
+		}
 #endif //USE_MPI_P2P
 #else //USE_MPI
 		(void) _comm;
@@ -6378,9 +6383,15 @@ namespace INMOST
         int mpirank = GetProcessorRank(), mpisize = GetProcessorsNumber();
 #if defined(USE_MPI_P2P) && defined(PREFFER_MPI_P2P)
 		INMOST_DATA_ENUM_TYPE i, end = send_bufs.size();
-		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+		if (window != MPI_WIN_NULL)
+		{
+			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE, window)); //start exchange session
+		}
 		memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
-		REPORT_MPI(MPI_Win_fence(0,window)); //wait memset finish
+		if (window != MPI_WIN_NULL)
+		{
+			REPORT_MPI(MPI_Win_fence(0, window)); //wait memset finish
+		}
 		for(i = 0; i < end; i++) shared_space[mpisize+i] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].second.size()+1); //put data to special part of the memory
 		for(i = 0; i < end; i++) 
 		{
@@ -6390,7 +6401,10 @@ namespace INMOST
 			assert( send_bufs[i].first >= 0 && send_bufs[i].first < GetProcessorsNumber() );
 			REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,send_bufs[i].first,mpirank,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,window)); //request rdma
 		}
-		REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
+		if (window != MPI_WIN_NULL)
+		{
+			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED, window)); //end exchange session
+		}
 		if( todo == UnknownSize )
 		{
 			end = recv_bufs.size();
@@ -6469,9 +6483,15 @@ namespace INMOST
 			REPORT_STR("Unknown source");
 #if defined(USE_MPI_P2P)
 			INMOST_DATA_ENUM_TYPE i, end = (INMOST_DATA_ENUM_TYPE)send_bufs.size();
-			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE,window)); //start exchange session
+			if (window != MPI_WIN_NULL)
+			{
+				REPORT_MPI(MPI_Win_fence(MPI_MODE_NOPRECEDE, window)); //start exchange session
+			}
 			memset(shared_space,0,sizeof(INMOST_DATA_BIG_ENUM_TYPE)*mpisize); //zero bits where we receive data
-			REPORT_MPI(MPI_Win_fence( 0,window)); //wait memset finish
+			if (window != MPI_WIN_NULL)
+			{
+				REPORT_MPI(MPI_Win_fence(0, window)); //wait memset finish
+			}
 			for(i = 0; i < end; i++) shared_space[mpisize+i] = static_cast<INMOST_DATA_BIG_ENUM_TYPE>(send_bufs[i].second.size()+1); //put data to special part of the memory
 			for(i = 0; i < end; i++) 
 			{
@@ -6481,7 +6501,10 @@ namespace INMOST
                 assert( send_bufs[i].first >= 0 && send_bufs[i].first < GetProcessorsNumber() );
 				REPORT_MPI(MPI_Put(&shared_space[mpisize+i],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,send_bufs[i].first,mpirank,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,window)); //request rdma to target processors for each value
 			}
-			REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED,window)); //end exchange session
+			if (window != MPI_WIN_NULL)
+			{
+				REPORT_MPI(MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOSUCCEED, window)); //end exchange session
+			}
 			recv_bufs.clear();
 			for(int ii = 0; ii < mpisize; ii++)
 				if( shared_space[ii] > 0 )

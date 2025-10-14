@@ -511,8 +511,12 @@ namespace INMOST
 #if defined(USE_MPI_P2P)
 		if( m_state == Mesh::Parallel )
 		{
-			MPI_Free_mem(shared_space);
-			MPI_Win_free(&window);
+			if (window != MPI_WIN_NULL)
+			{
+				MPI_Win_free(&window);
+				MPI_Free_mem(shared_space);
+			}
+			else free(shared_space);
 		}
 #endif
 #endif
@@ -727,8 +731,12 @@ namespace INMOST
 			MPI_Finalized(&test);
 			if( !test )
 			{
-				MPI_Free_mem(shared_space);
-				MPI_Win_free(&window);
+				if (window != MPI_WIN_NULL)
+				{
+					MPI_Win_free(&window);
+					MPI_Free_mem(shared_space);
+				}
+				else free(shared_space);
 			}
 			else
 			{
