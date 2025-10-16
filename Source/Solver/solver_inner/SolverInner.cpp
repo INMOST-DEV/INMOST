@@ -8,6 +8,7 @@ namespace INMOST {
         atol = 1.0e-5;
         rtol = 1.0e-12;
         dtol = 1.0e+100;
+        null_space = false;
     }
 
     SolverInterface *SolverInner::Copy(const SolverInterface *other) {
@@ -38,6 +39,7 @@ namespace INMOST {
         solver->RealParameter("rtol") = rtol;
         solver->RealParameter("atol") = atol;
         solver->RealParameter("divtol") = dtol;
+        solver->EnumParameter("null_space") = null_space;
 
         return solver->Solve(RHS, SOL);
     }
@@ -64,6 +66,7 @@ namespace INMOST {
         else if (name == "absolute_tolerance") return to_string(atol);
         else if (name == "relative_tolerance") return to_string(rtol);
         else if (name == "divergence_tolerance") return to_string(dtol);
+        else if (name == "null_space") return to_string(null_space);
         else {
 #if !defined(SILENCE_SET_PARAMETER)
             std::cout << "Parameter " << name << " is unknown" << std::endl;
@@ -78,6 +81,14 @@ namespace INMOST {
         else if (name == "absolute_tolerance") atol = atof(val);
         else if (name == "relative_tolerance") rtol = atof(val);
         else if (name == "divergence_tolerance") dtol = atof(val);
+        else if (name == "null_space")
+        {
+            if (val == "TRUE" || val == "true")
+                null_space = true;
+            else if (val == "FALSE" || val == "false")
+                null_space = false;
+            else null_space = atoi(val);
+        }
 #if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown" << std::endl;
 #endif

@@ -434,7 +434,7 @@ namespace INMOST
     {
         INMOST_DATA_REAL_TYPE length;
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
-        INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it, verbosity;
+        INMOST_DATA_ENUM_TYPE iters, maxits, l, last_it, verbosity, null_space;
         INMOST_DATA_REAL_TYPE resid;
         INMOST_DATA_REAL_TYPE * tau, * sigma, * gamma, *theta1, * theta2, * theta3;
         Sparse::Vector r_tilde, x0, t, * u, * r;
@@ -467,6 +467,7 @@ namespace INMOST
             }
             if (name == "maxits") return maxits;
             else if (name == "verbosity" ) return verbosity;
+            else if (name == "null_space") return null_space;
             else if (name == "levels")
             {
                 if( init ) throw - 1; //solver was already initialized, value should not be changed
@@ -476,7 +477,7 @@ namespace INMOST
             throw - 1;
         }
         BCGSL_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),verbosity(0), prec(prec), info(&info)
+                :rtol(1e-8), atol(1e-9), divtol(1e+40), maxits(1500),l(2),verbosity(0), null_space(0), prec(prec), info(&info)
         {
             Alink = NULL;
             init = false;
@@ -561,13 +562,43 @@ namespace INMOST
             {
                 prec->Solve(Input, t);
                 info->Update(t);
+                Nullspace(t);
                 Alink->MatVec(1.0,t,0,Output);
                 info->Update(Output);
             }
             else
             {
+                Nullspace(Input);
                 Alink->MatVec(1.0,Input,0,Output);
                 info->Update(Output);
+            }
+        }
+        void Nullspace(Sparse::Vector& V)
+        {
+            if (null_space)
+            {
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                {
+                    INMOST_DATA_INTEGER_TYPE ivlocbeg, ivlocend, ivbeg, ivend;
+                    INMOST_DATA_ENUM_TYPE vlocbeg, vlocend, vbeg, vend;
+                    INMOST_DATA_REAL_TYPE sum = 0, sync[2];
+                    info->GetLocalRegion(info->GetRank(), vlocbeg, vlocend);
+                    info->GetVectorRegion(vbeg, vend);
+                    ivbeg = vbeg;
+                    ivend = vend;
+                    ivlocbeg = vlocbeg;
+                    ivlocend = vlocend;
+                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                        sum += V[k];
+                    sync[0] = sum;
+                    sync[1] = ivlocend - ivlocbeg;
+                    info->Integrate(sync, 2);
+                    sum = sync[0] / sync[1];
+                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                        V[k] -= sum;
+                }
             }
         }
         bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
@@ -596,6 +627,7 @@ namespace INMOST
             std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
             {
                 // r[0] = r[0] - A x
+                Nullspace(SOL);
                 Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
                 info->Update(r[0]); // r is good
                 std::copy(SOL.Begin(),SOL.End(),x0.Begin()); //x0 = x
@@ -1236,7 +1268,7 @@ namespace INMOST
     class BCGS_solver : public IterativeMethod
     {
         INMOST_DATA_REAL_TYPE rtol, atol, divtol, last_resid;
-        INMOST_DATA_ENUM_TYPE iters, maxits, last_it,verbosity;
+        INMOST_DATA_ENUM_TYPE iters, maxits, last_it,verbosity,null_space;
         INMOST_DATA_REAL_TYPE resid;
         Sparse::Vector r0, p, y, s, t, z, r, v;
         Sparse::Matrix * Alink;
@@ -1267,11 +1299,12 @@ namespace INMOST
             }
             if (name == "maxits") return maxits;
             else if (name == "verbosity") return verbosity;
+            else if (name == "null_space") return null_space;
             else if (prec != NULL) return prec->EnumParameter(name);
             throw - 1;
         }
         BCGS_solver(Method * prec, Solver::OrderInfo & info)
-                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),verbosity(0),prec(prec),info(&info)
+                :rtol(1e-8), atol(1e-11), divtol(1e+40), iters(0), maxits(1500),verbosity(0),null_space(false),prec(prec),info(&info)
         {
             init = false;
         }
@@ -1335,6 +1368,34 @@ namespace INMOST
             if (!isFinalized()) Finalize();
             if (prec != NULL) delete prec;
         }
+        void Nullspace(Sparse::Vector& V)
+        {
+            if (null_space)
+            {
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                {
+                    INMOST_DATA_INTEGER_TYPE ivlocbeg, ivlocend, ivbeg, ivend;
+                    INMOST_DATA_ENUM_TYPE vlocbeg, vlocend, vbeg, vend;
+                    INMOST_DATA_REAL_TYPE sum = 0, sync[2];
+                    info->GetLocalRegion(info->GetRank(), vlocbeg, vlocend);
+                    info->GetVectorRegion(vbeg, vend);
+                    ivbeg = vbeg;
+                    ivend = vend;
+                    ivlocbeg = vlocbeg;
+                    ivlocend = vlocend;
+                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                        sum += V[k];
+                    sync[0] = sum;
+                    sync[1] = ivlocend - ivlocbeg;
+                    info->Integrate(sync, 2);
+                    sum = sync[0] / sync[1];
+                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                        V[k] -= sum;
+                }
+            }
+        }
         bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
         {
             assert(isInitialized());
@@ -1359,6 +1420,7 @@ namespace INMOST
 
             std::copy(RHS.Begin(),RHS.End(),r.Begin());
             {
+                Nullspace(SOL);
                 Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
                 info->Update(r); // r is good
             }
@@ -1538,11 +1600,13 @@ namespace INMOST
                     {
                         prec->Solve(p, y);
                         info->Update(y);
+                        Nullspace(y);
                         Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
                     }
                     else
                     {
+                        Nullspace(p);
                         Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
                     }
@@ -1607,11 +1671,13 @@ namespace INMOST
                     {
                         prec->Solve(s, z);
                         info->Update(z);
+                        Nullspace(z);
                         Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
                     }
                     else
                     {
+                        Nullspace(s);
                         Alink->MatVec(1.0,s,0,t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
                     }

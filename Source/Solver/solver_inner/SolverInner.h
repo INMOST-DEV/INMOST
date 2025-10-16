@@ -19,6 +19,7 @@ namespace INMOST {
 
         INMOST_DATA_ENUM_TYPE maximum_iterations;
         INMOST_DATA_REAL_TYPE atol, rtol, dtol;
+        bool null_space;
     public:
         SolverInner();
 
