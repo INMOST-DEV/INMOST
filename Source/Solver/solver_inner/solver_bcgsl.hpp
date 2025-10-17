@@ -562,13 +562,11 @@ namespace INMOST
             {
                 prec->Solve(Input, t);
                 info->Update(t);
-                Nullspace(t);
                 Alink->MatVec(1.0,t,0,Output);
                 info->Update(Output);
             }
             else
             {
-                Nullspace(Input);
                 Alink->MatVec(1.0,Input,0,Output);
                 info->Update(Output);
             }
@@ -627,9 +625,9 @@ namespace INMOST
             std::copy(RHS.Begin(),RHS.End(),r[0].Begin());
             {
                 // r[0] = r[0] - A x
-                Nullspace(SOL);
                 Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
                 info->Update(r[0]); // r is good
+                Nullspace(r[0]);
                 std::copy(SOL.Begin(),SOL.End(),x0.Begin()); //x0 = x
                 std::fill(SOL.Begin(),SOL.End(),0.0); //x = 0
             }
@@ -1162,6 +1160,8 @@ namespace INMOST
                         }
                     }
                     */
+
+                    Nullspace(r[0]);
                     //last_it = l+1;
                     {
 #if defined(USE_OMP)
@@ -1420,9 +1420,9 @@ namespace INMOST
 
             std::copy(RHS.Begin(),RHS.End(),r.Begin());
             {
-                Nullspace(SOL);
                 Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
                 info->Update(r); // r is good
+                Nullspace(r);
             }
             std::copy(r.Begin(),r.End(),r0.Begin());
             std::fill(v.Begin(),v.End(),0.0);
@@ -1600,13 +1600,11 @@ namespace INMOST
                     {
                         prec->Solve(p, y);
                         info->Update(y);
-                        Nullspace(y);
                         Alink->MatVec(1,y,0,v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
                     }
                     else
                     {
-                        Nullspace(p);
                         Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
                     }
@@ -1671,13 +1669,11 @@ namespace INMOST
                     {
                         prec->Solve(s, z);
                         info->Update(z);
-                        Nullspace(z);
                         Alink->MatVec(1.0,z,0,t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
                     }
                     else
                     {
-                        Nullspace(s);
                         Alink->MatVec(1.0,s,0,t); // global multiplication, z should be updated, t probably needs an update
                         info->Update(t);
                     }
@@ -1759,6 +1755,8 @@ namespace INMOST
 #endif
                     for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
                         r[k] = s[k] - omega * t[k]; // global indexes r, s, t
+
+                    Nullspace(r);
 
                     //info->ScalarProd(r,r,ivlocbeg,ivlocend,resid);
 #if defined(USE_OMP)
