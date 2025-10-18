@@ -1463,7 +1463,7 @@ namespace INMOST
 			std::vector< real > cluster_weight(K,1/(real)K);
 			std::vector< real > cluster_shift(K*3,0);
 #if defined(USE_MPI)
-			std::vector< real > cluster_center_tmp(K*3);
+			std::vector< real > cluster_center_tmp(K*3,0);
 			std::vector< idx > cluster_npoints_tmp(K);
 #endif
 			

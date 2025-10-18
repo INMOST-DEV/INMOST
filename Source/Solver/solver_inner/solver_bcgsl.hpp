@@ -571,40 +571,12 @@ namespace INMOST
                 info->Update(Output);
             }
         }
-        void Nullspace(Sparse::Vector& V)
-        {
-            if (null_space)
-            {
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-                {
-                    INMOST_DATA_INTEGER_TYPE ivlocbeg, ivlocend, ivbeg, ivend;
-                    INMOST_DATA_ENUM_TYPE vlocbeg, vlocend, vbeg, vend;
-                    INMOST_DATA_REAL_TYPE sum = 0, sync[2];
-                    info->GetLocalRegion(info->GetRank(), vlocbeg, vlocend);
-                    info->GetVectorRegion(vbeg, vend);
-                    ivbeg = vbeg;
-                    ivend = vend;
-                    ivlocbeg = vlocbeg;
-                    ivlocend = vlocend;
-                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
-                        sum += V[k];
-                    sync[0] = sum;
-                    sync[1] = ivlocend - ivlocbeg;
-                    info->Integrate(sync, 2);
-                    sum = sync[0] / sync[1];
-                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
-                        V[k] -= sum;
-                }
-            }
-        }
         bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
         {
             assert(isInitialized());
             INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
             INMOST_DATA_INTEGER_TYPE ivbeg, ivend, ivlocbeg, ivlocend;
-            INMOST_DATA_REAL_TYPE rho0 = 1, rho1 = 1, alpha = 0, beta = 0, omega = 1, eta = 0;
+            INMOST_DATA_REAL_TYPE rho0 = 1, rho1 = 1, alpha = 0, beta = 0, omega = 1, eta = 0, sum = 0, temp[2];
             INMOST_DATA_REAL_TYPE resid0, resid, rhs_norm, tau_sum = 0, sigma_sum = 0,r_tilde_norm = 0;//, temp[2];
             iters = 0;
             info->PrepareVector(SOL);
@@ -627,7 +599,20 @@ namespace INMOST
                 // r[0] = r[0] - A x
                 Alink->MatVec(-1,SOL,1,r[0]); //global multiplication, r probably needs an update
                 info->Update(r[0]); // r is good
-                Nullspace(r[0]);
+                if (null_space)
+                {
+                    sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                        sum += r[0][k];
+                    temp[0] = sum;
+                    temp[1] = ivlocend - ivlocbeg;
+                    info->Integrate(temp, 2);
+                    sum = temp[0] / temp[1];
+#pragma omp parallel for 
+                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                        r[0][k] -= sum;
+                }
                 std::copy(SOL.Begin(),SOL.End(),x0.Begin()); //x0 = x
                 std::fill(SOL.Begin(),SOL.End(),0.0); //x = 0
             }
@@ -1161,7 +1146,32 @@ namespace INMOST
                     }
                     */
 
-                    Nullspace(r[0]);
+                    if (null_space)
+                    {
+                        sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            sum += r[0][k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        {
+                            temp[0] = sum;
+                            temp[1] = ivlocend - ivlocbeg;
+                        }
+                        info->Integrate(temp, 2);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        sum = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp for 
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                            r[0][k] -= sum;
+                    }
                     //last_it = l+1;
                     {
 #if defined(USE_OMP)
@@ -1368,34 +1378,6 @@ namespace INMOST
             if (!isFinalized()) Finalize();
             if (prec != NULL) delete prec;
         }
-        void Nullspace(Sparse::Vector& V)
-        {
-            if (null_space)
-            {
-#if defined(USE_OMP)
-#pragma omp single
-#endif
-                {
-                    INMOST_DATA_INTEGER_TYPE ivlocbeg, ivlocend, ivbeg, ivend;
-                    INMOST_DATA_ENUM_TYPE vlocbeg, vlocend, vbeg, vend;
-                    INMOST_DATA_REAL_TYPE sum = 0, sync[2];
-                    info->GetLocalRegion(info->GetRank(), vlocbeg, vlocend);
-                    info->GetVectorRegion(vbeg, vend);
-                    ivbeg = vbeg;
-                    ivend = vend;
-                    ivlocbeg = vlocbeg;
-                    ivlocend = vlocend;
-                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
-                        sum += V[k];
-                    sync[0] = sum;
-                    sync[1] = ivlocend - ivlocbeg;
-                    info->Integrate(sync, 2);
-                    sum = sync[0] / sync[1];
-                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
-                        V[k] -= sum;
-                }
-            }
-        }
         bool Solve(Sparse::Vector & RHS, Sparse::Vector & SOL)
         {
             assert(isInitialized());
@@ -1403,7 +1385,7 @@ namespace INMOST
             INMOST_DATA_ENUM_TYPE vbeg,vend, vlocbeg, vlocend;
             INMOST_DATA_INTEGER_TYPE ivbeg,ivend, ivlocbeg, ivlocend;
             INMOST_DATA_REAL_TYPE rho = 1, rho1 = 0, alpha = 1, beta = 0, omega = 1;
-            INMOST_DATA_REAL_TYPE resid0, resid, temp[2] = {0,0};
+            INMOST_DATA_REAL_TYPE resid0, resid, temp[2] = {0,0}, sum = 0;
             iters = 0;
             info->PrepareVector(SOL);
             info->PrepareVector(RHS);
@@ -1422,7 +1404,20 @@ namespace INMOST
             {
                 Alink->MatVec(-1,SOL,1,r); //global multiplication, r probably needs an update
                 info->Update(r); // r is good
-                Nullspace(r);
+                if (null_space)
+                {
+                    sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+                    for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                        sum += r[k];
+                    temp[0] = sum;
+                    temp[1] = ivlocend - ivlocbeg;
+                    info->Integrate(temp, 2);
+                    sum = temp[0] / temp[1];
+#pragma omp parallel for 
+                    for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                        r[k] -= sum;
+                }
             }
             std::copy(r.Begin(),r.End(),r0.Begin());
             std::fill(v.Begin(),v.End(),0.0);
@@ -1756,7 +1751,32 @@ namespace INMOST
                     for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
                         r[k] = s[k] - omega * t[k]; // global indexes r, s, t
 
-                    Nullspace(r);
+                    if (null_space)
+                    {
+                        sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            sum += r[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        {
+                            temp[0] = sum;
+                            temp[1] = ivlocend - ivlocbeg;
+                        }
+                        info->Integrate(temp, 2);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        sum = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp for 
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                            r[k] -= sum;
+                    }
 
                     //info->ScalarProd(r,r,ivlocbeg,ivlocend,resid);
 #if defined(USE_OMP)
