@@ -3152,6 +3152,7 @@ namespace INMOST
 		protected:
 			Mesh *               m;
 			Storage::integer     lid;
+			Storage::integer     lst;
 			ElementType          etype;
 			ElementType          types;
 			base_iterator(ElementType Types, Mesh * mesh, bool last);
@@ -3162,8 +3163,8 @@ namespace INMOST
 			typedef HandleType                       value_type;
 			typedef ptrdiff_t                        difference_type;
 			typedef std::bidirectional_iterator_tag  iterator_category;
-			base_iterator() {m = NULL; lid = -1; etype = types = NONE;}
-			base_iterator(const base_iterator & other) {m = other.m; lid = other.lid; types = other.types; etype = other.etype;}
+			base_iterator() { m = NULL; lid = -1; lst = -1;  etype = types = NONE; }
+			base_iterator(const base_iterator& other) { m = other.m; lid = other.lid; lst = other.lst;  types = other.types; etype = other.etype; }
 			virtual ~base_iterator() {}
 			base_iterator &             operator ++();
 			__INLINE base_iterator      operator ++(int) {Mesh::base_iterator<EType> ret(*this); operator++(); return ret;}
@@ -3171,7 +3172,7 @@ namespace INMOST
 			__INLINE base_iterator      operator --(int) {Mesh::base_iterator<EType> ret(*this); operator--(); return ret;}
 			__INLINE value_type         operator * () {return ComposeHandle(etype,lid);}
 			__INLINE EType              operator ->() {return EType(m,ComposeHandle(etype,lid));}
-			__INLINE base_iterator &    operator = (base_iterator const & other) {m = other.m; lid = other.lid; types = other.types; etype = other.etype; return *this;}
+			__INLINE base_iterator& operator = (base_iterator const& other) { m = other.m; lid = other.lid; lst = other.lst;  types = other.types; etype = other.etype; return *this; }
 			__INLINE bool               operator ==(const base_iterator & other) const {return lid == other.lid && etype == other.etype;}
 			__INLINE bool               operator !=(const base_iterator & other) const {return lid != other.lid || etype != other.etype;}
 			__INLINE bool               operator < (const base_iterator & other) const {return (etype < other.etype) || (etype == other.etype && lid <  other.lid);}

@@ -177,11 +177,14 @@ namespace INMOST
 		while( etype != NONE ) 
 		{
 			lid = m->NextLocalIDIter(etype,lid);
-			if( lid >= m->LastLocalIDThr(etype) )
+			if( lid >= lst)//m->LastLocalIDThr(etype) )
 			{
 				etype = GetNextType(etype,types);
 				if (etype)
+				{
 					lid = m->FirstLocalIDThr(etype) - 1;
+					lst = m->LastLocalIDThr(etype);
+				}
 				else
 				{
 					lid = -1;
@@ -200,11 +203,14 @@ namespace INMOST
 		{
 			lid = m->PrevLocalIDIter(etype,lid);
 			//if( lid == -1 )
-			if( lid < m->FirstLocalIDThr(etype))
+			if( lid < lst )//m->FirstLocalIDThr(etype))
 			{
 				etype = GetPrevType(etype,types);
-				if( etype ) 
+				if (etype)
+				{
 					lid = m->LastLocalIDThr(etype);
+					lst = m->FirstLocalIDThr(etype);
+				}
 				else
 				{
 					lid = -1;
@@ -223,12 +229,14 @@ namespace INMOST
 		types = T;
 		etype = NONE;
 		lid = -1;
+		lst = -1;
 		if( last )
 		{
 			for(ElementType i = MESH; i >= NODE; i = i >> 1) if( types & i ) {etype = i; break;}
 			if (etype)
 			{
 				lid = m->LastLocalIDThr(etype);
+				lst = m->FirstLocalIDThr(etype);
 				operator--();
 			}
 		}
@@ -238,6 +246,7 @@ namespace INMOST
 			if (etype)
 			{
 				lid = m->FirstLocalIDThr(etype) - 1;
+				lst = m->LastLocalIDThr(etype);
 				operator++();
 			}
 		}
@@ -245,7 +254,7 @@ namespace INMOST
 	template<typename EType>
 	void Mesh::base_iterator<EType>::Print()
 	{
-		std::cout << "Number: " << lid << " CurrentType " << ElementTypeName(etype) << " types ";
+		std::cout << "Number: " << lid << " last " << lst << " CurrentType " << ElementTypeName(etype) << " types ";
 		for(ElementType et = NODE; et != LastElementType(); et = NextElementType(et) ) if( et & types ) std::cout << ElementTypeName(et) << " ";
 		std::cout << std::endl;
 		//printf("Number: %10d CurrentType %x types %x\n",lid,etype,types);
@@ -257,10 +266,13 @@ namespace INMOST
 #if defined(USE_OMP)
 		if (omp_in_parallel())
 		{
-			integer beg = FirstLocalID(etype);
 			int nthr = omp_get_num_threads();
 			int ithr = omp_get_thread_num();
-			ret = beg + (ithr + 1) * (ret - beg) / nthr;
+			if (nthr > 1)
+			{
+				integer beg = FirstLocalID(etype);
+				ret = beg + (ithr + 1) * (ret - beg) / nthr;
+			}
 		}
 #endif
 		return ret;
@@ -272,10 +284,13 @@ namespace INMOST
 #if defined(USE_OMP)
 		if (omp_in_parallel())
 		{
-			integer tot = LastLocalID(etype);
 			int nthr = omp_get_num_threads();
 			int ithr = omp_get_thread_num();
-			ret = ret + ithr * (tot - ret) / nthr;
+			if (nthr > 1)
+			{
+				integer tot = LastLocalID(etype);
+				ret = ret + ithr * (tot - ret) / nthr;
+			}
 		}
 #endif
 		return ret;
