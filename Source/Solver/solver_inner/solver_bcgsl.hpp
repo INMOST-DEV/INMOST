@@ -1589,7 +1589,32 @@ namespace INMOST
                     for(INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
                         p[k] = r[k] + beta*(p[k] - omega*v[k]); //global indexes r, p, v
 
-
+                    if (null_space)
+                    {
+                        sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            sum += p[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        {
+                            temp[0] = sum;
+                            temp[1] = ivlocend - ivlocbeg;
+                        }
+                        info->Integrate(temp, 2);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        sum = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp for 
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                            p[k] -= sum;
+                    }
 
                     if (prec != NULL)
                     {
@@ -1602,6 +1627,33 @@ namespace INMOST
                     {
                         Alink->MatVec(1,p,0,v); // global multiplication, y should be updated, v probably needs an update
                         info->Update(v);
+                    }
+
+                    if (null_space)
+                    {
+                        sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            sum += v[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        {
+                            temp[0] = sum;
+                            temp[1] = ivlocend - ivlocbeg;
+                        }
+                        info->Integrate(temp, 2);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        sum = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp for 
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                            v[k] -= sum;
                     }
 
 
@@ -1673,7 +1725,32 @@ namespace INMOST
                         info->Update(t);
                     }
 
-
+                    if (null_space)
+                    {
+                        sum = 0.0;
+#if defined(USE_OMP)
+#pragma omp for reduction(+:sum)
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                            sum += t[k];
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        {
+                            temp[0] = sum;
+                            temp[1] = ivlocend - ivlocbeg;
+                        }
+                        info->Integrate(temp, 2);
+#if defined(USE_OMP)
+#pragma omp single
+#endif
+                        sum = temp[0] / temp[1];
+#if defined(USE_OMP)
+#pragma omp for 
+#endif
+                        for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                            t[k] -= sum;
+                    }
 
 #if defined(USE_OMP)
 #pragma omp single
@@ -1870,6 +1947,20 @@ namespace INMOST
                     }
                     i++;
                 }
+            }
+            if (null_space)
+            {
+                sum = 0.0;
+#pragma omp parallel for reduction(+:sum)
+                for (INMOST_DATA_INTEGER_TYPE k = ivlocbeg; k < ivlocend; ++k)
+                    sum += SOL[k];
+                temp[0] = sum;
+                temp[1] = ivlocend - ivlocbeg;
+                info->Integrate(temp, 2);
+                sum = temp[0] / temp[1];
+#pragma omp parallel for 
+                for (INMOST_DATA_INTEGER_TYPE k = ivbeg; k < ivend; ++k)
+                    SOL[k] -= sum;
             }
             //info->RestoreMatrix(A);
             info->RestoreVector(SOL);
