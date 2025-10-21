@@ -336,7 +336,7 @@ namespace INMOST
 			{
 				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					ElementArray<Edge> aret;
+					ElementArray<Edge> aret(m);
 					adj_type const& lc = m->LowConn(GetHandle()); // set of edges
 					assert(lc.size() > 2); // it should be at least triangle
 					aret.reserve(lc.size());
@@ -393,7 +393,7 @@ namespace INMOST
 				MarkerType hm = m->HideMarker();
 				if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 				{
-					ElementArray<Edge> aret;
+					ElementArray<Edge> aret(m);
 					enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
 					adj_type const& lc = m->LowConn(GetHandle());
 					aret.reserve(lc.size());
@@ -525,7 +525,7 @@ namespace INMOST
 				{
 					if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 					{
-						ElementArray<Edge> aret;
+						ElementArray<Edge> aret(m);
 						adj_type const& lc = m->LowConn(GetHandle());
 						aret.reserve(lc.size());
 						HandleType q = lc[0];
@@ -593,7 +593,7 @@ namespace INMOST
 					MarkerType hm = m->HideMarker();
 					if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 					{
-						ElementArray<Edge> aret;
+						ElementArray<Edge> aret(m);
 						enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
 						adj_type const& lc = m->LowConn(GetHandle());
 						aret.reserve(lc.size());
@@ -680,7 +680,7 @@ namespace INMOST
 				{
 					if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 					{
-						ElementArray<Edge> aret;
+						ElementArray<Edge> aret(m);
 						adj_type const& lc = m->LowConn(GetHandle());
 						aret.reserve(lc.size());
 						HandleType q = lc[0];
@@ -748,7 +748,7 @@ namespace INMOST
 					MarkerType hm = m->HideMarker();
 					if (Element::GetGeometricDimension(m->GetGeometricType(GetHandle())) == 2) // This cell is 2d face
 					{
-						ElementArray<Edge> aret;
+						ElementArray<Edge> aret(m);
 						enumerator i = ENUMUNDEF, k = ENUMUNDEF, k1 = ENUMUNDEF, k2;
 						adj_type const& lc = m->LowConn(GetHandle());
 						aret.reserve(lc.size());
