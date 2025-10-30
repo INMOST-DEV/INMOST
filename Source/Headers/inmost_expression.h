@@ -185,6 +185,13 @@ namespace INMOST
 			entries.Clear();
 			return *this;
 		}
+		__INLINE multivar_expression & operator =(const basic_expression& expr)
+		{
+			value = expr.GetValue();
+			entries.Clear();
+			UseMerger(1.0, expr, 0.0, entries);
+			return *this;
+		}
 		__INLINE multivar_expression& operator = (multivar_expression && other)
 		{
 			value = other.value;

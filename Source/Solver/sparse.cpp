@@ -861,7 +861,7 @@ namespace INMOST
 			while (shift != wdsize)
 			{
 				chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX), wdsize - shift);
-				MPI_Recv(static_cast<char*>(buffer) + shift, sizeof(char) * chunk, MPI_CHAR, orig, tag + t++, comm, MPI_STATUS_IGNORE);
+				MPI_Recv(static_cast<char*>(buffer) + shift, (int)(sizeof(char) * chunk), MPI_CHAR, orig, tag + t++, comm, MPI_STATUS_IGNORE);
 				shift += chunk;
 			}
 #endif
@@ -875,7 +875,7 @@ namespace INMOST
 			while (shift != wdsize)
 			{
 				chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX), wdsize - shift);
-				MPI_Send(static_cast<char*>(buffer) + shift, sizeof(char) * chunk, MPI_CHAR, dest, tag + t++, comm);
+				MPI_Send(static_cast<char*>(buffer) + shift, (int)(sizeof(char) * chunk), MPI_CHAR, dest, tag + t++, comm);
 				shift += chunk;
 			}
 #endif
@@ -1041,7 +1041,7 @@ namespace INMOST
 				MPI_Scatter(&vecsizep[0], 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
 				MPI_Exscan(&vecsize, &vecshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
 #endif
-				SetInterval(vecshift, vecshift + vecsize);
+				SetInterval((INMOST_DATA_ENUM_TYPE)vecshift, (INMOST_DATA_ENUM_TYPE)(vecshift + vecsize));
 				//read my own part
 				part = 0; //current part number
 				for (int k = 0; k < npart; ++k)
@@ -1079,7 +1079,7 @@ namespace INMOST
 				MPI_Scatter(NULL, 1, MPI_INT, &npart, 1, MPI_INT, 0, GetCommunicator());
 				MPI_Scatter(NULL, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, &vecsize, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, 0, GetCommunicator());
 				MPI_Exscan(&vecsize, &vecshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
-				SetInterval(vecshift, vecshift + vecsize);
+				SetInterval((INMOST_DATA_ENUM_TYPE)vecshift, (INMOST_DATA_ENUM_TYPE)(vecshift + vecsize));
 				INMOST_DATA_BIG_ENUM_TYPE dsize, vecsizep;
 				for (int k = 0; k < npart; ++k)
 				{
@@ -1468,7 +1468,7 @@ namespace INMOST
 					va.push_back(jt->second);
 					nnzsize++;
 				}
-				ia.push_back(ja.size());
+				ia.push_back((INMOST_DATA_ENUM_TYPE)ja.size());
 			}
 			if (ia.size() != matsize + 1)
 				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
@@ -1594,7 +1594,7 @@ namespace INMOST
 					va.push_back(jt->second);
 					nnzsize++;
 				}
-				ia.push_back(ja.size());
+				ia.push_back((idx_t)ja.size());
 			}
 			if (ia.size() != matsize + 1)
 				std::cout << __FILE__ << ":" << __LINE__ << " oops" << std::endl;
@@ -1661,7 +1661,7 @@ namespace INMOST
 #if defined(USE_MPI)
 				MPI_Exscan(&matsize, &matshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
 #endif
-				SetInterval(matshift, matshift + matsize);
+				SetInterval((INMOST_DATA_ENUM_TYPE)matshift, (INMOST_DATA_ENUM_TYPE)(matshift + matsize));
 				//read my own part
 				part = 0; //current part number
 				for (int p = 0; p < npart; ++p)
@@ -1680,9 +1680,9 @@ namespace INMOST
 					LoadBinaryPiece(buffer, dsizes[2][part], &va[0], 0, va.size(), compr[2]);
 					for (INMOST_DATA_BIG_ENUM_TYPE k = 0; k < matsizes[part]; ++k)
 					{
-						data[matshift + k].Clear();
+						data[(INMOST_DATA_ENUM_TYPE)(matshift + k)].Clear();
 						for (INMOST_DATA_BIG_ENUM_TYPE q = ia[k]; q < ia[k + 1]; ++q)
-							data[matshift + k].Push(ja[q], va[q]);
+							data[(INMOST_DATA_ENUM_TYPE)(matshift + k)].Push(ja[q], va[q]);
 					}
 					matshift += matsizes[part];
 					free(buffer);
@@ -1731,7 +1731,7 @@ namespace INMOST
 #if defined(USE_MPI)
 				MPI_Exscan(&matsize, &matshift, 1, INMOST_MPI_DATA_BIG_ENUM_TYPE, MPI_SUM, GetCommunicator());
 #endif
-				SetInterval(matshift, matshift + matsize);
+				SetInterval((INMOST_DATA_ENUM_TYPE)matshift, (INMOST_DATA_ENUM_TYPE)(matshift + matsize));
 				for (int part = spart; part < spart + npart; ++part)
 				{
 					ia.resize(matsizes[part] + 1);
@@ -1749,9 +1749,9 @@ namespace INMOST
 					LoadBinaryPiece(buffer, sdsize[2], &va[0], 0, va.size(), compr[2]);
 					for (INMOST_DATA_BIG_ENUM_TYPE k = 0; k < matsizes[part]; ++k)
 					{
-						data[matshift + k].Clear();
+						data[(INMOST_DATA_ENUM_TYPE)(matshift + k)].Clear();
 						for (INMOST_DATA_BIG_ENUM_TYPE q = ia[k]; q < ia[k + 1]; ++q)
-							data[matshift + k].Push(ja[q], va[q]);
+							data[(INMOST_DATA_ENUM_TYPE)(matshift + k)].Push(ja[q], va[q]);
 					}
 					matshift += matsizes[part];
 					free(buffer);

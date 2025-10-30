@@ -443,7 +443,7 @@ read_elem_num_link:
 						size_t qnod = 0, qtag = 0;
 						for (size_t q = 0; q < elemtypes.size(); ++q)
 						{
-							elemnum = q;
+							elemnum = (int)q;
 							elemtype = elemtypes[q];
 							//fill arrays
 							for (size_t k = 0; k < nnods[q]; ++k)
@@ -792,8 +792,8 @@ read_elem_num_link:
 						if( --elemnodes == 0 ) 
 						{
 							elemtypes.push_back(elemtype);
-							nnods.push_back(nodelist.size());
-							ntags.push_back(elemtags.size());
+							nnods.push_back((int)nodelist.size());
+							ntags.push_back((int)elemtags.size());
 							nods.insert(nods.end(), nodelist.begin(), nodelist.end());
 							tags.insert(tags.end(), elemtags.begin(), elemtags.end());
 							
