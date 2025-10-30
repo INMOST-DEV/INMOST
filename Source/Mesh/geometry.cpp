@@ -1852,7 +1852,7 @@ namespace INMOST
 			   type == BARYCENTER ||
 			   type == NORMAL);
 		ElementType etype = GetHandleElementType(e);
-		integer edim = Element::GetGeometricDimension(GetGeometricType(e));
+		//integer edim = Element::GetGeometricDimension(GetGeometricType(e));
 		integer mdim = GetDimensions();
 		switch(type)
 		{
