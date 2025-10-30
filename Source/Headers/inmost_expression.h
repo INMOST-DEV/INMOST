@@ -751,7 +751,7 @@ namespace INMOST
 		{
 			if (entries)
 			{
-				for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
+				for (Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 					r[it->first] += it->second * mult;
 			}
 		}
@@ -937,7 +937,7 @@ namespace INMOST
 		/// Retrieve derivatives with multiplier into array.
 		__INLINE void GetJacobian(INMOST_DATA_REAL_TYPE mult, INMOST_DATA_REAL_TYPE * r) const
 		{
-			for (Sparse::Row::const_iterator it = entries->Begin(); it != entries->End(); ++it)
+			for (Sparse::Row::iterator it = entries->Begin(); it != entries->End(); ++it)
 				r[it->first] += it->second * mult;
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row & J,INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow & H) const

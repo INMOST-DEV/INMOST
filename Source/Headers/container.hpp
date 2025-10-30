@@ -134,10 +134,10 @@ namespace INMOST
 			_reverse_iterator & operator =(_reverse_iterator const & other) { e = other.e; return *this;}
 			bool operator ==(const _reverse_iterator & other) const { return e == other.e;}
 			bool operator !=(const _reverse_iterator & other) const { return e != other.e;}
-			bool operator <(const _reverse_iterator & other) const { return e < other.e;}
-			bool operator >(const _reverse_iterator & other) const { return e > other.e;}
-			bool operator <=(const _reverse_iterator & other) const { return e <= other.e;}
-			bool operator >=(const _reverse_iterator & other) const { return e >= other.e;}
+			bool operator <(const _reverse_iterator & other) const { return e > other.e;}
+			bool operator >(const _reverse_iterator & other) const { return e < other.e;}
+			bool operator <=(const _reverse_iterator & other) const { return e >= other.e;}
+			bool operator >=(const _reverse_iterator & other) const { return e <= other.e;}
 			operator void *()const {return static_cast<void *> (e);}
 		};
 		typedef _reverse_iterator<element> reverse_iterator;

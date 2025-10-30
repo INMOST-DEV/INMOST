@@ -214,6 +214,14 @@ namespace INMOST
 #endif
 				else if (rows.size() == 2)
 				{
+#if 1
+					Row::MergeSortedIndices(*rows[0].first, *rows[1].first, store);
+					store.Zero();
+					Row::AddSortedValues(rows[0].second, *rows[0].first, store);
+					Row::AddSortedValues(rows[1].second, *rows[1].first, store);
+					//std::swap(r, store);
+					r = store;
+#else
 					Row::MergeSortedRows(rows[0].second, *rows[0].first, rows[1].second, *rows[1].first, store);
 					INMOST_DATA_ENUM_TYPE s = store.Size();
 					r.Resize(s);
@@ -222,6 +230,7 @@ namespace INMOST
 						r.GetIndex(q) = store.GetIndex(q);
 						r.GetValue(q) = store.GetValue(q);
 					}
+#endif
 				}
 #if defined(USE_ORDERED_SPA)
 				else if (true) //fixed SPA with moving window
@@ -297,6 +306,48 @@ namespace INMOST
 #endif
 				else //merge pairs
 				{
+#if 1
+					INMOST_DATA_ENUM_TYPE k1, k2, s1, s2, s3, nmerge = 0;
+					if (merge.size() < rows.size() - 1)
+						merge.resize(rows.size() - 1);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < rows.size(); ++k)
+					{
+						heap.push_back(std::make_pair(rows[k].first->Size(), k));
+						inds.push_back(&rows[k].first->Begin()->first);
+					}
+					std::make_heap(heap.begin(), heap.end(), std::greater<>());
+					while (heap.size() > 1)
+					{
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						s1 = heap.back().first;
+						k1 = heap.back().second;
+						heap.pop_back();
+						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
+						s2 = heap.back().first;
+						k2 = heap.back().second;
+						heap.pop_back();
+						merge[nmerge].resize(s1 + s2);
+						s3 = (INMOST_DATA_ENUM_TYPE)(std::set_union(inds[k1], inds[k1] + s1, inds[k2], inds[k2] + s2, merge[nmerge].data()) - merge[nmerge].data());
+						merge[nmerge].resize(s3);
+						heap.push_back(std::make_pair(s3, static_cast<INMOST_DATA_ENUM_TYPE>(inds.size())));
+						std::push_heap(heap.begin(), heap.end(), std::greater<>());
+						inds.push_back(merge[nmerge].data());
+						nmerge++;
+					}
+					INMOST_DATA_ENUM_TYPE s = heap.back().first;
+					INMOST_DATA_ENUM_TYPE i = heap.back().second;
+					//INMOST_DATA_ENUM_TYPE s = rows[i].first->Size();
+					store.Resize(s);
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
+						store.GetIndex(k) = inds[i][k];
+					store.Zero();
+					for (INMOST_DATA_ENUM_TYPE k = 0; k < rows.size(); ++k)
+						Row::AddSortedValues(rows[k].second, *rows[k].first, store);
+					//std::swap(r, store);
+					r = store;
+					inds.clear();
+					heap.clear();
+#else
 					INMOST_DATA_ENUM_TYPE k1, k2, nmerge = 0;
 					if (merge.size() < rows.size() - 1)
 						merge.resize(rows.size() - 1);
@@ -326,6 +377,7 @@ namespace INMOST
 						r.GetValue(k) = rows[i].first->GetValue(k);
 					}
 					heap.clear();
+#endif
 				}
 			}
 		}
@@ -685,6 +737,40 @@ namespace INMOST
 			INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
 			MergeSortedRows(alpha, left, i, beta, right, j, output, q);
 			output.Resize(q);
+		}
+
+		void Row::MergeSortedIndices(const Row& left, const Row& right, Row& out)
+		{
+			out.data.inds.resize(left.data.inds.size() + right.data.inds.size());
+			const INMOST_DATA_ENUM_TYPE* linds = left.data.inds.data();
+			const INMOST_DATA_ENUM_TYPE* rinds = right.data.inds.data();
+			INMOST_DATA_ENUM_TYPE* oinds = out.data.inds.data();
+			INMOST_DATA_ENUM_TYPE lsize = (INMOST_DATA_ENUM_TYPE)left.data.inds.size();
+			INMOST_DATA_ENUM_TYPE rsize = (INMOST_DATA_ENUM_TYPE)right.data.inds.size();
+			INMOST_DATA_ENUM_TYPE osize;
+			osize = (INMOST_DATA_ENUM_TYPE)(std::set_union(linds, linds + lsize, rinds, rinds + rsize, oinds) - oinds);
+			out.data.inds.resize(osize);
+			out.data.vals.resize(osize);
+		}
+
+		void Row::AddSortedValues(INMOST_DATA_REAL_TYPE alpha, const Row & left, Row & right)
+		{
+			assert(left.isSorted());
+			assert(right.isSorted());
+			size_t pos = 0, ind, lend = left.data.inds.size(), rend = right.data.inds.size();
+			const INMOST_DATA_ENUM_TYPE* linds = left.data.inds.data();
+			const INMOST_DATA_REAL_TYPE* lvals = left.data.vals.data();
+			const INMOST_DATA_ENUM_TYPE* rinds = right.data.inds.data();
+			INMOST_DATA_REAL_TYPE* rvals = right.data.vals.data();
+			//if (kend && rinds[pos] != linds[0]) //jump to the first value
+			//	pos = std::lower_bound(rinds, rinds + rend, linds[0]) - rinds;
+			for (size_t k = 0; k < lend; ++k)
+			{
+				ind = linds[k];
+				while (rinds[pos] != ind) pos++; //must be there!
+				//pos = std::lower_bound(rinds, rinds + rend, ind) - rinds;
+				rvals[pos] += alpha * lvals[k];
+			}
 		}
 
 		void Row::MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE &i, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& j, Row& output, INMOST_DATA_ENUM_TYPE & q)

@@ -168,19 +168,115 @@ namespace INMOST
 		class Row
 		{
 		public:
-			typedef std::pair<INMOST_DATA_ENUM_TYPE,INMOST_DATA_REAL_TYPE> entry;
+			typedef std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> entry;
+			typedef std::pair<INMOST_DATA_ENUM_TYPE&, INMOST_DATA_REAL_TYPE&> entry_reference;
+			typedef std::pair<const INMOST_DATA_ENUM_TYPE&, const INMOST_DATA_REAL_TYPE&> entry_const_reference;
 			/// Assemble an entry of entry_s type.
 			/// @param ind Index.
 			/// @param val Value.
 			__INLINE static entry make_entry(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
-			{
-				//entry ret;
-				//ret.first = ind;
-				//ret.second = val;
-				return std::make_pair(ind,val);
-			}
+			{ return std::make_pair(ind,val); }
 		private:
-			typedef std::vector<entry> Entries; ///< Container type for 
+			typedef struct Entries_t
+			{
+				typedef size_t size_type;
+				std::vector<INMOST_DATA_ENUM_TYPE> inds;
+				std::vector<INMOST_DATA_REAL_TYPE> vals;
+				size_type size() const { return inds.size(); }
+				//entry_reference operator[](size_type k)
+				//{ return entry_reference(inds[k], vals[k]); }
+				//entry_const_reference operator[](size_type k) const
+				//{ return entry_const_reference(inds[k], vals[k]);	}
+				template <typename type1, typename type2>
+				struct pointer_wrapper
+				{
+					typedef std::pair< type1&, type2&> reference;
+					reference* operator -> () { return &p; }
+					reference p;
+					pointer_wrapper(type1& a, type2& b) :p(a, b) {}
+				};
+				template<typename type1, typename type2>
+				class _iterator
+				{
+				public:
+					typedef std::pair< type1&, type2&> reference;
+					typedef pointer_wrapper<type1,type2> pointer;
+					typedef std::pair< type1, type2> value_type;
+					typedef ptrdiff_t difference_type;
+					typedef std::random_access_iterator_tag iterator_category;
+				private:
+					size_t k;
+					type1* inds;
+					type2* vals;
+				public:
+					_iterator() :k(0), inds(NULL), vals(NULL) {}
+					_iterator(size_t k, type1* inds, type2* vals) : k(k), inds(inds), vals(vals) {}
+					_iterator(const _iterator& other) { k = other.k; inds = other.inds; vals = other.vals; }
+					~_iterator() {};
+					_iterator operator -(difference_type n) const { return _iterator(k - n, inds, vals); }
+					_iterator operator +(difference_type n) const { return _iterator(k + n, inds, vals); }
+					_iterator& operator -=(size_t n) { k -= n; return *this; }
+					_iterator& operator +=(size_t n) { k += n; return *this; }
+					_iterator& operator ++() { ++k; return *this; }
+					_iterator operator ++(int) { return _iterator(k++, inds, vals); }
+					_iterator& operator --() { --k; return *this; }
+					_iterator operator --(int) { return _iterator(k--, inds, vals); }
+					ptrdiff_t operator -(const _iterator& other) const { assert(inds == other.inds && vals == other.vals); return k - other.k; }
+					reference operator *() const { return reference(inds[k], vals[k]); }
+					pointer operator ->() const { return pointer(inds[k], vals[k]); }
+					_iterator& operator =(_iterator const& other) { k = other.k; inds = other.inds; vals = other.vals; return *this; }
+					bool operator ==(const _iterator& other) const { assert(inds == other.inds && vals == other.vals);  return k == other.k; }
+					bool operator !=(const _iterator& other) const { assert(inds == other.inds && vals == other.vals); return k != other.k; }
+					bool operator <(const _iterator& other) const { assert(inds == other.inds && vals == other.vals); return k < other.k; }
+					bool operator >(const _iterator& other) const { assert(inds == other.inds && vals == other.vals); return k > other.k; }
+					bool operator <=(const _iterator& other) const { assert(inds == other.inds && vals == other.vals);  return k <= other.k; }
+					bool operator >=(const _iterator& other) const { assert(inds == other.inds && vals == other.vals); return k >= other.k; }
+					size_t pos() const { return k; }
+				};
+				typedef _iterator<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> iterator;
+				typedef _iterator<const INMOST_DATA_ENUM_TYPE, const INMOST_DATA_REAL_TYPE> const_iterator;
+				template<typename type1, typename type2>
+				class _reverse_iterator
+				{
+				public:
+					typedef std::pair< type1&, type2&> reference;
+					typedef pointer_wrapper<type1,type2> pointer;
+					typedef std::pair< type1, type2> value_type;
+					typedef ptrdiff_t difference_type;
+					typedef std::random_access_iterator_tag iterator_category;
+				private:
+					size_t k;
+					type1* inds;
+					type2* vals;
+				public:
+					_reverse_iterator() :k(0), inds(NULL), vals(NULL) {}
+					_reverse_iterator(size_t k, type1* inds, type2* vals) : k(k), inds(inds), vals(vals) {}
+					_reverse_iterator(const _reverse_iterator& other) { k = other.k; inds = other.inds; vals = other.vals; }
+					~_reverse_iterator() {};
+					_reverse_iterator operator -(difference_type n) const { return _reverse_iterator(k + n, inds, vals); }
+					_reverse_iterator operator +(difference_type n) const { return _reverse_iterator(k - n, inds, vals); }
+					_reverse_iterator& operator -=(size_t n) { k += n; return *this; }
+					_reverse_iterator& operator +=(size_t n) { k -= n; return *this; }
+					_reverse_iterator& operator ++() { --k; return *this; }
+					_reverse_iterator operator ++(int) { return _reverse_iterator(k--, inds, vals); }
+					_reverse_iterator& operator --() { ++k; return *this; }
+					_reverse_iterator operator --(int) { return _reverse_iterator(k++, inds, vals); }
+					ptrdiff_t operator -(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return other.k - k; }
+					reference operator *() const { return reference(inds[k - 1],vals[k - 1]); }
+					pointer operator ->() const { return pointer(inds[k - 1], vals[k - 1]); }
+					_reverse_iterator& operator =(_reverse_iterator const& other) { k = other.k; inds = other.inds; vals = other.vals; return *this; }
+					bool operator ==(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k == other.k; }
+					bool operator !=(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k != other.k; }
+					bool operator <(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k > other.k; }
+					bool operator >(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k < other.k; }
+					bool operator <=(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k >= other.k; }
+					bool operator >=(const _reverse_iterator& other) const { assert(inds == other.inds && vals == other.vals); return k <= other.k; }
+					size_t pos() const { return k - 1; }
+				};
+				typedef _reverse_iterator<INMOST_DATA_ENUM_TYPE, INMOST_DATA_REAL_TYPE> reverse_iterator;
+				typedef _reverse_iterator<const INMOST_DATA_ENUM_TYPE, const INMOST_DATA_REAL_TYPE> const_reverse_iterator;
+			} Entries;
+			//typedef std::vector<entry> Entries; ///< Container type for 
 		public:
 			typedef Entries::iterator iterator; ///< Iterator over pairs of index and value.
 			typedef Entries::const_iterator const_iterator; ///< Iterator over constant pairs of index and value.
@@ -200,7 +296,18 @@ namespace INMOST
 			/// Construct a row from array of pairs of indices and values.
 			/// @param pbegin Pointer to the first position in array.
 			/// @param pend Pointer behind the last position of array.
-			Row(entry * pbegin, entry * pend)  :data(pbegin, pend) {}
+			Row(const entry * pbegin, const entry * pend) 
+			{
+				size_t pos = 0;
+				data.inds.resize(pend - pbegin);
+				data.vals.resize(pend - pbegin);
+				for (const entry* it = pbegin; it != pend; ++it)
+				{
+					data.inds[pos] = it->first;
+					data.vals[pos] = it->second;
+					++pos;
+				}
+			}
 			/// Release all data.
 			~Row() {}
 			/// Copy all data from another row.
@@ -215,12 +322,13 @@ namespace INMOST
 			/// You can use Sparse::Row::GetIndex and Sparse::Row::GetValue for rapid access to individual elements.
 			/// @param i Index.
 			/// @return Value corresponding to specified index.
-			INMOST_DATA_REAL_TYPE & operator [](INMOST_DATA_ENUM_TYPE i)
+			__INLINE INMOST_DATA_REAL_TYPE & operator [](INMOST_DATA_ENUM_TYPE i)
 			{
-				for(Entries::size_type it = 0; it < data.size(); ++it)
-					if( data[it].first == i ) return data[it].second;
-				data.push_back(make_entry(i,0));
-				return data.back().second;
+				for (Entries::size_type it = 0; it < data.size(); ++it)
+					if (data.inds[it] == i) return data.vals[it];
+				data.inds.push_back(i);
+				data.vals.push_back(0);
+				return data.vals.back();
 			}
 			/// Finds and returns value with specified index. Rises exception on debug and returns extra large value on release if
 			/// index was not found.
@@ -229,9 +337,11 @@ namespace INMOST
 			/// You can use Sparse::Row::GetIndex and Sparse::Row::GetValue for rapid access to individual elements.
 			/// @param i Index.
 			/// @return Value corresponding to specified index.
-			INMOST_DATA_REAL_TYPE operator[](INMOST_DATA_ENUM_TYPE i) const
+			__INLINE INMOST_DATA_REAL_TYPE operator[](INMOST_DATA_ENUM_TYPE i) const
 			{
-				for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				for (Entries::size_type it = 0; it < data.size(); ++it) 
+					if (data.inds[it] == i) 
+						return data.vals[it];
 				//you should not come here
 				assert(false);
 				return 1.0e20;
@@ -242,57 +352,71 @@ namespace INMOST
 			/// @return Value corresponding to specified index.
 			INMOST_DATA_REAL_TYPE get_safe(INMOST_DATA_ENUM_TYPE i) const
 			{
-				for (Entries::size_type it = 0; it < data.size(); ++it) if (data[it].first == i) return data[it].second;
+				for (Entries::size_type it = 0; it < data.size(); ++it) 
+					if (data.inds[it] == i) 
+						return data.vals[it];
 				return 0.0;
 			}
 			/// Clear all data of the current row.
-			void                    Clear() { data.clear(); }
-			void                    Reserve(INMOST_DATA_ENUM_TYPE size) { data.reserve(size); }
+			void                    Clear() 
+			{ 
+				data.inds.clear();
+				data.vals.clear();
+			}
+			void                    Reserve(INMOST_DATA_ENUM_TYPE size) 
+			{ 
+				data.inds.reserve(size); 
+				data.vals.reserve(size);
+			}
 			/// Exchange all the data with another row.
 			/// @param other Another row.
-			void                    Swap(Row & other) { data.swap(other.data); }
+			void                    Swap(Row & other) 
+			{ 
+				data.inds.swap(other.data.inds);
+				data.vals.swap(other.data.vals);
+			}
 			/// The size of the sparse row, i.e. the total number of nonzero elements.
-			INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.size()); }
+			__INLINE INMOST_DATA_ENUM_TYPE   Size() const { return static_cast<INMOST_DATA_ENUM_TYPE>(data.inds.size()); }
 			/// Checks are there any nonzero entries in the row.
-			bool                    Empty() const { return data.empty(); }
+			__INLINE bool                    Empty() const { return data.inds.empty(); }
 			/// Retrieve an index corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Index corresponding to the position in the array.
-			INMOST_DATA_ENUM_TYPE & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->first;}
+			__INLINE INMOST_DATA_ENUM_TYPE & GetIndex(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return data.inds[k];}
 			/// Retrieve a value corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Value corresponding to the position in the array.
-			INMOST_DATA_REAL_TYPE & GetValue(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return (data.begin()+k)->second;}
+			__INLINE INMOST_DATA_REAL_TYPE & GetValue(INMOST_DATA_ENUM_TYPE k) {assert(k < data.size()); return data.vals[k];}
 			/// Retrieve an index corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Index corresponding to the position in the array.
-			INMOST_DATA_ENUM_TYPE   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->first;}
+			__INLINE INMOST_DATA_ENUM_TYPE   GetIndex(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return data.inds[k];}
 			/// Retrieve a value corresponding to certain position in the array of pairs of index and value.
 			/// @param k Position in the array of pairs of index and value.
 			/// @return Value corresponding to the position in the array.
-			INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return (data.begin()+k)->second;}
+			__INLINE INMOST_DATA_REAL_TYPE   GetValue(INMOST_DATA_ENUM_TYPE k) const {assert(k < data.size()); return data.vals[k];}
 			/// Retrive interval of nonzeroes
 			void                    GetInterval(INMOST_DATA_ENUM_TYPE& beg, INMOST_DATA_ENUM_TYPE& end) const;
 			/// An iterator pointing to the first position in the array of pairs of index and value.
-			iterator                Begin() {return data.begin();}
+			iterator                Begin() {return Entries::iterator(0, data.inds.data(), data.vals.data());}
 			/// An iterator pointing behind the last position in the array of pairs of index and value.
-			iterator                End() {return data.end();}
+			iterator                End() {return Entries::iterator(data.inds.size(), data.inds.data(), data.vals.data()); }
 			/// An iterator pointing to the first position in the array of constant pairs of index and value.
-			const_iterator          Begin() const {return data.begin();}
+			const_iterator          Begin() const {return Entries::const_iterator(0, data.inds.data(), data.vals.data());}
 			/// An iterator pointing behind the last position in the array of constant pairs of index and value.
-			const_iterator          End() const {return data.end();}
+			const_iterator          End() const {return Entries::const_iterator(data.inds.size(), data.inds.data(), data.vals.data());}
 			/// An iterator pointing to the last position in the array of pairs of index and value.
-			reverse_iterator        rBegin() { return data.rbegin(); }
+			reverse_iterator        rBegin() { return Entries::reverse_iterator(data.inds.size(), data.inds.data(), data.vals.data()); }
 			/// An iterator pointing before the first position in the array of pairs of index and value.
-			reverse_iterator        rEnd() { return data.rend(); }
+			reverse_iterator        rEnd() { return Entries::reverse_iterator(0, data.inds.data(), data.vals.data()); }
 			/// An iterator pointing to the last position in the array of constant pairs of index and value.
-			const_reverse_iterator  rBegin() const { return data.rbegin(); }
+			const_reverse_iterator  rBegin() const { return Entries::const_reverse_iterator(data.inds.size(), data.inds.data(), data.vals.data()); }
 			/// An iterator pointing before the first position in the array of constant pairs of index and value.
-			const_reverse_iterator  rEnd() const { return data.rend(); }
+			const_reverse_iterator  rEnd() const { return Entries::const_reverse_iterator(0, data.inds.data(), data.vals.data()); }
 			/// Last element
-			entry&                  Back() {return data.back(); }
+			entry_reference         Back() {return entry_reference(data.inds.back(),data.vals.back()); }
 			/// Last element
-			const entry&            Back() const { return data.back(); }
+			entry_const_reference   Back() const { return entry_const_reference(data.inds.back(), data.vals.back()); }
 #if defined(USE_SOLVER)
 			/// Return the scalar product of the current sparse row by a dense Vector.
 			INMOST_DATA_REAL_TYPE   RowVec(const Vector & x) const; // returns A(row) * x
@@ -301,27 +425,33 @@ namespace INMOST
 			/// @param source Source raw where to get the contents.
 			void                    MoveRow(Row & source) {data = source.data;} //here move constructor and std::move may be used in future
 			/// Set the vector entries by zeroes.
-			void                    Zero() {for(iterator it = Begin(); it != End(); ++it) it->second = 0;}
-			__INLINE void           Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.insert(it, make_entry(ind, val)); }
+			void                    Zero() { std::fill(data.vals.begin(), data.vals.end(), 0); }
+			__INLINE void           Insert(iterator it, INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val)
+			{ 
+				data.inds.insert(data.inds.begin() + it.pos(), ind);
+				data.vals.insert(data.vals.begin() + it.pos(), val);
+			}
 			/// Push specified element into sparse row.
 			/// This function should be used only if the index is not repeated in the row.
-			__INLINE void           Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) {data.push_back(make_entry(ind,val));}
+			__INLINE void           Push(INMOST_DATA_ENUM_TYPE ind, INMOST_DATA_REAL_TYPE val) { data.inds.push_back(ind); data.vals.push_back(val); }
 			/// Remove last element.
-			__INLINE void           Pop() { data.pop_back(); }
+			__INLINE void           Pop() { data.inds.pop_back(); data.vals.pop_back(); }
 			/// Resize row to specified size.
 			/// It is intended to be used together with non-const Row::GetIndex and Row::GetValue
 			/// that allow for the modification of individual entries.
 			/// @param size New size of the row.
-			__INLINE void           Resize(INMOST_DATA_ENUM_TYPE size) {data.resize(size);}
+			__INLINE void           Resize(INMOST_DATA_ENUM_TYPE size) { data.inds.resize(size); data.vals.resize(size); }
 			/// Output all entries of the row.
 			void                    Print(double eps = -1, std::ostream & sout = std::cout) const
 			{
 				int k = 0;
-				for(const_iterator it = Begin(); it != End(); ++it) if( fabs(it->second) > eps ) {sout << "(" << it->first << "," << it->second << ") "; k++; }
+				for(const_iterator it = Begin(); it != End(); ++it) 
+					if( fabs(it->second) > eps ) 
+						sout << "(" << it->first << "," << it->second << ") "; k++; 
 				if( k ) sout << std::endl;
 			}
 			/// Sort row
-			__INLINE void           Sort() { std::sort(data.begin(), data.end()); }
+			__INLINE void           Sort() { std::sort(Begin(), End()); }
 			void                    Unique();
 			bool                    CheckUnique();
 			/// Check whether the row is sorted.
@@ -334,6 +464,8 @@ namespace INMOST
 			/// @param output Record result in this vector.
 			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_REAL_TYPE beta, const Row& right, Row& output);
 			static void             MergeSortedRows(INMOST_DATA_REAL_TYPE alpha, const Row& left, INMOST_DATA_ENUM_TYPE & ileft, INMOST_DATA_REAL_TYPE beta, const Row& right, INMOST_DATA_ENUM_TYPE& iright, Row& output, INMOST_DATA_ENUM_TYPE & ind);
+			static void             MergeSortedIndices(const Row& left, const Row& right, Row& out);
+			static void             AddSortedValues(INMOST_DATA_REAL_TYPE alpha, const Row& left, Row& right);
 		};
 		
 #endif //defined(USE_SOLVER) || defined(USE_AUTODIFF)
@@ -654,7 +786,9 @@ namespace INMOST
 			std::vector< unsigned short > list; ///< Storage for SPA (used only if USE_ORDERED_SPA or USE_UNORDERED_SPA is defined in sparse.cpp)
 			std::vector<INMOST_DATA_ENUM_TYPE> pos; ///< Internal array to track position in each row.
 			std::vector< std::pair<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> > heap; ///< Internal array to manage heap of merged rows
-			std::vector<Sparse::Row> merge; ///< Temporary storage for merged rows
+			//std::vector<Sparse::Row> merge; ///< Temporary storage for merged rows
+			std::vector< const INMOST_DATA_ENUM_TYPE* > inds; ///< Links to merged indices
+			std::vector< std::vector<INMOST_DATA_ENUM_TYPE> > merge; ///< Temporary storage for merged rows
 		public:
 			/// Default constructor without size specified.
 			RowMerger();
