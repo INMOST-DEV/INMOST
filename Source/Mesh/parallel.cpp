@@ -6264,7 +6264,8 @@ namespace INMOST
 							}
 						break;
 					}
-			RemMarkerArray(&selems[2][0], static_cast<enumerator>(selems[2].size()), orient);
+			if(!selems[2].empty())
+				RemMarkerArray(&selems[2][0], static_cast<enumerator>(selems[2].size()), orient);
 			ReleaseMarker(orient);
 		}
 		for(integer k = ElementNum(NODE); k <= ElementNum(MESH); ++k)

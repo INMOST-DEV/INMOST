@@ -110,13 +110,7 @@ namespace INMOST
 			{
 				leafs.Sort();
 				leafs.Unique();
-				INMOST_DATA_ENUM_TYPE s = leafs.Size();
-				r.Resize(s);
-				for (INMOST_DATA_ENUM_TYPE q = 0; q < s; ++q)
-				{
-					r.GetIndex(q) = leafs.GetIndex(q);
-					r.GetValue(q) = leafs.GetValue(q);
-				}
+				r = leafs;
 			}
 			else
 			{
@@ -216,20 +210,12 @@ namespace INMOST
 				{
 #if 1
 					Row::MergeSortedIndices(*rows[0].first, *rows[1].first, store);
-					store.Zero();
 					Row::AddSortedValues(rows[0].second, *rows[0].first, store);
 					Row::AddSortedValues(rows[1].second, *rows[1].first, store);
-					//std::swap(r, store);
 					r = store;
 #else
 					Row::MergeSortedRows(rows[0].second, *rows[0].first, rows[1].second, *rows[1].first, store);
-					INMOST_DATA_ENUM_TYPE s = store.Size();
-					r.Resize(s);
-					for (INMOST_DATA_ENUM_TYPE q = 0; q < s; ++q)
-					{
-						r.GetIndex(q) = store.GetIndex(q);
-						r.GetValue(q) = store.GetValue(q);
-					}
+					r = store;
 #endif
 				}
 #if defined(USE_ORDERED_SPA)
@@ -307,46 +293,53 @@ namespace INMOST
 				else //merge pairs
 				{
 #if 1
-					INMOST_DATA_ENUM_TYPE k1, k2, s1, s2, s3, nmerge = 0;
-					if (merge.size() < rows.size() - 1)
-						merge.resize(rows.size() - 1);
-					for (INMOST_DATA_ENUM_TYPE k = 0; k < rows.size(); ++k)
+					INMOST_DATA_ENUM_TYPE k1, k2, s, nrows = (INMOST_DATA_ENUM_TYPE)rows.size();
+					INMOST_DATA_ENUM_TYPE nmerge = 0, krow = 0, kmerge = 0;
+					INMOST_DATA_ENUM_TYPE* lbeg, * lend, * rbeg, * rend;
+					if (merge.size() < 2 * nrows)
+						merge.resize(2 * nrows);
+					//merge input row indices
+					while(rows.size() - krow > 1)
 					{
-						heap.push_back(std::make_pair(rows[k].first->Size(), k));
-						inds.push_back(&rows[k].first->Begin()->first);
-					}
-					std::make_heap(heap.begin(), heap.end(), std::greater<>());
-					while (heap.size() > 1)
-					{
-						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-						s1 = heap.back().first;
-						k1 = heap.back().second;
-						heap.pop_back();
-						std::pop_heap(heap.begin(), heap.end(), std::greater<>());
-						s2 = heap.back().first;
-						k2 = heap.back().second;
-						heap.pop_back();
-						merge[nmerge].resize(s1 + s2);
-						s3 = (INMOST_DATA_ENUM_TYPE)(std::set_union(inds[k1], inds[k1] + s1, inds[k2], inds[k2] + s2, merge[nmerge].data()) - merge[nmerge].data());
-						merge[nmerge].resize(s3);
-						heap.push_back(std::make_pair(s3, static_cast<INMOST_DATA_ENUM_TYPE>(inds.size())));
-						std::push_heap(heap.begin(), heap.end(), std::greater<>());
-						inds.push_back(merge[nmerge].data());
+						k1 = krow++;
+						k2 = krow++;
+						merge[nmerge].resize(rows[k1].first->Size() + rows[k2].first->Size());
+						merge[nmerge].resize(Row::MergeSortedIndices(*rows[k1].first, *rows[k2].first, &merge[nmerge][0]));
 						nmerge++;
 					}
-					INMOST_DATA_ENUM_TYPE s = heap.back().first;
-					INMOST_DATA_ENUM_TYPE i = heap.back().second;
-					//INMOST_DATA_ENUM_TYPE s = rows[i].first->Size();
+					//merge last row indices
+					if (rows.size() - krow == 1)
+					{
+						k1 = krow++;
+						k2 = kmerge++;
+						merge[nmerge].resize(rows[k1].first->Size() + merge[k2].size());
+						merge[nmerge].resize(Row::MergeSortedIndices(*rows[k1].first, &merge[k2][0], (INMOST_DATA_ENUM_TYPE)merge[k2].size(), &merge[nmerge][0]));
+						nmerge++;
+					}
+					//merge until single array of indices
+					while (nmerge - kmerge > 1)
+					{
+						k1 = kmerge++;
+						k2 = kmerge++;
+						lbeg = &merge[k1][0];
+						lend = lbeg + merge[k1].size();
+						rbeg = &merge[k2][0];
+						rend = rbeg + merge[k2].size();
+						merge[nmerge].resize(merge[k1].size() + merge[k2].size());
+						merge[nmerge].resize(std::set_union(lbeg, lend, rbeg, rend, &merge[nmerge][0]) - &merge[nmerge][0]);
+						nmerge++;
+					}
+					s = (INMOST_DATA_ENUM_TYPE)merge[kmerge].size();
+					lbeg = &merge[kmerge][0];
 					store.Resize(s);
 					for (INMOST_DATA_ENUM_TYPE k = 0; k < s; ++k)
-						store.GetIndex(k) = inds[i][k];
-					store.Zero();
+					{
+						store.GetIndex(k) = lbeg[k];
+						store.GetValue(k) = 0;
+					}
 					for (INMOST_DATA_ENUM_TYPE k = 0; k < rows.size(); ++k)
 						Row::AddSortedValues(rows[k].second, *rows[k].first, store);
-					//std::swap(r, store);
 					r = store;
-					inds.clear();
-					heap.clear();
 #else
 					INMOST_DATA_ENUM_TYPE k1, k2, nmerge = 0;
 					if (merge.size() < rows.size() - 1)
@@ -741,35 +734,82 @@ namespace INMOST
 
 		void Row::MergeSortedIndices(const Row& left, const Row& right, Row& out)
 		{
-			out.data.inds.resize(left.data.inds.size() + right.data.inds.size());
-			const INMOST_DATA_ENUM_TYPE* linds = left.data.inds.data();
-			const INMOST_DATA_ENUM_TYPE* rinds = right.data.inds.data();
-			INMOST_DATA_ENUM_TYPE* oinds = out.data.inds.data();
-			INMOST_DATA_ENUM_TYPE lsize = (INMOST_DATA_ENUM_TYPE)left.data.inds.size();
-			INMOST_DATA_ENUM_TYPE rsize = (INMOST_DATA_ENUM_TYPE)right.data.inds.size();
-			INMOST_DATA_ENUM_TYPE osize;
-			osize = (INMOST_DATA_ENUM_TYPE)(std::set_union(linds, linds + lsize, rinds, rinds + rsize, oinds) - oinds);
-			out.data.inds.resize(osize);
-			out.data.vals.resize(osize);
+			INMOST_DATA_ENUM_TYPE numa = left.Size(), numb = right.Size();
+			INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
+			out.Resize(numa + numb);
+			while (i < numa && j < numb)
+			{
+				if (left.GetIndex(i) < right.GetIndex(j))
+					out.GetIndex(q++) = left.GetIndex(i++);
+				else if (left.GetIndex(i) == right.GetIndex(j))
+				{
+					out.GetIndex(q++) = left.GetIndex(i++);
+					++j;
+				}
+				else out.GetIndex(q++) = right.GetIndex(j++);
+			}
+			while (i < numa)
+				out.GetIndex(q++) = left.GetIndex(i++);
+			while (j < numb)
+				out.GetIndex(q++) = right.GetIndex(j++);
+			out.Resize(q);
+			out.Zero();
+		}
+
+		INMOST_DATA_ENUM_TYPE Row::MergeSortedIndices(const Row& left, const Row& right, INMOST_DATA_ENUM_TYPE * out)
+		{
+			INMOST_DATA_ENUM_TYPE numa = left.Size(), numb = right.Size();
+			INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
+			while (i < numa && j < numb)
+			{
+				if (left.GetIndex(i) < right.GetIndex(j))
+					out[q++] = left.GetIndex(i++);
+				else if (left.GetIndex(i) == right.GetIndex(j))
+				{
+					out[q++] = left.GetIndex(i++);
+					++j;
+				}
+				else out[q++] = right.GetIndex(j++);
+			}
+			while (i < numa)
+				out[q++] = left.GetIndex(i++);
+			while (j < numb)
+				out[q++] = right.GetIndex(j++);
+			return q;
+		}
+
+		INMOST_DATA_ENUM_TYPE Row::MergeSortedIndices(const Row& left, const INMOST_DATA_ENUM_TYPE* right, INMOST_DATA_ENUM_TYPE numb, INMOST_DATA_ENUM_TYPE* out)
+		{
+			INMOST_DATA_ENUM_TYPE numa = left.Size();
+			INMOST_DATA_ENUM_TYPE i = 0, j = 0, q = 0;
+			while (i < numa && j < numb)
+			{
+				if (left.GetIndex(i) < right[j])
+					out[q++] = left.GetIndex(i++);
+				else if (left.GetIndex(i) == right[j])
+				{
+					out[q++] = left.GetIndex(i++);
+					++j;
+				}
+				else out[q++] = right[j++];
+			}
+			while (i < numa)
+				out[q++] = left.GetIndex(i++);
+			while (j < numb)
+				out[q++] = right[j++];
+			return q;
 		}
 
 		void Row::AddSortedValues(INMOST_DATA_REAL_TYPE alpha, const Row & left, Row & right)
 		{
 			assert(left.isSorted());
 			assert(right.isSorted());
-			size_t pos = 0, ind, lend = left.data.inds.size(), rend = right.data.inds.size();
-			const INMOST_DATA_ENUM_TYPE* linds = left.data.inds.data();
-			const INMOST_DATA_REAL_TYPE* lvals = left.data.vals.data();
-			const INMOST_DATA_ENUM_TYPE* rinds = right.data.inds.data();
-			INMOST_DATA_REAL_TYPE* rvals = right.data.vals.data();
-			//if (kend && rinds[pos] != linds[0]) //jump to the first value
-			//	pos = std::lower_bound(rinds, rinds + rend, linds[0]) - rinds;
-			for (size_t k = 0; k < lend; ++k)
+			INMOST_DATA_ENUM_TYPE pos = 0, ind, lend = left.Size();
+			for (INMOST_DATA_ENUM_TYPE k = 0; k < lend; ++k)
 			{
-				ind = linds[k];
-				while (rinds[pos] != ind) pos++; //must be there!
-				//pos = std::lower_bound(rinds, rinds + rend, ind) - rinds;
-				rvals[pos] += alpha * lvals[k];
+				ind = left.GetIndex(k);
+				while (right.GetIndex(pos) != ind) pos++; //must be there!
+				right.GetValue(pos) += alpha * left.GetValue(k);
 			}
 		}
 

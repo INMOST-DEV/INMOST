@@ -187,9 +187,12 @@ namespace INMOST
 		}
 		__INLINE multivar_expression & operator =(const basic_expression& expr)
 		{
+			static thread_private<Sparse::Row> ttmp;
+			Sparse::Row& tmp = *ttmp;
 			value = expr.GetValue();
-			entries.Clear();
-			UseMerger(1.0, expr, 0.0, entries);
+			tmp.Clear();
+			UseMerger(1.0, expr, 0.0, tmp);
+			entries = tmp;
 			return *this;
 		}
 		__INLINE multivar_expression& operator = (multivar_expression && other)

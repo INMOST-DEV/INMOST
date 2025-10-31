@@ -484,7 +484,10 @@ int main(int argc,char ** argv)
 		};
 		vaMatrix mA = vaMatrixMake(A,2,2);
 		Sparse::Row r;
-		(mA.Det() - sin(x+y)).GetDerivatives(1.0, r);
+		variable det = mA.Det();
+		variable val = sin(x + y);
+		(det - val).GetDerivatives(1.0, r);
+		//(mA.Det() - sin(x+y)).GetDerivatives(1.0, r);
 		err = 0.0;
 		for(int k = 0; k < r.Size(); ++k)
 			err += fabs(r[k]*r[k]);
