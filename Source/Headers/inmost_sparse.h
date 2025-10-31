@@ -188,9 +188,48 @@ namespace INMOST
 				//entry_const_reference operator[](size_type k) const
 				//{ return entry_const_reference(inds[k], vals[k]);	}
 				template <typename type1, typename type2>
+				struct reference_wrapper
+				{
+					typedef typename std::remove_reference<type1>::type vtype1;
+					typedef typename std::remove_reference<type2>::type vtype2;
+					typedef std::pair<type1&, type2&> reference;
+					reference p;
+					reference_wrapper& operator=(const reference_wrapper & b)
+					{ p = b.p; return *this; }
+					//reference_wrapper& operator = (reference_wrapper && b)
+					//{
+					//	b = std::move(b.p);
+					//	return *this;
+					//}
+					//reference_wrapper& operator =(std::pair<type1,type2>&& b)
+					//{
+					//	p.first = std::move(b.first);
+					//	p.second = std::move(b.second);
+					//	return *this;
+					//}
+					reference_wrapper& operator =(std::pair<vtype1,vtype2> const & b)
+					{
+						p.first = b.first;
+						p.second = b.second;
+						return *this;
+					}
+					//reference_wrapper& operator =(std::pair< std::remove_reference<type1>, std::remove_reference<type2> > & b)
+					friend void swap(reference_wrapper a, reference_wrapper b)
+					{
+						std::swap(a.p.first, b.p.first);
+						std::swap(a.p.second,b.p.second);
+					}
+					operator std::pair<vtype1,vtype2>() {return std::pair<vtype1,vtype2>(p.first,p.second);}
+					//operator std::pair<type1,type2>() && { return std::pair<type1,type2>(std::move(p.first), std::move(p.second));}
+					bool operator <(std::pair<vtype1,vtype2> const & b) const {return p.first < b.first;}
+					bool operator <(reference_wrapper const & b) const {return p.first < b.p.first;}
+					friend bool operator <(std::pair<vtype1,vtype2> const & a, reference_wrapper const & b) {return a.first < b.p.first;}
+					reference_wrapper(type1& a, type2& b) : p(a,b) {}
+				};
+				template <typename type1, typename type2>
 				struct pointer_wrapper
 				{
-					typedef std::pair< type1&, type2&> reference;
+					typedef std::pair<type1&, type2&> reference;
 					reference* operator -> () { return &p; }
 					reference p;
 					pointer_wrapper(type1& a, type2& b) :p(a, b) {}
@@ -199,9 +238,9 @@ namespace INMOST
 				class _iterator
 				{
 				public:
-					typedef std::pair< type1&, type2&> reference;
+					typedef reference_wrapper<type1&, type2&> reference;
 					typedef pointer_wrapper<type1,type2> pointer;
-					typedef std::pair< type1, type2> value_type;
+					typedef std::pair<type1, type2> value_type;
 					typedef ptrdiff_t difference_type;
 					typedef std::random_access_iterator_tag iterator_category;
 				private:
