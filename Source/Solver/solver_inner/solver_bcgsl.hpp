@@ -1505,6 +1505,7 @@ namespace INMOST
 			{
 
 				beta = 1.0 / rho * alpha / omega;
+				int kpert = 0;
 				do
 				{
 					rho1 = 0;
@@ -1523,9 +1524,10 @@ namespace INMOST
 							halt = true;
 							break;
 						}
+						else kpert++;
 					}
 					else break;
-				} while (true);
+				} while (kpert < 5);
 				beta *= rho1;
 				rho = rho1;
 				if (fabs(beta) > 1.0e+100)
