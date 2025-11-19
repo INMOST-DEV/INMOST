@@ -377,6 +377,7 @@ namespace INMOST
 		}
 		__INLINE void GetHessian(INMOST_DATA_REAL_TYPE multJ, Sparse::Row& J, INMOST_DATA_REAL_TYPE multH, Sparse::HessianRow& H) const
 		{
+			(void) multJ; (void) J; (void) multH; (void) H;
 			throw NotImplemented;
 		}
 		__INLINE multivar_dense_expression& operator = (INMOST_DATA_REAL_TYPE pvalue)

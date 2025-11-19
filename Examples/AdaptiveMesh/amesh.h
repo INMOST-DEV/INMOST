@@ -40,6 +40,13 @@ namespace INMOST
 		//Set indicator to 0 if cell is not allowed to be coarsened and to 1 otherwise.
 		//Indicator is exchanged after all callbacks.
 		virtual void CoarseIndicator(AdaptiveMesh & am, TagInteger tag_I) = 0;
+	public:
+		virtual ~AdaptiveMeshCallback() {}
+	protected:
+		AdaptiveMeshCallback() {}
+	private:
+		AdaptiveMeshCallback(const AdaptiveMeshCallback& other) {(void) other;}
+		AdaptiveMeshCallback& operator=(const AdaptiveMeshCallback& other) {(void) other; return *this;}
 	};
 
 

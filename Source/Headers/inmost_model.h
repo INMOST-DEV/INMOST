@@ -25,7 +25,7 @@ namespace INMOST
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
 		/// Setup coupling with unknowns of other models
-		virtual bool SetupCoupling(Model& P) { return true; }
+		virtual bool SetupCoupling(Model& P) { (void) P; return true; }
 		/// Initialize data needed for FillResidual.
 		/// Called once before nonlinear iterations.
 		virtual bool PrepareIterations() { return true; }
@@ -86,7 +86,7 @@ namespace INMOST
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
 		/// Setup coupling with unknowns of otheer models
-		virtual bool SetupCoupling(Model& P) { return true; }
+		virtual bool SetupCoupling(Model& P) { (void) P; return true; }
 		/// Fill part of the residual related to my unknowns.
 		virtual bool FillResidual(Residual& R) const = 0;
 		
@@ -100,9 +100,9 @@ namespace INMOST
 		/// Update time step.
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) { return true; }
+		virtual bool SetTimeStep(double dt) { (void) dt; return true; }
 		/// Provide current time.
-		virtual bool SetTime(double t) { return true; }
+		virtual bool SetTime(double t) { (void) t; return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this model. Can simply return 1.
@@ -119,7 +119,7 @@ namespace INMOST
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
 		/// Setup coupling with unknowns of otheer models
-		virtual bool SetupCoupling(Model& P) { return true; }
+		virtual bool SetupCoupling(Model& P) { (void) P; return true; }
 		/// The main function provided by operator.
 		/// @param e Element on which operator is evaluated.
 		/// @return scalar value of the coupling function.
@@ -135,9 +135,9 @@ namespace INMOST
 		/// Update time step.
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) { return true; }
+		virtual bool SetTimeStep(double dt) { (void) dt; return true; }
 		/// Provide current time.
-		virtual bool SetTime(double t) { return true; }
+		virtual bool SetTime(double t) { (void) t; return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.
@@ -154,7 +154,7 @@ namespace INMOST
 		/// Initialize coupling and dependent unknowns.
 		virtual bool Initialize(Model& P) = 0;
 		/// Setup coupling with unknowns of otheer models
-		virtual bool SetupCoupling(Model& P) { return true; }
+		virtual bool SetupCoupling(Model& P) { (void) P; return true; }
 		/// The main function provided by operator.
 		/// @param e Element on which operator is evaluated.
 		/// @return matrix value of the coupling function.
@@ -170,9 +170,9 @@ namespace INMOST
 		/// Update time step.
 		virtual bool UpdateTimeStep() { return true; }
 		/// Provide time step.
-		virtual bool SetTimeStep(double dt) { return true; }
+		virtual bool SetTimeStep(double dt) { (void) dt; return true; }
 		/// Provide current time.
-		virtual bool SetTime(double t) { return true; }
+		virtual bool SetTime(double t) { (void) t; return true; }
 		/// Roll back to previous step.
 		virtual bool RestoreTimeStep() { return true; }
 		/// Calculate multiplier for update for this function. Can simply return 1.

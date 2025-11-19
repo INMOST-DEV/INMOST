@@ -326,7 +326,7 @@ namespace INMOST
 				int k = 0;
 				for(const_iterator it = Begin(); it != End(); ++it) 
 					if( fabs(it->second) > eps ) 
-						sout << "(" << it->first << "," << it->second << ") "; k++; 
+						sout << "(" << it->first << "," << it->second << ") ", k++;
 				if( k ) sout << std::endl;
 			}
 			/// Sort row
