@@ -610,8 +610,7 @@ set(INMOST_INSTALL_HEADERS Source/Headers/container.hpp
                            Source/Headers/inmost_solver.h
                            Source/Headers/inmost_sparse.h
                            Source/Headers/inmost_variable.h
-                           Source/Headers/inmost_xml.h
-                           Source/Headers/robin_hood.h)
+                           Source/Headers/inmost_xml.h)
 
 #if( COMPILE_EXAMPLES )
 #list(APPEND INMOST_INSTALL_HEADERS "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
@@ -658,8 +657,7 @@ set_property(TARGET inmost PROPERTY PUBLIC_HEADER
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_solver.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_sparse.h"
 	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_variable.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h"
-	"${PROJECT_SOURCE_DIR}/Source/Headers/robin_hood.h")
+	"${PROJECT_SOURCE_DIR}/Source/Headers/inmost_xml.h")
 
 #if( COMPILE_EXAMPLES )
 #set_property(TARGET inmost APPEND PROPERTY PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/Examples/AdaptiveMesh/amesh.h")
