@@ -5676,9 +5676,9 @@ namespace INMOST
 		REPORT_VAL("time", time);
 		EXIT_BLOCK();
 		
+		std::vector<Storage::real> normals; //this will be needed after unpacking cells
 		ENTER_BLOCK();
 		time = Timer();
-		std::vector<Storage::real> normals; //this will be needed after unpacking cells
 		//unpack faces
 		{
 			ElementArray<Edge> f_edges(this);

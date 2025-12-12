@@ -43,6 +43,8 @@ int AdaptiveRepartitioner(int *vtxdist, int *xadj,  int *adjncy,
 #define REPORT_VAL(str,x) {m->WriteTab(m->GetStream()) << "<VALUE name=\"" << str << "\"> <CONTENT><![CDATA[" << x << "]]> </CONTENT><CODE><![CDATA[" << #x << "]]></CODE></VALUE>" << std::endl;}
 #define ENTER_FUNC() long double all_time = Timer(); m->WriteTab(m->GetStream()) << "<FUNCTION name=\"" << __FUNCTION__ << "\" id=\"func" << m->GetFuncID()++ << "\">" << std::endl; m->Enter();
 #define EXIT_FUNC() m->WriteTab(m->GetStream()) << "<TIME>" << Timer() - all_time << "</TIME>" << std::endl; m->Exit(); m->WriteTab(m->GetStream()) << "</FUNCTION>" << std::endl;
+#define ENTER_BLOCK() {}
+#define EXIT_BLOCK() {}
 #else
 #define REPORT_MPI(x) x
 #define REPORT_STR(x) {}
