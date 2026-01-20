@@ -711,7 +711,7 @@ namespace INMOST
 			Var ret = 0;
 			for (enumerator i = 0; i < Rows(); ++i)
 				for (enumerator j = 0; j < Cols(); ++j)
-					ret = std::max<Var>(ret, compute(i, j));
+					ret = std::max<Var>(ret, fabs(compute(i, j)));
 			return ret;
 		}
 		/// Calculates Moore-Penrose pseudo-inverse of the matrix.
