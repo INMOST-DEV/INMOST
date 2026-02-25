@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "SolverInterface.h"
 
 #if defined(USE_SOLVER)
