@@ -296,7 +296,7 @@ namespace INMOST
 						bool newn = m->GetMarker(nodes[k],m->NewMarker());
 						if( invm && newn ) continue;
 						if( !invm && hidn ) continue;
-						Storage::real_array coords = m->RealArrayDF(nodes[k],m->CoordsTag());;
+						Storage::real_array coords = m->RealArrayDF(nodes[k],m->CoordsTag());
 						for(unsigned q = 0; q < coords.size(); q++)
 						{
 							bbox[q*2+0] = std::min<float>(bbox[q*2+0],(float)coords[q]);
@@ -306,7 +306,7 @@ namespace INMOST
 				}
 				else for(unsigned k = 0; k < nodes.size(); ++k)
 				{
-					Storage::real_array coords = m->RealArrayDF(nodes[k],m->CoordsTag());;
+					Storage::real_array coords = m->RealArrayDF(nodes[k],m->CoordsTag());
 					for(unsigned q = 0; q < coords.size(); q++)
 					{
 						bbox[q*2+0] = std::min<float>(bbox[q*2+0],(float)coords[q]);

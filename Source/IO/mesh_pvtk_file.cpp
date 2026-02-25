@@ -104,7 +104,7 @@ namespace INMOST
 					attrval = str.substr(ql+1,qr-ql-1);
 					//std::cout << "number of peaces: " << attrval << " l: " << ql << " r: " << qr << std::endl;
 					np = atoi(attrval.c_str());
-					//std::cout << "np: " << np << std::endl;;
+					//std::cout << "np: " << np << std::endl;
 					files.resize(np);
 					state = 1;
 				}

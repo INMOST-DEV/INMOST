@@ -153,7 +153,7 @@ using namespace INMOST;
 		fout << "% true matrix indices interval " << wmbeg << ":" << wmend << std::endl;
 		fout << std::scientific;
 		
-		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;;
+		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = wmbeg; k < wmend; ++k)
 		{
 			for (INMOST_DATA_ENUM_TYPE it = Address[k].first; it != Address[k].last; ++it)

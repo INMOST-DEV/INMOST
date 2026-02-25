@@ -20198,7 +20198,7 @@ namespace k3d
                               pja2_rows[kind * 3 + 2] = pja2_temp[k * 3 + 2];
                               kind++;
                            }
-                           piptr[jj] = kind;;
+                           piptr[jj] = kind;
                         }
                      }
                      for (i = pia_hblk[ipar]; i < pia_hblk[ipar + 1]; i++) {
@@ -22161,7 +22161,7 @@ namespace k3d
                               pa_rows[kind] = pa_temp[k];
                               kind++;
                            }
-                           piptr[jj] = kind;;
+                           piptr[jj] = kind;
                         }
                      }
                      for (i = pia_hblk[ipar]; i < pia_hblk[ipar + 1]; i++) {
@@ -24149,7 +24149,7 @@ namespace k3d
                                                             pa_rows + kind * b_2);
                               kind++;
                            }
-                           piptr[jj] = kind;;
+                           piptr[jj] = kind;
                         }
                      }
                      for (i = pia_hblk[ipar]; i < pia_hblk[ipar + 1]; i++) {

@@ -239,7 +239,7 @@ const double apert = 1.0e-8;
 		
 		//fout.close(); return;
 		
-		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;;
+		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = wmbeg; k < wmend; ++k)
 		{
 			if( k < addrbeg || k >= addrend) continue;
@@ -361,7 +361,7 @@ const double apert = 1.0e-8;
 
 		//fout.close(); return;
 
-		fout << rend - rbeg << " " << cend - cbeg << " " << nnz << std::endl;;
+		fout << rend - rbeg << " " << cend - cbeg << " " << nnz << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = rbeg; k < rend; ++k)
 		{
 			if (k < addrbeg || k >= addrend) continue;
@@ -458,7 +458,7 @@ const double apert = 1.0e-8;
 
 		//fout.close(); return;
 
-		fout << rend - rbeg << " " << cend - cbeg << " " << nnz << std::endl;;
+		fout << rend - rbeg << " " << cend - cbeg << " " << nnz << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = rbeg; k < rend; ++k)
 		{
 			if (k < addrbeg || k >= addrend) continue;
