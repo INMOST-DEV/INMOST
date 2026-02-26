@@ -388,11 +388,19 @@ const char *SolverConvergedReasonPetsc(KSP *ksp)
     switch (reason) 
     {
         case KSP_CONVERGED_RTOL:
+#if PETSC_VERSION_LT(3,24,4)
         case KSP_CONVERGED_RTOL_NORMAL:
+#else
+        case KSP_CONVERGED_RTOL_NORMAL_EQUATIONS:
+#endif
             strcpy(reason_str, "norm decreased by a factor of relative tolerance");
             break;
         case KSP_CONVERGED_ATOL:
+#if PETSC_VERSION_LT(3,24,4)
         case KSP_CONVERGED_ATOL_NORMAL:
+#else
+        case KSP_CONVERGED_ATOL_NORMAL_EQUATIONS:
+#endif
             strcpy(reason_str, "norm less than absolute tolerance");
             break;
         case KSP_CONVERGED_ITS:

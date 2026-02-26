@@ -1737,7 +1737,7 @@ namespace INMOST
 		for(int k = 0; k < t.NumAttrib(); ++k)
 		{
 			const XMLReader::XMLAttrib & attr = t.GetAttrib(k);
-			output << std::endl;;
+			output << std::endl;
 			Tabs(output,offset+1) << attr.name << "=\"" << attr.value << "\"";
 		}
 		if( t.tag.Stub() ) output << "/";

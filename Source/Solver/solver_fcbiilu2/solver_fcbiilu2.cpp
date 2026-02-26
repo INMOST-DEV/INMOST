@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "solver_fcbiilu2.h"
 
 #include <stdio.h>

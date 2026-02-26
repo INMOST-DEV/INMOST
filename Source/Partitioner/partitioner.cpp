@@ -732,7 +732,7 @@ namespace INMOST
 							if( have_adjwgt ) 
 							{
 								for(idx_t q = 0; q < ncon; q++) 
-									adjwgt.push_back(jt->RealArray(GetWeight())[q]); //why adjwgt is not real???
+									adjwgt.push_back(static_cast<idx_t>(jt->RealArray(GetWeight())[q])); //why adjwgt is not real???
 							}
 							sum++;
 						}
@@ -744,7 +744,7 @@ namespace INMOST
 					if( have_vwgt )
 					{
 						for(idx_t q = 0; q < ncon; q++)
-							vwgt[k*ncon+q] = it->RealArrayDF(GetWeight())[q]; //why vwgt is not real???
+							vwgt[k*ncon+q] = static_cast<idx_t>(it->RealArrayDF(GetWeight())[q]); //why vwgt is not real???
 					}
 				}
 				k++;

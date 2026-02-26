@@ -2788,6 +2788,7 @@ namespace INMOST
 		Integer(GetHandle(),tag_layers) = 0;
 		Integer(GetHandle(),tag_bridge) = NONE;
 #endif //USE_MPI
+		(void) marker; //if unused
 		EXIT_FUNC();
 	}
 	
@@ -3080,6 +3081,7 @@ namespace INMOST
 #if !defined(NDEBUG)
 #endif //NDEBUG
 #endif
+		(void) from; (void) to; //if unused
 		EXIT_FUNC();
 		return ret;
 	}
@@ -3148,6 +3150,7 @@ namespace INMOST
 		}
 	
 #endif
+		(void) mask; //if unused
 		EXIT_FUNC();
 		return ret;
 	}
@@ -3406,6 +3409,7 @@ namespace INMOST
 		return bridge;
 #else //USE_MPI
 		(void) bridge_type;
+		(void) marker;
 		EXIT_FUNC();
 		return proc_elements();
 #endif //USE_MPI
@@ -3700,11 +3704,13 @@ namespace INMOST
 #else
 		(void) tag;
 		(void) elements;
+		(void) source;
 		(void) mask;
 		(void) select;
 		(void) buffer;
 		(void) buffer_position;
 		(void) op;
+		(void) unpack_elements;
 #endif //USE_MPI
 		REPORT_VAL("TagName",tag.GetTagName());
 		EXIT_FUNC();
@@ -4002,6 +4008,8 @@ namespace INMOST
 			REPORT_MPI(MPI_Waitall(static_cast<INMOST_MPI_SIZE>(storage.send_reqs.size()),&storage.send_reqs[0],MPI_STATUSES_IGNORE));
 		}
 #endif
+		(void) send_elements;
+		(void) storage;
 		EXIT_FUNC();
 	}
 	
@@ -6279,6 +6287,7 @@ namespace INMOST
 		(void) selems;
 		(void) buffer;
 		(void) source;
+		(void) buffer_position;
 		(void) tag_recv;
 #endif
 		REPORT_VAL("source",source);
@@ -6552,6 +6561,7 @@ namespace INMOST
 		}
 #endif //PREFFER_MPI_P2P
 #else //USE_MPI
+		(void) todo;
 		(void) send_bufs;
 		(void) recv_bufs;
 #endif //USE_MPI
@@ -8058,6 +8068,7 @@ namespace INMOST
 #else
 		(void) layers;
 		(void) bridge;
+		(void) marker;
 #endif
 		EXIT_FUNC();
 

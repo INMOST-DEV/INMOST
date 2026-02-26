@@ -81,7 +81,7 @@ using namespace INMOST;
 		fout << "% mean 2-norm  " << sqrt(norm2/nnz) << std::endl;
 		fout << std::scientific;
 		
-		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;;
+		fout << wmend-wmbeg << " " << wmend-wmbeg << " " << nnz << std::endl;
 		for (INMOST_DATA_ENUM_TYPE k = wmbeg; k < wmend; ++k)
 		{
 			for (INMOST_DATA_ENUM_TYPE it = Address[k].first; it != Address[k].last; ++it)

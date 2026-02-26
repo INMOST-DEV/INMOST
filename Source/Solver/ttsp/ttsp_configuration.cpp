@@ -205,7 +205,7 @@ namespace INMOST {
 
             std::size_t buffer_capacityi = entry.FindAttrib("buffer");
             if (buffer_capacityi != num_attr) {
-                this->buffer_capacity = static_cast<std::size_t>(atol(entry.GetAttrib(buffer_capacityi).value.c_str()));
+                this->buffer_capacity = static_cast<std::size_t>(atol(entry.GetAttrib(static_cast<int>(buffer_capacityi)).value.c_str()));
             } else {
                 this->buffer_capacity = 15;
             }
