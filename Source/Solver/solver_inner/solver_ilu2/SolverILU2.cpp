@@ -59,6 +59,10 @@ namespace INMOST {
         else if (name == "drop_tolerance") drop_tolerance = atof(val);
         else if (name == "reuse_tolerance") reuse_tolerance = atof(val);
         else if (name == "verbosity") verbosity = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if (name == "ilu2_absolute_tolerance") SolverInner::SetParameter("absolute_tolerance", value);
+        else if (name == "ilu2_relative_tolerance") SolverInner::SetParameter("relative_tolerance", value);
+        else if (name == "ilu2_divergence_tolerance") SolverInner::SetParameter("divergence_tolerance", value);
+        else if (name == "ilu2_maximum_iterations") SolverInner::SetParameter("maximum_iterations", value);
         else SolverInner::SetParameter(name, value);
     }
 
