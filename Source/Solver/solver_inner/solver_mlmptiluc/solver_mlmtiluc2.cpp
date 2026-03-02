@@ -1211,7 +1211,7 @@ const double apert = 1.0e-8;
 												   INMOST_DATA_ENUM_TYPE max_size)
 	{
 		const int kway_parts = 2;
-		double /*timer = Timer(),*/ total_time = Timer();
+		//double /*timer = Timer(),*/ total_time = Timer();
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg,wend,Address,Entries,cbeg,cend);
 
@@ -1325,7 +1325,7 @@ const double apert = 1.0e-8;
 				 		 						 interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ,
 												 std::vector<Block> & blocks, int parts)
 	{
-		double timer = Timer(), total_time = Timer();
+		//double timer = Timer(), total_time = Timer();
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg,wend,Address,Entries,cbeg,cend);
 
@@ -1369,7 +1369,7 @@ const double apert = 1.0e-8;
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ,
 		std::vector<Block>& blocks, int parts)
 	{
-		double timer = Timer(), total_time = Timer();
+		//double timer = Timer(), total_time = Timer();
 		INMOST_DATA_ENUM_TYPE cbeg, cend, sep, blks;
 		ColumnInterval(wbeg, wend, Address, Entries, cbeg, cend);
 
@@ -2128,7 +2128,7 @@ const double apert = 1.0e-8;
 
 	void MLMTILUC_preconditioner::FillColumnGaps(	INMOST_DATA_ENUM_TYPE cbeg,
 													INMOST_DATA_ENUM_TYPE cend,
-													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& localQ)
+													interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>& /*localQ*/)
 	{
 		interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> tmp(cbeg, cend, ENUMUNDEF);
 
@@ -2158,12 +2158,21 @@ const double apert = 1.0e-8;
 		}
 	}
 
+#ifndef NDEBUG
 	void MLMTILUC_preconditioner::CheckBlock(const Block& b,
 		const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address,
 		const std::vector< std::vector<Sparse::Row::entry> >& A_Entries,
 		INMOST_DATA_ENUM_TYPE sepbeg,
 		INMOST_DATA_ENUM_TYPE sepend,
 		std::string file, int line)
+#else
+	void MLMTILUC_preconditioner::CheckBlock(const Block&,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>&,
+		const std::vector< std::vector<Sparse::Row::entry> >&,
+		INMOST_DATA_ENUM_TYPE,
+		INMOST_DATA_ENUM_TYPE,
+		std::string, int)
+#endif
 	{
 
 #ifndef NDEBUG
@@ -2189,6 +2198,8 @@ const double apert = 1.0e-8;
 		assert(!outside);
 #endif
 	}
+
+#ifndef NDEBUG
 	void MLMTILUC_preconditioner::CheckBlock(const Block& b,
 		const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address,
 		const std::vector< std::vector<Sparse::Row::entry> >& A_Entries,
@@ -2196,6 +2207,15 @@ const double apert = 1.0e-8;
 		INMOST_DATA_ENUM_TYPE sepbeg,
 		INMOST_DATA_ENUM_TYPE sepend,
 		std::string file, int line)
+#else
+	void MLMTILUC_preconditioner::CheckBlock(const Block&,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>&,
+		const std::vector< std::vector<Sparse::Row::entry> >&,
+		const interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE>&,
+		INMOST_DATA_ENUM_TYPE,
+		INMOST_DATA_ENUM_TYPE,
+		std::string, int)
+#endif
 	{
 #ifndef NDEBUG
 		INMOST_DATA_ENUM_TYPE inblock = 0, insep = 0, outside = 0;
@@ -2869,9 +2889,15 @@ const double apert = 1.0e-8;
 		}
 	}
 
+#ifndef NDEBUG
 	void MLMTILUC_preconditioner::CheckColumnGaps(const Block& b,
 		const interval<INMOST_DATA_ENUM_TYPE, Interval>& A_Address,
 		const std::vector< std::vector<Sparse::Row::entry> >& A_Entries)
+#else
+	void MLMTILUC_preconditioner::CheckColumnGaps(const Block&,
+		const interval<INMOST_DATA_ENUM_TYPE, Interval>&,
+		const std::vector< std::vector<Sparse::Row::entry> >&)
+#endif //NDEBUG
 	{
 #ifndef NDEBUG
 		INMOST_DATA_ENUM_TYPE rbeg = b.row_start, rend = b.row_end;
@@ -3675,9 +3701,15 @@ const double apert = 1.0e-8;
 	
 	void MLMTILUC_preconditioner::MetisOrdering(INMOST_DATA_ENUM_TYPE wbeg,
 												INMOST_DATA_ENUM_TYPE wend,
-												std::vector<INMOST_DATA_ENUM_TYPE> & xadj, 
-												std::vector<INMOST_DATA_ENUM_TYPE> & adjncy,
-												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
+												std::vector<INMOST_DATA_ENUM_TYPE> & 
+#if defined(USE_SOLVER_METIS)
+												xadj
+#endif
+												, std::vector<INMOST_DATA_ENUM_TYPE> & 
+#if defined(USE_SOLVER_METIS)
+												adjncy
+#endif
+												, interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localP,
 												interval<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE> & localQ)
 	{
 #if defined(USE_SOLVER_METIS)
@@ -3817,7 +3849,7 @@ const double apert = 1.0e-8;
 			for (Sparse::Row::iterator r = (*Alink)[k].Begin(); r != (*Alink)[k].End(); ++r)
 				if (r->first >= mobeg && r->first < moend && !check_zero(fabs(r->second)) ) nzA++;
 		}
-		INMOST_DATA_ENUM_TYPE nzA0 = nzA;
+		//INMOST_DATA_ENUM_TYPE nzA0 = nzA;
 
 		//sort_indeces.reserve(256);
 		//A_Entries.resize(nzA);

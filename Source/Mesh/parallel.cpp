@@ -3532,6 +3532,7 @@ namespace INMOST
 		(void) mask;
 		(void) select;
 		(void) buffer;
+		(void) pack_position;
 #endif
 		//REPORT_VAL("TagName",tag.GetTagName());
 		//EXIT_FUNC();
@@ -5325,6 +5326,7 @@ namespace INMOST
 		(void) buffer;
 		(void) destination;
 		(void) tag_list;
+		(void) arr_position;
 #endif
 		REPORT_VAL("destination",destination);
 		EXIT_FUNC();
@@ -6649,9 +6651,9 @@ namespace INMOST
 	void Mesh::ExchangeMarked(enum Action action)
 	{
 		ENTER_FUNC();
-		bool dely_delete = false;
 		if( m_state == Serial ) return;
 #if defined(USE_MPI)
+		bool dely_delete = false;
         int mpirank = GetProcessorRank();
 		tag_set tag_list, tag_list_recv;
 		tag_set tag_list_empty;
