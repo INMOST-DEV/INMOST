@@ -244,7 +244,7 @@ namespace INMOST
 	{
 	protected:
 		TagManager();
-		TagManager(const TagManager & other);
+		TagManager(Mesh * m, const TagManager & other);
 		TagManager & operator = (TagManager const & other);
 		typedef chunk_array<INMOST_DATA_ENUM_TYPE,chunk_bits_empty>    empty_data;
 		typedef chunk_array<Tag, chunk_bits_tags>                      tag_array_type;

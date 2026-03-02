@@ -273,13 +273,13 @@ namespace INMOST
 	TagManager::TagManager()
 	{
 	}
-	TagManager::TagManager(const TagManager & other)
+	TagManager::TagManager(Mesh * m, const TagManager & other)
 	{
 		tags.resize(other.tags.size());
 		dense_data.resize(other.dense_data.size(),dense_sub_type(0));
 		for(tag_array_type::size_type i = 0; i < other.tags.size(); i++)
 		{
-			tags[i].mem = new TagMemory(dynamic_cast<Mesh *>(this),*other.tags[i].mem);
+			tags[i].mem = new TagMemory(m, *other.tags[i].mem);
 			for(ElementType etype = NODE; etype <= MESH; etype = etype << 1)
 				if( tags[i].isDefined(etype) && !tags[i].isSparse(etype) )
 				{

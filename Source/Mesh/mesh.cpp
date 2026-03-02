@@ -407,7 +407,7 @@ namespace INMOST
 	}
 	
 	Mesh::Mesh(const Mesh & other)
-	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))
+	:TagManager(this, other),Storage(NULL,ComposeHandle(MESH,0))
 	{
 		{
 			std::stringstream tmp;
