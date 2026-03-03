@@ -64,7 +64,7 @@ namespace INMOST {
             decrement = std::atof(optimizer.GetProperty(decrement_property).c_str());
         }
 
-        const std::string &allow_oscillation_property = parameter.GetName() + ":allow_oscillation";
+		//unused?? const std::string &allow_oscillation_property = parameter.GetName() + ":allow_oscillation";
         if (optimizer.HasProperty(decrement_property)) {
             const std::string &allow = optimizer.GetProperty(decrement_property);
             if (allow == "true") {
