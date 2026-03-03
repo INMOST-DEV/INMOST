@@ -484,6 +484,8 @@ namespace INMOST {
 
         void DestroySavedOptimizer(Solver &solver);
 
+        std::string SolutionMetadataLine();
+
     }
 
 }
