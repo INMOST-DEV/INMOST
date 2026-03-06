@@ -232,7 +232,11 @@ namespace INMOST
 				for (integer i = 0; i < dim; i++)
 				{
 					double temp = coords[i];
+#ifdef HIGH_PRECISION_VTK_FILE
+				f << std::scientific << std::setprecision(11)<<temp << " "; //by Kramarenko Anuprienko Konshin
+#else
 					f << temp << " ";
+#endif
 				}
 				for (integer i = dim; i < 3; i++)
 					f << "0 ";
