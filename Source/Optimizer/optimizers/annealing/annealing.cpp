@@ -14,12 +14,15 @@ namespace INMOST {
 
     AnnealingUniformDistribution::AnnealingUniformDistribution() : distribution(0.0, 1.0) {
         int rank, size;
-#if defined(USE_MPI)
+#ifdef USE_MPI
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &size);
+#else
+        rank =0;
+        size=1;
 #endif
         unsigned int seed = static_cast<unsigned int>(time(NULL));
-#if defined(USE_MPI)
+#ifdef USE_MPI
         if (rank == 0) {
             for (int i = 1; i < size; i++) {
                 MPI_Send(&seed, 1, MPI_UNSIGNED, i, 0, MPI_COMM_WORLD);
@@ -28,6 +31,8 @@ namespace INMOST {
             MPI_Status status;
             MPI_Recv(&seed, 1, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, &status);
         }
+#else
+        std::cout<<"nonparallel version!"<<std::endl;
 #endif
         generator.seed(seed);
     }

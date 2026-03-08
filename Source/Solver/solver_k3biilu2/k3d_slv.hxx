@@ -661,10 +661,12 @@ namespace k3d
     private:
       CQrdBase (const CQrdBase & _aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CQrdBase & operator= (const CQrdBase & _aa)
       {
+         (void) _aa;
          return *this;
       };
     public:
@@ -814,10 +816,12 @@ namespace k3d
       /// Copy
       CQrdSet (const CQrdSet & _aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CQrdSet & operator= (const CQrdSet & _aa)
       {
+         (void) _aa;
          return *this;
       };
     public:
@@ -897,10 +901,12 @@ namespace k3d
       /// Copy
       CQrdMPI (const CQrdMPI & _aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CQrdMPI & operator= (const CQrdMPI & _aa)
       {
+         (void) _aa;
          return *this;
       };
     public:
@@ -982,11 +988,13 @@ namespace k3d
       /// Copy constructor
       CMvmPar (const CMvmPar < _Int, _Flt, _FltVect > &_aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CMvmPar < _Int, _Flt, _FltVect > &operator= (const CMvmPar < _Int, _Flt,
                                                    _FltVect > &_aa)
       {
+         (void) _aa;
          return *this;
       };
     public:
@@ -1079,11 +1087,13 @@ namespace k3d
       /// Copy constructor
       CSlvPar (const CSlvPar < _Int, _Flt, _FltVect > &_aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CSlvPar < _Int, _Flt, _FltVect > &operator= (const CSlvPar < _Int, _Flt,
                                                    _FltVect > &_aa)
       {
+         (void) _aa;
          return *this;
       };
     public:
@@ -1181,11 +1191,13 @@ namespace k3d
       /// Copy constructor
       CK3D_Solver (const CK3D_Solver < _Int, _Flt, _FltVect > &_aa)
       {
+          (void) _aa;
       };
       /// Copy operator
       CK3D_Solver < _Int, _Flt, _FltVect > &operator= (const CK3D_Solver < _Int, _Flt,
                                                        _FltVect > &_aa)
       {
+         (void) _aa;
          return *this;
       };
     public:

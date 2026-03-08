@@ -29,6 +29,7 @@ namespace INMOST {
             sscanf(line, "%s %s", parameterName, parameterValue);
             solver->SetParameter(parameterName, parameterValue);
         }
+        fclose(databaseFile);
     }
 
 }

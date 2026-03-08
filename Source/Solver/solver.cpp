@@ -115,6 +115,11 @@ namespace INMOST {
         Sparse::CreateRowEntryType();
     }
 
+    void Solver::Set_Solver_Parameters(std::vector<SolverParameters> &vec)
+    {
+        Solver::parameters= vec;
+    }
+
     void Solver::Finalize() {
         Sparse::DestroyRowEntryType();
         parameters = std::vector<SolverParameters>();

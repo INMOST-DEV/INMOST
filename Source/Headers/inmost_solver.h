@@ -287,6 +287,11 @@ namespace INMOST {
         ///     Trilinos_Belos: trilinos_belos_options.xml
         static void Initialize(int *argc, char ***argv, const char *database = NULL);
 
+
+
+
+
+        static void Set_Solver_Parameters(std::vector<SolverParameters> &vec);
         /// Finalize the stage of parallel solution.
         /// If MPI was initialized in Solver::Initialize, then it will be finalized.
         /// By this reason, do not use any MPI function after call to this function.

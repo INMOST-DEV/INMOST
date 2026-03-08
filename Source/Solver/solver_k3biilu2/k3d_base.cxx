@@ -564,7 +564,7 @@ namespace k3d
                               const vector < _Int > &_ja, int _n1,
                               vector < _Int > &_ia_asub, vector < _Int > &_ja_asub)
    {
-
+      (void) _n;
       int nzja_loc = (int) _ia[_n1];
 
       _ia_asub.resize (_n1 + 1);
@@ -600,7 +600,7 @@ namespace k3d
                               int _n1, vector < _Int > &_ia_asub,
                               vector < _Int > &_ja_asub, vector < char >&_jachar_asub)
    {
-
+      (void) _n;
       int nzja_loc = (int) _ia[_n1];
 
       _ia_asub.resize (_n1 + 1);
@@ -1840,6 +1840,7 @@ namespace k3d
                          vector < _Flt > &_a_u, double &_sclmin_att, double &_sclmax_att,
                          int &_nmodif, double &_eigmin_att, double &_eigmax_att)
    {
+      (void) _fcttype;
 
 // Compute explicit symm scaling
 
@@ -4125,6 +4126,7 @@ namespace k3d
                              vector < _Flt > &_a_lu, int &_nmodif, double &_eigmin_att,
                              double &_eigmax_att)
    {
+      (void) _fcttype_sch; (void) _tau2_sch;
 
 // Prepare mask arrays
 
@@ -4514,6 +4516,7 @@ namespace k3d
                                      vector < char >&_ja_char_lu)
    {
 
+       (void) _pfout_debug; (void) _fcttype_sch;
 // Prepare mask arrays
 
       vector < _Int > ibegm (_n + 1);
@@ -4783,7 +4786,7 @@ namespace k3d
                                    vector < _Flt > &_a_lu, int &_nmodif,
                                    double &_eigmin_att, double &_eigmax_att)
    {
-
+      (void) _fcttype_sch; (void) _tau2_sch;
 // Prepare mask arrays
 
       int irow_chk = 5;
@@ -8883,6 +8886,7 @@ namespace k3d
                                          int _nimax, int *_imask, CMatrix < _Int,
                                          _Flt > &_a_point)
    {
+      (void) _icycle;
 
 // Open work memory
 
@@ -12951,6 +12955,7 @@ namespace k3d
    template < typename _Int, typename _Flt > void CMatrix < _Int,
       _Flt >::UnPack (int _length, char *_obj)
    {
+      (void) _length;
 
 // Get head data
 
@@ -17172,6 +17177,8 @@ namespace k3d
 #ifdef USE_MPI
       MPI_Comm *pcomm = (MPI_Comm *) _comm;
       MPI_Barrier (*pcomm);
+#else
+       (void)_comm;
 #endif
    }
 
@@ -17187,6 +17194,7 @@ namespace k3d
 
       return nproc;
 #else
+      (void)_comm;
       return 1;
 #endif
    }
@@ -17203,6 +17211,7 @@ namespace k3d
 
       return myid;
 #else
+      (void)_comm;
       return 0;
 #endif
    }
@@ -17216,6 +17225,8 @@ namespace k3d
       MPI_Comm *pcomm = (MPI_Comm *) _comm;
 
       MPI_Send (_buffer, _length, MPI_CHAR, _rank, _msgtag, *(pcomm));
+#else
+       (void)_comm; (void)_rank; (void)_msgtag; (void)_length; (void)_buffer;
 #endif
    }
 
@@ -17231,6 +17242,8 @@ namespace k3d
 
       MPI_Isend (_buffer, _length, MPI_CHAR, _rank, _msgtag, *(pcomm),
                  p_recv_arr + _indrecv);
+#else
+       (void)_comm; (void)_rank; (void)_msgtag; (void)_length; (void)_buffer; (void)_indrecv; (void)_recv_arr;
 #endif
    }
 
@@ -17245,6 +17258,8 @@ namespace k3d
       MPI_Status stat;
 
       MPI_Recv (_buffer, _length, MPI_CHAR, _rank, _msgtag, *(pcomm), &stat);
+#else
+       (void)_comm; (void)_rank; (void)_msgtag; (void)_length; (void)_buffer;
 #endif
    }
 
@@ -17260,6 +17275,8 @@ namespace k3d
 
       MPI_Irecv (_buffer, _length, MPI_CHAR, _rank, _msgtag, *(pcomm),
                  p_recv_arr + _indrecv);
+#else
+       (void)_comm; (void)_rank; (void)_msgtag; (void)_length; (void)_buffer; (void)_indrecv; (void)_recv_arr;
 #endif
    }
 
@@ -17324,6 +17341,8 @@ namespace k3d
       MPI_Status *p_stat_arr = (MPI_Status *) _statarr;
 
       MPI_Waitall (_count, p_recv_arr, p_stat_arr);
+#else
+      (void)_count; (void)_recvarr; (void)_statarr;
 #endif
    }
 
@@ -17375,6 +17394,8 @@ namespace k3d
          }
 
       }
+#else
+      (void)_comm; (void) _Datatype; (void) _Operation; (void) _Length; (void) _Array;
 #endif
    }
 

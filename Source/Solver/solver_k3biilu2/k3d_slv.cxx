@@ -3092,7 +3092,7 @@ namespace k3d
                                      CBMatrix < _Int, _Flt > *_hmatr_arr, CBMatrix < _Int,
                                      _Flt > *_hmatr_symm_arr)
    {
-
+      (void) _blk2hblks;
       int myid = 0;
       int nproc = 1;
 
@@ -3669,7 +3669,7 @@ namespace k3d
                                          _Flt > *_hmatr_arr, CBMatrix < _Int,
                                          _Flt > *_hmatr_symm_arr)
    {
-
+      (void) _blk2hblks;
       int myid = 0;
       int nproc = 1;
 
@@ -6607,7 +6607,7 @@ namespace k3d
                                       int *_nlist_ext_arr, vector < int >*_list_ext_arr,
                                       CBMatrix < _Int, _Flt > *_hmatr_ext_arr)
    {
-
+      (void) _nlist_ext_arr;
       int myid = CMPIDataExchange::GetMyid (_comm);
       int nproc = CMPIDataExchange::GetNproc (_comm);
 
@@ -7553,7 +7553,7 @@ namespace k3d
                                           vector < int >*_list_ext_arr, CBMatrix < _Int,
                                           _Flt > *_hmatr_ext_arr)
    {
-
+      (void) _nlist_ext_arr;
       int myid = CMPIDataExchange::GetMyid (_comm);
       int nproc = CMPIDataExchange::GetNproc (_comm);
 
@@ -12312,6 +12312,7 @@ namespace k3d
                                         vector < long long >&_nzord_new,
                                         CVectorData < int >&_order)
    {
+      (void) _nzord_new;
 
 // Open hmatr
 
@@ -25336,6 +25337,7 @@ namespace k3d
    template < typename _Int, typename _Flt > void CBMatrix < _Int,
       _Flt >::UnPack (long long _length, char *_obj)
    {
+      (void) _length;
 
 // Get head data
 
@@ -25388,7 +25390,7 @@ namespace k3d
    template < typename _Int, typename _Flt > void CBMatrix < _Int,
       _Flt >::UnPack_thr (long long _length, char *_obj)
    {
-
+      (void) _length;
 // Get head data
 
       char *pLoc;
