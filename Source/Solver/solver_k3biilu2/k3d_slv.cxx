@@ -2452,8 +2452,7 @@ namespace k3d
 
       int nz_add_dia = 0;
 
-      _Flt fzero = (_Flt) 0.0e0;
-      (void)fzero;
+      //_Flt fzero = (_Flt) 0.0e0;
 
       for (i = 0; i < nlistblk; i++) {
          jblk = (int) plistblk[i];

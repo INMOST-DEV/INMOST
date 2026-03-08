@@ -1710,8 +1710,7 @@ namespace k3d
         void SplitLUSp (CMatrix < _Int, _Flt > &_AL_sp, CMatrix < _Int, _Flt > &_AU_sp) const
         {
             int nlist_loc = this->GetNlist ();
-            int nzja_loc = this->GetNzja ();
-            (void)nzja_loc;
+            //int nzja_loc = this->GetNzja ();
             const vector < _Int > *pia_alu = this->GetIa ();
             const vector < _Int > *pja_alu = this->GetJa ();
             vector < _Int > *pia_l_sp = _AL_sp.GetIa ();
@@ -1740,8 +1739,7 @@ namespace k3d
         void SymmetrizeSparsitySp (CMatrix < _Int, _Flt > &_asymm) const
         {
             int nlist_loc = this->GetNlist ();
-            int nzja_loc = this->GetNzja ();
-            (void)nzja_loc;
+            //int nzja_loc = this->GetNzja ();
             const vector < _Int > *pia_alu = this->GetIa ();
             const vector < _Int > *pja_alu = this->GetJa ();
             vector < _Int > *pia_alu_symm = _asymm.GetIa ();

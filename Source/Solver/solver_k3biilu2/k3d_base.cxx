@@ -16581,8 +16581,7 @@ namespace k3d
          pnode2ind_new[i] = pnode2ind[inode_old];
       }
 
-      int *pind2node = this->GetInd2Node ();
-      (void)pind2node;
+      //int *pind2node = this->GetInd2Node ();
       int *pind2node_new = _tree_flt.GetInd2Node ();
 
       for (i = 0; i < nnodes_new; i++)
