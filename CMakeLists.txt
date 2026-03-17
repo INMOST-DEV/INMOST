@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.10..4.3)
 project (INMOST)
 
 
@@ -509,7 +509,7 @@ endif()
 
 if(USE_ZLIB)
   if(MSVC)
-    set(ZLIB_STATIC_NAME "static")
+    set(ZLIB_STATIC_NAME "s")
   else(MSVC)
     set(ZLIB_STATIC_NAME "")
   endif(MSVC)
@@ -529,11 +529,11 @@ if(USE_ZLIB)
                                  "-DCMAKE_BUILD_TYPE=Release ")
   ExternalProject_Get_Property(ZLIB install_dir)
   add_library(zlib STATIC IMPORTED)
-  if(UNIX)
+  #if(UNIX)
     set(ZLIB_LIBNAME z)
-  else()
-    set(ZLIB_LIBNAME zlib)
-  endif()
+  #else()
+  #  set(ZLIB_LIBNAME zlib)
+  #endif()
   message("location: ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set_target_properties(zlib PROPERTIES IMPORTED_LOCATION
     ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_LIBNAME}${ZLIB_STATIC_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
