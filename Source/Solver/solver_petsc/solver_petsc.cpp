@@ -409,9 +409,11 @@ const char *SolverConvergedReasonPetsc(KSP *ksp)
 #if PETSC_VERSION_LT(3,19,0)
         case KSP_CONVERGED_CG_NEG_CURVE:
         case KSP_CONVERGED_CG_CONSTRAINED:
+#else
+        case KSP_CONVERGED_NEG_CURVE:
+#endif
             strcpy(reason_str, "converged due to some condition in conjugate gradient method");
             break;
-#endif
         case KSP_CONVERGED_STEP_LENGTH:
             strcpy(reason_str, "converged due to step length");
             break;
