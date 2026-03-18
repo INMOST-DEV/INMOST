@@ -14,9 +14,10 @@ namespace INMOST {
         //TODO
         //may be should find another way to count petsc solvers and finalize them
         static unsigned int petscSolversCount;
-        std::string parametersFile;
+        std::string parametersFile, ksp_type,pc_type,sub_pc_type, ksp_pc_side;
         KSP *ksp;
         Mat *matrix;
+        bool info, ksp_view,mat_view,ksp_monitor;
 
         INMOST_DATA_ENUM_TYPE local_size, global_size;
 

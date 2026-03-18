@@ -43,4 +43,12 @@ void SolverSetOverlapPetsc(KSP *ksp, int levels);
 void SolverSetDropTolerancePetsc(KSP *ksp, double dtol);
 void SolverSetFillLevelPetsc(KSP *ksp, double lfill);
 
+void SolverSetUpSubSolvers(KSP *ksp, std::string sub_pc_type, int sub_ilu_level);
+void SolverSetMatView(Mat *matrix);
+void SolverSetKSPView(KSP *ksp);
+void SolverSetKSPMonitor(KSP *ksp);
+void SolverSetInfo(bool info);
+void SolverSetPCType(KSP *ksp, std::string pc_type);
+void SolverSetKSPType(KSP *ksp, std::string ksp_type);
+void SolverSetPCSide(KSP *ksp, std::string ksp_pc_side);
 #endif //INMOST_NEW_SOLVER_PETSC_H

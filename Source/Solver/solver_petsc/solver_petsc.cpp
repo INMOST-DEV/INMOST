@@ -455,6 +455,103 @@ const char *SolverConvergedReasonPetsc(KSP *ksp)
     return reason_str;
 }
 
+// Added for GeRa
+void SolverSetPCType(KSP *ksp, std::string pc_type){
+    PetscErrorCode ierr;
+    PCType type = static_cast<PCType>(pc_type.c_str());
+    PC pc;
+    ierr = KSPGetPC(*ksp, &pc);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    ierr = PCSetType(pc,type);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+void SolverSetInfo(bool info){
+    PetscErrorCode ierr;
+    PetscBool flag = (info)?PETSC_TRUE:PETSC_FALSE;
+#if PETSC_VERSION_GE(3,13,0) // added by INK for compatibility
+    ierr = PetscInfoAllow(flag);
+#else
+    ierr = PetscInfoAllow(flag,NULL);
+#endif
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+void SolverSetKSPMonitor(KSP *ksp){
+    PetscErrorCode ierr;
+#if PETSC_VERSION_GE(3,13,0) // added by INK for compatibility
+    //ierr = KSPMonitorSet(*ksp,KSPMonitorDefault,PETSC_NULLPTR,PETSC_NULLPTR);
+	ierr = KSPMonitorSetFromOptions(*ksp, "-ksp_monitor", "preconditioned_residual", NULL);
+#else
+    ierr = KSPMonitorSet(*ksp,KSPMonitorDefault,NULL,0);
+#endif
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+void SolverSetKSPView(KSP *ksp){
+    PetscErrorCode ierr;
+    ierr = KSPView(*ksp,PETSC_VIEWER_STDOUT_WORLD );
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+void SolverSetMatView(Mat *matrix){
+    PetscErrorCode ierr;
+    ierr = MatView(*matrix,PETSC_VIEWER_STDOUT_WORLD);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+void SolverSetUpSubSolvers(KSP *ksp, std::string sub_pc_type, int sub_ilu_level){
+    PC pc, subpc;
+    PetscErrorCode ierr;
+    PetscInt  nlocal,first;
+    KSP       *subksp;
+    PCType pc_type;
+    ierr = KSPGetPC(*ksp, &pc);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    ierr = PCGetType(pc, &pc_type);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    ierr =KSPSetUp(*ksp);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+
+    if (!strcmp(pc_type, "asm"))
+    {
+        ierr = PCASMGetSubKSP(pc,&nlocal,&first,&subksp);
+        if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    }
+    else if (!strcmp(pc_type, "gasm"))
+    {
+        ierr = PCGASMGetSubKSP(pc,&nlocal,&first,&subksp);
+        if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+    }
+    else throw INMOST::ErrorInSolver;
+
+    for (int i=0; i<nlocal; i++) {
+
+      ierr = KSPGetPC(subksp[i],&subpc);
+      if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+      if(sub_pc_type == "ilu"){
+        ierr =PCSetType(subpc,PCILU);
+        if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+        ierr = PCFactorSetLevels(subpc,static_cast<PetscInt>(sub_ilu_level));
+        if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+      }
+      else if(sub_pc_type == "lu")
+          PCSetType(subpc,PCLU);
+      else{
+          std::cout<<"wrong sub_pc_type"<<std::endl;
+          throw INMOST::ErrorInSolver;
+      }
+   }
+}
+void SolverSetKSPType(KSP *ksp, std::string ksp_type){
+    PetscErrorCode ierr;
+    KSPType type = static_cast<KSPType>(ksp_type.c_str());
+    ierr = KSPSetType(*ksp, type);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
+
+//KSPSetPCSide(KSP ksp,PCSide side)
+void SolverSetPCSide(KSP *ksp, std::string ksp_pc_side){
+    PetscErrorCode ierr;
+    PCSide side = ksp_pc_side=="left"?PC_LEFT:PC_RIGHT;
+    ierr = KSPSetPCSide(*ksp,side);
+    if (ierr != PETSC_SUCCESS) throw INMOST::ErrorInSolver;
+}
 #endif
 #endif
 

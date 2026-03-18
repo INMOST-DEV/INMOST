@@ -1,3 +1,6 @@
+#include "inmost_common.h"
+#if defined(USE_SOLVER)
+#if defined(USE_SOLVER_PETSC)
 #include "SolverPETSc.h"
 
 namespace INMOST {
@@ -16,6 +19,14 @@ namespace INMOST {
         dtol = 1.0e+100;
         drop_tolerance = 0.005;
         fill_level = 3;
+        ksp_type ="bcgs";
+        pc_type = "asm";
+        sub_pc_type = "ilu";
+        ksp_pc_side = "left";
+        info = false;
+        ksp_view = false;
+        mat_view = false;
+        ksp_monitor= false;
     }
 
     SolverInterface *SolverPETSc::Copy(const SolverInterface *other) {
@@ -285,3 +296,5 @@ namespace INMOST {
     }
 
 }
+#endif
+#endif
