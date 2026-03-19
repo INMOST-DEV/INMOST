@@ -474,7 +474,15 @@ namespace INMOST
 				else if(c*d < -eps)
 					vm++;
 				else
-					vz++;
+				{
+					real eps1 = eps * f.Area();
+					if (c * d > eps1)
+						vp++;
+					else if (c * d < -eps1)
+						vm++;
+					else
+						vz++;
+				}
 			}
 			if (rev)
 			{
