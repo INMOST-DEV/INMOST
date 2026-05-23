@@ -5,13 +5,13 @@
 #endif
 // temporary fix for GeRa
 
-bool IsMaster() {
-    int rank = 0;
-#ifdef USE_MPI
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
-    return rank == 0;
-}
+//bool IsMaster() {
+//    int rank = 0;
+//#ifdef USE_MPI
+//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//#endif
+//    return rank == 0;
+//}
 
 namespace INMOST {
 
