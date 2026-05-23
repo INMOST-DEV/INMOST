@@ -167,12 +167,20 @@ namespace INMOST {
         MatrixFinalizePetsc(matrix);
 
         if (parametersFile == "") {
+
+            SolverSetKSPType(ksp, ksp_type);
+            SolverSetPCType(ksp,pc_type);
+            SolverSetPCSide(ksp,ksp_pc_side);
             SolverSetDropTolerancePetsc(ksp, drop_tolerance);
             SolverSetFillLevelPetsc(ksp, fill_level);
             SolverSetOverlapPetsc(ksp, schwartz_overlap);
+            KSPConvergedDefaultSetUIRNorm(*ksp);
         }
 
         SolverSetMatrixPetsc(ksp, matrix, modified_pattern, OldPreconditioner);
+        if ((parametersFile == "")&& (pc_type == "asm")) {
+            SolverSetUpSubSolvers(ksp,sub_pc_type,static_cast<int>(fill_level)); //PLEASE VERIFY CONVERSION
+        }
     }
 
     bool SolverPETSc::Solve(Sparse::Vector &RHS, Sparse::Vector &SOL) {
@@ -206,7 +214,12 @@ namespace INMOST {
         if (parametersFile == "") {
             SolverSetTolerancesPetsc(ksp, rtol, atol, dtol, maximum_iterations);
         }
-
+        if (parametersFile == "") {
+            SolverSetInfo(info);
+            if(ksp_monitor) SolverSetKSPMonitor(ksp);
+            if(ksp_view) SolverSetKSPView(ksp);
+            if(mat_view) SolverSetMatView(matrix);
+        }
         bool result = SolverSolvePetsc(ksp, rhs, solution);
         if (result) {
             VectorLoadPetsc(solution, local_size, positions, values);
@@ -256,13 +269,21 @@ namespace INMOST {
 
     void SolverPETSc::SetParameter(std::string name, std::string value) {
         const char *val = value.c_str();
-        if (name == "maximum_iterations") maximum_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "schwartz_overlap") schwartz_overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
-        else if (name == "absolute_tolerance") atol = atof(val);
-        else if (name == "relative_tolerance") rtol = atof(val);
-        else if (name == "divergence_tolerance") dtol = atof(val);
+        if ((name == "maximum_iterations")|| (name == "ksp_max_it")) maximum_iterations = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if ((name == "schwartz_overlap")|| (name == "pc_asm_overlap")) schwartz_overlap = static_cast<INMOST_DATA_ENUM_TYPE>(atoi(val));
+        else if ((name == "absolute_tolerance")|| (name == "ksp_atol")) atol = atof(val);
+        else if ((name == "relative_tolerance")|| (name == "ksp_rtol")) rtol = atof(val);
+        else if ((name == "divergence_tolerance")|| (name == "ksp_divtol")) dtol = atof(val);
         else if (name == "drop_tolerance") drop_tolerance = atof(val);
-        else if (name == "fill_level") fill_level = atof(val);
+        else if ((name == "fill_level")|| (name == "sub_pc_factor_levels")) fill_level = atof(val);
+        else if (name == "ksp_type") ksp_type = value;
+        else if ( name == "pc_type") pc_type = value;
+        else if (name == "sub_pc_type") sub_pc_type = value;
+        else if (name == "ksp_pc_side") ksp_pc_side = value;
+        else if (name == "info") info = true;
+        else if (name == "ksp_view") ksp_view = true;
+        else if (name == "ksp_monitor") ksp_monitor = true;
+        else if (name == "mat_viev") mat_view = true;
 #if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
 #endif
