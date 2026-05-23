@@ -979,9 +979,9 @@ namespace INMOST
 
 		
 
+#if defined(USE_MPI)
 		static void RecvBigBuffer(void* buffer, INMOST_DATA_BIG_ENUM_TYPE dsize, int orig, int tag, INMOST_MPI_Comm comm)
 		{
-#if defined(USE_MPI)
 			INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0, wdsize = sizeof(char) * dsize;
 			int t = 0;
 			while (shift != wdsize)
@@ -990,12 +990,16 @@ namespace INMOST
 				MPI_Recv(static_cast<char*>(buffer) + shift, (int)(sizeof(char) * chunk), MPI_CHAR, orig, tag + t++, comm, MPI_STATUS_IGNORE);
 				shift += chunk;
 			}
-#endif
 		}
+#else
+		static void RecvBigBuffer(void*, INMOST_DATA_BIG_ENUM_TYPE, int, int, INMOST_MPI_Comm)
+		{ }
+#endif
 
+
+#if defined(USE_MPI)
 		static void SendBigBuffer(void* buffer, INMOST_DATA_BIG_ENUM_TYPE dsize, int dest, int tag, INMOST_MPI_Comm comm)
 		{
-#if defined(USE_MPI)
 			INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0, wdsize = sizeof(char) * dsize;
 			int t = 0;
 			while (shift != wdsize)
@@ -1004,9 +1008,11 @@ namespace INMOST
 				MPI_Send(static_cast<char*>(buffer) + shift, (int)(sizeof(char) * chunk), MPI_CHAR, dest, tag + t++, comm);
 				shift += chunk;
 			}
-#endif
 		}
-
+#else
+		static void SendBigBuffer(void*, INMOST_DATA_BIG_ENUM_TYPE, int, int, INMOST_MPI_Comm)
+		{ }
+#endif
 
 		void     Vector::SaveBinary(std::string file)
 		{
@@ -1741,12 +1747,13 @@ namespace INMOST
 		void     Matrix::LoadBinary(std::string file)
 		{
 			int rank = 0, size = 1, rsize = 1, compr[3] = { 0,0,0 }, npart = 1, spart = 0;
-			INMOST_DATA_BIG_ENUM_TYPE matsize = 0, matshift = 0, sdsize[3];
+			INMOST_DATA_BIG_ENUM_TYPE matsize = 0, matshift = 0;
 			std::vector< INMOST_DATA_BIG_ENUM_TYPE> matsizes, nnzsizes;
 			std::vector<INMOST_DATA_ENUM_TYPE> ia;
 			std::vector<INMOST_DATA_ENUM_TYPE> ja;
 			std::vector<INMOST_DATA_REAL_TYPE> va;
 #if defined(USE_MPI)
+			INMOST_DATA_BIG_ENUM_TYPE sdsize[3];
 			MPI_Comm_rank(GetCommunicator(), &rank);
 			MPI_Comm_size(GetCommunicator(), &size);
 #endif

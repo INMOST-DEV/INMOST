@@ -8071,6 +8071,7 @@ namespace INMOST
 		(void) layers;
 		(void) bridge;
 		(void) marker;
+		(void) delete_ghost;
 #endif
 		EXIT_FUNC();
 

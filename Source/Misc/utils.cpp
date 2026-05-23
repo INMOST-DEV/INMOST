@@ -71,6 +71,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_SUM, comm);
 #else//USE_MPI
 		(void)input;
+		(void)comm;
 #endif//USE_MPI
 		return output;
 	}
@@ -81,6 +82,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_SUM, comm);
 #else//USE_MPI
 		(void)input;
+		(void)comm;
 #endif//USE_MPI
 		return output;
 	}
@@ -91,6 +93,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_SUM, comm);
 #else//USE_MPI
 		(void)input;
+		(void)comm;
 #endif//USE_MPI
 		return output;
 	}
@@ -106,6 +109,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 
 	}
@@ -121,6 +125,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	void Integrate(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
@@ -135,6 +140,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	INMOST_DATA_INTEGER_TYPE ExclusiveSum(INMOST_DATA_INTEGER_TYPE input, INMOST_MPI_Comm comm)
@@ -145,6 +151,7 @@ namespace INMOST {
 		output -= input;
 #else//USE_MPI
 		(void)input;
+		(void)comm;
 #endif//USE_MPI
 		return output;
 	}
@@ -156,6 +163,7 @@ namespace INMOST {
 		output -= input;
 #else//USE_MPI
 		(void)input;
+		(void)comm;
 #endif//USE_MPI
 		return output;
 	}
@@ -166,6 +174,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_MAX, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -176,6 +185,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MAX, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -186,6 +196,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MAX, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -201,6 +212,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	void AggregateMax(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
@@ -215,6 +227,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	void AggregateMax(INMOST_DATA_INTEGER_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
@@ -229,6 +242,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	INMOST_DATA_REAL_TYPE AggregateMin(INMOST_DATA_REAL_TYPE input, INMOST_MPI_Comm comm)
@@ -238,6 +252,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_REAL_TYPE, MPI_MIN, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -248,6 +263,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_MIN, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -258,6 +274,7 @@ namespace INMOST {
 		MPI_Allreduce(&input, &output, 1, INMOST_MPI_DATA_INTEGER_TYPE, MPI_MIN, comm);
 #else //USE_MPI
 		(void)input;
+		(void)comm;
 #endif //USE_MPI
 		return output;
 	}
@@ -273,6 +290,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 	}
 	void AggregateMin(INMOST_DATA_ENUM_TYPE* input, INMOST_DATA_ENUM_TYPE size, INMOST_MPI_Comm comm)
@@ -287,6 +305,7 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 
 	}
@@ -302,12 +321,13 @@ namespace INMOST {
 #else//USE_MPI
 		(void)input;
 		(void)size;
+		(void)comm;
 #endif//USE_MPI
 
 	}
+#if defined(USE_ZLIB)
 	bool zcompress(const void* buffer, size_t dsize, void*& buffer_out, size_t& dsize_out)
 	{
-#if defined(USE_ZLIB)
 		uLongf bufsize = compressBound((uLongf)dsize);
 		void* zbuffer = malloc(bufsize);
 		if (zbuffer)
@@ -324,13 +344,16 @@ namespace INMOST {
 		}
 		else std::cout << __FILE__ << ":" << __LINE__ << " allocation of " << bufsize << " failed" << std::endl;
 		return false;
-#else
-		return false;
-#endif
 	}
+#else
+	bool zcompress(const void*, size_t, void*&, size_t&)
+	{
+		return false;
+	}
+#endif
+#if defined(USE_ZLIB)
 	bool zuncompress(const void* zbuffer, size_t zdsize, void* buffer_out, size_t& dsize_out)
 	{
-#if defined(USE_ZLIB)
 		uLongf outsize = (uLongf)dsize_out, insize = (uLongf)zdsize;
 		int res = uncompress(static_cast<Bytef*>(buffer_out), &outsize, static_cast<const Bytef*>(zbuffer), insize);
 		if (res != Z_OK)
@@ -341,8 +364,11 @@ namespace INMOST {
 		if (dsize_out != outsize)
 			std::cout << "Unexpected uncompressed data size: " << outsize << " expected: " << dsize_out << std::endl;
 		return true;
-#else
-		return false;
-#endif
 	}
+#else
+	bool zuncompress(const void*, size_t, void*, size_t&)
+	{
+		return false;
+	}
+#endif
 }

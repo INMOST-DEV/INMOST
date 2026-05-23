@@ -1425,7 +1425,7 @@ namespace INMOST
 		bool Solve(Sparse::Vector& RHS, Sparse::Vector& SOL)
 		{
 			assert(isInitialized());
-			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb = 0.0, r0_norm = 0;
+			INMOST_DATA_REAL_TYPE tempa = 0.0, tempb = 0.0;
 			INMOST_DATA_ENUM_TYPE vbeg, vend, vlocbeg, vlocend;
 			INMOST_DATA_INTEGER_TYPE ivbeg, ivend, ivlocbeg, ivlocend;
 			INMOST_DATA_REAL_TYPE rho = 1, rho1 = 0, alpha = 1, beta = 0, omega = 1;
