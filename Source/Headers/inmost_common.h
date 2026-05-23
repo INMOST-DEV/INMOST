@@ -427,4 +427,23 @@ __INLINE bool __isbad(double x) { return __isnan__(x) || __isinf__(x); }
 size_t getPeakRSS();
 size_t getCurrentRSS();
 
+static inline bool IsMaster()
+{
+#if defined(USE_MPI)
+    int flag = 0;
+    MPI_Initialized(&flag);
+    if (!flag) return true; //MPI_Init(NULL, NULL);
+    int rank = 0;
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+    if (rank == 0)
+        return true;
+    else
+        return false;
+#else
+    return true;
+#endif
+}
+#if !defined(Cout)
+#    define  Cout if (IsMaster()) std::cout
+#endif
 #endif //INMOST_COMMON_INCLUDED
