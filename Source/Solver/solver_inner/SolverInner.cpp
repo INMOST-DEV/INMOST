@@ -83,9 +83,10 @@ namespace INMOST {
         else if (name == "divergence_tolerance") dtol = atof(val);
         else if (name == "null_space")
         {
-            if (val == "TRUE" || val == "true")
+            std::string value = val;
+            if (value == "TRUE" || value == "true")
                 null_space = true;
-            else if (val == "FALSE" || val == "false")
+            else if (value == "FALSE" || value == "false")
                 null_space = false;
             else null_space = atoi(val);
         }
