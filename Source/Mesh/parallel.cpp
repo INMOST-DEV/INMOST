@@ -7258,6 +7258,7 @@ namespace INMOST
 
 	void Mesh::CheckOrientData(std::string file, int line)
 	{
+		(void)file, (void)line;
 #if !defined(NDEBUG)
 		if (HaveTag("CHECK_ORIENT_TAG_NORMAL"))
 		{
@@ -7406,6 +7407,7 @@ namespace INMOST
 	
 	void Mesh::CheckOwners(std::string file, int line)
 	{
+		(void)file, (void)line;
 #if !defined(NDEBUG)
 		ENTER_FUNC();
 		int bad = 0;
@@ -7453,6 +7455,7 @@ namespace INMOST
 
 	void Mesh::CheckGIDs(std::string file, int line, ElementType mask)
 	{
+		(void)file, (void)line, (void)mask;
 #if !defined(NDEBUG)
 		ENTER_FUNC();
 		ElementType exch = NONE;
