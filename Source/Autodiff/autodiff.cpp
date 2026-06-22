@@ -169,6 +169,7 @@ namespace INMOST
 	void Automatizator::EnumerateEntries(bool blocks)
 	{
 		first_num = last_num = 0;
+		const ElementType etypes[6] = { CELL, FACE, EDGE, NODE, ESET, MESH };
 		const ElementType paralleltypes = NODE | EDGE | FACE | CELL | ESET;
 		
 		for (INMOST_DATA_ENUM_TYPE it = 0; it < reg_blocks.size(); ++it) if( act_blocks[it] )
@@ -191,8 +192,10 @@ namespace INMOST
 
 			for (std::set<Mesh*>::iterator mit = meshes.begin(); mit != meshes.end(); ++mit)
 			{
-				for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
+				//for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
+				for(int k = 0; k < 6; ++k)
 				{
+					ElementType etype = etypes[k];
 					for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
 					{
 						Element jt = (*mit)->ElementByLocalID(etype, kt);
@@ -220,15 +223,20 @@ namespace INMOST
 				AbstractEntry& b = *reg_blocks[it];
 				TagInteger offset_tag = b.GetOffsetTag();
 				Mesh* m = offset_tag.GetMeshLink();
-				for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
+				//for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
+				for (int k = 0; k < 6; ++k)
 				{
-					for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
+					ElementType etype = etypes[k];
+					if (b.GetElementType() & etype)
 					{
-						Element jt = m->ElementByLocalID(etype, kt);
-						if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
+						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
 						{
-							offset_tag[jt] = last_num;
-							last_num += b.Size(jt);
+							Element jt = m->ElementByLocalID(etype, kt);
+							if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
+							{
+								offset_tag[jt] = last_num;
+								last_num += b.Size(jt);
+							}
 						}
 					}
 				}
@@ -249,8 +257,10 @@ namespace INMOST
 			{
 				for (std::set<Mesh*>::iterator mit = meshes.begin(); mit != meshes.end(); ++mit)
 				{
-					for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
+					//for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype))
+					for (int k = 0; k < 6; ++k)
 					{
+						ElementType etype = etypes[k];
 						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < (*mit)->LastLocalID(etype); ++kt) if ((*mit)->isValidElement(etype, kt))
 						{
 							Element jt = (*mit)->ElementByLocalID(etype, kt);
@@ -276,14 +286,19 @@ namespace INMOST
 					AbstractEntry& b = *reg_blocks[it];
 					TagInteger offset_tag = b.GetOffsetTag();
 					Mesh* m = offset_tag.GetMeshLink();
-					for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
+					//for (ElementType etype = MESH; etype >= NODE; etype = PrevElementType(etype)) if (b.GetElementType() & etype)
+					for (int k = 0; k < 6; ++k)
 					{
-						exch_mask |= etype;
-						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
+						ElementType etype = etypes[k];
+						if (b.GetElementType() & etype)
 						{
-							Element jt = m->ElementByLocalID(etype, kt);
-							if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
-								offset_tag[jt] += first_num;
+							exch_mask |= etype;
+							for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
+							{
+								Element jt = m->ElementByLocalID(etype, kt);
+								if ((!(etype & paralleltypes) || (jt.GetStatus() != Element::Ghost)) && b.isValid(jt) && b.Size(jt))
+									offset_tag[jt] += first_num;
+							}
 						}
 					}
 				}
@@ -303,20 +318,25 @@ namespace INMOST
 				AbstractEntry & b = *reg_blocks[it];
 				TagInteger offset_tag = b.GetOffsetTag();
 				Mesh * m = offset_tag.GetMeshLink();
-				for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( b.GetElementType() & etype )
+				//for (ElementType etype = NODE; etype <= MESH; etype = NextElementType(etype)) if( b.GetElementType() & etype )
+				for (int k = 0; k < 6; ++k)
 				{
-					for(INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if( m->isValidElement(etype,kt) )
+					ElementType etype = etypes[k];
+					if (b.GetElementType() & etype)
 					{
-						Element jt = m->ElementByLocalID(etype,kt);
-						if ((!(etype & paralleltypes) || (jt.GetStatus() == Element::Ghost)) && b.isValid(jt) && b.Size(jt))
+						for (INMOST_DATA_INTEGER_TYPE kt = 0; kt < m->LastLocalID(etype); ++kt) if (m->isValidElement(etype, kt))
 						{
-							for(INMOST_DATA_ENUM_TYPE q = 0; q < b.MatrixSize(jt); ++q)
+							Element jt = m->ElementByLocalID(etype, kt);
+							if ((!(etype & paralleltypes) || (jt.GetStatus() == Element::Ghost)) && b.isValid(jt) && b.Size(jt))
 							{
-								INMOST_DATA_ENUM_TYPE ind =  b.Index(jt,q);
-								if( ind != ENUMUNDEF ) 
+								for (INMOST_DATA_ENUM_TYPE q = 0; q < b.MatrixSize(jt); ++q)
 								{
-									if( ind < first_num ) Pre.insert(ind);
-									if( ind >= last_num ) Post.insert(ind);
+									INMOST_DATA_ENUM_TYPE ind = b.Index(jt, q);
+									if (ind != ENUMUNDEF)
+									{
+										if (ind < first_num) Pre.insert(ind);
+										if (ind >= last_num) Post.insert(ind);
+									}
 								}
 							}
 						}
