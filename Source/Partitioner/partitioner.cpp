@@ -279,6 +279,9 @@ namespace INMOST
 			case INNER_KMEANS:
 				package = 3;
 				break;
+			case INNER_SKMEANS:
+				package = 8;
+				break;
 			case MetisRec:
 				package = 4;
 				break;
@@ -1379,19 +1382,33 @@ namespace INMOST
 				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
 			}
 #if defined(USE_OMP)
-#pragma omp parallel for			
+#pragma omp parallel
 #endif
-			for(idx q = 0; q < total_points; ++q)
 			{
-				Cell n = m->CellByLocalID(points_node[q]);
-				real cnt[3];
-				n->Centroid(cnt);
-				points_center[q*3+0] = cnt[0];
-				points_center[q*3+1] = cnt[1];
-				points_center[q*3+2] = cnt[2];
-				cluster_center[rank*3+0] += cnt[0];
-				cluster_center[rank*3+1] += cnt[1];
-				cluster_center[rank*3+2] += cnt[2];
+				real local_sum[3] = {0,0,0};
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for(idx q = 0; q < total_points; ++q)
+				{
+					Cell n = m->CellByLocalID(points_node[q]);
+					real cnt[3];
+					n->Centroid(cnt);
+					points_center[q*3+0] = cnt[0];
+					points_center[q*3+1] = cnt[1];
+					points_center[q*3+2] = cnt[2];
+					local_sum[0] += cnt[0];
+					local_sum[1] += cnt[1];
+					local_sum[2] += cnt[2];
+				}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+				{
+					cluster_center[rank*3+0] += local_sum[0];
+					cluster_center[rank*3+1] += local_sum[1];
+					cluster_center[rank*3+2] += local_sum[2];
+				}
 			}
 			
 			real vmax = std::numeric_limits<real>::max();
@@ -1789,6 +1806,609 @@ namespace INMOST
 				mat[m->CellByLocalID(points_node[j])] = points_cluster[j];
 			//m->ExchangeData(mat,CELL,0);
 		}
+		if( package == 8 ) //SKMEANS (stable K-means)
+		{
+			typedef INMOST_DATA_REAL_TYPE real;
+			typedef INMOST_DATA_INTEGER_TYPE idx;
+			INMOST_MPI_Type MPI_REALT = INMOST_MPI_DATA_REAL_TYPE;
+			INMOST_MPI_Type MPI_IDXT = INMOST_MPI_DATA_INTEGER_TYPE;
+			idx total_points = 0;
+			int K = (int)m->GetProcessorsNumber(), rank = (int)m->GetProcessorRank(); //number of clusters
+			//std::cout << "Start K-means on " << m->GetProcessorRank() << " clusters " << K << std::endl;
+			int max_iterations = 100;
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:total_points)
+#endif
+			for(idx q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
+			{
+				Cell n = m->CellByLocalID(q);
+				if( n->GetStatus() != Element::Ghost ) total_points++;
+			}
+			std::vector< idx > points_node(total_points);
+			std::vector< real > points_center(std::max(total_points*3,1));
+			std::vector< idx > points_cluster(total_points,-1);
+			std::vector< real > cluster_center(K*3,0.0);
+			std::vector< real > cluster_center_old(K*3);
+			std::vector< idx > cluster_npoints(K,0);
+			std::vector< real > cluster_weight(K,1/(real)K);
+			std::vector< real > cluster_shift(K*3,0);
+#if defined(USE_MPI)
+			std::vector< real > cluster_center_tmp(K*3);
+			std::vector< idx > cluster_npoints_tmp(K);
+#endif
+			
+			idx k = 0;
+			for(idx q = 0; q < m->CellLastLocalID(); ++q) if( m->isValidCell(q) )
+			{
+				Cell n = m->CellByLocalID(q);
+				if( n->GetStatus() != Element::Ghost ) points_node[k++] = n->LocalID();
+			}
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+			{
+				real local_sum[3] = {0,0,0};
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+				for(idx q = 0; q < total_points; ++q)
+				{
+					Cell n = m->CellByLocalID(points_node[q]);
+					real cnt[3];
+					n->Centroid(cnt);
+					points_center[q*3+0] = cnt[0];
+					points_center[q*3+1] = cnt[1];
+					points_center[q*3+2] = cnt[2];
+					local_sum[0] += cnt[0];
+					local_sum[1] += cnt[1];
+					local_sum[2] += cnt[2];
+				}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+				{
+					cluster_center[rank*3+0] += local_sum[0];
+					cluster_center[rank*3+1] += local_sum[1];
+					cluster_center[rank*3+2] += local_sum[2];
+				}
+			}
+			
+			real vmax = std::numeric_limits<real>::max();
+			real vmin =-std::numeric_limits<real>::max();
+			real pmax[3] = {vmin,vmin,vmin};
+			real pmin[3] = {vmax,vmax,vmax};
+			
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+			{
+				real pmaxl[3] = {vmin,vmin,vmin};
+				real pminl[3] = {vmax,vmax,vmax};
+#if defined(USE_OMP)
+#pragma omp	for
+#endif
+				for(int q = 0; q < total_points; ++q)
+				{
+					Cell n = m->CellByLocalID(points_node[q]);
+					pmaxl[0] = std::max(pmaxl[0],points_center[q*3+0]);
+					pmaxl[1] = std::max(pmaxl[1],points_center[q*3+1]);
+					pmaxl[2] = std::max(pmaxl[2],points_center[q*3+2]);
+					pminl[0] = std::min(pminl[0],points_center[q*3+0]);
+					pminl[1] = std::min(pminl[1],points_center[q*3+1]);
+					pminl[2] = std::min(pminl[2],points_center[q*3+2]);
+				}
+#if defined(USE_OMP)
+#pragma omp	critical
+#endif
+				{
+					pmax[0] = std::max(pmax[0],pmaxl[0]);
+					pmax[1] = std::max(pmax[1],pmaxl[1]);
+					pmax[2] = std::max(pmax[2],pmaxl[2]);
+					pmin[0] = std::min(pmin[0],pminl[0]);
+					pmin[1] = std::min(pmin[1],pminl[1]);
+					pmin[2] = std::min(pmin[2],pminl[2]);
+				}
+			}
+			m->AggregateMax(pmax,3);
+			m->AggregateMin(pmin,3);
+			
+			real mesh_dist = (pmax[0]-pmin[0])*(pmax[0]-pmin[0]) + (pmax[1]-pmin[1])*(pmax[1]-pmin[1]) + (pmax[2]-pmin[2])*(pmax[2]-pmin[2]);
+			mesh_dist /= (real)K*3.0;
+			
+			//mesh_dist *= 10;
+			/*
+			if( m->GetProcessorRank() == 0)
+			{
+				std::cout << "mesh dist " << mesh_dist;
+				std::cout << " " << pmin[0] << ":" << pmax[0];
+				std::cout << " " << pmin[1] << ":" << pmax[1];
+				std::cout << " " << pmin[2] << ":" << pmax[2];
+				std::cout << " K " << K << std::endl;
+			}
+			*/
+#if defined(USE_MPI)
+			cluster_npoints[rank] = total_points;
+			MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_REALT,MPI_SUM,MPI_COMM_WORLD);
+			MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
+			cluster_center.swap(cluster_center_tmp);
+			cluster_npoints.swap(cluster_npoints_tmp);
+#endif
+			
+			for(int i = 0; i < K; ++i)
+			{
+				if( cluster_npoints[i] > 0 )
+				{
+					cluster_center[i*3+0] /= (real) cluster_npoints[i];
+					cluster_center[i*3+1] /= (real) cluster_npoints[i];
+					cluster_center[i*3+2] /= (real) cluster_npoints[i];
+				}
+			}
+			
+			idx total_global_points = total_points;
+#if defined(USE_MPI)
+			std::vector<int> displs(m->GetProcessorsNumber());
+			std::vector<int> counts(m->GetProcessorsNumber());
+			std::vector<idx> npoints(m->GetProcessorsNumber());
+			total_global_points = 0;
+			idx total_local_points = 0;
+			bool balance = false;
+			MPI_Allgather(&total_points,1,MPI_IDXT,&npoints[0],1,MPI_IDXT,MPI_COMM_WORLD);
+			double imbalance = 1;
+			for(int k = 0; k < (int) m->GetProcessorsNumber(); ++k)
+			{
+				for(int l = k+1; l < (int) m->GetProcessorsNumber(); ++l)
+				{
+					imbalance = std::max(imbalance,(npoints[k]+1.0e-15)/(npoints[l]+1.0e-15));
+					imbalance = std::max(imbalance,(npoints[l]+1.0e-15)/(npoints[k]+1.0e-15));
+				}
+				total_global_points += npoints[k];
+			}
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Imbalance is " << imbalance << std::endl;
+			if( imbalance > 1.2 )
+				balance = true;
+			if( balance )//redistribute points
+			{
+				total_local_points = (idx)floor((double)total_global_points/(double)m->GetProcessorsNumber());
+				//std::cout << total_global_points << " " << total_local_points << " " << m->GetProcessorRank() << " " <<  total_global_points - (m->GetProcessorsNumber()-1)*total_local_points << std::endl;
+				
+				std::vector<real> points_center_global(m->GetProcessorRank() == 0 ? total_global_points*3 : 1);
+				displs[0] = 0;
+				counts[0] = npoints[0]*3;
+				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
+				{
+					displs[k] = displs[k-1] + counts[k-1];
+					counts[k] = npoints[k]*3;
+				}
+				MPI_Gatherv(&points_center[0],total_points*3,MPI_REALT,&points_center_global[0],&counts[0],&displs[0],MPI_REALT,0,MPI_COMM_WORLD);
+				displs[0] = 0;
+				counts[0] = total_local_points*3;
+				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
+				{
+					displs[k] = displs[k-1] + counts[k-1];
+					counts[k] = total_local_points*3;
+				}
+				counts.back() = total_global_points*3 - displs.back();
+				total_points = counts[m->GetProcessorRank()]/3;
+				points_center.resize(total_points*3);
+				MPI_Scatterv(&points_center_global[0],&counts[0],&displs[0],MPI_REALT,&points_center[0],total_points*3,MPI_REALT,0,MPI_COMM_WORLD);
+				points_cluster.resize(total_points,-1);
+			}
+#endif
+			
+			
+			
+			
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Global number of points " << total_global_points << std::endl;
+			//std::cout << " local points on " << m->GetProcessorRank() << " is " << total_points << std::endl;
+			
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Init clusters" << std::endl;
+			
+			// choose K distinct centers from real cell centroids when possible (N >= K).
+			// Avoid sampling the bounding box, which can place centers outside the mesh.
+			{
+				int nproc = (int)m->GetProcessorsNumber();
+				std::vector<idx> pts_per_rank(nproc, 0);
+#if defined(USE_MPI)
+				MPI_Allgather(&total_points,1,MPI_IDXT,&pts_per_rank[0],1,MPI_IDXT,MPI_COMM_WORLD);
+#else
+				pts_per_rank[0] = total_points;
+#endif
+				srand(0);
+				for(int i = 0; i < K; i++) if( cluster_npoints[i] == 0 )
+				{
+					real seed[3] = {0,0,0};
+					if( total_global_points >= K )
+					{
+						int picker = 0;
+						for(int t = 0; t < nproc; ++t)
+						{
+							int r = (i + t) % nproc;
+							if( pts_per_rank[r] > 0 ) { picker = r; break; }
+						}
+						if( rank == picker && total_points > 0 )
+						{
+							int index_point = -1;
+							for(int attempt = 0; attempt < total_points; ++attempt)
+							{
+								int cand = rand() % total_points;
+								if( points_cluster[cand] == -1 )
+								{
+									index_point = cand;
+									break;
+								}
+							}
+							if( index_point < 0 )
+								index_point = rand() % total_points;
+							seed[0] = points_center[index_point*3+0];
+							seed[1] = points_center[index_point*3+1];
+							seed[2] = points_center[index_point*3+2];
+							points_cluster[index_point] = i;
+						}
+#if defined(USE_MPI)
+						MPI_Bcast(seed,3,MPI_REALT,picker,MPI_COMM_WORLD);
+#endif
+						cluster_center[i*3+0] = seed[0];
+						cluster_center[i*3+1] = seed[1];
+						cluster_center[i*3+2] = seed[2];
+						cluster_npoints[i] = 1;
+					}
+					else
+					{
+						// Not enough cells for K non-empty parts — keep bbox fallback.
+						cluster_center[i*3+0] = (pmax[0] - pmin[0])*rand()/RAND_MAX + pmin[0];
+						cluster_center[i*3+1] = (pmax[1] - pmin[1])*rand()/RAND_MAX + pmin[1];
+						cluster_center[i*3+2] = (pmax[2] - pmin[2])*rand()/RAND_MAX + pmin[2];
+						cluster_npoints[i] = 1;
+					}
+				}
+			}
+			
+			//~ if( m->GetProcessorRank() == 0 ) 
+				//~ std::cout << "init " << std::endl;
+			//~ for(int i = 0; i < K; i++)
+			//~ {
+				//~ if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << "," << cluster_npoints[i] << " , " << cluster_weight[i] << ") " << std::endl;
+			//~ }
+			
+			//if( m->GetProcessorRank() == 0 )
+			//	std::cout << "Start clustering" << std::endl;
+			
+			int iter = 1;
+			//double t = Timer();
+			while(true)
+			{
+				
+				
+				idx changed = 0;
+				// associates each point to the nearest center
+#if defined(USE_OMP)
+#pragma omp parallel for reduction(+:changed)
+#endif
+				for(idx i = 0; i < total_points; i++)
+				{
+					idx id_old_cluster = points_cluster[i];
+					int id_nearest_center = -1;
+					
+					real lmin = vmax;
+					
+					for(int j = 0; j < K; ++j)
+					{
+						real v[3];
+						v[0] = (points_center[i*3+0] - cluster_center[j*3+0]);
+						v[1] = (points_center[i*3+1] - cluster_center[j*3+1]);
+						v[2] = (points_center[i*3+2] - cluster_center[j*3+2]);
+						
+						//the bigger is the cluster weight the further is the distance
+						real l = (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);// + cluster_weight[j]*mesh_dist;
+						if( l < lmin )
+						{
+							lmin = l;
+							id_nearest_center = j;
+						}
+					}
+					
+					//id_nearest_center = tree.closest(&points_center[i*3]);
+					
+					if(id_old_cluster != id_nearest_center)
+					{
+						points_cluster[i] = id_nearest_center;
+						changed++;
+					}
+				}
+				
+#if defined(USE_MPI)
+				idx tmp = changed;
+				MPI_Allreduce(&tmp,&changed,1,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
+#endif
+
+				// Count occupation of current assignment (needed to revive empty clusters).
+				std::vector<idx> assign_count(K, 0);
+				for(idx j = 0; j < total_points; ++j)
+					if( points_cluster[j] >= 0 && points_cluster[j] < K )
+						assign_count[points_cluster[j]]++;
+#if defined(USE_MPI)
+				{
+					std::vector<idx> assign_count_tmp(K, 0);
+					MPI_Allreduce(&assign_count[0],&assign_count_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
+					assign_count.swap(assign_count_tmp);
+				}
+#endif
+				bool have_empty = false;
+				for(int i = 0; i < K; ++i)
+					if( assign_count[i] == 0 ) { have_empty = true; break; }
+
+				if( have_empty && total_global_points >= (idx)K && iter < max_iterations )
+				{
+					// Re-seed empty cluster centers onto a real cell from the largest cluster.
+					int nproc = (int)m->GetProcessorsNumber();
+					for(int i = 0; i < K; ++i) if( assign_count[i] == 0 )
+					{
+						int donor_c = 0;
+						for(int j = 1; j < K; ++j)
+							if( assign_count[j] > assign_count[donor_c] ) donor_c = j;
+						real seed[3] = {
+							cluster_center[donor_c*3+0],
+							cluster_center[donor_c*3+1],
+							cluster_center[donor_c*3+2]
+						};
+						idx steal_index = -1;
+						for(idx j = 0; j < total_points; ++j)
+						{
+							if( points_cluster[j] == donor_c )
+							{
+								seed[0] = points_center[j*3+0];
+								seed[1] = points_center[j*3+1];
+								seed[2] = points_center[j*3+2];
+								steal_index = j;
+								break;
+							}
+						}
+#if defined(USE_MPI)
+						{
+							int claim = (steal_index >= 0) ? rank : nproc;
+							int src = claim;
+							MPI_Allreduce(&claim,&src,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);
+							if( src < nproc )
+							{
+								MPI_Bcast(seed,3,MPI_REALT,src,MPI_COMM_WORLD);
+								if( rank == src && steal_index >= 0 )
+									points_cluster[steal_index] = i;
+								assign_count[donor_c]--;
+								assign_count[i]++;
+							}
+						}
+#else
+						if( steal_index >= 0 )
+						{
+							points_cluster[steal_index] = i;
+							assign_count[donor_c]--;
+							assign_count[i]++;
+						}
+#endif
+						cluster_center[i*3+0] = seed[0];
+						cluster_center[i*3+1] = seed[1];
+						cluster_center[i*3+2] = seed[2];
+						changed = 1;
+					}
+				}
+				
+				if(changed == 0 || iter >= max_iterations)
+				{
+					//if( m->GetProcessorRank() == 0 )
+					//	std::cout << "Break in iteration " << iter << std::endl;
+					break;
+				}
+				
+				for(int i = 0; i < K; i++)
+				{
+					cluster_center_old[i*3+0] = cluster_center[i*3+0];
+					cluster_center_old[i*3+1] = cluster_center[i*3+1];
+					cluster_center_old[i*3+2] = cluster_center[i*3+2];
+					cluster_center[i*3+0] = 0;
+					cluster_center[i*3+1] = 0;
+					cluster_center[i*3+2] = 0;
+					cluster_npoints[i] = 0;
+				}
+				// recalculating the center of each cluster
+#if defined(USE_OMP)
+#pragma omp parallel
+#endif
+				{
+					std::vector< real > local_sum(K*3,0.0);
+					std::vector< idx > local_npoints(K,0);
+#if defined(USE_OMP)
+#pragma omp for
+#endif
+					for(idx j = 0; j < total_points; ++j)
+					{
+						local_sum[points_cluster[j]*3+0] += points_center[j*3+0];
+						local_sum[points_cluster[j]*3+1] += points_center[j*3+1];
+						local_sum[points_cluster[j]*3+2] += points_center[j*3+2];
+						local_npoints[points_cluster[j]]++;
+					}
+#if defined(USE_OMP)
+#pragma omp critical
+#endif
+					{
+						for(int i = 0; i < K; ++i)
+						{
+							cluster_center[i*3+0] += local_sum[i*3+0];
+							cluster_center[i*3+1] += local_sum[i*3+1];
+							cluster_center[i*3+2] += local_sum[i*3+2];
+							cluster_npoints[i] += local_npoints[i];
+						}
+					}
+				}
+#if defined(USE_MPI)
+				MPI_Allreduce(&cluster_center[0],&cluster_center_tmp[0],K*3,MPI_REALT,MPI_SUM,MPI_COMM_WORLD);
+				MPI_Allreduce(&cluster_npoints[0],&cluster_npoints_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
+				cluster_center.swap(cluster_center_tmp);
+				cluster_npoints.swap(cluster_npoints_tmp);
+#endif
+				//if( m->GetProcessorRank() == 0 ) std::cout << "cluster weight: " << std::endl;
+				//if( m->GetProcessorRank() == 0 ) std::cout << "iteration " <<  iter << std::endl;
+				for(int i = 0; i < K; i++)
+				{
+					if( cluster_npoints[i] > 0 )
+					{
+						cluster_center[i*3+0] /= (real) cluster_npoints[i];
+						cluster_center[i*3+1] /= (real) cluster_npoints[i];
+						cluster_center[i*3+2] /= (real) cluster_npoints[i];
+						if( iter > 1 )
+						{
+							cluster_center[i*3+0] = cluster_center_old[i*3+0]*0.15 + cluster_center[i*3+0]*0.85;
+							cluster_center[i*3+1] = cluster_center_old[i*3+1]*0.15 + cluster_center[i*3+1]*0.85;
+							cluster_center[i*3+2] = cluster_center_old[i*3+2]*0.15 + cluster_center[i*3+2]*0.85;
+						}
+					}
+					else
+					{
+						// Keep previous center (avoid /0). Re-seed path above handles N >= K.
+						cluster_center[i*3+0] = cluster_center_old[i*3+0];
+						cluster_center[i*3+1] = cluster_center_old[i*3+1];
+						cluster_center[i*3+2] = cluster_center_old[i*3+2];
+					}
+					//recompute cluster weights based on the number of points each cluster possess
+					cluster_weight[i] = (cluster_weight[i]*0.25+cluster_npoints[i]/(real)total_global_points*0.75);
+					//if( m->GetProcessorRank() == 0 ) std::cout << "cluster " << i << " center (" <<cluster_center[i*3+0] << "," << cluster_center[i*3+1]<< "," << cluster_center[i*3+2] << ", p " << cluster_npoints[i] << " , w " << cluster_weight[i] << ") " << std::endl;
+				}
+				//if( m->GetProcessorRank() == 0 ) std::cout << std::endl;
+				/*
+				std::fill(cluster_shift.begin(),cluster_shift.end(),0.0);
+				for(int i = 0; i < K; i++)
+					for(int j = i+1; j < K; j++)
+					{
+						double q1 = cluster_weight[i]*K - 1.0;
+						double q2 = cluster_weight[j]*K - 1.0;
+						double v[3];
+						v[0] = (cluster_center[i*3+0] - cluster_center[j*3+0]);
+						v[1] = (cluster_center[i*3+1] - cluster_center[j*3+1]);
+						v[2] = (cluster_center[i*3+2] - cluster_center[j*3+2]);
+						double l = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+						//if( l )
+						{
+							double Q = 5.0e-3*q1*q2/(l+1.0e-4);
+							l = sqrt(l+1.0e-4);
+							v[0] /= l; v[1] /= l; v[2] /= l;
+							cluster_shift[3*i+0] += v[0] * Q / (q1+1.1);
+							cluster_shift[3*i+1] += v[1] * Q / (q1+1.1);
+							cluster_shift[3*i+2] += v[2] * Q / (q1+1.1);
+							
+							cluster_shift[3*j+0] -= v[0] * Q / (q2+1.1);
+							cluster_shift[3*j+1] -= v[1] * Q / (q2+1.1);
+							cluster_shift[3*j+2] -= v[2] * Q / (q2+1.1);
+						}
+					}
+				for(int i = 0; i < K; i++)
+				{
+					if( m->GetProcessorRank() == 0 )
+					{
+					std::cout << "cluster " << i;
+					std::cout << " pos " << cluster_center[i*3+0] << "," << cluster_center[i*3+1] << "," << cluster_center[i*3+2];
+					std::cout << " shift " << cluster_shift[i*3+0] << "," << cluster_shift[i*3+1] << "," << cluster_shift[i*3+2];
+					std::cout << std::endl;
+					}
+					cluster_center[i*3+0] += cluster_shift[3*i+0];
+					cluster_center[i*3+1] += cluster_shift[3*i+1];
+					cluster_center[i*3+2] += cluster_shift[3*i+2];
+				}
+				*/
+				//if( m->GetProcessorRank() == 0 )
+				//	std::cout << "Iteration " << iter << " changed " << changed << std::endl;
+				iter++;
+			}
+			// Final repair: if N >= K, ensure no cluster is left empty after convergence / max iters.
+			if( total_global_points >= (idx)K )
+			{
+				std::vector<idx> assign_count(K, 0);
+				for(idx j = 0; j < total_points; ++j)
+					if( points_cluster[j] >= 0 && points_cluster[j] < K )
+						assign_count[points_cluster[j]]++;
+#if defined(USE_MPI)
+				{
+					std::vector<idx> assign_count_tmp(K, 0);
+					MPI_Allreduce(&assign_count[0],&assign_count_tmp[0],K,MPI_IDXT,MPI_SUM,MPI_COMM_WORLD);
+					assign_count.swap(assign_count_tmp);
+				}
+				int nproc = (int)m->GetProcessorsNumber();
+#endif
+				for(int i = 0; i < K; ++i) if( assign_count[i] == 0 )
+				{
+					int donor_c = 0;
+					for(int j = 1; j < K; ++j)
+						if( assign_count[j] > assign_count[donor_c] ) donor_c = j;
+					if( assign_count[donor_c] <= 1 ) continue; // cannot steal last point
+					idx steal_index = -1;
+					for(idx j = 0; j < total_points; ++j)
+					{
+						if( points_cluster[j] == donor_c )
+						{
+							steal_index = j;
+							break;
+						}
+					}
+#if defined(USE_MPI)
+					{
+						int claim = (steal_index >= 0) ? rank : nproc;
+						int src = claim;
+						MPI_Allreduce(&claim,&src,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);
+						if( src < nproc )
+						{
+							if( rank == src && steal_index >= 0 )
+								points_cluster[steal_index] = i;
+							assign_count[donor_c]--;
+							assign_count[i]++;
+						}
+					}
+#else
+					if( steal_index >= 0 )
+					{
+						points_cluster[steal_index] = i;
+						assign_count[donor_c]--;
+						assign_count[i]++;
+					}
+#endif
+				}
+			}
+			//tree.clear();
+			//std::cout << "Clustering in " << Timer() - t << " secs " << std::endl;
+#if defined(USE_MPI)
+			if( balance )
+			{
+				std::vector<idx> points_cluster_global(total_global_points);
+				displs[0] = 0;
+				counts[0] = total_local_points;
+				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
+				{
+					displs[k] = displs[k-1] + counts[k-1];
+					counts[k] = total_local_points;
+				}
+				counts.back() = total_global_points - displs.back();
+				MPI_Gatherv(&points_cluster[0],total_points,MPI_IDXT,&points_cluster_global[0],&counts[0],&displs[0],MPI_IDXT,0,MPI_COMM_WORLD);
+				displs[0] = 0;
+				counts[0] = npoints[0];
+				for(int k = 1; k < (int) m->GetProcessorsNumber(); ++k)
+				{
+					displs[k] = displs[k-1] + counts[k-1];
+					counts[k] = npoints[k];
+				}
+				total_points = counts[m->GetProcessorRank()];
+				points_cluster.resize(std::max(total_points,1));
+				MPI_Scatterv(&points_cluster_global[0],&counts[0],&displs[0],MPI_IDXT,&points_cluster[0],total_points,MPI_IDXT,0,MPI_COMM_WORLD);
+			}
+#endif
+			// shows elements of clusters
+			TagInteger mat = m->RedistributeTag();
+#if defined(USE_OMP)
+#pragma omp parallel for
+#endif
+			for(idx j = 0; j < total_points; ++j)
+				mat[m->CellByLocalID(points_node[j])] = points_cluster[j];
+			//m->ExchangeData(mat,CELL,0);
+		}
 		EXIT_FUNC();
 	}
 	
@@ -1819,6 +2439,9 @@ namespace INMOST
 				break;
 			case INNER_KMEANS:
 				package = 3;
+				break;
+			case INNER_SKMEANS:
+				package = 8;
 				break;
 		}
 		if( package == 1 )
@@ -1935,6 +2558,9 @@ namespace INMOST
 			case INNER_KMEANS:
 				package = 3;
 				break;
+			case INNER_SKMEANS:
+				package = 8;
+				break;
 		}
 		if( package == 1 )
 		{
@@ -1997,6 +2623,9 @@ namespace INMOST
 				break;
 			case INNER_KMEANS:
 				package = 3;
+				break;
+			case INNER_SKMEANS:
+				package = 8;
 				break;
 		}
 		if( package == 1 )

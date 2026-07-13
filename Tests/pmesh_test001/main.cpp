@@ -91,6 +91,8 @@ int main(int argc,char ** argv)
 		          << "5 - Zoltan_PHG" << std::endl
 		          << "6 - Zoltan_Scotch" << std::endl
 		          << "7 - Zoltan_Parmetis" << std::endl
+		          << "9 - Inner_KMeans" << std::endl
+				  << "10 - Inner_SKMeans" << std::endl
 		          << "-1 - No partitioner" << std::endl << std::endl
 		          << "action (for Parmetis): " << std::endl
 		          << "0 - Partition" << std::endl
@@ -129,6 +131,7 @@ int main(int argc,char ** argv)
 		case 6: type = Partitioner::Zoltan_Scotch; break;
 		case 7: type = Partitioner::Zoltan_Parmetis; break;
 		case 8: /*reserved*/ break;
+		case 10: type = Partitioner::INNER_SKMEANS; break;
 	}
 
 	Partitioner::Action action = Partitioner::Partition;
