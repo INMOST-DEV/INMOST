@@ -90,7 +90,8 @@ namespace INMOST
 
 	static std::string sstrip(const std::string & input)
 	{
-
+		if( input.size() >= 2048 )
+			return input; // leave as-is rather than overflow fixed buffer
 		char temp[2048];
 		strcpy(temp,input.c_str());
 		return std::string(sstrip(temp));

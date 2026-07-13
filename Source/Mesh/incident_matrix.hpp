@@ -610,6 +610,7 @@ namespace INMOST
 		}
 		incident_matrix & operator =(const incident_matrix & other)
 		{
+			if (this == &other) return *this;
 			mesh = other.mesh;
 			matrix = other.matrix;
 			head_column = other.head_column;
@@ -619,7 +620,8 @@ namespace INMOST
 			hide_row = other.hide_row;
 			hide_column = other.hide_column;
 			stub_row = other.stub_row;
-			coords = other.coords->Copy();
+			delete coords;
+			coords = other.coords ? other.coords->Copy() : nullptr;
 			return *this;
 		}
 		~incident_matrix()
@@ -1187,6 +1189,7 @@ namespace INMOST
 		}
 		incident_matrix & operator =(const incident_matrix & other)
 		{
+			if (this == &other) return *this;
 			mesh = other.mesh;
 			matrix = other.matrix;
 			head_column = other.head_column;
@@ -1196,7 +1199,8 @@ namespace INMOST
 			hide_row = other.hide_row;
 			hide_column = other.hide_column;
 			stub_row = other.stub_row;
-			coords = other.coords.Copy();
+			delete coords;
+			coords = other.coords ? other.coords.Copy() : nullptr;
 			return *this;
 		}
 		~incident_matrix()

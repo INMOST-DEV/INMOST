@@ -67,7 +67,7 @@ namespace INMOST
 				globalID[i] = it->GlobalID();
 				localID[i] = i;
 				for(int j = 0; j < wgt_dim; j++)
-					 obj_wgts[i] = static_cast<float>(it->RealArray(p->GetWeight())[j]);
+					 obj_wgts[i*wgt_dim + j] = static_cast<float>(it->RealArray(p->GetWeight())[j]);
 				i++;
 			}
 	}
@@ -622,13 +622,23 @@ namespace INMOST
 				{
 					std::vector<real_t> l_tpwgts(ncon);
 					for(idx_t q = 0; q < ncon; q++) l_tpwgts[q] = static_cast<real_t>(m->RealArray(m->GetHandle(),GetWeight())[q]);
-					REPORT_MPI(MPI_Allgather(&l_tpwgts[0],ncon,IDX_T,&tpwgts[0],ncon,IDX_T,m->GetCommunicator()));
+					// Each rank contributes ncon weights; ParMETIS expects tpwgts of size nparts*ncon.
+					tpwgts.resize(static_cast<size_t>(nparts) * static_cast<size_t>(ncon));
+					REPORT_MPI(MPI_Allgather(&l_tpwgts[0],ncon,REAL_T,&tpwgts[0],ncon,REAL_T,m->GetCommunicator()));
 					
 					for(idx_t j = 0; j < ncon; j++)
 					{
 						real_t sum_tpwgts = 0;
 						for(unsigned i = 0; i < tpwgts.size()/ncon; i++) sum_tpwgts += tpwgts[i*ncon+j];
-						for(unsigned i = 0; i < tpwgts.size()/ncon; i++) tpwgts[i*ncon+j] /= sum_tpwgts;
+						if( sum_tpwgts == static_cast<real_t>(0) )
+						{
+							real_t c = static_cast<real_t>(1.0/static_cast<real_t>(nparts));
+							for(unsigned i = 0; i < tpwgts.size()/ncon; i++) tpwgts[i*ncon+j] = c;
+						}
+						else
+						{
+							for(unsigned i = 0; i < tpwgts.size()/ncon; i++) tpwgts[i*ncon+j] /= sum_tpwgts;
+						}
 					}
 				}
 				else

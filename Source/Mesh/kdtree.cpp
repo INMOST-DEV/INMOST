@@ -77,6 +77,13 @@ namespace INMOST
 		Storage::real pout[3];
 		Storage::real v[3] = { b[0] - a[0],b[1] - a[1],b[2] - a[2] };
 		Storage::real d = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+		if( d == 0.0 )
+		{
+			pout[0] = a[0];
+			pout[1] = a[1];
+			pout[2] = a[2];
+			return sqrt((pout[0] - p[0]) * (pout[0] - p[0]) + (pout[1] - p[1]) * (pout[1] - p[1]) + (pout[2] - p[2]) * (pout[2] - p[2]));
+		}
 		Storage::real t = (v[0] * (p[0] - a[0]) + v[1] * (p[1] - a[1]) + v[2] * (p[2] - a[2])) / d;
 		if (t >= 0.0 && t <= 1.0)
 		{

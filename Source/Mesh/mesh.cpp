@@ -221,7 +221,11 @@ namespace INMOST
 		{
 			int test;
 			MPI_Initialized(&test);
-			if( test == 0 ) MPI_Init(NULL,NULL);
+			if( test == 0 )
+			{
+				MPI_Init(NULL,NULL);
+				own_mpi = true;
+			}
 			comm = INMOST_MPI_COMM_WORLD;
 		}
 #endif
@@ -1892,12 +1896,13 @@ namespace INMOST
 
 		if( NumberOfNodes() > 0)
 		{
-			std::vector<Storage::real> temp(dims*NodeLastLocalID());
+			std::vector<Storage::real> temp(dims*NodeLastLocalID(), 0.0);
+			integer copy_dims = dim < dims ? dim : dims;
 #if defined(USE_OMP)
 #pragma omp parallel for
 #endif
 			for(Storage::integer k = 0; k < NodeLastLocalID(); ++k) if( isValidElementNum(0,k) )
-				memcpy(temp.data()+k*dims,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*dims);
+				memcpy(temp.data()+k*dims,MGetDenseLink(ComposeHandleNum(0,k),CoordsTag()),sizeof(Storage::real)*copy_dims);
 			DeleteTag(tag_coords);
 			tag_coords = CreateTag("COORD",DATA_REAL,NODE,NONE,dims);
 #if defined(USE_OMP)
@@ -2526,7 +2531,10 @@ namespace INMOST
 #if defined(USE_AUTODIFF)
 		else if( tag.GetDataType() == DATA_VARIABLE ) //Have to deallocate the structure to remove inheritance
 		{
-			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k) (static_cast<variable *>(data)[k]) = 0.0;
+			for(INMOST_DATA_ENUM_TYPE k = 0; k < tag.GetSize(); ++k) { 
+				(static_cast<variable *>(data)[k]) = 0.0; 
+				(static_cast<variable *>(data)+k)->~variable(); 
+			}
 		}
 #endif
 		else memset(data,0,tag.GetRecordSize());

@@ -2847,7 +2847,7 @@ namespace INMOST
 				faces[j].OrientedUnitNormal(c,nrm+3*j);
 				for(int k = 0; k < 3; k++)	nrm_mean[k] += nrm[3*j+k];
 			}
-			for(int k = 0; k < 3; k++)	nrm_mean[k] /= nf;
+			for(int k = 0; k < 3; k++)	nrm_mean[k] /= (nf > 0 ? nf : 1);
 			// sort faces counter-clockwise relative to mean normal
 			for(int j = 0; j < nf-1; j++)
 				for(int k = j+1; k < nf-1; k++)
@@ -2883,6 +2883,7 @@ namespace INMOST
 					for(int k = 0; k < 3; k++)	xf[k] = x[k] + h[j]*nrm[3*j+k];
 					if( !nodes_stencil.empty() )	nodes_stencil.clear();
 					WachspressInterpolation2D(xf,faces[j],nodes_stencil);
+					delete[] nrm;
 					return;
 				}
 			}

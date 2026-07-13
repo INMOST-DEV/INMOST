@@ -102,7 +102,8 @@ namespace INMOST
 		DataType type = t.GetDataType();
 		if( data_size == ENUMUNDEF ) //variable size array
 		{
-			if( adata != NULL ) TagManager::DestroyVariableData(t,adata);
+			if( adata == NULL ) return;
+			TagManager::DestroyVariableData(t,adata);
 			if( type == DATA_REAL )           new (adata) inner_real_array     (*static_cast<const inner_real_array      * >(bdata));
 			else if( type == DATA_INTEGER )   new (adata) inner_integer_array  (*static_cast<const inner_integer_array   * >(bdata));
 			else if( type == DATA_BULK )      new (adata) inner_bulk_array     (*static_cast<const inner_bulk_array      * >(bdata));

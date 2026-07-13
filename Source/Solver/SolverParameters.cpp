@@ -23,11 +23,12 @@ namespace INMOST {
         char parameterValue[4096];
         FILE *databaseFile = fopen(file.c_str(), "r");
         if (!databaseFile) return;
-        while (!feof(databaseFile) && fgets(line, 4096, databaseFile)) {
+        while (fgets(line, 4096, databaseFile)) {
             if (line[0] == '#') continue;
-            sscanf(line, "%s %s", parameterName, parameterValue);
-            solver->SetParameter(parameterName, parameterValue);
+            if (sscanf(line, "%4095s %4095s", parameterName, parameterValue) == 2)
+                solver->SetParameter(parameterName, parameterValue);
         }
+        fclose(databaseFile);
     }
 
 }

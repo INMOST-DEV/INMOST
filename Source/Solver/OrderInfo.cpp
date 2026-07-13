@@ -120,6 +120,8 @@ namespace INMOST
 				GUARD_MPI(MPI_Comm_group(comm, &oldg));
 				GUARD_MPI(MPI_Group_incl(oldg, size, &ranks[0], &newg));
 				GUARD_MPI(MPI_Comm_create(comm, newg, &newcomm));
+				GUARD_MPI(MPI_Group_free(&newg));
+				GUARD_MPI(MPI_Group_free(&oldg));
 				if (comm != INMOST_MPI_COMM_WORLD)
 				{
 					GUARD_MPI(MPI_Comm_free(&comm));
@@ -593,7 +595,10 @@ namespace INMOST
 	
 	Solver::OrderInfo &Solver::OrderInfo::operator=(OrderInfo const &other)
 	{
+		if( this == &other ) return *this;
 #if defined(USE_MPI)
+		if (comm != INMOST_MPI_COMM_WORLD)
+			MPI_Comm_free(&comm);
 		if (other.comm == INMOST_MPI_COMM_WORLD)
 			comm = INMOST_MPI_COMM_WORLD;
 		else MPI_Comm_dup(other.comm, &comm);

@@ -2356,6 +2356,7 @@ namespace INMOST
 		INMOST_DATA_BIG_ENUM_TYPE *         shared_space;
 #endif
 		int                                 parallel_file_strategy;
+		static bool                         own_mpi; ///< True if Mesh started MPI and must call MPI_Finalize.
 	private:
 		void                              ListTags           (tag_set & list);
 		std::vector<int>                  ComputeSharedProcs (const parallel_storage & from, const parallel_storage & to);
@@ -2391,13 +2392,15 @@ namespace INMOST
 		static void                       AtExit             (void);
 #endif
 		void                              ClearFile          ();
-		/// Initial initialization. Calls MPI_Initialize, if MPI was not initialized
-		/// it is necessary to invoke this function if you plan to use any parallel algorithms
-		/// Accepts arguments passed to console application or NULL
+		/// Initial initialization. Calls MPI_Init if MPI was not initialized.
+		/// It is necessary to invoke this function if you plan to use any parallel algorithms.
+		/// Accepts arguments passed to console application or NULL.
 		/// @param argc number of arguments for command line
 		/// @param argv strings of arguments of command line
 		static void                       Initialize         (int * argc, char *** argv);
-		/// Finalizes operation with MPI, recommended to call, otherwise MPI may produce warnings
+		/// Finalizes Mesh MPI stage. Calls MPI_Finalize only if Mesh started MPI
+		/// (via Mesh::Initialize or Mesh construction); otherwise the application
+		/// remains responsible for MPI_Finalize.
 		static void                       Finalize           ();
 		/// Set parallel strategy for inner communications.
 		/// There are three possible scenarios in parallel communication associated in

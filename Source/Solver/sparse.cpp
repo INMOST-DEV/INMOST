@@ -714,7 +714,7 @@ namespace INMOST
 				for (int i=0; i<n; i++) input_ord >> ord[i];
 				int nbl;
 				input_ord >> nbl;
-				if( nbl != size ) throw -3;
+				if( nbl != size ) { free(ord); throw -3; }
 				int * ibl;
 				ibl = (int *) malloc(sizeof(int) * (nbl+1));
 				assert(ibl != NULL);
@@ -996,10 +996,11 @@ namespace INMOST
 			name = _name;
 		}
 
-		Matrix::Matrix(const Matrix & other) :data(other.data)
+        Matrix::Matrix(const Matrix & other) :data(other.data)
 		{
 			comm = other.comm;
 			name = other.name;
+			is_parallel = other.is_parallel;
 		}
 
 
@@ -1008,6 +1009,7 @@ namespace INMOST
 			comm = other.comm;
 			data = other.data;
 			name = other.name;
+			is_parallel = other.is_parallel;
 			return *this;
 		}
 
@@ -1059,7 +1061,7 @@ namespace INMOST
 				for (int i=0; i<n; i++) input_ord >> ord[i];
 				int nbl;
 				input_ord >> nbl;
-				if( nbl != size ) throw -3;
+				if( nbl != size ) { free(ord); throw -3; }
 				int * ibl;
 				ibl = (int *) malloc(sizeof(int) * (nbl+1));
 				assert(ibl != NULL);
@@ -1435,6 +1437,7 @@ namespace INMOST
 		{
 			comm = other.comm;
 			name = other.name;
+			is_parallel = other.is_parallel;
 		}
 
 
@@ -1443,6 +1446,7 @@ namespace INMOST
 			comm = other.comm;
 			data = other.data;
 			name = other.name;
+			is_parallel = other.is_parallel;
 			return *this;
 		}
 

@@ -67,6 +67,7 @@ namespace INMOST {
         static char                          ***argv; ///< A global array of strings corresponding to command line arguments.
         static bool                          is_initialized; ///< Indicator that solvers were initialized for MPI operations.
         static bool                          is_finalized; ///< Indicator that solvers were finalized for MPI operations.
+        static bool                          own_mpi; ///< True if Solver::Initialize called MPI_Init and must call MPI_Finalize.
         SolverInterface                      *solver; ///< Pointer to abstract linear solver.
         std::string                          prefix; ///< Prescribed solver name that is used to assign solver parameters.
         SolverVerbosityLevel                 versbosity;
@@ -283,8 +284,9 @@ namespace INMOST {
         static void Initialize(int *argc, char ***argv, const char *database = NULL);
 
         /// Finalize the stage of parallel solution.
-        /// If MPI was initialized in Solver::Initialize, then it will be finalized.
-        /// By this reason, do not use any MPI function after call to this function.
+        /// If MPI was initialized in Solver::Initialize, then it will be finalized;
+        /// otherwise the application remains responsible for MPI_Finalize.
+        /// Do not use MPI after this call only if Solver::Initialize started MPI.
         /// @see Solver::Initialize
         /// @see Solver::isFinalized
         static void Finalize();

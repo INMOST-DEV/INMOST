@@ -89,6 +89,7 @@ namespace INMOST {
         lastResidual = AztecSolver.TrueResidual();
         returnReason = reason;
         delete Prec;
+        delete Factory;
         return success;
     }
 

@@ -509,7 +509,7 @@ namespace INMOST
         {
             if (isInitialized())
             {
-                if (!prec->isFinalized()) prec->Finalize();
+                if (prec != NULL && !prec->isFinalized()) prec->Finalize();
                 delete[] u;
                 delete[] tau;
                 init = false;

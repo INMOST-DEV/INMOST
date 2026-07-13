@@ -84,8 +84,9 @@ namespace INMOST
 		while( fgets(readline,2048,f) != NULL )
 		{
 			line++;
-			if( readline[strlen(readline)-1] == '\n' ) readline[strlen(readline)-1] = '\0';
-			text_end = static_cast<int>(strlen(readline));
+			unsigned int readline_len = strlen(readline);
+			if( readline_len && readline[readline_len-1] == '\n' ) readline[readline_len-1] = '\0';
+			text_end = static_cast<int>(readline_len);
 			for(text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
 			if( text_start == text_end ) continue;
 			for(text_end = text_end-1; isspace(readline[text_end]) && text_end > text_start; text_end--);
@@ -269,6 +270,8 @@ read_node_num_link:
 				{
 					--nodenum;
 					if( nodenum >= static_cast<int>(newnodes.size()) ) std::cout << __FILE__ << ":" << __LINE__ << " node number is bigger then total number of nodes " << nodenum << " / " << newnodes.size() << " line " << line <<std::endl;
+					if( nodenum < -1 ) std::cout << __FILE__ << ":" << __LINE__ << " node number is negative " << nodenum << " line " << line <<std::endl;
+					if( nodenum < -1 || nodenum >= static_cast<int>(newnodes.size()) ) { throw BadFile; }
 					p += nchars;
 					while(isspace(*p) && p < pend) ++p;
 					state = GMSH_NODES_X;
@@ -446,10 +449,10 @@ read_elem_num_link:
 							elemnum = q;
 							elemtype = elemtypes[q];
 							//fill arrays
-							for (size_t k = 0; k < nnods[q]; ++k)
+							for (long k = 0; k < nnods[q]; ++k)
 								nodelist.push_back(nods[qnod + k]);
 							qnod += nnods[q];
-							for (size_t k = 0; k < ntags[q]; ++k)
+							for (long k = 0; k < ntags[q]; ++k)
 								elemtags.push_back(tags[qtag + k]);
 							qtag += ntags[q];
 

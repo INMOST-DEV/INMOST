@@ -40,6 +40,19 @@ namespace INMOST
 
     void SolverSUPERLU::SetMatrix(Sparse::Matrix &A, bool ModifiedPattern, bool OldPreconditioner) 
     {
+        if( isMatrixSet() ) Clear();
+#if defined(USE_SOLVER_SUPERLU_DIST)
+		PStatInit(&stat_);
+		set_default_options_dist(&options_);
+		options_.PrintStat          = NO;
+		options_.IterRefine         = SLU_DOUBLE;
+		options_.ReplaceTinyPivot   = YES;
+		options_.Equil              = YES;
+		options_.Fact               = DOFACT;
+#else
+		StatInit(&stat);
+		set_default_options(&options);
+#endif
         //check that the run is serial!
         int *ia, *ja, nnz = 0;
         double *a;
@@ -197,7 +210,12 @@ namespace INMOST
 		if (perm_c != NULL) delete[] perm_c;
 		if (perm_r != NULL) delete[] perm_r;
 		if (remap != NULL) delete[] remap; //allocated outside
+		perm_c = NULL;
+		perm_r = NULL;
+		remap = NULL;
 #endif
+		a_size = 0;
+		g_size = 0;
 		//~ SUPERLU_FREE(A.Store);
         return true;
     }
@@ -237,12 +255,12 @@ namespace INMOST
     const std::string SolverSUPERLU::ReturnReason() const 
     {
         char reason_str[256];
-        if (info <= a_size) 
+        if (info == 0) 
+            strcpy(reason_str, "factorization was successfull");
+        else if (info > 0 && info <= a_size) 
             sprintf(reason_str, "diagonal entry of U-factor is exactly singular at %d/%d", info, a_size);
         else if (info > a_size) 
             sprintf(reason_str, "memory allocation failed after %d bytes were allocated", info - a_size);
-        else if (info == 0) 
-            strcpy(reason_str, "factorization was successfull");
         else
             sprintf(reason_str, "unknown exit code %d", info);
         return std::string(reason_str);

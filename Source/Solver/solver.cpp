@@ -10,6 +10,7 @@ namespace INMOST {
     char ***Solver::argv        = NULL;
     bool Solver::is_initialized = false;
     bool Solver::is_finalized   = false;
+    bool Solver::own_mpi        = false;
     std::vector<SolverParameters> Solver::parameters = std::vector<SolverParameters>();
 
     void Solver::SetParameterEnum(std::string name, INMOST_DATA_ENUM_TYPE value) { SetParameter(name, to_string(value)); }
@@ -98,6 +99,7 @@ namespace INMOST {
         Solver::argv           = argv;
         Solver::is_initialized = true;
         Solver::is_finalized   = false;
+        Solver::own_mpi        = false;
 #if defined(USE_MPI)
         {
             int flag = 0;
@@ -108,6 +110,8 @@ namespace INMOST {
                 if (ierr != MPI_SUCCESS) {
                     std::cout << __FILE__ << ":" << __LINE__ << "problem in MPI_Init" << std::endl;
                 }
+                else
+                    Solver::own_mpi = true;
             }
         }
 #endif
@@ -119,11 +123,13 @@ namespace INMOST {
         Sparse::DestroyRowEntryType();
         parameters = std::vector<SolverParameters>();
 #if defined(USE_MPI)
+        if (Solver::own_mpi)
         {
             int flag = 0;
             MPI_Finalized(&flag);
             if (!flag)
                 MPI_Finalize();
+            Solver::own_mpi = false;
         }
 #endif
         Solver::is_finalized   = true;

@@ -1222,12 +1222,18 @@ namespace INMOST
 #endif //USE_MPI
 	}	
 	
+	bool Mesh::own_mpi = false;
+
 	void Mesh::Initialize(int * argc, char *** argv)
 	{
 #if defined(USE_MPI)
 		int test;
 		MPI_Initialized(&test);
-        if( test == 0 ) MPI_Init(argc,argv);
+		if( test == 0 )
+		{
+			MPI_Init(argc,argv);
+			own_mpi = true;
+		}
 #else //USE_MPI
 		(void) argc;
 		(void) argv;
@@ -1239,10 +1245,14 @@ namespace INMOST
 	void Mesh::Finalize()
 	{
 #if defined(USE_MPI)
-		int test = 0;
-		MPI_Finalized(&test);
-		if( !test )
-			MPI_Finalize();
+		if( own_mpi )
+		{
+			int test = 0;
+			MPI_Finalized(&test);
+			if( !test )
+				MPI_Finalize();
+			own_mpi = false;
+		}
 #endif //USE_MPI
 	}
 	

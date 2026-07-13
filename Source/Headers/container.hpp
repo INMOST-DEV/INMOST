@@ -1448,7 +1448,7 @@ namespace INMOST
 			record_size = other.record_size;
 			m_size = 0;
 			inner_resize(other.size());
-			size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+			size_type nchunks = ((static_cast<uenum>(other.size())>>block_bits) + ((other.size() & block_bits_mask)? 1 : 0));
 			for(size_type k = 0; k < nchunks; k++) memcpy(chunks[k],other.chunks[k],block_size*record_size);
 			m_size = other.size();
 		}
@@ -1459,7 +1459,7 @@ namespace INMOST
 				clear();
 				record_size = other.record_size;
 				inner_resize(other.size());
-				size_type nchunks = ((static_cast<uenum>(m_size)>>block_bits) + ((m_size & block_bits_mask)? 1 : 0));
+				size_type nchunks = ((static_cast<uenum>(other.size())>>block_bits) + ((other.size() & block_bits_mask)? 1 : 0));
 				for(size_type k = 0; k < nchunks; k++) memcpy(chunks[k],other.chunks[k],block_size*record_size);
 				m_size = other.size();
 			}
@@ -1523,7 +1523,7 @@ namespace INMOST
 		}
 		~thread_private()
 		{
-			//std::cout << "destructor " << this << std::endl;
+			delete[] items;
 		}
 		thread_private & operator =(thread_private const & b)
 		{
@@ -1565,15 +1565,15 @@ namespace INMOST
 	template<typename T>
 	class thread_private
 	{
-		T item;
+		thread_private_item<T> * item;
 	public:
-		thread_private() {}
-		~thread_private() {}
-		thread_private(const T & b) {item = b;}
-		thread_private(const thread_private & b) {item = b();}
-		thread_private & operator = (thread_private const & b) {item = b(); return *this;}
-		T & operator *() {return item;}
-		const T & operator *() const {return item;}
+		thread_private() { item = new thread_private_item<T>; }
+		~thread_private() { delete item; }
+		thread_private(const T & b) { item = new thread_private_item<T>; item->item = b; }
+		thread_private(const thread_private & b) { item = new thread_private_item<T>; item->item = b.get(); }
+		thread_private & operator = (thread_private const & b) { item = new thread_private_item<T>; item->item = b.get(); return *this; }
+		T & operator *() {return item->item;}
+		const T & operator *() const {return item->item;}
 		//operator T & () {return item;}
 		//operator const T & () const {return item;}
 		//operator T () {return items[omp_get_thread_num()].item;}
@@ -1588,12 +1588,12 @@ namespace INMOST
 		//T & operator *= (B const & b) {item *= b; return item;}
 		//template <typename B>
 		//T & operator /= (B const & b) {item /= b; return item;}
-		T & get() {return item;}
-		const T & get() const {return item;}
-		T & get(int k) {return item;}
-		const T & get(int k) const {return item;}
-		T * operator ->() {return &item;}
-		const T * operator ->() const {return &item;}
+		T & get() {return item->item;}
+		const T & get() const {return item->item;}
+		T & get(int k) {return item->item;}
+		const T & get(int k) const {return item->item;}
+		T * operator ->() {return &(item->item);}
+		const T * operator ->() const {return &(item->item);}
 	};
 #endif //_OPENMP
 }
