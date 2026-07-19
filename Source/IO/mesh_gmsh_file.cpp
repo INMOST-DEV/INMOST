@@ -86,7 +86,7 @@ namespace INMOST
 			line++;
 			unsigned int readline_len = strlen(readline);
 			if( readline_len && readline[readline_len-1] == '\n' ) readline[readline_len-1] = '\0';
-			text_end = static_cast<int>(readline_len);
+			text_end = static_cast<int>(strlen(readline));
 			for(text_start = 0; isspace(readline[text_start]) && text_start < text_end; text_start++);
 			if( text_start == text_end ) continue;
 			for(text_end = text_end-1; isspace(readline[text_end]) && text_end > text_start; text_end--);
