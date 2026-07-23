@@ -1473,14 +1473,13 @@ namespace INMOST
 		}
 	};
 
-#if defined(_OPENMP)
 #define PADDING_SIZE 4096
 	template<typename T>
 	struct thread_private_item
 	{
 		T item;
 		char padding[PADDING_SIZE-sizeof(T)];
-		thread_private_item() :item() {}
+		thread_private_item() :item() {memset(padding, 0, PADDING_SIZE - sizeof(T));}
 		thread_private_item(const thread_private_item & b) :item(b.item){}
 		thread_private_item & operator =(thread_private_item const & b)
 		{
@@ -1489,6 +1488,7 @@ namespace INMOST
 		}
 	};
 
+#if defined(_OPENMP)
 	/// This class is used to replace #pragma omp threadprivate
 	/// Functionality that is not supported on many older systems.
 	template<typename T>
