@@ -283,7 +283,7 @@ namespace INMOST {
         else if (name == "info") info = true;
         else if (name == "ksp_view") ksp_view = true;
         else if (name == "ksp_monitor") ksp_monitor = true;
-        else if (name == "mat_viev") mat_view = true;
+        else if ((name == "mat_viev") || (name == "mat_view")) mat_view = true;
 #if !defined(SILENCE_SET_PARAMETER)
         else std::cout << "Parameter " << name << " is unknown (Use internal file for all parameters)" << std::endl;
 #endif
