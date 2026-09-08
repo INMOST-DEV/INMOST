@@ -199,6 +199,7 @@ namespace INMOST
 		Tag set_id = CreateTag("PROTECTED_TEMPORARY_ELEMENT_ID",DATA_INTEGER,CELL |FACE| NODE,NONE,1);
 		integer num_cells = 0, num_faces = 0, num_nodes = 0;
 		MarkerType used = CreateMarker();
+		set_id.SetPrint(false);
 		for (Mesh::iteratorCell it = BeginCell(); it != EndCell(); ++it)
 			if (keep_ghost || it->GetStatus() != Element::Ghost)
 			{
@@ -528,6 +529,7 @@ safe_output:
 			{
 				Tag t = GetTag(tag_names[i]);
 				if (t.isDefined(NODE) && /*!t.isSparse(NODE) &&*/
+					t.GetPrint() && //Temporary solution: @see Mesh::file_option
 					t.GetDataType() != DATA_BULK &&
 					t.GetDataType() != DATA_REFERENCE &&
 					t.GetDataType() != DATA_REMOTE_REFERENCE &&
