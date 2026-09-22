@@ -2860,6 +2860,10 @@ namespace INMOST
 						bool visited = false;
 						(void)visited;
 						ElementArray<Face> faces = e.getFaces();
+						for (ElementArray<Face>::size_type kt = 0; kt < faces.size(); ++kt)
+						{
+							assert(level[faces[kt]] < level[e]);
+						}
 						t2 = Timer(), tadjface += t2 - t1;
 						for(ElementArray<Face>::size_type kt = 0; kt < faces.size(); ++kt)
 						{

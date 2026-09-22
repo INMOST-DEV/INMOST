@@ -342,7 +342,7 @@ namespace INMOST
 		{
 			sout << value << " ";
 			entries.Print(eps, sout);
-			if (entries.Empty()) std::cout << std::endl;
+			if (entries.Empty()) sout << std::endl;
 		}
 		void swap(multivar_expression & b)
 		{

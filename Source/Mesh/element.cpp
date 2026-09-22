@@ -1720,7 +1720,7 @@ namespace INMOST
 		return ElementArray<Cell>(NULL);
 	}
 	
-	bool Element::CheckElementConnectivity() const
+	bool Element::CheckElementConnectivity(std::ostream & sout) const
 	{
 		Mesh * mesh = GetMeshLink();
 		HandleType me = GetHandle();
@@ -1737,9 +1737,9 @@ namespace INMOST
 			{
 				if( hc[jt] == InvalidHandle() )
 				{
-					std::cout << "Invalid connection from ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << " in HighConn" << std::endl;
+					sout << "Invalid connection from ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << " in HighConn" << std::endl;
 					return false;
 				}
 				int found = 0;
@@ -1748,20 +1748,20 @@ namespace INMOST
 					if( ilc[kt] == me ) found++;
 				if( !found )
 				{
-					std::cout << "Not found connection from ";
-					std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
-					std::cout << " to ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << std::endl;
+					sout << "Not found connection from ";
+					sout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
+					sout << " to ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << std::endl;
 					return false;
 				}
 				else if( found > 1 )
 				{
-					std::cout << "Found " << found << " connections from ";
-					std::cout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
-					std::cout << " to ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << std::endl;
+					sout << "Found " << found << " connections from ";
+					sout << ElementTypeName(GetHandleElementType(hc[jt])) << ":" << GetHandleID(hc[jt]);
+					sout << " to ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << std::endl;
 					return false;
 				}
 			}
@@ -1773,9 +1773,9 @@ namespace INMOST
 			{
 				if( lc[jt] == InvalidHandle() )
 				{
-					std::cout << "Invalid connection from ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << " in LowConn" << std::endl;
+					sout << "Invalid connection from ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << " in LowConn" << std::endl;
 					return false;
 				}
 				int found = 0;
@@ -1784,20 +1784,20 @@ namespace INMOST
 					if( ihc[kt] == me ) found++;
 				if( !found )
 				{
-					std::cout << "Not found connection from ";
-					std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
-					std::cout << " to ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << std::endl;
+					sout << "Not found connection from ";
+					sout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
+					sout << " to ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << std::endl;
 					return false;
 				}
 				else if( found > 1 )
 				{
-					std::cout << "Found " << found << " connections from ";
-					std::cout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
-					std::cout << " to ";
-					std::cout << ElementTypeName(GetElementType()) << ":" << LocalID();
-					std::cout << std::endl;
+					sout << "Found " << found << " connections from ";
+					sout << ElementTypeName(GetHandleElementType(lc[jt])) << ":" << GetHandleID(lc[jt]);
+					sout << " to ";
+					sout << ElementTypeName(GetElementType()) << ":" << LocalID();
+					sout << std::endl;
 					return false;
 				}
 			}
@@ -1805,56 +1805,56 @@ namespace INMOST
 		return true;
 	}
 
-	void Element::PrintElementConnectivity() const
+	void Element::PrintElementConnectivity(std::ostream & sout) const
 	{
 		Mesh * mesh = GetMeshLink();
 		HandleType me = GetHandle();
-		std::cout << "Element " << ElementTypeName(GetElementType()) << " " << LocalID() << std::endl;
+		sout << "Element " << ElementTypeName(GetElementType()) << " " << LocalID() << std::endl;
 		if( GetElementType() < CELL || mesh->HighConnTag().isDefined(CELL) )
 		{
 			adj_type const & hc = mesh->HighConn(GetHandle());
-			std::cout << "Upper adjacencies (" << hc.size() << "):" << std::endl;
+			sout << "Upper adjacencies (" << hc.size() << "):" << std::endl;
 			for(adj_type::size_type jt = 0; jt < hc.size(); jt++) //iterate over upper adjacent
 			{
-				std::cout << "[" << std::setw(3) << jt << "] " << ElementTypeName(GetHandleElementType(hc[jt])) << " " << GetHandleID(hc[jt]) << " lower ";
+				sout << "[" << std::setw(3) << jt << "] " << ElementTypeName(GetHandleElementType(hc[jt])) << " " << GetHandleID(hc[jt]) << " lower ";
 				bool found = false;
 				adj_type const & ilc = mesh->LowConn(hc[jt]);
-				std::cout << "(" << ilc.size() << "): ";
+				sout << "(" << ilc.size() << "): ";
 				for(adj_type::size_type kt = 0; kt < ilc.size(); kt++) //search for the link to me
 				{
-					std::cout << ElementTypeName(GetHandleElementType(ilc[kt])) << " " << GetHandleID(ilc[kt]) << " ";
+					sout << ElementTypeName(GetHandleElementType(ilc[kt])) << " " << GetHandleID(ilc[kt]) << " ";
 					if( ilc[kt] == me ) found = true;
 				}
-				if( !found ) std::cout << " no me here! ";
-				std::cout << std::endl;
+				if( !found ) sout << " no me here! ";
+				sout << std::endl;
 			}
 		}
 		if( GetElementType() > NODE || mesh->LowConnTag().isDefined(NODE) )
 		{
 			adj_type const & lc = mesh->LowConn(GetHandle());
-			std::cout << "Lower adjacencies (" << lc.size() << "):" << std::endl;
+			sout << "Lower adjacencies (" << lc.size() << "):" << std::endl;
 			for(adj_type::size_type jt = 0; jt < lc.size(); jt++) //iterate over lower adjacent
 			{
-				std::cout << "[" <<  std::setw(3) <<  jt << "] " << ElementTypeName(GetHandleElementType(lc[jt])) << " " << GetHandleID(lc[jt]) << " higher ";
+				sout << "[" <<  std::setw(3) <<  jt << "] " << ElementTypeName(GetHandleElementType(lc[jt])) << " " << GetHandleID(lc[jt]) << " higher ";
 				bool found = false;
 				adj_type const & ihc = mesh->HighConn(lc[jt]);
-				std::cout << "(" << ihc.size() << "): ";
+				sout << "(" << ihc.size() << "): ";
 				for(adj_type::size_type kt = 0; kt < ihc.size(); kt++) //search for the link to me
 				{
-					std::cout << ElementTypeName(GetHandleElementType(ihc[kt])) << " " << GetHandleID(ihc[kt]) << " ";
+					sout << ElementTypeName(GetHandleElementType(ihc[kt])) << " " << GetHandleID(ihc[kt]) << " ";
 					if( ihc[kt] == me ) found = true;
 				}
-				if( !found ) std::cout << " no me here! ";
-				std::cout << std::endl;
+				if( !found ) sout << " no me here! ";
+				sout << std::endl;
 			}
 		}
 	}
 	
-	bool Element::CheckConnectivity(Mesh * m)
+	bool Element::CheckConnectivity(Mesh * m, std::ostream & outs)
 	{
 		bool check = true;
 		for(Mesh::iteratorElement it = m->BeginElement(CELL | FACE | EDGE | NODE); it != m->EndElement(); it++)
-			if( !it->CheckElementConnectivity() ) check = false;
+			if( !it->CheckElementConnectivity(outs) ) check = false;
 		return check;
 	}
 	

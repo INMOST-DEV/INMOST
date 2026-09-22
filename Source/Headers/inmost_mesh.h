@@ -436,9 +436,9 @@ namespace INMOST
 		Status                      GetStatus               () const;
 		void                        SetStatus               (Status status) const;
 		Storage::integer &          GlobalID                () const;
-		bool                        CheckElementConnectivity() const;
-		void                        PrintElementConnectivity() const;
-		static bool                 CheckConnectivity       (Mesh * m);
+		bool                        CheckElementConnectivity(std::ostream& sout) const;
+		void                        PrintElementConnectivity(std::ostream& sout) const;
+		static bool                 CheckConnectivity       (Mesh * m, std::ostream& outs = std::cout);
 		//implemented in geometry.cpp
 		void                        CastRay                 (const real * pos, const real * dir, std::map<HandleType, real> & hits) const;
 		
