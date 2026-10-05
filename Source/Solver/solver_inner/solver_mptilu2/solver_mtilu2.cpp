@@ -578,6 +578,14 @@ void MTILU2_preconditioner::DumpMatrix(interval<INMOST_DATA_ENUM_TYPE, INMOST_DA
 				for (k = mobeg; k < moend; k++) if (DL[k] < eps) DL[k] = 1.0 / subst; else DL[k] = 1.0 / DL[k];
 			}
 
+			// The iteration balances squared entries, so its weights are
+			// the squares of the scaling coefficients applied to B.
+			for (k = mobeg; k < moend; k++)
+			{
+				DL[k] = sqrt(DL[k]);
+				DR[k] = sqrt(DR[k]);
+			}
+
 			for (k = mobeg; k < moend; k++)
 			{
 				for (INMOST_DATA_ENUM_TYPE rit = B_Address[k]; rit < B_Address[k+1]; ++rit)
