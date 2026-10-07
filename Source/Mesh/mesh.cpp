@@ -216,6 +216,10 @@ namespace INMOST
 			ReallocateData(ElementNum(etype),GetArrayCapacity(ElementNum(etype)));
 		epsilon = 1.0e-8;
 		m_state = Mesh::Serial;
+#if defined(USE_MPI) && defined(USE_MPI_P2P)
+		window = MPI_WIN_NULL;
+		shared_space = NULL;
+#endif
 
 #if defined(USE_MPI)
 		{
@@ -396,6 +400,10 @@ namespace INMOST
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))
 	{
+#if defined(USE_MPI) && defined(USE_MPI_P2P)
+		window = MPI_WIN_NULL;
+		shared_space = NULL;
+#endif
 		{
 			std::stringstream tmp;
 			tmp << other.name << "_copy";
@@ -493,10 +501,11 @@ namespace INMOST
 		//delete parallel vars
 #if defined(USE_MPI)
 #if defined(USE_MPI_P2P)
-		if( m_state == Mesh::Parallel )
+		if( window != MPI_WIN_NULL )
 		{
-			MPI_Free_mem(shared_space);
 			MPI_Win_free(&window);
+			MPI_Free_mem(shared_space);
+			shared_space = NULL;
 		}
 #endif
 #endif
@@ -705,14 +714,15 @@ namespace INMOST
 		}
 #if defined(USE_MPI)
 #if defined(USE_MPI_P2P)
-		if( m_state == Mesh::Parallel )
+		if( window != MPI_WIN_NULL )
 		{
 			int test = 0;
 			MPI_Finalized(&test);
 			if( !test )
 			{
-				MPI_Free_mem(shared_space);
 				MPI_Win_free(&window);
+				MPI_Free_mem(shared_space);
+				shared_space = NULL;
 			}
 			else
 			{

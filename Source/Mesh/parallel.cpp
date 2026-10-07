@@ -1268,6 +1268,23 @@ namespace INMOST
 	void Mesh::SetCommunicator(INMOST_MPI_Comm _comm)
 	{
 		ENTER_FUNC();
+#if defined(USE_MPI) && defined(USE_MPI_P2P)
+		if( window != MPI_WIN_NULL )
+		{
+			int comparison;
+			REPORT_MPI(MPI_Comm_compare(comm,_comm,&comparison));
+			if( comparison == MPI_IDENT )
+			{
+				EXIT_FUNC();
+				return;
+			}
+			// Release collectively on the old communicator before replacing it.
+			// The exposed allocation must outlive its window.
+			REPORT_MPI(MPI_Win_free(&window));
+			REPORT_MPI(MPI_Free_mem(shared_space));
+			shared_space = NULL;
+		}
+#endif
 		tag_shared = CreateTag("PROTECTED_STATUS",DATA_BULK,  ESET |CELL | FACE | EDGE | NODE,NONE,1);
 		tag_owner = CreateTag("OWNER_PROCESSOR",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE,NONE,1);
 		tag_processors = CreateTag("PROCESSORS_LIST",DATA_INTEGER, ESET | NODE | EDGE | FACE | CELL,NONE);

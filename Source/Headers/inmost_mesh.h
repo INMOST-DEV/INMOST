@@ -2537,7 +2537,12 @@ namespace INMOST
 		INMOST_MPI_Comm                   GetCommunicator    () const;
         /// Retrieve MPI group corresponding to the communicator
         INMOST_MPI_Group                  GetGroup           () const;
-		/// Set MPI communicator
+		/// Set MPI communicator. With MPI windows enabled, an identical communicator
+		/// keeps the existing window and settings. Creating a window is collective
+		/// over _comm. When replacing a window, all
+		/// participants of the old communicator must call this method collectively
+		/// after completing outstanding mesh communication. The communicator is
+		/// borrowed and must remain valid while the mesh uses it.
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
 		/// Find elements that are common between processors.
 		void                              ResolveShared      (bool only_new = false);
