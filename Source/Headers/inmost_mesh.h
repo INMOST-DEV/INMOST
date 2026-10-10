@@ -1343,6 +1343,8 @@ namespace INMOST
 		integer								hidden_count_zero[6];
 	private:
 		INMOST_DATA_BIG_ENUM_TYPE           parallel_mesh_unique_id;
+		void                               ReleaseParallelTags();
+		__INLINE int                       ParallelTag(int phase) const { assert(parallel_mesh_unique_id != BIGENUMUNDEF); return MPIExchangeTag::MeshBegin + 2*static_cast<int>(parallel_mesh_unique_id) + phase; }
 		INMOST_MPI_Comm                     comm;
         //INMOST_MPI_Group                    group;
 		Tag                                 tag_shared;
@@ -2312,15 +2314,6 @@ namespace INMOST
 			exch_recv_reqs_type recv_reqs;
 			exch_buffer_type send_buffers, recv_buffers;
 		};
-	private:
-		class Random // random generator to provide tag for communication
-		{
-		private: unsigned int n,a,c,m;
-		public:
-			Random(unsigned int seed = 50);
-			//~ Random(const Random & other);
-			unsigned int Number();
-		} randomizer;
 	public:
 		class elements_by_type
 		{
@@ -2543,6 +2536,9 @@ namespace INMOST
 		/// participants of the old communicator must call this method collectively
 		/// after completing outstanding mesh communication. The communicator is
 		/// borrowed and must remain valid while the mesh uses it.
+		/// Each parallel mesh reserves two MPI tags, independent of process count.
+		/// Exchange initiations (including internal rounds) must have matching order
+		/// on communicating ranks and must not be issued concurrently by threads.
 		void                              SetCommunicator    (INMOST_MPI_Comm _comm);
 		/// Find elements that are common between processors.
 		void                              ResolveShared      (bool only_new = false);
@@ -2611,6 +2607,8 @@ namespace INMOST
 		/// You should also never put the same exchange_data object to any other Mesh::ExchangeDataBegin or
 		/// Mesh::ReduceDataBegin, until matching Mesh::ExchangeDataEnd because it may override or reallocate 
 		/// buffers, internally used by MPI and remote processor will receive garbage instead of data.
+		/// Different exchange_data objects may be active simultaneously, provided
+		/// corresponding exchanges are initiated in the same order on all ranks.
 		///
 		/// Nonblocking, Collective point-2-point
 		///

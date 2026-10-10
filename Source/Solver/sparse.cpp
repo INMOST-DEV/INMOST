@@ -828,20 +828,11 @@ namespace INMOST
 			}
 #elif defined(USE_MPI) //USE_MPI alternative
 			std::string senddata = rhs.str(), recvdata;
-			INMOST_DATA_BIG_ENUM_TYPE sendsize = static_cast<int>(senddata.size());
+			INMOST_DATA_BIG_ENUM_TYPE sendsize = senddata.size();
 			std::vector<INMOST_DATA_BIG_ENUM_TYPE> recvsize(rank ? 1 : size);
 			std::vector<MPI_Request> requests;
 			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-			int max_tag = 32767;
-			int flag = 0;
-			int * p_max_tag;
-#if defined(USE_MPI2)
-			MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#else //USE_MPI2
-			MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#endif //USE_MPI2
-			if( flag ) max_tag = *p_max_tag;
 			if( rank == 0 )
 			{
 				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
@@ -853,19 +844,14 @@ namespace INMOST
 				for(int k = 1; k < size; k++)
 				{
 					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
-					int it = 0; // for mpi tag
 					while( shift != recvsize[k] )
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
-						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, (k*1000 + it)%max_tag, GetCommunicator(), &req);
+						ierr = MPI_Irecv(&recvdata[offset+shift],chunk,MPI_CHAR,k, MPIExchangeTag::SparseFile, GetCommunicator(), &req);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 						requests.push_back(req);
 						shift += chunk;
-						it++;
-						//TODO: remove temporary check
-						if( it >= 1000 )
-							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize[k] << std::endl;
 					}
 					offset += shift;
 				}
@@ -873,19 +859,14 @@ namespace INMOST
 			else 
 			{
 				INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
-				int it = 0; // for mpi tag
 				while( shift != sendsize )
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
-					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, (rank*1000 + it)%max_tag, GetCommunicator(), &req);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, MPIExchangeTag::SparseFile, GetCommunicator(), &req);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 					requests.push_back(req);
 					shift += chunk;
-					it++;
-					//TODO: remove temporary check
-					if( it >= 1000 )
-						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << sendsize << std::endl;
 				}
 			}
 			if( !requests.empty() )
@@ -1217,15 +1198,6 @@ namespace INMOST
 			std::vector<MPI_Request> requests;
 			int ierr = MPI_Gather(&sendsize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,&recvsize[0],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator());
 			if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
-			int max_tag = 32767;
-			int flag = 0;
-			int * p_max_tag;
-#if defined(USE_MPI2)
-			MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#else //USE_MPI2
-			MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#endif //USE_MPI2
-			if( flag ) max_tag = *p_max_tag;
 			if( rank == 0 )
 			{
 				INMOST_DATA_BIG_ENUM_TYPE sizesum = recvsize[0];
@@ -1237,19 +1209,14 @@ namespace INMOST
 				for(int k = 1; k < size; k++)
 				{
 					INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
-					int it = 0; // for mpi tag
 					while( shift != recvsize[k] )
 					{
 						MPI_Request req;
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize[k] - shift);
-						ierr = MPI_Irecv(&senddata[offset+shift],chunk,MPI_CHAR,k, (k*1000 + it)%max_tag, GetCommunicator(), &req);
+						ierr = MPI_Irecv(&recvdata[offset+shift],chunk,MPI_CHAR,k, MPIExchangeTag::SparseFile, GetCommunicator(), &req);
 						if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 						requests.push_back(req);
 						shift += chunk;
-						it++;
-						//TODO: remove temporary check
-						if( it >= 1000 )
-							std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << recvsize[k] << std::endl;
 					}
 					offset += shift;
 				}
@@ -1257,19 +1224,14 @@ namespace INMOST
 			else 
 			{
 				INMOST_DATA_BIG_ENUM_TYPE chunk, shift = 0;
-				int it = 0; // for mpi tag
 				while( shift != sendsize )
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),sendsize - shift);
-					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, (rank*1000 + it)%max_tag, GetCommunicator(), &req);
+					ierr = MPI_Isend(&senddata[shift],chunk,MPI_CHAR, 0, MPIExchangeTag::SparseFile, GetCommunicator(), &req);
 					if( ierr != MPI_SUCCESS ) MPI_Abort(GetCommunicator(),__LINE__);
 					requests.push_back(req);
 					shift += chunk;
-					it++;
-					//TODO: remove temporary check
-					if( it >= 1000 )
-						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << sendsize << std::endl;
 				}
 			}
 			if( !requests.empty() )

@@ -339,14 +339,14 @@ namespace INMOST {
 			MPI_Comm_rank(GetCommunicator(),&rank);
 			MPI_Comm_size(GetCommunicator(),&size);
 			if( rank == size-1 )
-				MPI_Send(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,rank-1,
+				MPI_Send(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,MPIExchangeTag::SolverInterval,
 						 GetCommunicator());//,MPI_STATUS_IGNORE);
 			else if( rank > 0 )
-				MPI_Sendrecv(&mbeg,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,rank-1,
-							 &mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,rank,
+				MPI_Sendrecv(&mbeg,1,INMOST_MPI_DATA_ENUM_TYPE,rank-1,MPIExchangeTag::SolverInterval,
+							 &mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,MPIExchangeTag::SolverInterval,
 							 GetCommunicator(),MPI_STATUS_IGNORE);
 			else
-				MPI_Recv(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,rank,
+				MPI_Recv(&mend,1,INMOST_MPI_DATA_ENUM_TYPE,rank+1,MPIExchangeTag::SolverInterval,
 						 GetCommunicator(),MPI_STATUS_IGNORE);
 			std::cout << "on " << rank << " " << mbeg << ":" << mend << std::endl;
 #endif

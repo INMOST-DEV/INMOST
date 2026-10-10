@@ -23,7 +23,14 @@ bool allow_pack_by_gids = false;
 
 
 #if defined(USE_MPI)
-static INMOST_DATA_BIG_ENUM_TYPE pmid = 0;
+// Local live IDs, including meshes on other communicators. The collective
+// maximum at allocation prevents reuse while any participating rank still
+// holds a higher ID. Removing the highest meshes recovers their tag pairs.
+static std::set<INMOST_DATA_BIG_ENUM_TYPE> & ParallelMeshIds()
+{
+	static std::set<INMOST_DATA_BIG_ENUM_TYPE> ids;
+	return ids;
+}
 #endif // USE_MPI
 #if defined(USE_PARALLEL_WRITE_TIME)
 __INLINE std::string NameSlash(std::string input)
@@ -1265,25 +1272,39 @@ namespace INMOST
         return ret;
     }
 	
+	void Mesh::ReleaseParallelTags()
+	{
+#if defined(USE_MPI)
+		if( parallel_mesh_unique_id != BIGENUMUNDEF )
+			ParallelMeshIds().erase(parallel_mesh_unique_id);
+#endif
+		parallel_mesh_unique_id = BIGENUMUNDEF;
+	}
+
 	void Mesh::SetCommunicator(INMOST_MPI_Comm _comm)
 	{
 		ENTER_FUNC();
-#if defined(USE_MPI) && defined(USE_MPI_P2P)
-		if( window != MPI_WIN_NULL )
+#if defined(USE_MPI)
+		if( parallel_mesh_unique_id != BIGENUMUNDEF )
 		{
 			int comparison;
 			REPORT_MPI(MPI_Comm_compare(comm,_comm,&comparison));
-			if( comparison == MPI_IDENT )
+			if( comparison == MPI_IDENT && HaveTag("PROTECTED_STATUS") )
 			{
 				EXIT_FUNC();
 				return;
 			}
+		}
+#if defined(USE_MPI_P2P)
+		if( window != MPI_WIN_NULL )
+		{
 			// Release collectively on the old communicator before replacing it.
 			// The exposed allocation must outlive its window.
 			REPORT_MPI(MPI_Win_free(&window));
 			REPORT_MPI(MPI_Free_mem(shared_space));
 			shared_space = NULL;
 		}
+#endif
 #endif
 		tag_shared = CreateTag("PROTECTED_STATUS",DATA_BULK,  ESET |CELL | FACE | EDGE | NODE,NONE,1);
 		tag_owner = CreateTag("OWNER_PROCESSOR",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE,NONE,1);
@@ -1293,8 +1314,6 @@ namespace INMOST
 		tag_sendto = CreateTag("PROTECTED_SENDTO",DATA_INTEGER, ESET | CELL | FACE | EDGE | NODE, ESET | CELL | FACE | EDGE | NODE);
 		
 #if defined(USE_MPI)
-		randomizer = Random();
-		
 		parallel_file_strategy = 1;
 
 		
@@ -1303,9 +1322,30 @@ namespace INMOST
 		//~ MPI_Comm_dup(_comm,&comm);
 		comm = _comm;
 		{
-			INMOST_DATA_BIG_ENUM_TYPE t = pmid;
-			REPORT_MPI(MPI_Allreduce(&t,&parallel_mesh_unique_id,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_MAX,comm));
-			pmid = parallel_mesh_unique_id+1;
+			ReleaseParallelTags();
+			m_state = Mesh::Serial;
+			int max_tag = 32767, flag = 0, *p_max_tag;
+#if defined(USE_MPI2)
+			REPORT_MPI(MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag));
+#else
+			REPORT_MPI(MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag));
+#endif
+			if( flag ) max_tag = *p_max_tag;
+			// One collective, as before: agree on both the next ID and the
+			// smallest tag bound. Encode the minimum as a maximum of deficits.
+			std::set<INMOST_DATA_BIG_ENUM_TYPE> & ids = ParallelMeshIds();
+			INMOST_DATA_BIG_ENUM_TYPE local[2] =
+			{
+				ids.empty() ? 0 : *ids.rbegin()+1,
+				static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX-max_tag)
+			}, agreed[2];
+			REPORT_MPI(MPI_Allreduce(local,agreed,2,INMOST_MPI_DATA_BIG_ENUM_TYPE,MPI_MAX,comm));
+			max_tag = INT_MAX-static_cast<int>(agreed[1]);
+			if( max_tag < MPIExchangeTag::MeshBegin+1 ||
+				agreed[0] > static_cast<INMOST_DATA_BIG_ENUM_TYPE>((max_tag-MPIExchangeTag::MeshBegin-1)/2) )
+				throw NoSpaceForMpiTag;
+			parallel_mesh_unique_id = agreed[0];
+			ids.insert(parallel_mesh_unique_id);
 		}
 		m_state = Mesh::Parallel;
 
@@ -3519,6 +3559,9 @@ namespace INMOST
 			REPORT_STR("Pack elements and data");
 			if( send_size[p-procs.begin()] )
 			{
+				// A completed exchange_data may be reused. Packing appends, so
+				// discard its previous contents while retaining buffer capacity.
+				storage.send_buffers[num_send].second.clear();
 				elements_by_type selems;
 				if( have_reference_tag )
 				{
@@ -5617,17 +5660,9 @@ namespace INMOST
 		REPORT_VAL("exchange number", ++num_exchanges);
 #if defined(USE_MPI)
 		INMOST_DATA_ENUM_TYPE i;
-		int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
-		int mpi_tag;
-		int max_tag = 32767;
-		int flag = 0;
-		int * p_max_tag;
-#if defined(USE_MPI2)
-		MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#else //USE_MPI2
-		MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#endif //USE_MPI2
-		if( flag ) max_tag = *p_max_tag;
+		// Receives name their source. Ordered parts and ordered exchange
+		// initiations share the mesh's data tag, including overlapping Begin/End.
+		const int mpi_tag = ParallelTag(1);
 		recv_reqs.clear();//resize(recv_bufs.size());
 		send_reqs.clear();//resize(send_bufs.size());
 		{
@@ -5635,10 +5670,7 @@ namespace INMOST
 			REPORT_VAL("recv bufs size",recv_bufs.size());
 			for(i = 0; i < recv_bufs.size(); i++)// if( !recv_bufs[i].second.empty() )
 			{
-				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)mpirank+mpisize+rand_num))%max_tag;
-				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 				INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk, datasize = recv_bufs[i].second.size();
-				int it = 0, mpi_tag_it; // for mpi tag
 				REPORT_VAL("mpi_tag",mpi_tag);
 				REPORT_VAL("total size",datasize);
 				recv_reqs.cnt.push_back(0);
@@ -5647,47 +5679,34 @@ namespace INMOST
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize - shift);
-					mpi_tag_it = (mpi_tag*1000 + it)%max_tag;
-					REPORT_VAL("it",it);
-					REPORT_VAL("using mpi_tag",mpi_tag_it);
+					REPORT_VAL("using mpi_tag",mpi_tag);
 					REPORT_VAL("size",chunk);
 					REPORT_VAL("proc",recv_bufs[i].first);
 					REPORT_VAL("empty",recv_bufs[i].second.empty());
-					REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,recv_bufs[i].first,mpi_tag_it,comm,&req));
+					REPORT_MPI(MPI_Irecv(recv_bufs[i].second.empty()?&stub:&recv_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,recv_bufs[i].first,mpi_tag,comm,&req));
 					recv_reqs.requests.push_back(req);
 					recv_reqs.buf.back()++;
 					recv_reqs.cnt.back()++;
 					shift += chunk;
-					it++;
-					if( it >= 1000 )
-						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasize << std::endl;
 				} while( shift != datasize );
 			}
 			REPORT_VAL("send bufs size",send_bufs.size());
 			for(i = 0; i < send_bufs.size(); i++) //if( !send_bufs[i].second.empty() )
 			{
-				mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)send_bufs[i].first+mpisize+rand_num))%max_tag;
-				//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
 				INMOST_DATA_BIG_ENUM_TYPE shift = 0, chunk, datasize = send_bufs[i].second.size();
-				int it = 0, mpi_tag_it; // for mpi tag
 				REPORT_VAL("mpi_tag",mpi_tag);
 				REPORT_VAL("total size",datasize);
 				do
 				{
 					MPI_Request req;
 					chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),datasize - shift);
-					mpi_tag_it = (mpi_tag*1000 + it)%max_tag;
-					REPORT_VAL("it",it);
-					REPORT_VAL("using mpi_tag",mpi_tag_it);
+					REPORT_VAL("using mpi_tag",mpi_tag);
 					REPORT_VAL("size",chunk);
 					REPORT_VAL("proc",send_bufs[i].first);
 					REPORT_VAL("empty",send_bufs[i].second.empty());
-					REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,send_bufs[i].first,mpi_tag_it,comm,&req));	
+					REPORT_MPI(MPI_Isend(send_bufs[i].second.empty()?&stub:&send_bufs[i].second[shift],static_cast<INMOST_MPI_SIZE>(chunk),SEND_AS,send_bufs[i].first,mpi_tag,comm,&req));
 					send_reqs.push_back(req);
 					shift += chunk;
-					it++;
-					if( it >= 1000 )
-						std::cout << __FILE__ << ":" << __LINE__ << " too many iterations!!! " << it << " datasize " << datasize << std::endl;
 				} while( shift != datasize );
 			}
 		}
@@ -5740,18 +5759,7 @@ namespace INMOST
 			{
 				REPORT_VAL("exchange number", ++num_exchanges);
 				INMOST_DATA_ENUM_TYPE i;
-				int mpirank = GetProcessorRank(),mpisize = GetProcessorsNumber(), rand_num = randomizer.Number()+1;
-				int mpi_tag;
-				int max_tag = 32767;
-				int flag = 0;
-				int * p_max_tag;
-#if defined(USE_MPI2)
-				MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#else //USE_MPI2
-				MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
-#endif //USE_MPI2
-				if( flag ) max_tag = *p_max_tag;
-				REPORT_VAL("max_tag",max_tag);
+				const int mpi_tag = ParallelTag(0);
 				std::vector<INMOST_DATA_BIG_ENUM_TYPE> send_recv_size(send_bufs.size()+recv_bufs.size());
 				std::vector<INMOST_MPI_Request> reqs(send_bufs.size()+recv_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++)
@@ -5759,20 +5767,16 @@ namespace INMOST
 				REPORT_VAL("recv buffers size",recv_bufs.size());
 				for(i = 0; i < recv_bufs.size(); i++)
 				{
-					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)mpirank+mpisize+rand_num))%max_tag;
 					REPORT_VAL("origin",recv_bufs[i].first);
 					REPORT_VAL("mpi_tag",mpi_tag);
-					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+recv_bufs[i].first*mpisize+mpirank;
 					REPORT_MPI(MPI_Irecv(&send_recv_size[i],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,recv_bufs[i].first,mpi_tag,comm,&reqs[i]));
 				}
 				REPORT_VAL("send buffers size",send_bufs.size());
 				for(i = 0; i < send_bufs.size(); i++)
 				{
-					mpi_tag = ((parallel_mesh_unique_id+1)*mpisize*mpisize + ((size_t)send_bufs[i].first+mpisize+rand_num))%max_tag;
 					REPORT_VAL("destination",send_bufs[i].first);
 					REPORT_VAL("mpi_tag",mpi_tag);
 					REPORT_VAL("size",send_recv_size[i+recv_bufs.size()]);
-					//mpi_tag = parallel_mesh_unique_id*mpisize*mpisize+mpirank*mpisize+send_bufs[i].first;
 					REPORT_MPI(MPI_Isend(&send_recv_size[i+recv_bufs.size()],1,INMOST_MPI_DATA_BIG_ENUM_TYPE,send_bufs[i].first,mpi_tag,comm,&reqs[i+recv_bufs.size()]));	
 				}
 				if( !recv_bufs.empty() )

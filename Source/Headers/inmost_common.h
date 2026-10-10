@@ -232,6 +232,26 @@ double Timer();
 
 namespace INMOST
 {
+	// Internal point-to-point protocols share the borrowed communicator.
+	// Keep their fixed tags below the pairs allocated to individual meshes.
+	// Tags 2, 3 and 4 are used by the partitioner.
+	namespace MPIExchangeTag
+	{
+		enum
+		{
+			Pmf = 5,
+			SparseFile = 6,
+			SolverRowCount = 7,
+			SolverRowIndices = 8,
+			SolverRowSizes = 9,
+			SolverRowData = 10,
+			SolverUpdate = 11,
+			SolverAccumulate = 12,
+			SolverInterval = 13,
+			MeshBegin = 16
+		};
+	}
+
 	/// Types of errors may occur in INMOST.
 	/// All of these error are fatal ones.
 	/// If error is detected then "throw" exception is generated.
@@ -304,6 +324,7 @@ namespace INMOST
 		MatrixPseudoSolveFail,
 		
 		/// The very tail of the errors list.
+		NoSpaceForMpiTag = 900,
 		NotImplemented = 1000,
 		Impossible
 	};
