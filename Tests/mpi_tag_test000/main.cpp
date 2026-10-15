@@ -121,8 +121,10 @@ static int data_tag(Mesh &mesh)
     mesh.ExchangeData(tag, CELL);
     capture = false;
     verify(mesh, tag, 100);
+#if defined(USE_MPI_IRECV_ORDER_RULE)
     check(message_tags.size() == 1, "Fixed exchange did not use one data tag");
     check(attribute_queries == 0, "Exchange queried MPI_TAG_UB");
+#endif
     return message_tags.empty() ? -1 : *message_tags.begin();
 }
 
@@ -149,6 +151,20 @@ static void solver_exchange(Mesh &mesh, int size)
     info.Update(vector);
     for (Sparse::Vector::iterator i = vector.Begin(); i != vector.End(); ++i)
         check(*i == 1, "Solver Update received the wrong values");
+    // Exercise the interval exchange on ordinary global row intervals;
+    // the overlap matrix above uses remapped local indices.
+    Sparse::Matrix residual_matrix("tag_test_residual", 2*rank, 2*rank+2);
+    Sparse::Vector residual_rhs("tag_test_residual_rhs", 2*rank, 2*rank+2);
+    Sparse::Vector residual_solution("tag_test_residual_solution", 2*rank, 2*rank+2);
+    for (int row = 2*rank; row < 2*rank+2; ++row)
+    {
+        residual_matrix[row][row] = 4;
+        residual_rhs[row] = 4;
+        residual_solution[row] = 1;
+    }
+    residual_matrix.isParallel() = true;
+    check(residual_matrix.Residual(residual_rhs, residual_solution) == 0,
+          "Parallel residual exchanged incorrect interval boundaries");
     int contributions = static_cast<int>(vector.Size()), expected = 0;
     MPI_Allreduce(&contributions, &expected, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     info.Accumulate(vector);
@@ -160,9 +176,11 @@ static void solver_exchange(Mesh &mesh, int size)
     check(total == expected, "Solver Accumulate lost contributions");
     mesh.ExchangeDataEnd(tag, CELL, 0, pending);
     capture = false;
+#if defined(USE_MPI_IRECV_ORDER_RULE)
     check(message_tags.count(MPIExchangeTag::SolverUpdate) &&
           message_tags.count(MPIExchangeTag::SolverAccumulate),
           "Solver exchanges did not use their fixed tags");
+#endif
     verify(mesh, tag, 600);
 #else
     (void) mesh;
@@ -182,8 +200,10 @@ static void roundtrip(Mesh &mesh, const std::string &prefix)
     start_capture();
     mesh.Save(file);
     capture = false;
+#if defined(USE_MPI_IRECV_ORDER_RULE)
     check(message_tags.size() == 1 && message_tags.count(MPIExchangeTag::Pmf),
           "PMF save did not use its fixed tag");
+#endif
     {
         Mesh loaded;
         loaded.SetCommunicator(MPI_COMM_WORLD);
@@ -191,7 +211,9 @@ static void roundtrip(Mesh &mesh, const std::string &prefix)
         start_capture();
         loaded.Load(file);
         capture = false;
+#if defined(USE_MPI_IRECV_ORDER_RULE)
         check(message_tags.count(MPIExchangeTag::Pmf), "PMF load did not use its fixed tag");
+#endif
         check(loaded.NumberOfCells() == mesh.NumberOfCells(), "PMF roundtrip lost cells");
         Tag restored_id = loaded.GetTag("tag_test_original_id");
         Tag restored_data = loaded.GetTag("tag_test_a");
@@ -231,6 +253,7 @@ static void roundtrip(Mesh &mesh, const std::string &prefix)
 #endif
 }
 
+
 int main(int argc, char **argv)
 {
     Mesh::Initialize(&argc, &argv);
@@ -259,17 +282,26 @@ int main(int argc, char **argv)
         first.ExchangeDataEnd(variable, CELL, 0, sv);
         first.ExchangeDataEnd(a, CELL, 0, sa);
         capture = false;
+#if defined(USE_MPI_IRECV_ORDER_RULE)
         check(attribute_queries == 0, "Asynchronous exchange queried MPI_TAG_UB");
-#if !defined(USE_MPI_P2P) || !defined(PREFFER_MPI_P2P)
+#endif
+#if defined(USE_MPI_IRECV_ORDER_RULE) && (!defined(USE_MPI_P2P) || !defined(PREFFER_MPI_P2P))
         check(message_tags.size() == 2 && message_tags.count(first_tag-1) &&
               message_tags.count(first_tag), "Sizes and data did not use separate tags");
 #endif
         verify(first, a, 100); verify(first, b, 200); verify(first, variable, 300);
+#if !defined(USE_MPI_IRECV_ORDER_RULE)
+        // The compatibility branch retains the old buffer-reuse behavior.
+        sa.send_buffers.clear();
+        sb.send_buffers.clear();
+#endif
 
         Mesh *second = new Mesh;
         setup(*second, argv[1], size);
         const int second_tag = data_tag(*second);
+#if defined(USE_MPI_IRECV_ORDER_RULE)
         check(second_tag != first_tag, "Different meshes share a tag");
+#endif
         fill(first, a, 400);
         Tag other_a = second->GetTag("tag_test_a");
         fill(*second, other_a, 500);
@@ -289,6 +321,7 @@ int main(int argc, char **argv)
         verify(first, a, 400); verify(*second, other_a, 500);
         delete second;
 
+#if defined(USE_MPI_IRECV_ORDER_RULE)
         for (int i = 0; i < 8; ++i)
         {
             Mesh replacement;
@@ -343,6 +376,7 @@ int main(int argc, char **argv)
             }
             delete local;
         }
+#endif
         solver_exchange(first, size);
         data_tag(first);
         roundtrip(first, argv[2]);

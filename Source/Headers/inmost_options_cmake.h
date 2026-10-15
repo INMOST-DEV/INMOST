@@ -36,6 +36,7 @@
 #cmakedefine USE_MPI_P2P //use (probably) more effective point to point algorithms
 #cmakedefine USE_MPI_FILE //use functionality for parallel files
 #cmakedefine USE_MPI2 //use mpi-2 extensions
+#cmakedefine USE_MPI_IRECV_ORDER_RULE //reuse tags according to MPI nonblocking ordering rules
 
 #cmakedefine USE_INT64 // switch to 64-bit integer types
 #cmakedefine USE_FP64 // switch to 64-bit floating-point types (usually on)

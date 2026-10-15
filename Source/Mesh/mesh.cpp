@@ -182,7 +182,9 @@ namespace INMOST
 
 	void Mesh::Init(std::string _name)
 	{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 		parallel_mesh_unique_id = BIGENUMUNDEF;
+#endif
 		name = _name;
 #if defined(CHECKS_MARKERS)
 		check_shared_mrk = true;
@@ -401,7 +403,9 @@ namespace INMOST
 	Mesh::Mesh(const Mesh & other)
 	:TagManager(other),Storage(NULL,ComposeHandle(MESH,0))
 	{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 		parallel_mesh_unique_id = BIGENUMUNDEF;
+#endif
 #if defined(USE_MPI) && defined(USE_MPI_P2P)
 		window = MPI_WIN_NULL;
 		shared_space = NULL;
@@ -490,7 +494,9 @@ namespace INMOST
 	Mesh & Mesh::operator =(Mesh const & other)
 	{
 		if( this == &other ) return *this; //don't do anything
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 		ReleaseParallelTags();
+#endif
 		{
 			std::stringstream tmp;
 			tmp << other.name << "_copy";
@@ -675,7 +681,9 @@ namespace INMOST
 	
 	Mesh::~Mesh()
 	{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 		ReleaseParallelTags();
+#endif
 		//clear all data fields
 		//while( !tags.empty() ) DeleteTag(tags.back(),CELL|FACE|EDGE|NODE|ESET|MESH);
 		/*
@@ -2885,5 +2893,29 @@ namespace INMOST
 		if( (mask & MARK_ON_ERROR) && tag_topologyerror.isValid() ) 
 			tag_topologyerror = DeleteTag(tag_topologyerror);
 	}
+#if !defined(USE_MPI_IRECV_ORDER_RULE)
+
+  Mesh::Random::Random(unsigned int seed)
+	{
+		n = seed;
+		a = 1103515245;
+		c = 12345;
+		m = 1u << (sizeof(unsigned int)*8-1);
+	}
+	/*
+	Mesh::Random::Random(const Random & other)
+	{
+		n = other.n;
+		a = other.a;
+		c = other.c;
+		m = other.m;
+	}
+	*/
+	unsigned int Mesh::Random::Number()
+	{
+		n = (a*n + c)%m;
+		return (n << 2) >> 18;
+	}
+#endif
 }
 #endif

@@ -37,6 +37,7 @@
 //#define USE_MPI_P2P //use (probably) more effective mpi-2 algorithms
 //#define USE_MPI_FILE //use MPI_File_xxx functionality
 //#define USE_MPI2 //set of your version produce warnings
+//#define USE_MPI_IRECV_ORDER_RULE //reuse tags according to MPI nonblocking ordering rules
 
 //#define USE_INT64
 #define USE_FP64
@@ -232,6 +233,7 @@ double Timer();
 
 namespace INMOST
 {
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 	// Internal point-to-point protocols share the borrowed communicator.
 	// Keep their fixed tags below the pairs allocated to individual meshes.
 	// Tags 2, 3 and 4 are used by the partitioner.
@@ -251,6 +253,7 @@ namespace INMOST
 			MeshBegin = 16
 		};
 	}
+#endif
 
 	/// Types of errors may occur in INMOST.
 	/// All of these error are fatal ones.
@@ -324,7 +327,9 @@ namespace INMOST
 		MatrixPseudoSolveFail,
 		
 		/// The very tail of the errors list.
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 		NoSpaceForMpiTag = 900,
+#endif
 		NotImplemented = 1000,
 		Impossible
 	};

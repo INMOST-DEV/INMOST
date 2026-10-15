@@ -176,6 +176,17 @@ namespace INMOST
 				global_to_proc[k + 1] = global_overlap[2 * k + 1];
 		}
 		MPI_Status stat;
+#if !defined(USE_MPI_IRECV_ORDER_RULE)
+		int max_tag = 32767;
+		int flag = 0;
+		int * p_max_tag;
+#if defined(USE_MPI2)
+		MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#else //USE_MPI2
+		MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#endif //USE_MPI2
+		if( flag ) max_tag = *p_max_tag;
+#endif
 		INMOST_DATA_ENUM_TYPE ext_pos = local_matrix_end;
 		//may replace std::map here
 		//small_hash<INMOST_DATA_ENUM_TYPE, INMOST_DATA_ENUM_TYPE, HASH_TABLE_SIZE> global_to_local;
@@ -269,8 +280,16 @@ namespace INMOST
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_recv[0]; k++) //send rows that i want to receive
 				{
 					total_recv += vector_exchange_recv[j + 1];
-					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 1], 1, INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverRowCount, comm, &requests[k])); //send number of rows
-					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 2], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverRowIndices, comm, &requests[k + vector_exchange_recv[0]])); //send row positions
+#if defined(USE_MPI_IRECV_ORDER_RULE)
+					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 1], 1, INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverRowCount, comm, &requests[k]));
+#else
+					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 1], 1, INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], ((unsigned long long)size + (unsigned long long)vector_exchange_recv[j]) % max_tag, comm, &requests[k]));
+#endif //send number of rows
+#if defined(USE_MPI_IRECV_ORDER_RULE)
+					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 2], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverRowIndices, comm, &requests[k + vector_exchange_recv[0]]));
+#else
+					GUARD_MPI(MPI_Isend(&vector_exchange_recv[j + 2], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], (2ULL * (unsigned long long)size + (unsigned long long)vector_exchange_recv[j]) % max_tag, comm, &requests[k + vector_exchange_recv[0]]));
+#endif //send row positions
 					j += vector_exchange_recv[j + 1] + 2;
 				}
 				
@@ -282,10 +301,18 @@ namespace INMOST
 					 k < incoming[size * 2 + rank]; k++) //receive rows that others want from me
 				{
 					INMOST_DATA_ENUM_TYPE msgsize;
-					GUARD_MPI(MPI_Recv(&msgsize, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_ANY_SOURCE, MPIExchangeTag::SolverRowCount, comm, &stat)); //recv number of rows
+#if defined(USE_MPI_IRECV_ORDER_RULE)
+					GUARD_MPI(MPI_Recv(&msgsize, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_ANY_SOURCE, MPIExchangeTag::SolverRowCount, comm, &stat));
+#else
+					GUARD_MPI(MPI_Recv(&msgsize, 1, INMOST_MPI_DATA_ENUM_TYPE, MPI_ANY_SOURCE, ((unsigned long long)size + (unsigned long long)rank) % max_tag, comm, &stat));
+#endif //recv number of rows
 					vector_exchange_send[j++] = stat.MPI_SOURCE;
 					vector_exchange_send[j++] = msgsize;
-					GUARD_MPI(MPI_Irecv(&vector_exchange_send[j], msgsize, INMOST_MPI_DATA_ENUM_TYPE, stat.MPI_SOURCE,MPIExchangeTag::SolverRowIndices, comm, &requests[2 * vector_exchange_recv[0] + k])); //recv rows
+#if defined(USE_MPI_IRECV_ORDER_RULE)
+					GUARD_MPI(MPI_Irecv(&vector_exchange_send[j], msgsize, INMOST_MPI_DATA_ENUM_TYPE, stat.MPI_SOURCE,MPIExchangeTag::SolverRowIndices, comm, &requests[2 * vector_exchange_recv[0] + k]));
+#else
+					GUARD_MPI(MPI_Irecv(&vector_exchange_send[j], msgsize, INMOST_MPI_DATA_ENUM_TYPE, stat.MPI_SOURCE,(2ULL * (unsigned long long)size + (unsigned long long)rank) % max_tag, comm, &requests[2 * vector_exchange_recv[0] + k]));
+#endif //recv rows
 					j += msgsize;
 					total_send += msgsize;
 					vector_exchange_send[0]++;
@@ -375,7 +402,11 @@ namespace INMOST
 				INMOST_DATA_ENUM_TYPE j = 1, q = 0, f = 0, total_rows_send = 0, total_rows_recv = 0;
 				for (INMOST_DATA_ENUM_TYPE k = 0; k < vector_exchange_recv[0]; k++) //recv sizes of rows
 				{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 					GUARD_MPI(MPI_Irecv(&recv_row_sizes[q], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverRowSizes, comm,&requests[k]));
+#else
+					GUARD_MPI(MPI_Irecv(&recv_row_sizes[q], vector_exchange_recv[j + 1], INMOST_MPI_DATA_ENUM_TYPE, vector_exchange_recv[j], (3ULL * (unsigned long long)size + (unsigned long long)vector_exchange_recv[j]) % max_tag, comm,&requests[k]));
+#endif
 					q += vector_exchange_recv[j + 1];
 					j += vector_exchange_recv[j + 1] + 2;
 				}
@@ -389,7 +420,11 @@ namespace INMOST
 						send_row_sizes[q + r] = m[vector_exchange_send[j + 2 + r]].Size();
 						total_rows_send += m[vector_exchange_send[j + 2 + r]].Size();
 					}
-					GUARD_MPI(MPI_Isend(&send_row_sizes[q], vector_exchange_send[j + 1], INMOST_MPI_DATA_ENUM_TYPE,vector_exchange_send[j], MPIExchangeTag::SolverRowSizes, comm, &requests[vector_exchange_recv[0] + k])); //recv rows
+#if defined(USE_MPI_IRECV_ORDER_RULE)
+					GUARD_MPI(MPI_Isend(&send_row_sizes[q], vector_exchange_send[j + 1], INMOST_MPI_DATA_ENUM_TYPE,vector_exchange_send[j], MPIExchangeTag::SolverRowSizes, comm, &requests[vector_exchange_recv[0] + k]));
+#else
+					GUARD_MPI(MPI_Isend(&send_row_sizes[q], vector_exchange_send[j + 1], INMOST_MPI_DATA_ENUM_TYPE,vector_exchange_send[j], (3ULL * (unsigned long long)size + (unsigned long long)rank) % max_tag, comm, &requests[vector_exchange_recv[0] + k]));
+#endif //recv rows
 					//remember processor numbers here
 					q += vector_exchange_send[j + 1];
 					j += vector_exchange_send[j + 1] + 2;
@@ -427,7 +462,11 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE local_size = 0;
 					for (INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_recv[j + 1]; r++)
 						local_size += recv_row_sizes[q + r];
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 					GUARD_MPI(MPI_Irecv(&recv_row_data[f], local_size, Sparse::GetRowEntryType(), vector_exchange_recv[j], MPIExchangeTag::SolverRowData, comm, &requests[k]));
+#else
+					GUARD_MPI(MPI_Irecv(&recv_row_data[f], local_size, Sparse::GetRowEntryType(), vector_exchange_recv[j], (4ULL * (unsigned long long)size + (unsigned long long)vector_exchange_recv[j]) % max_tag, comm, &requests[k]));
+#endif
 					q += vector_exchange_recv[j + 1];
 					j += vector_exchange_recv[j + 1] + 2;
 					f += local_size;
@@ -440,7 +479,11 @@ namespace INMOST
 					INMOST_DATA_ENUM_TYPE local_size = 0;
 					for (INMOST_DATA_ENUM_TYPE r = 0; r < vector_exchange_send[j + 1]; r++)
 						local_size += send_row_sizes[q + r];
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 					GUARD_MPI( MPI_Isend(&send_row_data[f], local_size, Sparse::GetRowEntryType(), vector_exchange_send[j],MPIExchangeTag::SolverRowData, comm, &requests[k + vector_exchange_recv[0]]));
+#else
+					GUARD_MPI( MPI_Isend(&send_row_data[f], local_size, Sparse::GetRowEntryType(), vector_exchange_send[j],(4ULL * (unsigned long long)size + (unsigned long long)rank) % max_tag, comm, &requests[k + vector_exchange_recv[0]]));
+#endif
 					q += vector_exchange_send[j + 1];
 					j += vector_exchange_send[j + 1] + 2;
 					f += local_size;
@@ -648,6 +691,17 @@ namespace INMOST
 	{
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
+#if !defined(USE_MPI_IRECV_ORDER_RULE)
+		int max_tag = 32767;
+		int flag = 0;
+		int * p_max_tag;
+#if defined(USE_MPI2)
+		MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#else //USE_MPI2
+		MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#endif //USE_MPI2
+		if( flag ) max_tag = *p_max_tag;
+#endif
 		if (GetSize() == 1) return;
 #if defined(USE_OMP)
 #pragma omp single
@@ -659,7 +713,11 @@ namespace INMOST
 			int ierr;
 			for (i = 0; i < vector_exchange_recv[0]; i++)
 			{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 				GUARD_MPI(MPI_Irecv(&recv_storage[l], vector_exchange_recv[j + 1], INMOST_MPI_DATA_REAL_TYPE, vector_exchange_recv[j], MPIExchangeTag::SolverUpdate, comm, &recv_requests[i]));
+#else
+				GUARD_MPI(MPI_Irecv(&recv_storage[l], vector_exchange_recv[j + 1], INMOST_MPI_DATA_REAL_TYPE, vector_exchange_recv[j], ((unsigned long long)vector_exchange_recv[j] * (unsigned long long)size + (unsigned long long)rank) % max_tag, comm, &recv_requests[i]));
+#endif
 				l += vector_exchange_recv[j + 1];
 				j += vector_exchange_recv[j + 1] + 2;
 			}
@@ -668,7 +726,11 @@ namespace INMOST
 			{
 				for (k = 0; k < vector_exchange_send[j + 1]; k++)
 					send_storage[l + k] = x[vector_exchange_send[k + j + 2]];
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 				GUARD_MPI(MPI_Isend(&send_storage[l], vector_exchange_send[j + 1], INMOST_MPI_DATA_REAL_TYPE, vector_exchange_send[j], MPIExchangeTag::SolverUpdate, comm, &send_requests[i]));
+#else
+				GUARD_MPI(MPI_Isend(&send_storage[l], vector_exchange_send[j + 1], INMOST_MPI_DATA_REAL_TYPE, vector_exchange_send[j], ((unsigned long long)rank * (unsigned long long)size + (unsigned long long)vector_exchange_send[j]) % max_tag, comm, &send_requests[i]));
+#endif
 				l += vector_exchange_send[j + 1];
 				j += vector_exchange_send[j + 1] + 2;
 			}
@@ -700,6 +762,17 @@ namespace INMOST
 		//std::cout << __FUNCTION__ << " start" << std::endl;
 #if defined(USE_MPI)
 		if (GetSize() == 1) return;
+#if !defined(USE_MPI_IRECV_ORDER_RULE)
+		int max_tag = 32767;
+		int flag = 0;
+		int * p_max_tag;
+#if defined(USE_MPI2)
+		MPI_Comm_get_attr(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#else //USE_MPI2
+		MPI_Attr_get(comm,MPI_TAG_UB,&p_max_tag,&flag);
+#endif //USE_MPI2
+		if( flag ) max_tag = *p_max_tag;
+#endif
 #if defined(USE_OMP)
 #pragma omp single
 #endif
@@ -710,9 +783,15 @@ namespace INMOST
 			int ierr;
 			for (i = 0; i < vector_exchange_send[0]; i++)
 			{
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 				GUARD_MPI(MPI_Irecv(&send_storage[l], vector_exchange_send[j + 1], INMOST_MPI_DATA_REAL_TYPE,
 									vector_exchange_send[j], MPIExchangeTag::SolverAccumulate, comm,
 									&send_requests[i]));
+#else
+				GUARD_MPI(MPI_Irecv(&send_storage[l], vector_exchange_send[j + 1], INMOST_MPI_DATA_REAL_TYPE,
+									vector_exchange_send[j], ((unsigned long long)vector_exchange_send[j] * (unsigned long long)size + (unsigned long long)rank) % max_tag, comm,
+									&send_requests[i]));
+#endif
 				l += vector_exchange_send[j + 1];
 				j += vector_exchange_send[j + 1] + 2;
 			}
@@ -721,9 +800,15 @@ namespace INMOST
 			{
 				for (k = 0; k < vector_exchange_recv[j + 1]; k++)
 					recv_storage[l + k] = x[vector_exchange_recv[k + j + 2]];
+#if defined(USE_MPI_IRECV_ORDER_RULE)
 				GUARD_MPI(MPI_Isend(&recv_storage[l], vector_exchange_recv[j + 1], INMOST_MPI_DATA_REAL_TYPE,
 									vector_exchange_recv[j], MPIExchangeTag::SolverAccumulate, comm,
 									&recv_requests[i]));
+#else
+				GUARD_MPI(MPI_Isend(&recv_storage[l], vector_exchange_recv[j + 1], INMOST_MPI_DATA_REAL_TYPE,
+									vector_exchange_recv[j], ((unsigned long long)rank * (unsigned long long)size + (unsigned long long)vector_exchange_recv[j]) % max_tag, comm,
+									&recv_requests[i]));
+#endif
 				l += vector_exchange_recv[j + 1];
 				j += vector_exchange_recv[j + 1] + 2;
 			}
