@@ -84,6 +84,7 @@ namespace INMOST
 			if (*it == LowConnTag()) continue;
 			if (*it == CoordsTag()) continue;
 			if (*it == SetNameTag()) continue;
+			if (!it->GetPrint()) continue;
 
 			if (CheckSaveSkip(it->GetTagName(), nosave, saveonly))
 				continue;
@@ -127,7 +128,7 @@ namespace INMOST
 			if (*it == LowConnTag()) continue;
 			if (*it == CoordsTag()) continue;
 			if (*it == SetNameTag()) continue;
-
+			if (!it->GetPrint()) continue;
 
 			if (CheckSaveSkip(it->GetTagName(), nosave, saveonly))
 				continue;
@@ -313,6 +314,7 @@ namespace INMOST
 			if (*jt == MarkersTag()) continue;
 			if (*jt == CoordsTag()) continue;
 			if (*jt == SetNameTag()) continue;
+			if (!jt->GetPrint()) continue;
 
 			if (CheckSaveSkip(tagname, nosave, saveonly))
 				continue;
@@ -1352,6 +1354,7 @@ namespace INMOST
 			{
 				INMOST_DATA_BIG_ENUM_TYPE wdsize = dsize, wzdsize = zdsize;
 				out.clear();
+				out.str(std::string());
 				out << INMOST::ZLIBHeader;
 				buconv.write_iByteOrder(out);
 				buconv.write_iByteSize(out);
