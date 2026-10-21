@@ -446,14 +446,10 @@ namespace INMOST
 			{
 				MPI_File fh;
 				MPI_Status stat;
-				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()), MPI_MODE_CREATE | MPI_MODE_DELETE_ON_CLOSE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh));
-				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-				REPORT_MPI(ierr = MPI_File_close(&fh));
-				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
-				REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
-				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_MPI(ierr = MPI_File_open(GetCommunicator(),const_cast<char *>(File.c_str()),MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				std::string header_data;
+				INMOST_DATA_BIG_ENUM_TYPE filesize = 0;
 				if( GetProcessorRank() == 0 )
 				{
 					std::stringstream header;
@@ -463,7 +459,24 @@ namespace INMOST
 					buconv.write_iValue(header,numprocs);
 					for(k = 0; k < numprocs; k++) buconv.write_iValue(header,datasizes[k]);
 					
-					std::string header_data(header.str());
+					header_data = header.str();
+					filesize = header_data.size();
+					for(k = 0; k < numprocs; ++k) filesize += datasizes[k];
+				}
+				// Keep one file identity across all nodes and establish its final size
+				// before independent writes. CREATE alone does not truncate an old file.
+				REPORT_MPI(ierr = MPI_Bcast(&filesize,1,INMOST_MPI_DATA_BIG_ENUM_TYPE,0,GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_MPI(ierr = MPI_File_set_size(fh,static_cast<MPI_Offset>(filesize)));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_MPI(ierr = MPI_File_sync(fh));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_MPI(ierr = MPI_File_sync(fh));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				if( GetProcessorRank() == 0 )
+				{
 					REPORT_MPI(ierr = MPI_File_write(fh,&header_data[0],static_cast<INMOST_MPI_SIZE>(header_data.size()),MPI_CHAR,&stat));
 					if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				
@@ -492,7 +505,11 @@ namespace INMOST
 						shift += chunk;
 					}
 				}
-				
+				// Finish writes on every node before any rank closes its handle.
+				REPORT_MPI(ierr = MPI_File_sync(fh));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				REPORT_MPI(ierr = MPI_Barrier(GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 				REPORT_MPI(ierr = MPI_File_close(&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
 			}
@@ -773,6 +790,7 @@ namespace INMOST
 					//~ in.write(&buffer[0],recvsize);
 				//~ }
 				
+				int short_read = 0;
 				if( recvsize )
 				{
 					buffer.resize(recvsize);
@@ -782,6 +800,17 @@ namespace INMOST
 						chunk = std::min(static_cast<INMOST_DATA_BIG_ENUM_TYPE>(INT_MAX),recvsize-shift);
 						REPORT_MPI(ierr = MPI_File_read_at(fh,offset+shift,&buffer[shift],static_cast<INMOST_MPI_SIZE>(chunk),MPI_CHAR,&stat));
 						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						int count;
+						REPORT_MPI(ierr = MPI_Get_count(&stat,MPI_CHAR,&count));
+						if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+						if( count != static_cast<INMOST_MPI_SIZE>(chunk) )
+						{
+							std::cerr << "PMF short read: " << File << " rank " << mpirank
+							          << " offset " << offset+shift << " expected " << chunk
+							          << " bytes, got " << count << std::endl;
+							short_read = 1;
+							break;
+						}
 						shift += chunk;
 					}
 					in.write(&buffer[0],recvsize);
@@ -789,6 +818,10 @@ namespace INMOST
 				
 				REPORT_MPI(ierr = MPI_File_close(&fh));
 				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				int any_short_read = 0;
+				REPORT_MPI(ierr = MPI_Allreduce(&short_read,&any_short_read,1,MPI_INT,MPI_MAX,GetCommunicator()));
+				if( ierr != MPI_SUCCESS ) REPORT_MPI(MPI_Abort(GetCommunicator(),__LINE__));
+				if( any_short_read ) throw BadFile;
 			}
 			else
 #endif
