@@ -1682,7 +1682,18 @@ safe_output:
 						}
 					}
 					
-					if( grid_is_2d && old_nodes.empty() ) SetDimensions(2);
+					if (grid_is_2d && old_nodes.empty())
+					{
+						double zRef = 0.;
+						bool is2d = true;
+						if (BeginNode() != EndNode())
+							zRef = BeginNode()->Coords()[2];
+						for (Mesh::iteratorNode n = BeginNode(); n != EndNode() && is2d; ++n)
+							if (fabs(zRef - n->Coords()[2]) > epsilon)
+								is2d = false;
+						if (is2d)
+							SetDimensions(2);
+					}
 
 					{
 						if( verbosity > 0 ) std::cout << "Reading " << ncells << " cells." << std::endl;
