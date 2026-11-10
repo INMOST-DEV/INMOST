@@ -21,10 +21,15 @@ namespace INMOST {
 
         bool have_params = parameters_file != "";
         const Teuchos::RCP<Teuchos::ParameterList> top_level_params = Teuchos::createParameterList();
-        if (have_params)
+        if (have_params) {
+#if defined(USE_MPI)
             Teuchos::updateParametersFromXmlFileAndBroadcast(parameters_file, top_level_params.ptr(),
                                                              Teuchos::MpiComm<int>(Teuchos::opaqueWrapper(
                                                                      RHS.GetCommunicator())));
+#else
+            Teuchos::updateParametersFromXmlFile(parameters_file, top_level_params.ptr());
+#endif
+        }
 
         Teuchos::RCP<Teuchos::ParameterList> List = Teuchos::rcp(new Teuchos::ParameterList);
 

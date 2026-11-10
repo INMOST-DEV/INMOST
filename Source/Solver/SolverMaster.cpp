@@ -12,7 +12,7 @@
 
 #endif
 
-#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
+#if defined(USE_SOLVER_TRILINOS)
 
 #include "solver_trilinos/SolverTrilinos.h"
 #include "solver_trilinos/solver_aztec/SolverTrilinosAztec.h"
@@ -74,7 +74,7 @@ namespace INMOST {
 #if defined(USE_SOLVER_PETSC)
         if (name == "petsc") return new SolverPETSc();
 #endif
-#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
+#if defined(USE_SOLVER_TRILINOS)
         if (name == "trilinos_aztec") return new SolverTrilinosAztec();
         if (name == "trilinos_belos") return new SolverTrilinosBelos();
         if (name == "trilinos_ml") return new SolverTrilinosML();
@@ -106,7 +106,7 @@ namespace INMOST {
 #if defined(USE_SOLVER_PETSC)
         s.push_back("petsc");
 #endif
-#if defined(USE_SOLVER_TRILINOS) && defined(USE_MPI)
+#if defined(USE_SOLVER_TRILINOS)
         s.push_back("trilinos_aztec");
         s.push_back("trilinos_belos");
         s.push_back("trilinos_ml");

@@ -27,7 +27,9 @@
 #include "ml_MultiLevelPreconditioner.h"
 #include "BelosEpetraOperator.h"
 #include "Teuchos_Comm.hpp"
+#if defined(USE_MPI)
 #include "Teuchos_DefaultMpiComm.hpp"
+#endif
 #include "Teuchos_OpaqueWrapper.hpp"
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_TestForException.hpp"

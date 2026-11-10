@@ -22,7 +22,7 @@ if (USE_SOLVER_PETSC)
     add_subdirectory(solver_petsc)
 endif()
 
-if (USE_SOLVER_TRILINOS AND USE_MPI)
+if (USE_SOLVER_TRILINOS)
     add_subdirectory(solver_trilinos)
 endif()
 
