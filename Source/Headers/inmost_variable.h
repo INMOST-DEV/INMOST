@@ -472,9 +472,9 @@ namespace INMOST
 	class table_variable : public shell_dynamic_variable< unary_pool_expression< function_expression<typename A::Var>,typename A::Var > , table_variable<A> >
 	{
 		A Arg;
-		const keyval_table & Table;
+		const keyval_table * Table; // Non-owning; assignment rebinds the table.
 	public:
-		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg,  const keyval_table  & ptable) : Arg(parg), Table(ptable) {}
+		table_variable(const shell_dynamic_variable<typename A::Var,A> & parg,  const keyval_table  & ptable) : Arg(parg), Table(&ptable) {}
 		table_variable(const table_variable & other) : Arg(other.Arg), Table(other.Table) {}
 		table_variable & operator = (table_variable const & other) {Arg = other.Arg; Table = other.Table; return * this;}
 		INMOST_DATA_REAL_TYPE Value(const Storage & e) const {return (*this)[e].GetValue();}
@@ -487,7 +487,7 @@ namespace INMOST
 		{
 			typename A::Var arg = Arg[e];
 			unary_pool< function_expression<typename A::Var>, typename A::Var> pool(arg);
-			std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> both = Table.GetBoth(arg.GetValue());
+			std::pair<INMOST_DATA_REAL_TYPE, INMOST_DATA_REAL_TYPE> both = Table->GetBoth(arg.GetValue());
 			pool.get_op().SetFunctionValue(both.first);
 			pool.get_op().SetFunctionDerivative(both.second);
 			return unary_pool_expression< function_expression<typename A::Var>, typename A::Var >(pool);
